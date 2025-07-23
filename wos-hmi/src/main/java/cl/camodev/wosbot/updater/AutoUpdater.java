@@ -13,6 +13,11 @@ import java.util.jar.Manifest;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
 public class AutoUpdater {
     private static final Logger logger = LoggerFactory.getLogger(AutoUpdater.class);
@@ -101,6 +106,13 @@ public class AutoUpdater {
 
             if (latestVersion.replaceFirst("^v", "").equals(version)) {
                 logger.info("No updates available.");
+                return false;
+            }
+
+            // Prompt user for update using custom FXML dialog
+            boolean userWantsUpdate = showUpdatePromptDialog("A new version (" + latestVersion + ") is available. Update now?");
+            if (!userWantsUpdate) {
+                logger.info("User declined update.");
                 return false;
             }
 
@@ -293,6 +305,41 @@ public class AutoUpdater {
             }
         } else {
             Files.deleteIfExists(path);
+        }
+    }
+
+    private boolean showUpdatePromptDialog(String message) {
+        try {
+            return showUpdatePromptDialogInternal(message);
+        } catch (Exception e) {
+            logger.error("Failed to show update prompt dialog", e);
+            return false;
+        }
+    }
+
+    private boolean showUpdatePromptDialogInternal(String message) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/UpdatePromptDialog.fxml"));
+            Parent root = loader.load();
+            UpdatePromptDialogController controller = loader.getController();
+            controller.setMessage(message);
+
+            Stage dialogStage = new Stage();
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.setTitle("Update Available");
+            // Set default app icon
+            dialogStage.getIcons().add(new javafx.scene.image.Image(getClass().getResourceAsStream("/icons/appIcon.png")));
+            Scene scene = new Scene(root);
+            // Apply stylesheet
+            scene.getStylesheets().add(cl.camodev.wosbot.launcher.view.ILauncherConstants.getCssPath());
+            dialogStage.setScene(scene);
+            dialogStage.setResizable(false);
+            dialogStage.showAndWait();
+
+            return controller.getUserChoice();
+        } catch (Exception e) {
+            logger.error("Failed to show update prompt dialog (internal)", e);
+            return false;
         }
     }
 }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox alignment="CENTER" spacing="20" style="-fx-border-radius: 2;" stylesheets="@../../../../../wos-utiles/src/main/resources/styles/style.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cl.camodev.wosbot.updater.UpdatePromptDialogController">
+    <Label fx:id="messageLabel" style="-fx-text-fill: #e0e0e0; -fx-font-size: 16px; -fx-font-weight: bold;" text="A new version is available. Update now?" />
+    <HBox alignment="CENTER" spacing="20">
+        <Button fx:id="yesButton" style="-fx-pref-width: 80;" text="Yes" />
+        <Button fx:id="noButton" style="-fx-pref-width: 80;" text="No" />
+    </HBox>
+</VBox>

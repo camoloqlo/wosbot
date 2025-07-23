@@ -2,6 +2,7 @@ package cl.camodev.wosbot.main;
 
 import cl.camodev.wosbot.launcher.view.ILauncherConstants;
 import cl.camodev.wosbot.launcher.view.LauncherLayoutController;
+import cl.camodev.wosbot.updater.AutoUpdater;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
@@ -26,14 +27,23 @@ public class FXApp extends Application {
 	private static final double DEFAULT_W  = 900;
 	private static final double DEFAULT_H  = 500;
 
+	public static String[] updaterArgs;
+
 	private Preferences prefs;
 
 	public static void main(String[] args) {
+		updaterArgs = args;
 		launch(args);
 	}
 
 	@Override
 	public void start(Stage stage) throws IOException {
+		// Check for updates before launching the main UI
+		AutoUpdater updater = new AutoUpdater();
+		if (updater.handleUpdateFlow(updaterArgs)) {
+			return; // Update steps handled and process exited
+		}
+
 		// Inicializar Preferences
 		Image appIcon = new Image(getClass().getResourceAsStream("/icons/appIcon.png"));
 		prefs = Preferences.userRoot().node(FXApp.class.getName());
