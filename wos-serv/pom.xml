@@ -29,7 +29,7 @@
 		<dependency>
 			<groupId>com.android.tools.ddms</groupId>
 			<artifactId>ddmlib</artifactId>
-			<version>31.11.0-alpha03</version>
+			<version>31.11.1</version>
 		</dependency>
 
 		<dependency>
