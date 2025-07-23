@@ -57,6 +57,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20230227</version>
+		</dependency>
+
 
     </dependencies>
 
@@ -85,6 +91,7 @@
 							<Built-By>${user.name}</Built-By>
 							<Build-Jdk>${java.version}</Build-Jdk>
 							<Build-Time>${maven.build.timestamp}</Build-Time>
+							<Repository-Url>https://github.com/MAbbara/wosbot</Repository-Url>
 						</manifestEntries>
 					</archive>
 					<finalName>wos-bot-${project.version}</finalName>
