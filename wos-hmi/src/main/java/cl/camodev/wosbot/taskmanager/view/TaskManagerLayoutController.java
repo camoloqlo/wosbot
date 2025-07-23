@@ -17,6 +17,7 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -52,18 +53,44 @@ public class TaskManagerLayoutController {
 	private final ObjectProperty<LocalDateTime> globalClock = new SimpleObjectProperty<>(LocalDateTime.now());
 	private final Map<Long, Tab> profileTabsMap = new HashMap<>();
 	private final Map<Long, ObservableList<TaskManagerAux>> tasks = new HashMap<>();
+	private final Map<Long, FilteredList<TaskManagerAux>> filteredTasks = new HashMap<>();
 	private final TaskManagerActionController taskManagerActionController = new TaskManagerActionController(this);
 
 	@FXML
 	private TabPane tabPaneProfiles;
 
 	@FXML
+	private TextField txtFilterTaskName;
+
+	@FXML
 	public void initialize() {
 		loadProfiles();
+		setupFilterListener();
 
 		Timeline ticker = new Timeline(new KeyFrame(Duration.seconds(1), evt -> updateTimeValues()));
 		ticker.setCycleCount(Animation.INDEFINITE);
 		ticker.play();
+	}
+
+	private void setupFilterListener() {
+		if (txtFilterTaskName != null) {
+			txtFilterTaskName.textProperty().addListener((observable, oldValue, newValue) -> {
+				applyFilter(newValue);
+			});
+		}
+	}
+
+	private void applyFilter(String filterText) {
+		String filter = filterText == null ? "" : filterText.toLowerCase().trim();
+
+		filteredTasks.forEach((profileId, filteredList) -> {
+			filteredList.setPredicate(task -> {
+				if (filter.isEmpty()) {
+					return true;
+				}
+				return task.getTaskName().toLowerCase().contains(filter);
+			});
+		});
 	}
 
 	// Method to update time-dependent values and trigger reordering
@@ -135,17 +162,28 @@ public class TaskManagerLayoutController {
 
 		// 1) Prepara la tabla y la lista observable vacía
 		ObservableList<TaskManagerAux> dataList = FXCollections.observableArrayList();
+
+		// 2) Crea FilteredList para el filtrado
+		FilteredList<TaskManagerAux> filteredList = new FilteredList<>(dataList);
+
 		TableView<TaskManagerAux> table = createTaskTable();
-		table.setItems(dataList);
-		// Guarda la lista para futuras actualizaciones
+		table.setItems(filteredList);
+
+		// Guarda ambas listas para futuras actualizaciones
 		tasks.put(profile.getId(), dataList);
+		filteredTasks.put(profile.getId(), filteredList);
 		tab.setContent(table);
 
-		// 2) Llama al builder asíncrono y actualiza la tabla cuando esté listo
+		// 3) Llama al builder asíncrono y actualiza la tabla cuando esté listo
 		buildTaskManagerList(profile, list -> {
 			// Siempre desde JavaFX Application Thread
 			dataList.setAll(list);
 			FXCollections.sort(dataList, TASK_AUX_COMPARATOR);
+
+			// Aplica el filtro actual si existe
+			if (txtFilterTaskName != null && !txtFilterTaskName.getText().isEmpty()) {
+				applyFilter(txtFilterTaskName.getText());
+			}
 		});
 
 		return tab;
@@ -217,6 +255,7 @@ public class TaskManagerLayoutController {
 		colTaskName.setPrefWidth(200);
 		colTaskName.setCellFactory(column -> new TableCell<TaskManagerAux, String>() {
 			private final ImageView imageView = new ImageView();
+
 			{
 				// Ajusta tamaño del icono si es necesario
 				imageView.setFitWidth(16);
@@ -313,9 +352,9 @@ public class TaskManagerLayoutController {
 				if (empty || item == null) {
 					setText(null);
 					getStyleClass().removeAll(
-						"next-execution-ready", "next-execution-never", "next-execution-executing", "next-execution-seconds",
-						"next-execution-minutes-short", "next-execution-minutes-medium", "next-execution-minutes-long",
-						"next-execution-hours", "next-execution-days"
+							"next-execution-ready", "next-execution-never", "next-execution-executing", "next-execution-seconds",
+							"next-execution-minutes-short", "next-execution-minutes-medium", "next-execution-minutes-long",
+							"next-execution-hours", "next-execution-days"
 					);
 					setStyle("");
 					return;
@@ -324,9 +363,9 @@ public class TaskManagerLayoutController {
 
 				// Remove all custom classes first
 				getStyleClass().removeAll(
-					"next-execution-ready", "next-execution-never", "next-execution-executing", "next-execution-seconds",
-					"next-execution-minutes-short", "next-execution-minutes-medium", "next-execution-minutes-long",
-					"next-execution-hours", "next-execution-days"
+						"next-execution-ready", "next-execution-never", "next-execution-executing", "next-execution-seconds",
+						"next-execution-minutes-short", "next-execution-minutes-medium", "next-execution-minutes-long",
+						"next-execution-hours", "next-execution-days"
 				);
 
 				// Assign class based on value
@@ -363,9 +402,9 @@ public class TaskManagerLayoutController {
 
 			{
 				btnSchedule.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 11px; " +
-					"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
+						"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
 				btnRemove.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 11px; " +
-					"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
+						"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
 
 				btnSchedule.setOnAction(ev -> {
 					TaskManagerAux item = getTableView().getItems().get(getIndex());
@@ -408,10 +447,10 @@ public class TaskManagerLayoutController {
 						// Update schedule button style when disabled
 						if (!queueActive) {
 							btnSchedule.setStyle("-fx-background-color: #757575; -fx-text-fill: #bdbdbd; -fx-font-size: 11px; " +
-								"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
+									"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
 						} else {
 							btnSchedule.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 11px; " +
-								"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
+									"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
 						}
 
 						// Enable/disable remove button based on task state
@@ -421,10 +460,10 @@ public class TaskManagerLayoutController {
 						// Update remove button style when disabled
 						if (!canRemove) {
 							btnRemove.setStyle("-fx-background-color: #757575; -fx-text-fill: #bdbdbd; -fx-font-size: 11px; " +
-								"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
+									"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
 						} else {
 							btnRemove.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 11px; " +
-								"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
+									"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
 						}
 					}
 
@@ -487,5 +526,5 @@ public class TaskManagerLayoutController {
 		});
 
 	}
-
 }
+
