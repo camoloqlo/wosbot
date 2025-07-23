@@ -23,3 +23,5 @@ wos-hmi/.project
 .project
 /.idea
 /wos-hmi/log
+*.log
+.vscode

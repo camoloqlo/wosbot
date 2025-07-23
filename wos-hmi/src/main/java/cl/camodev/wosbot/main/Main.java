@@ -11,7 +11,8 @@ public class Main {
     public static void main(String[] args) {
         try {
             logger.info("Checking for updates...");
-            if (AutoUpdater.handleUpdateFlow(args)) {
+            AutoUpdater updater = new AutoUpdater();
+            if (updater.handleUpdateFlow(args)) {
                 return; // Update steps handled and process exited
             }
 

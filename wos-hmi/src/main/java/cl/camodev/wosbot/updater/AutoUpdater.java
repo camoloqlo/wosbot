@@ -20,7 +20,7 @@ public class AutoUpdater {
     private static final String DOWNLOAD_NAME = "update.zip";
     private static final Path BACKUP_DIR = Paths.get("backup");
 
-    public static boolean handleUpdateFlow(String[] args) {
+    public boolean handleUpdateFlow(String[] args) {
         try {
             if (args.length > 0 && args[0].equals("--post-update")) {
                 Path updateSubdir = Paths.get(args[1]);
@@ -39,7 +39,7 @@ public class AutoUpdater {
             if (args.length > 0 && args[0].equals("--final-cleanup")) {
                 Path updateSubdir = Paths.get(args[1]);
                 logger.info("Cleaning up old update directory and backup...");
-                cleanUp(updateSubdir, Paths.get("backup"), Paths.get("update.zip"));
+                cleanUp(updateSubdir, Paths.get("update.zip"));
 
                 return false;
             }
@@ -56,7 +56,7 @@ public class AutoUpdater {
         return false;
     }
 
-    private static String getUpdatedJarName() throws IOException {
+    private String getUpdatedJarName() throws IOException {
         try (Stream<Path> stream = Files.list(Paths.get("."))) {
             return stream
                     .filter(p -> p.toString().endsWith(".jar"))
@@ -66,7 +66,7 @@ public class AutoUpdater {
         }
     }
 
-    public static boolean checkForUpdatesAndRun() {
+    public boolean checkForUpdatesAndRun() {
         try {
             String version = getManifestAttribute("Implementation-Version");
             String repoUrl = getManifestAttribute("Repository-Url");
@@ -131,7 +131,7 @@ public class AutoUpdater {
         return false;
     }
 
-    private static void extractZip(Path zipFile, Path targetDir) throws IOException {
+    private void extractZip(Path zipFile, Path targetDir) throws IOException {
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile.toFile()))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
@@ -152,7 +152,7 @@ public class AutoUpdater {
         }
     }
 
-    private static Path findExtractedSubdir() throws IOException {
+    private Path findExtractedSubdir() throws IOException {
         try (Stream<Path> stream = Files.list(Paths.get("."))) {
             return stream
                 .filter(p -> Files.isDirectory(p) && p.getFileName().toString().startsWith("wos-bot-"))
@@ -161,7 +161,7 @@ public class AutoUpdater {
         }
     }
 
-    private static String getManifestAttribute(String name) {
+    private String getManifestAttribute(String name) {
         try (InputStream input = AutoUpdater.class.getResourceAsStream("/META-INF/MANIFEST.MF")) {
             if (input == null) return null;
             Manifest manifest = new Manifest(input);
@@ -173,7 +173,7 @@ public class AutoUpdater {
         }
     }
 
-    private static String findJarName(Path dir) throws IOException {
+    private String findJarName(Path dir) throws IOException {
         try (Stream<Path> files = Files.walk(dir)) {
             return files
                 .filter(p -> Files.isRegularFile(p))
@@ -188,7 +188,7 @@ public class AutoUpdater {
     }
 
 
-    private static void backupCurrentInstallation() throws IOException, URISyntaxException {
+    private void backupCurrentInstallation() throws IOException, URISyntaxException {
         Files.createDirectories(BACKUP_DIR);
 
         Path jarPath = getRunningJarPath();
@@ -204,7 +204,7 @@ public class AutoUpdater {
         }
     }
 
-    public static void moveNewVersionToRoot(Path fromSubdir) throws IOException {
+    public void moveNewVersionToRoot(Path fromSubdir) throws IOException {
         // Remove old root .jar files (not the current one in fromSubdir)
         try (Stream<Path> jarStream = Files.list(Paths.get("."))) {
             jarStream
@@ -246,7 +246,7 @@ public class AutoUpdater {
     }
 
 
-    public static void cleanUp(Path... items) {
+    public void cleanUp(Path... items) {
         for (Path item : items) {
             try {
                 if (Files.isDirectory(item)) {
@@ -264,12 +264,12 @@ public class AutoUpdater {
         }
     }
 
-    private static Path getRunningJarPath() throws URISyntaxException {
+    private Path getRunningJarPath() throws URISyntaxException {
         URI uri = AutoUpdater.class.getProtectionDomain().getCodeSource().getLocation().toURI();
         return Paths.get(uri);
     }
 
-    private static void copyDirectory(Path source, Path target) throws IOException {
+    private void copyDirectory(Path source, Path target) throws IOException {
         Files.walk(source).forEach(path -> {
             try {
                 Path dest = target.resolve(source.relativize(path));
@@ -284,7 +284,7 @@ public class AutoUpdater {
         });
     }
 
-    private static void deleteRecursively(Path path) throws IOException {
+    private void deleteRecursively(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (Stream<Path> entries = Files.walk(path)) {
                 entries.sorted(Comparator.reverseOrder())
