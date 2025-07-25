@@ -34,7 +34,7 @@
 
 		<dependency>
 			<groupId>cl.camodev</groupId>
-			<artifactId>wos-persitence</artifactId>
+			<artifactId>wos-persistence</artifactId>
 			<version>${revision}</version>
 		</dependency>
 		<dependency>
@@ -44,7 +44,7 @@
 		</dependency>
 		<dependency>
 			<groupId>cl.camodev</groupId>
-			<artifactId>wos-utiles</artifactId>
+			<artifactId>wos-utils</artifactId>
 			<version>${revision}</version>
 		</dependency>
         <dependency>
@@ -60,8 +60,8 @@
 		</dependency>
 		<!-- Binding/implementación en tiempo de ejecución -->
 		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-log4j12</artifactId>
+                        <groupId>ch.qos.logback</groupId>
+                        <artifactId>logback-classic</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 

@@ -20,8 +20,8 @@
     </properties>
 	<modules>
 		<module>wos-hmi</module>
-		<module>wos-utiles</module>
-		<module>wos-persitence</module>
+		<module>wos-utils</module>
+		<module>wos-persistence</module>
 		<module>wos-serv</module>
 		<module>wos-ot</module>
 	</modules>
@@ -52,16 +52,54 @@
 				<artifactId>slf4j-api</artifactId>
 				<version>${slf4j.version}</version>
 			</dependency>
-			<!-- Implementación Logback (binding) -->
-			<dependency>
-				<groupId>org.slf4j</groupId>
-				<artifactId>slf4j-log4j12</artifactId>
-				<version>${slf4j.version}</version>
-				<scope>runtime</scope>
-			</dependency>
+                        <!-- Implementación Logback (binding) -->
+                        <dependency>
+                                <groupId>ch.qos.logback</groupId>
+                                <artifactId>logback-classic</artifactId>
+                                <version>${logback.version}</version>
+                                <scope>runtime</scope>
+                        </dependency>
+                        <dependency>
+                                <groupId>org.junit.jupiter</groupId>
+                                <artifactId>junit-jupiter</artifactId>
+                                <version>5.10.1</version>
+                                <scope>test</scope>
+                        </dependency>
 
 
 		</dependencies>
 	</dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>2.44.0</version>
+                    <executions>
+                        <execution>
+                            <goals><goal>apply</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>com.google.errorprone</groupId>
+                    <artifactId>error-prone-maven-plugin</artifactId>
+                    <version>2.26.1</version>
+                    <executions>
+                        <execution>
+                            <goals><goal>check</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.1.2</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 
 </project>

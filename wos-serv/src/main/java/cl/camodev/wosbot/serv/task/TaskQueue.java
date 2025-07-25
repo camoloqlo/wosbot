@@ -35,6 +35,10 @@ public class TaskQueue {
 
         private static final int PAUSE_SLEEP_MS = 1000;
         private static final int IDLE_CHECK_INTERVAL_MS = 999;
+        /** Wait time before rechecking emulator after a restart attempt. */
+        private static final int EMULATOR_RESTART_WAIT_MS = 30000;
+        /** Maximum restart attempts before giving up. */
+        private static final int MAX_EMULATOR_RESTART_ATTEMPTS = 3;
         // Flag to stop the scheduler loop.
 	private volatile boolean running = false;
         // Flag to pause/resume the scheduler.
@@ -107,9 +111,10 @@ public class TaskQueue {
 			return;
 		running = true;
 
-		schedulerThread = new Thread(() -> {
+                schedulerThread = new Thread(() -> {
 
-			boolean idlingTimeExceded = false;
+                        boolean idlingTimeExceeded = false;
+                        int restartAttempts = 0;
 			ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "Getting queue slot"));
 			try {
                                 EmulatorManager.getInstance().acquireEmulatorSlot(profile, (thread, position) -> {
@@ -118,10 +123,34 @@ public class TaskQueue {
 			} catch (InterruptedException e) {
 				logger.error("Interrupted while acquiring emulator slot for profile " + profile.getName(), e);
 			}
-			while (running) {
-				// Check if paused and skip execution if so
-				if (paused) {
-					try {
+                        while (running) {
+                                if (!EmulatorManager.getInstance().isRunning(profile.getEmulatorNumber())) {
+                                        if (restartAttempts < MAX_EMULATOR_RESTART_ATTEMPTS) {
+                                                restartAttempts++;
+                                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.WARNING,
+                                                                "TaskQueue", profile.getName(),
+                                                                "Emulator closed, attempting restart " + restartAttempts + "/" + MAX_EMULATOR_RESTART_ATTEMPTS);
+                                                EmulatorManager.getInstance().launchEmulator(profile.getEmulatorNumber());
+                                                try {
+                                                        Thread.sleep(EMULATOR_RESTART_WAIT_MS);
+                                                } catch (InterruptedException e) {
+                                                        Thread.currentThread().interrupt();
+                                                        break;
+                                                }
+                                                continue;
+                                        } else {
+                                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR,
+                                                                "TaskQueue", profile.getName(),
+                                                                "Failed to restart emulator after " + MAX_EMULATOR_RESTART_ATTEMPTS + " attempts. Stopping queue");
+                                                running = false;
+                                                break;
+                                        }
+                                } else {
+                                        restartAttempts = 0;
+                                }
+                                // Check if paused and skip execution if so
+                                if (paused) {
+                                        try {
 						ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "PAUSED"));
 						logger.info("Profile " + profile.getName() + " is paused.");
                                                 Thread.sleep(PAUSE_SLEEP_MS); // Wait while paused
@@ -247,16 +276,16 @@ public class TaskQueue {
 					long maxIdle = 0;
 					maxIdle = Optional.ofNullable(profile.getGlobalsettings().get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name())).map(Integer::parseInt).orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue()));
 
-                                        if (!idlingTimeExceded && nextTaskDelaySeconds > TimeUnit.MINUTES.toSeconds(maxIdle)) {
-                                                idlingTimeExceded = true;
+                                        if (!idlingTimeExceeded && nextTaskDelaySeconds > TimeUnit.MINUTES.toSeconds(maxIdle)) {
+                                                idlingTimeExceeded = true;
                                                 idlingEmulator(nextTaskDelaySeconds);
 					}
 
                                         // If the delay drops below a minute, acquire the emulator slot and enqueue an initialization task
-                                        if (idlingTimeExceded && nextTaskDelaySeconds < TimeUnit.MINUTES.toSeconds(1)) {
+                                        if (idlingTimeExceeded && nextTaskDelaySeconds < TimeUnit.MINUTES.toSeconds(1)) {
                                                 enqueueNewTask();
-                                                idlingTimeExceded = false; // Reset condition for future evaluations
-					}
+                                                idlingTimeExceeded = false; // Reset condition for future evaluations
+                                        }
 				}
 
                                 // If no task was executed, wait a bit before checking again
@@ -278,11 +307,15 @@ public class TaskQueue {
 						Thread.currentThread().interrupt();
 						break;
 					}
-				}
-			}
-		});
-		schedulerThread.start();
-	}
+                                }
+                        }
+                        EmulatorManager.getInstance().releaseEmulatorSlot(profile);
+                        taskQueue.clear();
+                        ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "NOT RUNNING "));
+                        logger.info("TaskQueue stopped for profile " + profile.getName());
+                });
+                schedulerThread.start();
+        }
 
         // Helper methods
     private void idlingEmulator(long delaySeconds) {
@@ -310,25 +343,25 @@ public class TaskQueue {
         /**
          * Stops queue processing immediately, regardless of its current state.
          */
-	public void stop() {
+        public void stop() {
                 running = false; // Stop the main loop
 
-		if (schedulerThread != null) {
+                if (schedulerThread != null) {
                         schedulerThread.interrupt(); // Interrupt to force immediate exit
 
-			try {
+                        try {
                                 schedulerThread.join(1000); // Wait up to 1 second for thread to finish
-			} catch (InterruptedException e) {
-				logger.error("Interrupted while stopping TaskQueue for profile " + profile.getName(), e);
-				Thread.currentThread().interrupt();
-			}
-		}
+                        } catch (InterruptedException e) {
+                                logger.error("Interrupted while stopping TaskQueue for profile " + profile.getName(), e);
+                                Thread.currentThread().interrupt();
+                        }
+                }
 
-                // Remove all pending tasks from the queue
-		taskQueue.clear();
-		ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "NOT RUNNING "));
-		logger.info("TaskQueue stopped immediately for profile " + profile.getName());
-	}
+                EmulatorManager.getInstance().releaseEmulatorSlot(profile);
+                taskQueue.clear();
+                ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "NOT RUNNING "));
+                logger.info("TaskQueue stopped immediately for profile " + profile.getName());
+        }
 
         /**
          * Pauses queue processing while keeping tasks in the queue.
