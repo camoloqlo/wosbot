@@ -36,11 +36,14 @@ import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.DelayedTaskRegistry;
 import cl.camodev.wosbot.serv.task.TaskQueue;
 import cl.camodev.wosbot.serv.task.TaskQueueManager;
+import cl.camodev.utiles.EventBus;
+import cl.camodev.utiles.Injector;
 
 public class ServScheduler {
 	private static ServScheduler instance;
 
 	private final TaskQueueManager queueManager = new TaskQueueManager();
+        private final EventBus eventBus = Injector.get(EventBus.class);
 
 	private List<IBotStateListener> listeners = new ArrayList<IBotStateListener>();
 
@@ -143,13 +146,14 @@ public class ServScheduler {
 
 			queueManager.startQueues();
 
-			listeners.forEach(e -> {
-				DTOBotState state = new DTOBotState();
-				state.setRunning(true);
-				state.setPaused(false);
-				state.setActionTime(LocalDateTime.now());
-				e.onBotStateChange(state);
-			});
+                        DTOBotState state = new DTOBotState();
+                        state.setRunning(true);
+                        state.setPaused(false);
+                        state.setActionTime(LocalDateTime.now());
+                        listeners.forEach(e -> e.onBotStateChange(state));
+                        if (eventBus != null) {
+                                eventBus.post(state);
+                        }
 
 		}
 
@@ -166,37 +170,40 @@ public class ServScheduler {
 	public void stopBot() {
 		queueManager.stopQueues();
 
-		listeners.forEach(e -> {
-			DTOBotState state = new DTOBotState();
-			state.setRunning(false);
-			state.setPaused(false);
-			state.setActionTime(LocalDateTime.now());
-			e.onBotStateChange(state);
-		});
-	}
+                DTOBotState state = new DTOBotState();
+                state.setRunning(false);
+                state.setPaused(false);
+                state.setActionTime(LocalDateTime.now());
+                listeners.forEach(e -> e.onBotStateChange(state));
+                if (eventBus != null) {
+                        eventBus.post(state);
+                }
+        }
 
 	public void pauseBot() {
 		queueManager.pauseQueues();
 
-		listeners.forEach(e -> {
-			DTOBotState state = new DTOBotState();
-			state.setRunning(true);
-			state.setPaused(true);
-			state.setActionTime(LocalDateTime.now());
-			e.onBotStateChange(state);
-		});
-	}
+                DTOBotState state = new DTOBotState();
+                state.setRunning(true);
+                state.setPaused(true);
+                state.setActionTime(LocalDateTime.now());
+                listeners.forEach(e -> e.onBotStateChange(state));
+                if (eventBus != null) {
+                        eventBus.post(state);
+                }
+        }
 
 	public void resumeBot() {
 		queueManager.resumeQueues();
 
-		listeners.forEach(e -> {
-			DTOBotState state = new DTOBotState();
-			state.setRunning(true);
-			state.setPaused(false);
-			state.setActionTime(LocalDateTime.now());
-			e.onBotStateChange(state);
-		});
+                DTOBotState state = new DTOBotState();
+                state.setRunning(true);
+                state.setPaused(false);
+                state.setActionTime(LocalDateTime.now());
+                listeners.forEach(e -> e.onBotStateChange(state));
+                if (eventBus != null) {
+                        eventBus.post(state);
+                }
 	}
 
 	public void updateDailyTaskStatus(DTOProfiles profile, TpDailyTaskEnum task, LocalDateTime nextSchedule) {
@@ -252,14 +259,15 @@ public class ServScheduler {
 			taskState.setNextExecutionTime(null);
 			ServTaskManager.getInstance().setTaskState(profileId, taskState);
 
-			// Notify listeners about the change
-			listeners.forEach(listener -> {
-				DTOBotState state = new DTOBotState();
-				state.setRunning(true);
-				state.setPaused(false);
-				state.setActionTime(LocalDateTime.now());
-				listener.onBotStateChange(state);
-			});
+                        // Notify listeners about the change
+                        DTOBotState state = new DTOBotState();
+                        state.setRunning(true);
+                        state.setPaused(false);
+                        state.setActionTime(LocalDateTime.now());
+                        listeners.forEach(listener -> listener.onBotStateChange(state));
+                        if (eventBus != null) {
+                                eventBus.post(state);
+                        }
 
 		} catch (Exception e) {
 			ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Scheduler",
