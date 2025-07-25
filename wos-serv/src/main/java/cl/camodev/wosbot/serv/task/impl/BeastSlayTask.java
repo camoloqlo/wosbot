@@ -82,9 +82,9 @@ public class BeastSlayTask extends DelayedTask {
 					return;
 				}
 
-			} catch (IOException | TesseractException e) {
-				e.printStackTrace();
-			}
+                        } catch (IOException | TesseractException e) {
+                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "Error checking stamina: " + e.getMessage());
+                        }
 
 			// deberoa obtener la cantidad de colas disponibles para atacar bestias
 
@@ -111,9 +111,9 @@ public class BeastSlayTask extends DelayedTask {
 					return;
 				}
 
-			} catch (IOException | TesseractException e) {
-				e.printStackTrace();
-			}
+                        } catch (IOException | TesseractException e) {
+                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "Error checking stamina: " + e.getMessage());
+                        }
 
 			// si llego hasta aqui, tengo mas de 10 de stamina y deberia atacar bestias hasta que la stamina sea menor a 10, el consumo es de 8-10 por
 			// ataque

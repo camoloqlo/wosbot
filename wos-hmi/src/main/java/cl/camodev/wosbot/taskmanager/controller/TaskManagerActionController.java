@@ -62,10 +62,10 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 				callback.onProfilesLoaded(profiles);
 			}
 
-		}).exceptionally(ex -> {
-			ex.printStackTrace();
-			return null;
-		});
+                }).exceptionally(ex -> {
+                        System.err.println("Failed to load profiles: " + ex.getMessage());
+                        return null;
+                });
 	}
 
 	public void loadDailyTaskStatus(Long profileId, TaskCallback callback) {
@@ -78,10 +78,10 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 				callback.onTasksLoaded(taskStates);
 			}
 
-		}).exceptionally(ex -> {
-			ex.printStackTrace();
-			return null;
-		});
+                }).exceptionally(ex -> {
+                        System.err.println("Failed to load daily task status: " + ex.getMessage());
+                        return null;
+                });
 	}
 
 	@Override
@@ -216,10 +216,10 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 				}
 			}
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			showErrorAlert("Error", "Could not load schedule dialog: " + e.getMessage());
-		}
+                } catch (Exception e) {
+                        System.err.println("Could not load schedule dialog: " + e.getMessage());
+                        showErrorAlert("Error", "Could not load schedule dialog: " + e.getMessage());
+                }
 	}
 
 	/**

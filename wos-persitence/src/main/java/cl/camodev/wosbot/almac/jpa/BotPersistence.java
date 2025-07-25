@@ -46,12 +46,12 @@ public final class BotPersistence {
 			entityManager.persist(entity);
 			entityManager.getTransaction().commit();
 			return true;
-		} catch (Exception e) {
-			e.printStackTrace();
-			if (entityManager.getTransaction().isActive()) {
-				entityManager.getTransaction().rollback();
-			}
-			return false;
+                } catch (Exception e) {
+                        System.err.println("Error creating entity: " + e.getMessage());
+                        if (entityManager.getTransaction().isActive()) {
+                                entityManager.getTransaction().rollback();
+                        }
+                        return false;
 		} finally {
 			entityManager.close(); // Cierra el EntityManager después de cada transacción
 		}
@@ -64,12 +64,12 @@ public final class BotPersistence {
 			entityManager.merge(entity);
 			entityManager.getTransaction().commit();
 			return true;
-		} catch (Exception e) {
-			e.printStackTrace();
-			if (entityManager.getTransaction().isActive()) {
-				entityManager.getTransaction().rollback();
-			}
-			return false;
+                } catch (Exception e) {
+                        System.err.println("Error updating entity: " + e.getMessage());
+                        if (entityManager.getTransaction().isActive()) {
+                                entityManager.getTransaction().rollback();
+                        }
+                        return false;
 		} finally {
 			entityManager.close();
 		}
@@ -82,12 +82,12 @@ public final class BotPersistence {
 			entityManager.remove(entityManager.contains(entity) ? entity : entityManager.merge(entity));
 			entityManager.getTransaction().commit();
 			return true;
-		} catch (Exception e) {
-			e.printStackTrace();
-			if (entityManager.getTransaction().isActive()) {
-				entityManager.getTransaction().rollback();
-			}
-			return false;
+                } catch (Exception e) {
+                        System.err.println("Error deleting entity: " + e.getMessage());
+                        if (entityManager.getTransaction().isActive()) {
+                                entityManager.getTransaction().rollback();
+                        }
+                        return false;
 		} finally {
 			entityManager.close();
 		}

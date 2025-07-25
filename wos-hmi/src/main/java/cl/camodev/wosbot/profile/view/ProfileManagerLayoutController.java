@@ -357,10 +357,9 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 				profileManagerActionController.saveProfile(loadedProfile);
 			});
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-", "Error while saving profile: " + e.getMessage());
-		}
+                } catch (Exception e) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-", "Error while saving profile: " + e.getMessage());
+                }
 	}
 
 }

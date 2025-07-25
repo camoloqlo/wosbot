@@ -30,9 +30,8 @@ public class Main {
 	private static void configureLog4j() {
 		try {
 			logger.info("Log4j configuration loaded successfully");
-		} catch (Exception e) {
-			System.err.println("Failed to configure Log4j: " + e.getMessage());
-			e.printStackTrace();
-		}
+                } catch (Exception e) {
+                        System.err.println("Failed to configure Log4j: " + e.getMessage());
+                }
 	}
 }

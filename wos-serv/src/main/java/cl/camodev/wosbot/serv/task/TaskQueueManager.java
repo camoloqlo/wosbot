@@ -30,9 +30,9 @@ public class TaskQueueManager {
 			entry.getValue().start();
 			try {
 				Thread.sleep(200);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+                        } catch (InterruptedException e) {
+                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "TaskQueueManager", "-", "Queue startup interrupted: " + e.getMessage());
+                        }
 		});
 
 	}

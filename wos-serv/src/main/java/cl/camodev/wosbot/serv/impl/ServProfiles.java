@@ -18,6 +18,8 @@ import cl.camodev.wosbot.ot.DTOProfileStatus;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.IProfileStatusChangeListener;
 import cl.camodev.wosbot.serv.IServProfile;
+import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
+import cl.camodev.wosbot.serv.impl.ServLogs;
 
 public class ServProfiles implements IServProfile {
 
@@ -76,10 +78,10 @@ public class ServProfiles implements IServProfile {
 
 			return result;
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
+                } catch (Exception e) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profiles", "-", "Failed to add profile: " + e.getMessage());
+                        return false;
+                }
 	}
 
 	@Override
@@ -118,10 +120,10 @@ public class ServProfiles implements IServProfile {
 
 			return iProfileRepository.saveProfile(existingProfile);
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
+                } catch (Exception e) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profiles", "-", "Failed to save profile: " + e.getMessage());
+                        return false;
+                }
 	}
 
 	@Override
@@ -144,10 +146,10 @@ public class ServProfiles implements IServProfile {
 
 			return iProfileRepository.deleteProfile(existingProfile);
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
+                } catch (Exception e) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profiles", "-", "Failed to delete profile: " + e.getMessage());
+                        return false;
+                }
 	}
 
 	@Override
@@ -182,22 +184,22 @@ public class ServProfiles implements IServProfile {
 					
 					// Save the updated profile
 					boolean saved = saveProfile(updatedProfile);
-					if (!saved) {
-						allSuccessful = false;
-						System.err.println("Failed to update profile: " + profile.getName());
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-					allSuccessful = false;
-				}
+                                        if (!saved) {
+                                                allSuccessful = false;
+                                                System.err.println("Failed to update profile: " + profile.getName());
+                                        }
+                                } catch (Exception e) {
+                                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profiles", "-", "Bulk update error: " + e.getMessage());
+                                        allSuccessful = false;
+                                }
 			}
 
 			return allSuccessful;
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
+                } catch (Exception e) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profiles", "-", "Bulk update failed: " + e.getMessage());
+                        return false;
+                }
 	}
 
 	public void notifyProfileStatusChange(DTOProfileStatus statusDto) {

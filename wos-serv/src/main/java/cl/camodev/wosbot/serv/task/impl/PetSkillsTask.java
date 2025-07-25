@@ -79,10 +79,10 @@ public class PetSkillsTask extends DelayedTask {
 					LocalDateTime nextSchedule = parseCooldown(nextSchedulteText);
 					this.reschedule(parseCooldown(nextSchedulteText));
 					ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, nextSchedule);
-				} catch (Exception e) {
-					e.printStackTrace();
-					this.reschedule(LocalDateTime.now().plusMinutes(5));
-				}
+                                } catch (Exception e) {
+                                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "Error processing pet skill cooldown: " + e.getMessage());
+                                        this.reschedule(LocalDateTime.now().plusMinutes(5));
+                                }
 				EmulatorManager.getInstance().tapBackButton(EMULATOR_NUMBER);
 			} else {
 				ServLogs.getServices().appendLog(EnumTpMessageSeverity.WARNING, taskName, profile.getName(), "button pets not found retrying later");

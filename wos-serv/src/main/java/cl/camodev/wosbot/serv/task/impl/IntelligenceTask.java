@@ -30,10 +30,9 @@ public class IntelligenceTask extends DelayedTask {
 	private boolean marchQueueLimitReached = false;
 	private boolean fcEra = false;
 
-	public IntelligenceTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
-		super(profile, tpTask);
-		// TODO Auto-generated constructor stub
-	}
+        public IntelligenceTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
+                super(profile, tpTask);
+        }
 
 	@Override
 	protected void execute() {
@@ -217,11 +216,10 @@ public class IntelligenceTask extends DelayedTask {
 					emuManager.tapBackButton(EMULATOR_NUMBER);
 					ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, reshchedule);
 					servLogs.appendLog(EnumTpMessageSeverity.INFO, taskName, profile.getName(), "No intelligence tasks found, rescheduling to: " + reshchedule);
-				} catch (IOException | TesseractException e) {
-					this.reschedule(LocalDateTime.now().plusMinutes(5));
-					servLogs.appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "Error occurred while processing: " + e.getMessage());
-					e.printStackTrace();
-				}
+                                } catch (IOException | TesseractException e) {
+                                        this.reschedule(LocalDateTime.now().plusMinutes(5));
+                                        servLogs.appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "Error occurred while processing: " + e.getMessage());
+                                }
 			} else {
 				this.reschedule(LocalDateTime.now());
 				servLogs.appendLog(EnumTpMessageSeverity.INFO, taskName, profile.getName(), "Intelligence tasks completed, rescheduling now to check for new tasks.");
@@ -378,9 +376,9 @@ public class IntelligenceTask extends DelayedTask {
 				int seconds = Integer.parseInt(matcher.group(3));
 
 				return LocalDateTime.now().plus(hours, ChronoUnit.HOURS).plus(minutes, ChronoUnit.MINUTES).plus(seconds, ChronoUnit.SECONDS);
-			} catch (NumberFormatException e) {
-				e.printStackTrace();
-			}
+                        } catch (NumberFormatException e) {
+                                servLogs.appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "Invalid time format: " + e.getMessage());
+                        }
 		}
 
 		return LocalDateTime.now();
