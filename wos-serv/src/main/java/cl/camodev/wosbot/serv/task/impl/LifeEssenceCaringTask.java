@@ -14,26 +14,31 @@ import cl.camodev.wosbot.serv.task.DelayedTask;
 
 public class LifeEssenceCaringTask extends DelayedTask {
 
+        private static final int IMAGE_MATCH_THRESHOLD = 90;
+        private static final int MAX_SCROLL_ATTEMPTS = 8;
+        private static final int MAX_BUTTON_SEARCH_ATTEMPTS = 3;
+
 
 	public LifeEssenceCaringTask(DTOProfiles profile, TpDailyTaskEnum dailyMission) {
 		super(profile, dailyMission);
 	}
 
-	// i should go to essence tree, check if there's daily attempt available, if not, reschedule till daily reset,
+        // Navigate to the essence tree and check if a daily attempt is available.
+        // If not, reschedule until the daily reset.
 	@Override
 	protected void execute() {
 
-		logInfo( "going life essence");
+                logInfo("Going to Life Essence menu");
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(1, 509), new DTOPoint(24, 592));
-		// asegurarse de esta en el shortcut de ciudad
+                // Ensure we are in the city shortcut
 		sleepTask(2000);
 		emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(110, 270));
 		sleepTask(1000);
 
-		// hacer swipe hacia abajo
+                // Swipe down
 		emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(220, 845), new DTOPoint(220, 94));
 		sleepTask(1000);
-		DTOImageSearchResult lifeEssenceMenu = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_MENU.getTemplate(),  90);
+                DTOImageSearchResult lifeEssenceMenu = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_MENU.getTemplate(), IMAGE_MATCH_THRESHOLD);
 
 		if (lifeEssenceMenu.isFound()) {
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, lifeEssenceMenu.getPoint(), lifeEssenceMenu.getPoint());
@@ -45,22 +50,22 @@ public class LifeEssenceCaringTask extends DelayedTask {
 			emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(670, 100));
 			sleepTask(2000);
 
-			DTOImageSearchResult dailyAttempt = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_DAILY_CARING_AVAILABLE.getTemplate(), 90);
+                        DTOImageSearchResult dailyAttempt = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_DAILY_CARING_AVAILABLE.getTemplate(), IMAGE_MATCH_THRESHOLD);
 			if (dailyAttempt.isFound()) {
 				logInfo( "Daily attempt available, proceeding with caring");
 
-				// bebo buscar y scrollear unas 7-8 veces, si no encuentro, reschedule de una hora
+                                // Search and scroll several times; if not found, reschedule in one hour
 
-				for (int i = 0; i < 8; i++) {
-					DTOImageSearchResult caringAvailable = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_DAILY_CARING_GOTO_ISLAND.getTemplate(), 90);
+                                for (int i = 0; i < MAX_SCROLL_ATTEMPTS; i++) {
+                                        DTOImageSearchResult caringAvailable = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_DAILY_CARING_GOTO_ISLAND.getTemplate(), IMAGE_MATCH_THRESHOLD);
 					if (caringAvailable.isFound()) {
 						emuManager.tapAtRandomPoint(EMULATOR_NUMBER, caringAvailable.getPoint(), caringAvailable.getPoint());
 						sleepTask(5000);
 						logInfo( "Caring available, proceeding with caring");
-						// buscar el boton de caring, debo buscañpr un par de veces debido al movimiento
+                                                // Search for the caring button; try a couple times due to animation
 
-						for (int j = 0; j < 3; j++) {
-							DTOImageSearchResult caringButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_DAILY_CARING_BUTTON.getTemplate(),  90);
+                                                for (int j = 0; j < MAX_BUTTON_SEARCH_ATTEMPTS; j++) {
+                                                        DTOImageSearchResult caringButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_DAILY_CARING_BUTTON.getTemplate(),  IMAGE_MATCH_THRESHOLD);
 							if (caringButton.isFound()) {
 								emuManager.tapAtRandomPoint(EMULATOR_NUMBER, caringButton.getPoint(), caringButton.getPoint());
 								sleepTask(5000);

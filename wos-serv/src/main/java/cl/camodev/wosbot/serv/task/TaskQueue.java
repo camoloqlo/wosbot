@@ -30,13 +30,16 @@ import org.slf4j.LoggerFactory;
 public class TaskQueue {
 
 
-	private static final Logger logger = LoggerFactory.getLogger(TaskQueue.class);
-	private final PriorityBlockingQueue<DelayedTask> taskQueue = new PriorityBlockingQueue<>();
-	// Bandera para detener el loop del scheduler.
+        private static final Logger logger = LoggerFactory.getLogger(TaskQueue.class);
+        private final PriorityBlockingQueue<DelayedTask> taskQueue = new PriorityBlockingQueue<>();
+
+        private static final int PAUSE_SLEEP_MS = 1000;
+        private static final int IDLE_CHECK_INTERVAL_MS = 999;
+        // Flag to stop the scheduler loop.
 	private volatile boolean running = false;
-	// Bandera para pausar/reanudar el scheduler.
+        // Flag to pause/resume the scheduler.
 	private volatile boolean paused = false;
-	// Hilo que se encargará de evaluar y ejecutar las tareas.
+        // Thread that evaluates and executes tasks.
 	private Thread schedulerThread;
 	private DTOProfiles profile;
 
@@ -44,9 +47,9 @@ public class TaskQueue {
 		this.profile = profile;
 	}
 
-	/**
-	 * Agrega una tarea a la cola.
-	 */
+        /**
+         * Adds a task to the queue.
+         */
 	public void addTask(DelayedTask task) {
 		taskQueue.offer(task);
 	}
@@ -95,9 +98,9 @@ public class TaskQueue {
 		return taskQueue.stream().anyMatch(task -> task.equals(prototype));
 	}
 
-	/**
-	 * Inicia el procesamiento de la cola.
-	 */
+        /**
+         * Starts processing the queue.
+         */
 	public void start() {
 
 		if (running)
@@ -109,7 +112,7 @@ public class TaskQueue {
 			boolean idlingTimeExceded = false;
 			ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "Getting queue slot"));
 			try {
-				EmulatorManager.getInstance().adquireEmulatorSlot(profile, (thread, position) -> {
+                                EmulatorManager.getInstance().acquireEmulatorSlot(profile, (thread, position) -> {
 					ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "Waiting for slot, position: " + position));
 				});
 			} catch (InterruptedException e) {
@@ -121,7 +124,7 @@ public class TaskQueue {
 					try {
 						ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "PAUSED"));
 						logger.info("Profile " + profile.getName() + " is paused.");
-						Thread.sleep(1000); // Wait 1 second while paused
+                                                Thread.sleep(PAUSE_SLEEP_MS); // Wait while paused
 						continue;
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
@@ -130,23 +133,23 @@ public class TaskQueue {
 				}
 
 				boolean executedTask = false;
-				long minDelay = Long.MAX_VALUE;
+                                long nextTaskDelaySeconds = Long.MAX_VALUE;
 
-				// realizar preverificacion de que el jeugo esta corriendo
+                                // Perform pre-check to ensure the game is running
 
-				// Procesar tareas que están listas para ejecutar
+                                // Process tasks that are ready to run
 				DelayedTask task;
 				while ((task = taskQueue.peek()) != null) {
 					DTOTaskState taskState = null;
 					long delayInSeconds = task.getDelay(TimeUnit.SECONDS);
 
-					// Si la primera tarea no está lista, ninguna lo estará (cola ordenada)
+                                // If the first task is not ready, none will be (queue is ordered)
 					if (delayInSeconds > 0) {
-						minDelay = delayInSeconds;
+                                                nextTaskDelaySeconds = delayInSeconds;
 						break;
 					}
 
-					// Remover la tarea de la cola
+                                        // Remove the task from the queue
 					taskQueue.poll();
 
 					try {
@@ -231,46 +234,46 @@ public class TaskQueue {
 					executedTask = true;
 				}
 
-				// Si no se ejecutó ninguna tarea, obtener el delay de la próxima tarea
-				if (!executedTask && !taskQueue.isEmpty()) {
-					DelayedTask nextTask = taskQueue.peek();
-					if (nextTask != null) {
-						minDelay = nextTask.getDelay(TimeUnit.SECONDS);
-					}
+                                // If no task was executed, get the delay of the next task
+                                if (!executedTask && !taskQueue.isEmpty()) {
+                                        DelayedTask nextTask = taskQueue.peek();
+                                        if (nextTask != null) {
+                                                nextTaskDelaySeconds = nextTask.getDelay(TimeUnit.SECONDS);
+                                        }
 				}
 
-				// Verificar condiciones según el delay mínimo de la cola de tareas
-				if (minDelay != Long.MAX_VALUE) { // Asegurar que hay tareas en la cola
+                                // Check conditions based on the minimum delay of the queue
+                                if (nextTaskDelaySeconds != Long.MAX_VALUE) { // Ensure there are tasks in the queue
 					long maxIdle = 0;
 					maxIdle = Optional.ofNullable(profile.getGlobalsettings().get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name())).map(Integer::parseInt).orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue()));
 
-					if (!idlingTimeExceded && minDelay > TimeUnit.MINUTES.toSeconds(maxIdle)) {
-						idlingTimeExceded = true;
-						idlingEmulator(minDelay);
+                                        if (!idlingTimeExceded && nextTaskDelaySeconds > TimeUnit.MINUTES.toSeconds(maxIdle)) {
+                                                idlingTimeExceded = true;
+                                                idlingEmulator(nextTaskDelaySeconds);
 					}
 
-					// Si la demora baja a menos de 1 minuto y intentamos obtener el slot de emulador y encolamos tarea de inicialización
-					if (idlingTimeExceded && minDelay < TimeUnit.MINUTES.toSeconds(1)) {
-						encolarNuevaTarea();
-						idlingTimeExceded = false; // Restablecer la condición para futuras evaluaciones
+                                        // If the delay drops below a minute, acquire the emulator slot and enqueue an initialization task
+                                        if (idlingTimeExceded && nextTaskDelaySeconds < TimeUnit.MINUTES.toSeconds(1)) {
+                                                enqueueNewTask();
+                                                idlingTimeExceded = false; // Reset condition for future evaluations
 					}
 				}
 
-				// Si no se ejecutó ninguna tarea, esperar un poco antes de volver a evaluar
+                                // If no task was executed, wait a bit before checking again
 				if (!executedTask) {
 					try {
-						String formattedTime;
-						if (minDelay == Long.MAX_VALUE || minDelay > 86399) {
-							// Si no hay tareas o el delay es muy largo, mostrar un mensaje apropiado
+                                                String formattedTime;
+                                                if (nextTaskDelaySeconds == Long.MAX_VALUE || nextTaskDelaySeconds > 86399) {
+                                                // If there are no tasks or the delay is very long, show an appropriate message
 							formattedTime = "No tasks";
 						} else {
 							DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-							// Convertir minDelay (segundos) a formato HH:mm:ss
-							formattedTime = LocalTime.ofSecondOfDay(minDelay).format(timeFormatter);
+                                                        // Convert the delay (seconds) to HH:mm:ss format
+                                                        formattedTime = LocalTime.ofSecondOfDay(nextTaskDelaySeconds).format(timeFormatter);
 						}
 
 						ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "Idling for " + formattedTime + "\nNext task: " + (taskQueue.isEmpty() ? "None" : taskQueue.peek().getTaskName())));
-						Thread.sleep(999);
+                                                Thread.sleep(IDLE_CHECK_INTERVAL_MS);
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 						break;
@@ -281,64 +284,64 @@ public class TaskQueue {
 		schedulerThread.start();
 	}
 
-	// Métodos auxiliares
-	private void idlingEmulator(long minDelay) {
+        // Helper methods
+    private void idlingEmulator(long delaySeconds) {
 		EmulatorManager.getInstance().closeEmulator(profile.getEmulatorNumber());
 		ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueue", profile.getName(), "Closing game due to large inactivity");
-		LocalDateTime scheduledTime = LocalDateTime.now().plusSeconds(minDelay);
+        LocalDateTime scheduledTime = LocalDateTime.now().plusSeconds(delaySeconds);
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 		ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "Idling till " + formatter.format(scheduledTime)));
 		EmulatorManager.getInstance().releaseEmulatorSlot(profile);
 	}
 
-	private void encolarNuevaTarea() {
-        ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueue", profile.getName(), "shcheduled task's will start soon");
+        private void enqueueNewTask() {
+                ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueue", profile.getName(), "Scheduled tasks will start soon");
 
-        try {
-            EmulatorManager.getInstance().adquireEmulatorSlot(profile, (thread, position) -> {
-                ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "Waiting for slot, position: " + position));
-            });
-        } catch (InterruptedException e) {
-            logger.error("Interrupted while acquiring emulator slot for profile " + profile.getName(), e);
+                try {
+                        EmulatorManager.getInstance().acquireEmulatorSlot(profile, (thread, position) -> {
+                                ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "Waiting for slot, position: " + position));
+                        });
+                } catch (InterruptedException e) {
+                        logger.error("Interrupted while acquiring emulator slot for profile " + profile.getName(), e);
+                }
+                addTask(new InitializeTask(profile, TpDailyTaskEnum.INITIALIZE));
         }
-        addTask(new InitializeTask(profile, TpDailyTaskEnum.INITIALIZE));
-    }
 
-	/**
-	 * Detiene inmediatamente el procesamiento de la cola, sin importar en qué estado esté.
-	 */
+        /**
+         * Stops queue processing immediately, regardless of its current state.
+         */
 	public void stop() {
-		running = false; // Detener el bucle principal
+                running = false; // Stop the main loop
 
 		if (schedulerThread != null) {
-			schedulerThread.interrupt(); // Interrumpir el hilo para forzar la salida inmediata
+                        schedulerThread.interrupt(); // Interrupt to force immediate exit
 
 			try {
-				schedulerThread.join(1000); // Esperar hasta 1 segundo para que el hilo termine
+                                schedulerThread.join(1000); // Wait up to 1 second for thread to finish
 			} catch (InterruptedException e) {
 				logger.error("Interrupted while stopping TaskQueue for profile " + profile.getName(), e);
 				Thread.currentThread().interrupt();
 			}
 		}
 
-		// Eliminar todas las tareas pendientes en la cola
+                // Remove all pending tasks from the queue
 		taskQueue.clear();
 		ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "NOT RUNNING "));
 		logger.info("TaskQueue stopped immediately for profile " + profile.getName());
 	}
 
-	/**
-	 * Pausa el procesamiento de la cola, manteniendo las tareas en la cola.
-	 */
+        /**
+         * Pauses queue processing while keeping tasks in the queue.
+         */
 	public void pause() {
         paused = true;
         ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "PAUSE REQUESTED"));
         logger.info("TaskQueue paused for profile " + profile.getName());
     }
 
-	/**
-	 * Reanuda el procesamiento de la cola.
-	 */
+        /**
+         * Resumes queue processing.
+         */
 	public void resume() {
         paused = false;
         ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "RESUMING"));
