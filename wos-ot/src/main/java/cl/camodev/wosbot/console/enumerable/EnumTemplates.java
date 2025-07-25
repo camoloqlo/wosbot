@@ -7,6 +7,7 @@ public enum EnumTemplates {
 	GAME_HOME_WORLD("/templates/world.png"),
 	GAME_HOME_PETS("/templates/home/petsButton.png"),
 	GAME_HOME_INTEL("/templates/home/intelButton.png"),
+	GAME_HOME_RECONNECT("/templates/home/reconnectButton.png"),
 	
 	GAME_HOME_SHORTCUTS_INFANTRY("/templates/shortcuts/infantry.png"),
 	GAME_HOME_SHORTCUTS_LANCER("/templates/shortcuts/lancer.png"),

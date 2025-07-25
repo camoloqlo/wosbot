@@ -33,7 +33,7 @@ public class MailRewardsTask extends DelayedTask {
 			EmulatorManager.getInstance().tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(640, 1033), new DTOPoint(686, 1064));
 			sleepTask(1000);
 			for (DTOPoint button : buttons) {
-				EmulatorManager.getInstance().tapAtRandomPoint(EMULATOR_NUMBER, button, button);
+ 				EmulatorManager.getInstance().tapAtRandomPoint(EMULATOR_NUMBER, button, button);
 				sleepTask(1000);
 				EmulatorManager.getInstance().tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(420, 1227), new DTOPoint(450, 1250), 10, 100);
 			}

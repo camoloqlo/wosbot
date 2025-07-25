@@ -69,7 +69,7 @@ public class ImageSearchUtil {
 			// Cargar la plantilla desde los recursos
 			InputStream is = ImageSearchUtil.class.getResourceAsStream(templateResourcePath);
 			if (is == null) {
-				logger.error(templateResourcePath + " not found.");
+                logger.error("Template resource not found: {}", templateResourcePath);
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
@@ -88,7 +88,8 @@ public class ImageSearchUtil {
 
 			// Validar la ROI
 			if (roiX + roiWidth > imagenPrincipal.cols() || roiY + roiHeight > imagenPrincipal.rows()) {
-				logger.error("Defined ROI is out of bounds.");
+				logger.error("ROI exceeds image dimensions. Image size: {}x{}, ROI: {}x{} at ({}, {})",
+						imagenPrincipal.cols(), imagenPrincipal.rows(), roiWidth, roiHeight, roiX, roiY);
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
@@ -100,7 +101,8 @@ public class ImageSearchUtil {
 			int resultCols = imagenROI.cols() - template.cols() + 1;
 			int resultRows = imagenROI.rows() - template.rows() + 1;
 			if (resultCols <= 0 || resultRows <= 0) {
-				logger.error("Template is larger than ROI.");
+				logger.error("Template size is larger than ROI size. Template size: {}x{}, ROI size: {}x{}",
+						template.cols(), template.rows(), imagenROI.cols(), imagenROI.rows());
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
@@ -113,7 +115,8 @@ public class ImageSearchUtil {
 			double matchPercentage = mmr.maxVal * 100.0;
 
 			if (matchPercentage < thresholdPercentage) {
-				logger.info("Template " + templateResourcePath + " not found. Match percentage: " + matchPercentage);
+				logger.info("Template {} not found, the match percentage is {}%, which is below the threshold of {}%.",
+						templateResourcePath, matchPercentage, thresholdPercentage);
 				return new DTOImageSearchResult(false, null, matchPercentage);
 			}
 

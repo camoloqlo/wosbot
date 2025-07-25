@@ -149,7 +149,7 @@ public class GatherTask extends DelayedTask {
 					emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(435, 1052), new DTOPoint(40, 1052));
 					sleepTask(300);
 					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(487, 1055), new DTOPoint(487, 1055),
-							(profile.getConfig(gatherType.getConfig(), Integer.class) - 1), 50);
+							(profile.getConfig(gatherType.getConfig(), Integer.class) - 1), 100);
 
 					DTOImageSearchResult tick = emuManager.searchTemplate(EMULATOR_NUMBER,
 							EnumTemplates.GAME_HOME_SHORTCUTS_FARM_TICK.getTemplate(),  90);

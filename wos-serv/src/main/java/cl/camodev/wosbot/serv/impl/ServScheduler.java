@@ -2,12 +2,7 @@ package cl.camodev.wosbot.serv.impl;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -91,7 +86,7 @@ public class ServScheduler {
 			TaskQueueManager queueManager = ServScheduler.getServices().getQueueManager();
 			DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
 
-			profiles.stream().filter(DTOProfiles::getEnabled).sorted((a, b) -> a.getId().compareTo(b.getId())).forEach(profile -> {
+			profiles.stream().filter(DTOProfiles::getEnabled).sorted(Comparator.comparing(DTOProfiles::getPriority).reversed()).forEach(profile -> {
 				profile.setGlobalSettings(globalsettings);
 				ServLogs.getServices().appendLog(EnumTpMessageSeverity.DEBUG, "ServScheduler", "-", "starting queue");
 

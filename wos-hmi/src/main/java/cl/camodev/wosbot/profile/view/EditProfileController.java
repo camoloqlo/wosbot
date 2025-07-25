@@ -9,6 +9,8 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
@@ -27,10 +29,19 @@ public class EditProfileController implements Initializable {
     private CheckBox chkEnabled;
 
     @FXML
+    private Slider sliderPriority;
+
+    @FXML
+    private Label lblPriorityValue;
+
+    @FXML
     private Button btnSave;
 
     @FXML
     private Button btnCancel;
+
+    @FXML
+    private TextField txtReconnectionTime;
 
     private ProfileAux profileToEdit;
     private ProfileManagerActionController actionController;
@@ -51,6 +62,19 @@ public class EditProfileController implements Initializable {
             if (newValue.length() > 3) {
                 txtEmulatorNumber.setText(oldValue);
             }
+        });
+
+        // Add input validation to reconnection time field - only allow numbers
+        txtReconnectionTime.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.matches("\\d*")) {
+                txtReconnectionTime.setText(newValue.replaceAll("[^\\d]", ""));
+            }
+        });
+
+        // Configurar el slider de prioridad
+        sliderPriority.valueProperty().addListener((observable, oldValue, newValue) -> {
+            int priorityValue = newValue.intValue();
+            lblPriorityValue.setText(String.valueOf(priorityValue));
         });
     }
 
@@ -76,6 +100,9 @@ public class EditProfileController implements Initializable {
             txtProfileName.setText(profileToEdit.getName());
             txtEmulatorNumber.setText(profileToEdit.getEmulatorNumber());
             chkEnabled.setSelected(profileToEdit.isEnabled());
+            sliderPriority.setValue(profileToEdit.getPriority().doubleValue());
+            lblPriorityValue.setText(String.valueOf(profileToEdit.getPriority()));
+            txtReconnectionTime.setText(String.valueOf(profileToEdit.getReconnectionTime()));
         }
     }
 
@@ -86,6 +113,11 @@ public class EditProfileController implements Initializable {
             profileToEdit.setName(txtProfileName.getText());
             profileToEdit.setEmulatorNumber(txtEmulatorNumber.getText());
             profileToEdit.setEnabled(chkEnabled.isSelected());
+            profileToEdit.setPriority((long) sliderPriority.getValue());
+
+            // Update reconnection time
+            long reconnectionTime = Long.parseLong(txtReconnectionTime.getText().isEmpty() ? "0" : txtReconnectionTime.getText());
+            profileToEdit.setReconnectionTime(reconnectionTime);
 
             // Save to database
             boolean success = actionController.saveProfile(profileToEdit);
@@ -148,7 +180,22 @@ public class EditProfileController implements Initializable {
             }
         }
 
-        if (errorMessage.length() > 0) {
+        // Validate reconnection time
+        if (txtReconnectionTime.getText() == null || txtReconnectionTime.getText().trim().isEmpty()) {
+            errorMessage.append("Reconnection time cannot be empty.\n");
+        } else {
+            String reconnectionTimeText = txtReconnectionTime.getText().trim();
+            try {
+                long reconnectionTime = Long.parseLong(reconnectionTimeText);
+                if (reconnectionTime < 0) {
+                    errorMessage.append("Reconnection time must be a non-negative number (0 or greater).\n");
+                }
+            } catch (NumberFormatException e) {
+                errorMessage.append("Reconnection time must be a valid number.\n");
+            }
+        }
+
+        if (!errorMessage.isEmpty()) {
             // Show validation error
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Invalid Input");

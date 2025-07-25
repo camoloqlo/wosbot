@@ -6,40 +6,35 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 import cl.camodev.wosbot.emulator.Emulator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MuMuEmulator extends Emulator {
+	private static final Logger logger = LoggerFactory.getLogger(MuMuEmulator.class);
+
 	public MuMuEmulator(String consolePath) {
 		super(consolePath);
 	}
 
 	@Override
-	protected String[] buildAdbCommand(String emulatorNumber, String command) {
-		return new String[] { consolePath + File.separator + "MuMuManager.exe", "adb", "-v", emulatorNumber, "-c", command };
+	protected String getDeviceSerial(String emulatorNumber) {
+		//MuMu uses this format for device serial: 16384 + (instanceNumber * 32)
+		int port = 16384 + (Integer.parseInt(emulatorNumber) * 32);
+		return "127.0.0.1:" + port;
 	}
 
 	@Override
 	public void launchEmulator(String emulatorNumber) {
 		String[] command = { consolePath + File.separator + "MuMuManager.exe", "api", "-v", emulatorNumber, "launch_player" };
 		executeCommand(command);
-		System.out.println("🚀 MuMu lanzado en el índice " + emulatorNumber);
+        logger.info("MuMu launched at index {}", emulatorNumber);
 	}
 
 	@Override
 	public void closeEmulator(String emulatorNumber) {
 		String[] command = { consolePath + File.separator + "MuMuManager.exe", "api", "-v", emulatorNumber, "shutdown_player" };
 		executeCommand(command);
-		System.out.println("🛑 MuMu cerrado en el índice " + emulatorNumber);
-	}
-
-	private void executeCommand(String[] command) {
-		try {
-			ProcessBuilder pb = new ProcessBuilder(command);
-			pb.directory(new File(consolePath).getParentFile());
-			Process process = pb.start();
-			process.waitFor();
-		} catch (IOException | InterruptedException e) {
-			e.printStackTrace();
-		}
+        logger.info("MuMu closed at index {}", emulatorNumber);
 	}
 
 	@Override
@@ -61,32 +56,19 @@ public class MuMuEmulator extends Emulator {
 
 			process.waitFor();
 		} catch (IOException | InterruptedException e) {
-			e.printStackTrace();
+			logger.error("Error checking if emulator is running", e);
 		}
 		return false;
 	}
 
-	@Override
-	public boolean isPackageRunning(String emulatorNumber, String packageName) {
+	private void executeCommand(String[] command) {
 		try {
-			String[] command = { consolePath + File.separator + "MuMuManager.exe", "api", "-v", emulatorNumber, "app_state", packageName };
 			ProcessBuilder pb = new ProcessBuilder(command);
 			pb.directory(new File(consolePath).getParentFile());
-
 			Process process = pb.start();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-			String line;
-
-			while ((line = reader.readLine()) != null) {
-				if (line.contains("state=running")) {
-					return true;
-				}
-			}
-
 			process.waitFor();
 		} catch (IOException | InterruptedException e) {
-			e.printStackTrace();
+			logger.error("Error executing command", e);
 		}
-		return false;
 	}
 }

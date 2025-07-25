@@ -56,7 +56,7 @@ public class AllianceTechTask extends DelayedTask {
 
 		sleepTask(500);
 
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(450, 1000), new DTOPoint(580, 1050), 25, 100);
+		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(450, 1000), new DTOPoint(580, 1050), 25, 150);
 		emuManager.tapBackButton(EMULATOR_NUMBER);
 		emuManager.tapBackButton(EMULATOR_NUMBER);
 		emuManager.tapBackButton(EMULATOR_NUMBER);

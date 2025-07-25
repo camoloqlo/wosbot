@@ -70,7 +70,7 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 
 	public boolean saveProfile(ProfileAux currentProfile) {
 
-		DTOProfiles dtoprofile = new DTOProfiles(currentProfile.getId(), currentProfile.getName(), currentProfile.getEmulatorNumber(), currentProfile.isEnabled());
+		DTOProfiles dtoprofile = new DTOProfiles(currentProfile.getId(), currentProfile.getName(), currentProfile.getEmulatorNumber(), currentProfile.isEnabled(), currentProfile.getPriority(), currentProfile.getReconnectionTime());
 		currentProfile.getConfigs().forEach(cfgAux -> {
 			DTOConfig dtoConfig = new DTOConfig(currentProfile.getId(), cfgAux.getName(), cfgAux.getValue());
 			dtoprofile.getConfigs().add(dtoConfig);
@@ -78,25 +78,6 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 		return iModel.saveProfile(dtoprofile);
 	}
 
-	public boolean bulkUpdateProfiles(ProfileAux templateProfile) {
-		if (templateProfile == null) {
-			return false;
-		}
-
-		DTOProfiles dtoTemplateProfile = new DTOProfiles(
-			templateProfile.getId(), 
-			templateProfile.getName(), 
-			templateProfile.getEmulatorNumber(), 
-			templateProfile.isEnabled()
-		);
-		
-		templateProfile.getConfigs().forEach(cfgAux -> {
-			DTOConfig dtoConfig = new DTOConfig(templateProfile.getId(), cfgAux.getName(), cfgAux.getValue());
-			dtoTemplateProfile.getConfigs().add(dtoConfig);
-		});
-		
-		return iModel.bulkUpdateProfiles(dtoTemplateProfile);
-	}
 
 	/**
 	 * Updates only the selected profiles with settings from the template profile.

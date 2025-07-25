@@ -1,15 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.layout.ColumnConstraints?>
-<?import javafx.scene.layout.GridPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-<GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="468.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="585.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
   <columnConstraints>
     <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
   </columnConstraints>
@@ -27,8 +22,9 @@
          </columnResizePolicy>
          <columns>
             <TableColumn fx:id="columnEnabled" maxWidth="50.0" minWidth="50.0" prefWidth="50.0" resizable="false" />
-            <TableColumn fx:id="columnEmulatorNumber" maxWidth="30.0" minWidth="30.0" prefWidth="30.0" resizable="false" text="#" />
+            <TableColumn fx:id="columnEmulatorNumber" maxWidth="40.0" minWidth="40.0" prefWidth="40.0" resizable="false" text="#" />
             <TableColumn fx:id="columnProfileName" maxWidth="1.7976931348623157E308" prefWidth="204.0" text="NAME" />
+            <TableColumn fx:id="columnPriority" maxWidth="90.0" minWidth="90.0" prefWidth="90.0" resizable="false" text="PRIORITY" />
             <TableColumn fx:id="columnStatus" maxWidth="200.0" minWidth="200.0" prefWidth="200.0" resizable="false" text="STATUS" />
             <TableColumn fx:id="columnDelete" maxWidth="140.0" minWidth="140.0" prefWidth="140.0" resizable="false" text="ACTIONS" />
          </columns>

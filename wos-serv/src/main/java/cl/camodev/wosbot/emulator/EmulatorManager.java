@@ -15,11 +15,17 @@ import cl.camodev.wosbot.emulator.impl.MEmuEmulator;
 import cl.camodev.wosbot.emulator.impl.MuMuEmulator;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
+import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.impl.ServConfig;
+import cl.camodev.wosbot.serv.task.TaskQueue;
 import cl.camodev.wosbot.serv.task.WaitingThread;
 import net.sourceforge.tess4j.TesseractException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class EmulatorManager {
+
+	private static final Logger logger = LoggerFactory.getLogger(EmulatorManager.class);
 
 	public static String WHITEOUT_PACKAGE = "com.gof.global";
 	private static EmulatorManager instance;
@@ -76,8 +82,8 @@ public class EmulatorManager {
 				throw new IllegalArgumentException("Unsupported emulator type: " + emulatorType);
 			}
 
-			System.out.println("✅ Emulator set from configuration: " + emulatorType.getDisplayName());
-			restartAdbServer();
+            logger.info("Emulator initialized: {}", emulatorType.getDisplayName());
+			//restartAdbServer();
 
 		} catch (IllegalArgumentException e) {
 			throw new IllegalStateException("Invalid emulator type found in configuration: " + savedActiveEmulator, e);
@@ -209,20 +215,23 @@ public class EmulatorManager {
 		emulator.restartAdb();
 	}
 
-	public void adquireEmulatorSlot(Long threadPriority, PositionCallback callback) throws InterruptedException {
+	public void adquireEmulatorSlot(DTOProfiles profile, PositionCallback callback) throws InterruptedException {
 		lock.lock();
 		try {
 			// Si hay slot disponible y nadie espera, se adquiere inmediatamente.
+			logger.info("Profile " + profile.getName() + " is getting queue slot.");
 			if (MAX_RUNNING_EMULATORS > 0 && waitingQueue.isEmpty()) {
+				logger.info("Profile " + profile.getName() + " acquired slot immediately.");
 				MAX_RUNNING_EMULATORS--;
 				return;
 			}
 
 			// Crear el objeto que representa al hilo actual con su prioridad
-			WaitingThread currentWaiting = new WaitingThread(Thread.currentThread(), threadPriority);
+			WaitingThread currentWaiting = new WaitingThread(Thread.currentThread(), profile.getPriority());
 			waitingQueue.add(currentWaiting);
 
 			// Esperar con timeout para poder notificar la posición periódicamente.
+
 			while (waitingQueue.peek() != currentWaiting || MAX_RUNNING_EMULATORS <= 0) {
 				// Esperar hasta 1 segundo.
 				permitsAvailable.await(1, TimeUnit.SECONDS);
@@ -231,7 +240,7 @@ public class EmulatorManager {
 				int position = getPosition(currentWaiting);
 				callback.onPositionUpdate(Thread.currentThread(), position);
 			}
-
+            logger.info("Profile {} acquired slot", profile.getName());
 			// Es el turno y hay slot disponible.
 			waitingQueue.poll(); // Remover el hilo de la cola.
 			MAX_RUNNING_EMULATORS--; // Adquirir el slot.
@@ -243,9 +252,10 @@ public class EmulatorManager {
 		}
 	}
 
-	public void releaseEmulatorSlot() {
+	public void releaseEmulatorSlot(DTOProfiles profile) {
 		lock.lock();
 		try {
+            logger.info("Profile {} is releasing queue slot.", profile.getName());
 			MAX_RUNNING_EMULATORS++;
 			permitsAvailable.signalAll();
 		} finally {

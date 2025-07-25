@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Slider?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
@@ -11,16 +12,18 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="250.0" prefWidth="400.0" spacing="10.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cl.camodev.wosbot.profile.view.EditProfileController">
+<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="350.0" prefWidth="450.0" spacing="10.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cl.camodev.wosbot.profile.view.EditProfileController">
    <children>
       <Label style="-fx-font-size: 16px; -fx-font-weight: bold;" text="Edit Profile" />
 
       <GridPane hgap="10.0" vgap="10.0">
         <columnConstraints>
-          <ColumnConstraints hgrow="SOMETIMES" maxWidth="130.0" minWidth="130.0" prefWidth="130.0" />
-          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+          <ColumnConstraints hgrow="NEVER" />
+          <ColumnConstraints hgrow="ALWAYS" minWidth="150.0" prefWidth="200.0" />
         </columnConstraints>
         <rowConstraints>
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
@@ -32,6 +35,15 @@
             <TextField fx:id="txtEmulatorNumber" GridPane.columnIndex="1" GridPane.rowIndex="1" />
             <Label text="Enabled:" GridPane.rowIndex="2" />
             <CheckBox fx:id="chkEnabled" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <HBox alignment="CENTER_LEFT" spacing="10.0" GridPane.rowIndex="3">
+               <children>
+                  <Label text="Priority:" />
+                  <Label fx:id="lblPriorityValue" text="50" />
+               </children>
+            </HBox>
+            <Slider fx:id="sliderPriority" min="1" max="100" value="50" showTickLabels="true" showTickMarks="true" majorTickUnit="25" minorTickCount="4" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+            <Label text="Reconnection Time (m):" GridPane.rowIndex="4" />
+            <TextField fx:id="txtReconnectionTime" GridPane.columnIndex="1" GridPane.rowIndex="4" />
          </children>
       </GridPane>
 

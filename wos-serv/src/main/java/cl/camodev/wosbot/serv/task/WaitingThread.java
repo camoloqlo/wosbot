@@ -8,15 +8,15 @@ public class WaitingThread implements Comparable<WaitingThread> {
 	public WaitingThread(Thread thread, Long priority) {
 		this.thread = thread;
 		this.priority = priority;
-		this.arrivalTime = System.nanoTime(); // Marca de tiempo para desempatar
+		this.arrivalTime = System.nanoTime(); // Timestamp for tiebreaking
 	}
 
 	@Override
 	public int compareTo(WaitingThread other) {
-		// Se ordena de menor a mayor prioridad (valor menor = mayor prioridad)
-		int cmp = Long.compare(this.priority, other.priority);
+		// Order from highest to lowest priority (higher value = higher priority)
+		int cmp = Long.compare(other.priority, this.priority);
 		if (cmp == 0) {
-			// Si tienen la misma prioridad, el que llegó primero tiene preferencia.
+			// If they have the same priority, the one that arrived first takes precedence.
 			cmp = Long.compare(this.arrivalTime, other.arrivalTime);
 		}
 		return cmp;

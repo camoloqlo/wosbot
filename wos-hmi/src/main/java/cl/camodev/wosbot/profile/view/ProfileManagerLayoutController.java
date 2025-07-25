@@ -58,6 +58,8 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 	@FXML
 	private TableColumn<ProfileAux, String> columnProfileName;
 	@FXML
+	private TableColumn<ProfileAux, Long> columnPriority;
+	@FXML
 	private TableColumn<ProfileAux, String> columnStatus;
 	@FXML
 	private Button btnBulkUpdate;
@@ -81,6 +83,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 
 		columnProfileName.setCellValueFactory(cellData -> cellData.getValue().nameProperty());
 		columnEmulatorNumber.setCellValueFactory(cellData -> cellData.getValue().emulatorNumberProperty());
+		columnPriority.setCellValueFactory(cellData -> cellData.getValue().priorityProperty().asObject());
 		columnStatus.setCellValueFactory(cellData -> cellData.getValue().statusProperty());
 
 		// Add double-click event handler to open edit dialog
@@ -132,7 +135,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 							ProfileAux currentProfile = getTableView().getItems().get(getIndex());
 							System.out.println("Eliminando perfil con ID: " + currentProfile.getId());
 
-							boolean deletionResult = profileManagerActionController.deleteProfile(new DTOProfiles(currentProfile.getId(), null, null, null));
+							boolean deletionResult = profileManagerActionController.deleteProfile(new DTOProfiles(currentProfile.getId()));
 
 							Alert alert;
 							if (deletionResult) {
@@ -300,7 +303,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 			Platform.runLater(() -> {
 				profiles.clear();
 				dtoProfiles.forEach(dtoProfile -> {
-					ProfileAux profileAux = new ProfileAux(dtoProfile.getId(), dtoProfile.getName(), dtoProfile.getEmulatorNumber(), dtoProfile.getEnabled(), "NOT RUNNING");
+					ProfileAux profileAux = new ProfileAux(dtoProfile.getId(), dtoProfile.getName(), dtoProfile.getEmulatorNumber(), dtoProfile.getEnabled(), dtoProfile.getPriority(), "NOT RUNNING", dtoProfile.getReconnectionTime());
 					dtoProfile.getConfigs().forEach(config -> {
 						profileAux.getConfigs().add(new ConfigAux(config.getNombreConfiguracion(), config.getValor()));
 					});

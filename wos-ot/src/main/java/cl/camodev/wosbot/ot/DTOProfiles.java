@@ -1,4 +1,3 @@
-
 package cl.camodev.wosbot.ot;
 
 import java.util.ArrayList;
@@ -9,119 +8,141 @@ import java.util.Optional;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 
 public class DTOProfiles {
-	private Long id;
-	private String name;
-	private String emulatorNumber;
-	private Boolean enabled;
-	private String status;
-	private List<DTOConfig> configs = new ArrayList<DTOConfig>();
-	private HashMap<String, String> globalsettings = new HashMap<String, String>();
+    private Long id;
+    private String name;
+    private String emulatorNumber;
+    private Boolean enabled;
+    private Long priority;
+    private String status;
+    private Long reconnectionTime; // Tiempo de reconexión en segundos
+    private List<DTOConfig> configs = new ArrayList<>();
+    private HashMap<String, String> globalsettings = new HashMap<>();
 
-	/**
-	 * Constructor de la clase DTOProfiles.
-	 *
-	 * @param id             El identificador único del perfil.
-	 * @param name           El nombre del perfil.
-	 * @param emulatorNumber El número del emulador asociado al perfil.
-	 * @param enabled        Indica si el perfil está habilitado o no.
-	 */
-	public DTOProfiles(Long id, String name, String emulatorNumber, Boolean enabled) {
-		this.id = id;
-		this.name = name;
-		this.emulatorNumber = emulatorNumber;
-		this.enabled = enabled;
-	}
+    /**
+     * Constructor de la clase DTOProfiles.
+     *
+     * @param id El identificador único del perfil.
+     */
+    public DTOProfiles(Long id) {
+        this.id = id;
+    }
 
-	// Getters y Setters
+    // Constructor completo incluyendo reconnectionTime
+    public DTOProfiles(Long id, String name, String emulatorNumber, Boolean enabled, Long priority, Long reconnectionTime) {
+        this.id = id;
+        this.name = name;
+        this.emulatorNumber = emulatorNumber;
+        this.enabled = enabled;
+        this.priority = priority;
+        this.reconnectionTime = reconnectionTime;
+    }
 
-	public Long getId() {
-		return id;
-	}
+    // Getters y Setters
 
-	public String getName() {
-		return name;
-	}
+    public Long getId() {
+        return id;
+    }
 
-	public String getEmulatorNumber() {
-		return emulatorNumber;
-	}
+    public String getName() {
+        return name;
+    }
 
-	public Boolean getEnabled() {
-		return enabled;
-	}
+    public String getEmulatorNumber() {
+        return emulatorNumber;
+    }
 
-	public List<DTOConfig> getConfigs() {
-		return configs;
-	}
+    public Boolean getEnabled() {
+        return enabled;
+    }
 
-	public void setConfigs(List<DTOConfig> configs) {
-		this.configs = configs;
-	}
+    public List<DTOConfig> getConfigs() {
+        return configs;
+    }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public void setConfigs(List<DTOConfig> configs) {
+        this.configs = configs;
+    }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	public void setEmulatorNumber(String emulatorNumber) {
-		this.emulatorNumber = emulatorNumber;
-	}
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	public void setEnabled(Boolean enabled) {
-		this.enabled = enabled;
-	}
+    public void setEmulatorNumber(String emulatorNumber) {
+        this.emulatorNumber = emulatorNumber;
+    }
 
-	public void setGlobalSettings(HashMap<String, String> globalsettings) {
-		this.setGlobalsettings(globalsettings);
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
 
-	}
+    public void setGlobalSettings(HashMap<String, String> globalsettings) {
+        this.setGlobalsettings(globalsettings);
 
-	/**
-	 * Obtiene el valor de una configuración específica utilizando EnumConfigurationKey. Es un método genérico que devuelve el tipo correcto
-	 * basado en la clave.
-	 */
-	public <T> T getConfig(EnumConfigurationKey key, Class<T> clazz) {
-		Optional<DTOConfig> configOptional = configs.stream().filter(config -> config.getNombreConfiguracion().equalsIgnoreCase(key.name())).findFirst();
+    }
 
-		if (!configOptional.isPresent()) {
+    /**
+     * Obtiene el valor de una configuración específica utilizando EnumConfigurationKey. Es un método genérico que devuelve el tipo correcto
+     * basado en la clave.
+     */
+    public <T> T getConfig(EnumConfigurationKey key, Class<T> clazz) {
+        Optional<DTOConfig> configOptional = configs.stream().filter(config -> config.getNombreConfiguracion().equalsIgnoreCase(key.name())).findFirst();
 
-			DTOConfig defaultConfig = new DTOConfig(-1L, key.name(), key.getDefaultValue());
-			configs.add(defaultConfig);
-		}
-		String valor = configOptional.map(DTOConfig::getValor).orElse(key.getDefaultValue());
+        if (!configOptional.isPresent()) {
 
-		return key.castValue(valor);
-	}
+            DTOConfig defaultConfig = new DTOConfig(-1L, key.name(), key.getDefaultValue());
+            configs.add(defaultConfig);
+        }
+        String valor = configOptional.map(DTOConfig::getValor).orElse(key.getDefaultValue());
 
-	public <T> void setConfig(EnumConfigurationKey key, T value) {
-		String valorAAlmacenar = value.toString();
-		Optional<DTOConfig> configOptional = configs.stream().filter(config -> config.getNombreConfiguracion().equalsIgnoreCase(key.name())).findFirst();
+        return key.castValue(valor);
+    }
 
-		if (configOptional.isPresent()) {
-			configOptional.get().setValor(valorAAlmacenar);
-		} else {
-			DTOConfig nuevaConfig = new DTOConfig(getId(), key.name(), valorAAlmacenar);
-			configs.add(nuevaConfig);
-		}
-	}
+    public <T> void setConfig(EnumConfigurationKey key, T value) {
+        String valorAAlmacenar = value.toString();
+        Optional<DTOConfig> configOptional = configs.stream().filter(config -> config.getNombreConfiguracion().equalsIgnoreCase(key.name())).findFirst();
 
-	public String getStatus() {
-		return status;
-	}
+        if (configOptional.isPresent()) {
+            configOptional.get().setValor(valorAAlmacenar);
+        } else {
+            DTOConfig nuevaConfig = new DTOConfig(getId(), key.name(), valorAAlmacenar);
+            configs.add(nuevaConfig);
+        }
+    }
 
-	public void setStatus(String status) {
-		this.status = status;
-	}
+    public String getStatus() {
+        return status;
+    }
 
-	public HashMap<String, String> getGlobalsettings() {
-		return globalsettings;
-	}
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
-	public void setGlobalsettings(HashMap<String, String> globalsettings) {
-		this.globalsettings = globalsettings;
-	}
+    public HashMap<String, String> getGlobalsettings() {
+        return globalsettings;
+    }
+
+    public void setGlobalsettings(HashMap<String, String> globalsettings) {
+        this.globalsettings = globalsettings;
+    }
+
+    public Long getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Long priority) {
+        this.priority = priority;
+    }
+
+    public Long getReconnectionTime() {
+        return reconnectionTime;
+    }
+
+    public void setReconnectionTime(Long reconnectionTime) {
+        this.reconnectionTime = reconnectionTime != null && reconnectionTime >= 0 ? reconnectionTime : 30L;
+    }
 
 }

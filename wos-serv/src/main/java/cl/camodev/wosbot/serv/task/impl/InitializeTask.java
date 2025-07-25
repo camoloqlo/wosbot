@@ -44,34 +44,43 @@ public class InitializeTask extends DelayedTask {
 			EmulatorManager.getInstance().launchApp(EMULATOR_NUMBER, EmulatorManager.WHITEOUT_PACKAGE);
 			sleepTask(15000);
 
+			final int MAX_ATTEMPTS = 10;
+			final int WAIT_TIME = 5000;
+			final int RECONNECT_WAIT = 4000;
+
 			boolean homeScreen = false;
 			int attempts = 0;
-			while (!homeScreen) {
-				DTOImageSearchResult homeResult = EmulatorManager.getInstance().searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_FURNACE.getTemplate(),90);
-				if (homeResult.isFound()) {
+			while (attempts <= MAX_ATTEMPTS) {
+				DTOImageSearchResult home = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_FURNACE.getTemplate(), 90);
+				DTOImageSearchResult world = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_WORLD.getTemplate(), 90);
+
+				if (home.isFound() || world.isFound()) {
 					homeScreen = true;
 					ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, taskName, profile.getName(), "home screen found");
-				} else {
-					ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, taskName, profile.getName(), "screen not found, waiting 5 seconds before checking again");
-					EmulatorManager.getInstance().tapBackButton(EMULATOR_NUMBER);
-					sleepTask(5000);
-					attempts++;
-				}
-
-				if (attempts > 10) {
-					ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "screen not found after 5 attempts, restarting emulator");
-					EmulatorManager.getInstance().closeEmulator(EMULATOR_NUMBER);
-					isStarted = false;
-					this.setRecurring(true);
 					break;
 				}
+
+				DTOImageSearchResult reconnect = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_RECONNECT.getTemplate(), 90);
+				if (reconnect.isFound()) {
+					tapPoint(reconnect.getPoint());
+					sleepTask(RECONNECT_WAIT);
+				}
+
+				ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, taskName, profile.getName(), "screen not found, esperando 5 segundos antes de volver a intentar");
+				EmulatorManager.getInstance().tapBackButton(EMULATOR_NUMBER);
+				sleepTask(WAIT_TIME);
+				attempts++;
+			}
+
+			if (!homeScreen) {
+				ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "screen no encontrado tras varios intentos, reiniciando emulador");
+				EmulatorManager.getInstance().closeEmulator(EMULATOR_NUMBER);
+				isStarted = false;
+				this.setRecurring(true);
 			}
 
 		}
 	}
 
-	public String getEmulatorNumber() {
-		return EMULATOR_NUMBER;
-	}
 
 }
