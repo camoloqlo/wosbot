@@ -125,28 +125,7 @@ public class TaskQueue {
 			}
                         while (running) {
                                 if (!EmulatorManager.getInstance().isRunning(profile.getEmulatorNumber())) {
-                                        if (restartAttempts < MAX_EMULATOR_RESTART_ATTEMPTS) {
-                                                restartAttempts++;
-                                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.WARNING,
-                                                                "TaskQueue", profile.getName(),
-                                                                "Emulator closed, attempting restart " + restartAttempts + "/" + MAX_EMULATOR_RESTART_ATTEMPTS);
-                                                EmulatorManager.getInstance().launchEmulator(profile.getEmulatorNumber());
-                                                try {
-                                                        Thread.sleep(EMULATOR_RESTART_WAIT_MS);
-                                                } catch (InterruptedException e) {
-                                                        Thread.currentThread().interrupt();
-                                                        break;
-                                                }
-                                                continue;
-                                        } else {
-                                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR,
-                                                                "TaskQueue", profile.getName(),
-                                                                "Failed to restart emulator after " + MAX_EMULATOR_RESTART_ATTEMPTS + " attempts. Stopping queue");
-                                                running = false;
-                                                break;
-                                        }
-                                } else {
-                                        restartAttempts = 0;
+
                                 }
                                 // Check if paused and skip execution if so
                                 if (paused) {
