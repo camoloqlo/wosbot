@@ -35,6 +35,10 @@ public class TaskQueue {
 
         private static final int PAUSE_SLEEP_MS = 1000;
         private static final int IDLE_CHECK_INTERVAL_MS = 999;
+        /** Wait time before rechecking emulator after a restart attempt. */
+        private static final int EMULATOR_RESTART_WAIT_MS = 30000;
+        /** Maximum restart attempts before giving up. */
+        private static final int MAX_EMULATOR_RESTART_ATTEMPTS = 3;
         // Flag to stop the scheduler loop.
 	private volatile boolean running = false;
         // Flag to pause/resume the scheduler.
@@ -107,9 +111,10 @@ public class TaskQueue {
 			return;
 		running = true;
 
-		schedulerThread = new Thread(() -> {
+                schedulerThread = new Thread(() -> {
 
-			boolean idlingTimeExceded = false;
+                        boolean idlingTimeExceeded = false;
+                        int restartAttempts = 0;
 			ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "Getting queue slot"));
 			try {
                                 EmulatorManager.getInstance().acquireEmulatorSlot(profile, (thread, position) -> {
@@ -120,11 +125,7 @@ public class TaskQueue {
 			}
                         while (running) {
                                 if (!EmulatorManager.getInstance().isRunning(profile.getEmulatorNumber())) {
-                                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.WARNING,
-                                                        "TaskQueue", profile.getName(),
-                                                        "Emulator closed, stopping queue");
-                                        running = false;
-                                        break;
+
                                 }
                                 // Check if paused and skip execution if so
                                 if (paused) {
@@ -254,16 +255,16 @@ public class TaskQueue {
 					long maxIdle = 0;
 					maxIdle = Optional.ofNullable(profile.getGlobalsettings().get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name())).map(Integer::parseInt).orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue()));
 
-                                        if (!idlingTimeExceded && nextTaskDelaySeconds > TimeUnit.MINUTES.toSeconds(maxIdle)) {
-                                                idlingTimeExceded = true;
+                                        if (!idlingTimeExceeded && nextTaskDelaySeconds > TimeUnit.MINUTES.toSeconds(maxIdle)) {
+                                                idlingTimeExceeded = true;
                                                 idlingEmulator(nextTaskDelaySeconds);
 					}
 
                                         // If the delay drops below a minute, acquire the emulator slot and enqueue an initialization task
-                                        if (idlingTimeExceded && nextTaskDelaySeconds < TimeUnit.MINUTES.toSeconds(1)) {
+                                        if (idlingTimeExceeded && nextTaskDelaySeconds < TimeUnit.MINUTES.toSeconds(1)) {
                                                 enqueueNewTask();
-                                                idlingTimeExceded = false; // Reset condition for future evaluations
-					}
+                                                idlingTimeExceeded = false; // Reset condition for future evaluations
+                                        }
 				}
 
                                 // If no task was executed, wait a bit before checking again
