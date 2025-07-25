@@ -43,7 +43,7 @@ import javafx.util.Duration;
 
 public class ProfileManagerLayoutController implements IProfileChangeObserver {
 
-	private final ExecutorService profileQueueExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService profileQueueExecutor = Executors.newVirtualThreadPerTaskExecutor();
 	private ProfileManagerActionController profileManagerActionController;
 	private ObservableList<ProfileAux> profiles;
 	private SortedList<ProfileAux> sortedProfiles;

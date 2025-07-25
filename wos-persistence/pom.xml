@@ -7,7 +7,7 @@
 		<artifactId>wosbot</artifactId>
 		<version>${revision}</version>
 	</parent>
-	<artifactId>wos-persitence</artifactId>
+	<artifactId>wos-persistence</artifactId>
 
 	<dependencies>
 		<!-- JDBC Driver para SQLite -->
@@ -76,8 +76,8 @@
 		</dependency>
 		<!-- Binding/implementación en tiempo de ejecución -->
 		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-log4j12</artifactId>
+                        <groupId>ch.qos.logback</groupId>
+                        <artifactId>logback-classic</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 
