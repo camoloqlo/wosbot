@@ -259,11 +259,11 @@ public class LauncherLayoutController implements IProfileLoadListener {
 	}
 
 	private void initializeExternalLibraries() {
-		try {
-			UtilCV.loadNativeLibrary("/native/opencv/opencv_java4110.dll");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+                try {
+                        UtilCV.loadNativeLibrary("/native/opencv/opencv_java4110.dll");
+                } catch (IOException e) {
+                        System.err.println("Failed to load OpenCV library: " + e.getMessage());
+                }
 
 	}
 
@@ -357,9 +357,9 @@ public class LauncherLayoutController implements IProfileLoadListener {
 
 			buttonsContainer.getChildren().add(button);
 			return button;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+                } catch (IOException e) {
+                        System.err.println("Failed to load module " + fxmlName + ": " + e.getMessage());
+                }
 		return null;
 	}
 

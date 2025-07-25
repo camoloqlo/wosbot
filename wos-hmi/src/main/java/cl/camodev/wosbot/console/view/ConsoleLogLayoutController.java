@@ -107,9 +107,9 @@ public class ConsoleLogLayoutController {
 				comboBoxProfileFilter.setItems(profileNames);
 				comboBoxProfileFilter.getSelectionModel().selectFirst(); // Select "All profiles" by default
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+                } catch (Exception e) {
+                        System.err.println("Failed to load profiles: " + e.getMessage());
+                }
 	}
 
 	private void setupFilterListeners() {

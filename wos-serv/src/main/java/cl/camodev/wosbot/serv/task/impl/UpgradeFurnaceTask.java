@@ -253,9 +253,9 @@ public class UpgradeFurnaceTask extends DelayedTask {
 				}
 
 
-			} catch (Exception e) {
-				// TODO: handle exception
-			}
+                        } catch (Exception e) {
+                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "Error upgrading furnace: " + e.getMessage());
+                        }
 
 		} else{
 			emuManager.tapBackButton(EMULATOR_NUMBER);

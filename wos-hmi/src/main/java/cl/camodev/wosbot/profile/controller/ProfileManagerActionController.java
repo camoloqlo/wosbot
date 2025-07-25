@@ -54,10 +54,10 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 				callback.onProfilesLoaded(profiles);
 			}
 
-		}).exceptionally(ex -> {
-			ex.printStackTrace();
-			return null;
-		});
+                }).exceptionally(ex -> {
+                        System.err.println("Failed to load profiles: " + ex.getMessage());
+                        return null;
+                });
 	}
 
 	public boolean deleteProfile(DTOProfiles profile) {
@@ -143,12 +143,11 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 
 			return allUpdatesSuccessful;
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-",
-				"Error during bulk update of selected profiles: " + e.getMessage());
-			return false;
-		}
+            } catch (Exception e) {
+                    ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-",
+                            "Error during bulk update of selected profiles: " + e.getMessage());
+                    return false;
+            }
 	}
 
 	@Override
@@ -179,10 +178,9 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 			newProfileStage.setOnCloseRequest(event -> closeNewProfileDialog());
 
 			newProfileStage.showAndWait();
-		} catch (IOException e) {
-			e.printStackTrace();
-			ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-", "Error loading FXML " + e.getMessage());
-		}
+                } catch (IOException e) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-", "Error loading FXML " + e.getMessage());
+                }
 	}
 
 	public void closeNewProfileDialog() {
@@ -270,13 +268,12 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 				}
 			}
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-",
-				"Failed to open bulk update dialog: " + e.getMessage());
-			showAlert(AlertType.ERROR, "ERROR",
-				"Failed to open bulk update dialog: " + e.getMessage());
-		}
+                } catch (Exception e) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-",
+                                "Failed to open bulk update dialog: " + e.getMessage());
+                        showAlert(AlertType.ERROR, "ERROR",
+                                "Failed to open bulk update dialog: " + e.getMessage());
+                }
 	}
 
 	/**
@@ -324,13 +321,12 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 				profileManagerLayoutController.loadProfiles();
 			}
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-",
-				"Failed to open edit profile dialog: " + e.getMessage());
-			showAlert(Alert.AlertType.ERROR, "ERROR",
-				"Failed to open edit profile dialog: " + e.getMessage());
-		}
+                } catch (Exception e) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-",
+                                "Failed to open edit profile dialog: " + e.getMessage());
+                        showAlert(Alert.AlertType.ERROR, "ERROR",
+                                "Failed to open edit profile dialog: " + e.getMessage());
+                }
 	}
 
 	/**

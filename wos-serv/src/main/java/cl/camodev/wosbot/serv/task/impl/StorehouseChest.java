@@ -149,13 +149,11 @@ public class StorehouseChest extends DelayedTask {
 						this.reschedule(scheduledTime);
 						ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, scheduledTime);
 
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} catch (TesseractException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+                                        } catch (IOException e) {
+                                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "Failed to read chest timer: " + e.getMessage());
+                                        } catch (TesseractException e) {
+                                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), "OCR error: " + e.getMessage());
+                                        }
 
 				}
 			}

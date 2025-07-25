@@ -118,10 +118,10 @@ public class ProfileRepository implements IProfileRepository {
 		try {
 			configs.forEach(config -> persistence.deleteEntity(config));
 			return true;
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
+                } catch (Exception e) {
+                        System.err.println("Error deleting configs: " + e.getMessage());
+                        return false;
+                }
 	}
 
 	@Override
@@ -133,10 +133,10 @@ public class ProfileRepository implements IProfileRepository {
 		try {
 			configs.forEach(config -> persistence.createEntity(config));
 			return true;
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
+                } catch (Exception e) {
+                        System.err.println("Error saving configs: " + e.getMessage());
+                        return false;
+                }
 	}
 
 }

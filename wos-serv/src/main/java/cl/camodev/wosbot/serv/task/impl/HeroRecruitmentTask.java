@@ -61,8 +61,7 @@ public class HeroRecruitmentTask extends DelayedTask {
         try {
             text = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(40, 770), new DTOPoint(350, 810));
         } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logError("Error reading advanced recruitment timer: " + e.getMessage());
         }
         logInfo(text + " rescheduling task");
         nextAdvanced = parseNextFree(text);
@@ -95,8 +94,7 @@ public class HeroRecruitmentTask extends DelayedTask {
         try {
             text = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(53, 1130), new DTOPoint(330, 1160));
         } catch (IOException | TesseractException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logError("Error reading epic recruitment timer: " + e.getMessage());
         }
         nextEpic = parseNextFree(text);
 

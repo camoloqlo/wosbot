@@ -64,12 +64,12 @@ public class ServScheduler {
 	public void startBot() {
 		EmulatorManager emulator = EmulatorManager.getInstance();
 
-		try {
-			emulator.initialize();
-		} catch (Exception e) {
-			e.printStackTrace();
-			return;
-		}
+                try {
+                        emulator.initialize();
+                } catch (Exception e) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Scheduler", "-", "Failed to initialize emulator: " + e.getMessage());
+                        return;
+                }
 		HashMap<String, String> globalsettings = ServConfig.getServices().getGlobalConfig();
 		globalsettings.forEach((key, value) -> {
 			if (key.equals(EnumConfigurationKey.MUMU_PATH_STRING.name())) {

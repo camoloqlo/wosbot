@@ -90,3 +90,10 @@ Simply double-click `wos-bot-x.x.x.jar`.
 🔹 **and more ofc** 🔥
 
 
+
+---
+
+## 📝 Changelog
+- Replace `printStackTrace` calls with structured logging
+- Remove leftover TODO comments
+- Clean up unused imports
