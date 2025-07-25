@@ -118,10 +118,17 @@ public class TaskQueue {
 			} catch (InterruptedException e) {
 				logger.error("Interrupted while acquiring emulator slot for profile " + profile.getName(), e);
 			}
-			while (running) {
-				// Check if paused and skip execution if so
-				if (paused) {
-					try {
+                        while (running) {
+                                if (!EmulatorManager.getInstance().isRunning(profile.getEmulatorNumber())) {
+                                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.WARNING,
+                                                        "TaskQueue", profile.getName(),
+                                                        "Emulator closed, stopping queue");
+                                        running = false;
+                                        break;
+                                }
+                                // Check if paused and skip execution if so
+                                if (paused) {
+                                        try {
 						ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "PAUSED"));
 						logger.info("Profile " + profile.getName() + " is paused.");
                                                 Thread.sleep(PAUSE_SLEEP_MS); // Wait while paused
@@ -278,11 +285,15 @@ public class TaskQueue {
 						Thread.currentThread().interrupt();
 						break;
 					}
-				}
-			}
-		});
-		schedulerThread.start();
-	}
+                                }
+                        }
+                        EmulatorManager.getInstance().releaseEmulatorSlot(profile);
+                        taskQueue.clear();
+                        ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "NOT RUNNING "));
+                        logger.info("TaskQueue stopped for profile " + profile.getName());
+                });
+                schedulerThread.start();
+        }
 
         // Helper methods
     private void idlingEmulator(long delaySeconds) {
@@ -310,25 +321,25 @@ public class TaskQueue {
         /**
          * Stops queue processing immediately, regardless of its current state.
          */
-	public void stop() {
+        public void stop() {
                 running = false; // Stop the main loop
 
-		if (schedulerThread != null) {
+                if (schedulerThread != null) {
                         schedulerThread.interrupt(); // Interrupt to force immediate exit
 
-			try {
+                        try {
                                 schedulerThread.join(1000); // Wait up to 1 second for thread to finish
-			} catch (InterruptedException e) {
-				logger.error("Interrupted while stopping TaskQueue for profile " + profile.getName(), e);
-				Thread.currentThread().interrupt();
-			}
-		}
+                        } catch (InterruptedException e) {
+                                logger.error("Interrupted while stopping TaskQueue for profile " + profile.getName(), e);
+                                Thread.currentThread().interrupt();
+                        }
+                }
 
-                // Remove all pending tasks from the queue
-		taskQueue.clear();
-		ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "NOT RUNNING "));
-		logger.info("TaskQueue stopped immediately for profile " + profile.getName());
-	}
+                EmulatorManager.getInstance().releaseEmulatorSlot(profile);
+                taskQueue.clear();
+                ServProfiles.getServices().notifyProfileStatusChange(new DTOProfileStatus(profile.getId(), "NOT RUNNING "));
+                logger.info("TaskQueue stopped immediately for profile " + profile.getName());
+        }
 
         /**
          * Pauses queue processing while keeping tasks in the queue.
