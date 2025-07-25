@@ -20,64 +20,61 @@ import org.slf4j.*;
 public class ImageSearchUtil {
 	private static final Logger logger = LoggerFactory.getLogger(ImageSearchUtil.class);
 
-	/**
-	 * Realiza la búsqueda de un template (plantilla) dentro de una imagen principal.
-	 * <p>
-	 * La imagen principal se carga desde una ruta externa, mientras que el template se obtiene de los recursos del jar. Se define una región de
-	 * interés (ROI) en la imagen principal para limitar la búsqueda. La coincidencia se realiza utilizando el método TM_CCOEFF_NORMED de
-	 * OpenCV. El porcentaje de coincidencia se obtiene multiplicando el valor máximo de la coincidencia por 100, y se compara con el umbral
-	 * proporcionado.
-	 * </p>
-	 *
-	 * @param templateResourcePath Ruta del template dentro de los recursos del jar.
-	 * @param topLeftCorner        Punto de la esquina superior izquierda del ROI.
-	 * @param bottomRightCorner    Punto de la esquina inferior derecha del ROI.
-	 * @param thresholdPercentage  Umbral de coincidencia en porcentaje (0 a 100). Si el porcentaje de coincidencia es menor que este valor, se
-	 *                             considerará que no hay coincidencia suficiente.
-	 * @return Un objeto {@link DTOImageSearchResult} que contiene:
-	 *         <ul>
-	 *         <li>El estado de la búsqueda (true si se encontró una coincidencia adecuada, false en caso contrario).</li>
-	 *         <li>La posición de la coincidencia (como {@link DTOPoint}) en la imagen principal, ajustada al sistema de coordenadas de la
-	 *         misma.</li>
-	 *         <li>El porcentaje de coincidencia obtenido.</li>
-	 *         </ul>
-	 */
+        /**
+         * Searches for a template within an image.
+         * <p>
+         * The main image is loaded from an external path while the template is read from the jar resources. A region of interest (ROI) is
+         * defined to limit the search area. Matching is performed using the TM_CCOEFF_NORMED method from OpenCV. The match percentage is
+         * the maximum match value multiplied by 100 and compared against the provided threshold.
+         * </p>
+         *
+         * @param templateResourcePath Path to the template within the jar resources.
+         * @param topLeftCorner        Top-left corner of the ROI.
+         * @param bottomRightCorner    Bottom-right corner of the ROI.
+         * @param thresholdPercentage  Match threshold percentage (0 to 100). Matches below this value are ignored.
+         * @return A {@link DTOImageSearchResult} containing:
+         *         <ul>
+         *         <li>Whether a valid match was found.</li>
+         *         <li>The match position as a {@link DTOPoint} using the same coordinate system as the main image.</li>
+         *         <li>The match percentage.</li>
+         *         </ul>
+         */
 
-	public static DTOImageSearchResult buscarTemplate(byte[] image, String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage) {
+        public static DTOImageSearchResult findTemplate(byte[] image, String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage) {
 		try {
-			// Calcular ROI a partir de las esquinas
+                        // Calculate ROI from the corners
 			int roiX = topLeftCorner.getX();
 			int roiY = topLeftCorner.getY();
 			int roiWidth = bottomRightCorner.getX() - topLeftCorner.getX();
 			int roiHeight = bottomRightCorner.getY() - topLeftCorner.getY();
 
-			// Validar que las coordenadas formen un rectángulo válido
+                        // Validate that the coordinates form a valid rectangle
 			if (roiWidth <= 0 || roiHeight <= 0) {
 				logger.error("Invalid ROI: bottomRightCorner must be greater than topLeftCorner in both dimensions.");
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Decodificar la imagen principal directamente desde el byte[]
+                        // Decode the main image directly from the byte array
 			MatOfByte matOfByte = new MatOfByte(image);
-			Mat imagenPrincipal = Imgcodecs.imdecode(matOfByte, Imgcodecs.IMREAD_COLOR);
+                        Mat mainImage = Imgcodecs.imdecode(matOfByte, Imgcodecs.IMREAD_COLOR);
 
-			if (imagenPrincipal.empty()) {
+                        if (mainImage.empty()) {
 				logger.error("Error while loading image from byte array.");
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Cargar la plantilla desde los recursos
+                        // Load the template from resources
 			InputStream is = ImageSearchUtil.class.getResourceAsStream(templateResourcePath);
 			if (is == null) {
                 logger.error("Template resource not found: {}", templateResourcePath);
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Leer bytes del template
+                        // Read bytes from the template
 			byte[] templateBytes = is.readAllBytes();
 			is.close();
 
-			// Decodificar el template en un Mat
+                        // Decode the template into a Mat
 			MatOfByte templateMatOfByte = new MatOfByte(templateBytes);
 			Mat template = Imgcodecs.imdecode(templateMatOfByte, Imgcodecs.IMREAD_COLOR);
 
@@ -86,32 +83,32 @@ public class ImageSearchUtil {
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Validar la ROI
-			if (roiX + roiWidth > imagenPrincipal.cols() || roiY + roiHeight > imagenPrincipal.rows()) {
-				logger.error("ROI exceeds image dimensions. Image size: {}x{}, ROI: {}x{} at ({}, {})",
-						imagenPrincipal.cols(), imagenPrincipal.rows(), roiWidth, roiHeight, roiX, roiY);
+                        // Validate the ROI
+                        if (roiX + roiWidth > mainImage.cols() || roiY + roiHeight > mainImage.rows()) {
+                                logger.error("ROI exceeds image dimensions. Image size: {}x{}, ROI: {}x{} at ({}, {})",
+                                                mainImage.cols(), mainImage.rows(), roiWidth, roiHeight, roiX, roiY);
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Crear la ROI
-			Rect roi = new Rect(roiX, roiY, roiWidth, roiHeight);
-			Mat imagenROI = new Mat(imagenPrincipal, roi);
+                        // Create the ROI
+                        Rect roi = new Rect(roiX, roiY, roiWidth, roiHeight);
+                        Mat roiImage = new Mat(mainImage, roi);
 
-			// Verificar tamaño
-			int resultCols = imagenROI.cols() - template.cols() + 1;
-			int resultRows = imagenROI.rows() - template.rows() + 1;
+                        // Verify size
+                        int resultCols = roiImage.cols() - template.cols() + 1;
+                        int resultRows = roiImage.rows() - template.rows() + 1;
 			if (resultCols <= 0 || resultRows <= 0) {
 				logger.error("Template size is larger than ROI size. Template size: {}x{}, ROI size: {}x{}",
-						template.cols(), template.rows(), imagenROI.cols(), imagenROI.rows());
+                                                template.cols(), template.rows(), roiImage.cols(), roiImage.rows());
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Coincidencia de plantilla
-			Mat resultado = new Mat(resultRows, resultCols, CvType.CV_32FC1);
-			Imgproc.matchTemplate(imagenROI, template, resultado, Imgproc.TM_CCOEFF_NORMED);
+                        // Template matching
+                        Mat result = new Mat(resultRows, resultCols, CvType.CV_32FC1);
+                        Imgproc.matchTemplate(roiImage, template, result, Imgproc.TM_CCOEFF_NORMED);
 
-			// Obtener el mejor match
-			Core.MinMaxLocResult mmr = Core.minMaxLoc(resultado);
+                        // Obtain the best match
+                        Core.MinMaxLocResult mmr = Core.minMaxLoc(result);
 			double matchPercentage = mmr.maxVal * 100.0;
 
 			if (matchPercentage < thresholdPercentage) {
@@ -120,7 +117,7 @@ public class ImageSearchUtil {
 				return new DTOImageSearchResult(false, null, matchPercentage);
 			}
 
-			// Ajustar la coordenada para que esté en el centro de la coincidencia
+                        // Adjust coordinates to the center of the match
 			Point matchLoc = mmr.maxLoc;
 			double centerX = matchLoc.x + roi.x + (template.cols() / 2.0);
 			double centerY = matchLoc.y + roi.y + (template.rows() / 2.0);
