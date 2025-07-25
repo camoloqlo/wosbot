@@ -12,6 +12,9 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.impl.ServLogs;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.impl.InitializeTask;
+import cl.camodev.wosbot.serv.task.impl.WarAcademyTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -21,6 +24,8 @@ import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 
 public abstract class DelayedTask implements Runnable, Delayed, Comparable<Delayed> {
+
+    private static final Logger logger = LoggerFactory.getLogger(DelayedTask.class);
 
     protected volatile boolean recurring = true;
     protected LocalDateTime lastExecutionTime;
@@ -151,8 +156,8 @@ public abstract class DelayedTask implements Runnable, Delayed, Comparable<Delay
 
     protected void sleepTask(long millis) {
         try {
-            long speedFactor = (long) (millis*1.3);
-            Thread.sleep(speedFactor);
+            //long speedFactor = (long) (millis*1.3);
+            Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Task was interrupted during sleep", e);
@@ -233,18 +238,22 @@ public abstract class DelayedTask implements Runnable, Delayed, Comparable<Delay
     }
 
     public void logInfo(String message) {
+        logger.info(message);
         servLogs.appendLog(EnumTpMessageSeverity.INFO, taskName, profile.getName(), message);
     }
 
     public void logWarning(String message) {
+        logger.warn(message);
         servLogs.appendLog(EnumTpMessageSeverity.WARNING, taskName, profile.getName(), message);
     }
 
     public void logError(String message) {
+        logger.error(message);
         servLogs.appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), message);
     }
 
     public void logDebug(String message) {
+        logger.debug(message);
         servLogs.appendLog(EnumTpMessageSeverity.DEBUG, taskName, profile.getName(), message);
     }
 

@@ -2,6 +2,7 @@ package cl.camodev.wosbot.emulator;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
@@ -180,6 +181,18 @@ public class EmulatorManager {
 		checkEmulatorInitialized();
 		byte[] screenshot = captureScreenshotViaADB(emulatorNumber);
 		return ImageSearchUtil.buscarTemplate(screenshot, templatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold);
+	}
+
+	public List<DTOImageSearchResult> searchTemplates(String emulatorNumber, String templatePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner , double threshold, int maxResults) {
+		checkEmulatorInitialized();
+		byte[] screenshot = captureScreenshotViaADB(emulatorNumber);
+		return ImageSearchUtil.searchTemplateMultiple(screenshot, templatePath, topLeftCorner, bottomRightCorner, threshold, maxResults);
+	}
+
+	public List<DTOImageSearchResult> searchTemplates(String emulatorNumber, String templatePath, double threshold, int maxResults) {
+		checkEmulatorInitialized();
+		byte[] screenshot = captureScreenshotViaADB(emulatorNumber);
+		return ImageSearchUtil.searchTemplateMultiple(screenshot, templatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold, maxResults);
 	}
 
 	public void launchEmulator(String emulatorNumber) {

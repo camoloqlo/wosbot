@@ -121,6 +121,39 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 	}
 
 	/**
+	 * Executes a task directly without asking anything.
+	 * If the task is scheduled, it marks it as recurring.
+	 * If not scheduled, it runs it one time only.
+	 */
+	public void executeTaskDirectly(TaskManagerAux task) {
+		DTOProfiles profile = findProfileById(task.getProfileId());
+		if (profile == null) {
+			System.err.println("Profile not found: " + task.getProfileId());
+			return;
+		}
+
+		ServScheduler scheduler = ServScheduler.getServices();
+		TaskQueue queue = scheduler.getQueueManager().getQueue(profile.getId());
+		if (queue == null) {
+			System.err.println("No active queue found for profile: " + profile.getName());
+			return;
+		}
+
+		if (task.scheduledProperty().get()) {
+			// Task is already scheduled - mark as recurring and execute now
+			scheduleTaskInQueue(queue, task.getTaskEnum(), LocalDateTime.now(), true, profile);
+			ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskExecutor", profile.getName(),
+				"Executed scheduled task " + task.getTaskEnum().getName() + " and marked as recurring");
+		} else {
+			// Task is not scheduled - execute once
+			scheduler.updateDailyTaskStatus(profile, task.getTaskEnum(), LocalDateTime.now());
+			queue.executeTaskNow(task.getTaskEnum());
+			ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskExecutor", profile.getName(),
+				"Executed task " + task.getTaskEnum().getName() + " one time");
+		}
+	}
+
+	/**
 	 * Handles the remove task action with confirmation dialog
 	 */
 	public void removeTask(TaskManagerAux task, Runnable onSuccess) {

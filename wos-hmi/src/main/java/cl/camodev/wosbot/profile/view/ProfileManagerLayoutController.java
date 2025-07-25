@@ -320,18 +320,29 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 		});
 	}
 
-	private void notifyProfileLoadListeners(ProfileAux currentProfile) {
-		if (profileLoadListeners != null) {
-			profileLoadListeners.forEach(listener -> listener.onProfileLoad(currentProfile));
-		}
-
-	}
-
 	public void addProfileLoadListener(IProfileLoadListener moduleController) {
 		if (profileLoadListeners == null) {
 			profileLoadListeners = new ArrayList<>();
 		}
 		profileLoadListeners.add(moduleController);
+	}
+
+	public javafx.collections.ObservableList<ProfileAux> getProfiles() {
+		return profiles;
+	}
+
+	public void setLoadedProfileId(Long profileId) {
+		this.loadedProfileId = profileId;
+	}
+
+	public Long getLoadedProfileId() {
+		return loadedProfileId;
+	}
+
+	public void notifyProfileLoadListeners(ProfileAux currentProfile) {
+		if (profileLoadListeners != null) {
+			profileLoadListeners.forEach(listener -> listener.onProfileLoad(currentProfile));
+		}
 	}
 
 	public void handleProfileStatusChange(DTOProfileStatus status) {

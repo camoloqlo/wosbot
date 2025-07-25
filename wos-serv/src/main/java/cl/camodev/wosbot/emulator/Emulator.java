@@ -47,20 +47,50 @@ public abstract class Emulator {
 	protected String consolePath;
 	protected AndroidDebugBridge bridge = null;
 
+	private final ThreadLocal<BufferedImage> reusableImage = new ThreadLocal<>();
+
 	public Emulator(String consolePath) {
 		this.consolePath = consolePath;
 		initializeBridge();
 	}
 
 	/**
-	 * Initializes the ddmlib bridge for ADB communication.
+	 * Gets the ADB executable path from the project's execution directory.
+	 * @return Path to the ADB executable
+	 */
+	private String getProjectAdbPath() {
+		// Get the current working directory (where the application is running)
+		String currentDir = System.getProperty("user.dir");
+
+		// Check if we're in the wos-hmi directory or the root project directory
+		File adbFile = new File(currentDir, "adb" + File.separator + "adb.exe");
+		if (adbFile.exists()) {
+			return adbFile.getAbsolutePath();
+		}
+
+		// Try the wos-hmi subdirectory if we're in the root
+		adbFile = new File(currentDir, "wos-hmi" + File.separator + "adb" + File.separator + "adb.exe");
+		if (adbFile.exists()) {
+			return adbFile.getAbsolutePath();
+		}
+
+		// Fallback to the original console path if project ADB not found
+		logger.warn("Project ADB not found, falling back to console path: {}", consolePath);
+		return consolePath + File.separator + "adb.exe";
+	}
+
+	/**
+	 * Initializes the ddmlib bridge for ADB communication using the project's ADB.
 	 */
 	protected void initializeBridge() {
 		if (bridge == null) {
 			AndroidDebugBridge.disconnectBridge(5000, TimeUnit.MILLISECONDS);
 			AndroidDebugBridge.terminate();
 			AndroidDebugBridge.init(false);
-			bridge = AndroidDebugBridge.createBridge(this.consolePath+ File.separator + "adb.exe", true, 5000, TimeUnit.MILLISECONDS);
+
+			String adbPath = getProjectAdbPath();
+			logger.info("Initializing ADB bridge with path: {}", adbPath);
+			bridge = AndroidDebugBridge.createBridge(adbPath, true, 5000, TimeUnit.MILLISECONDS);
 		}
 	}
 
@@ -156,7 +186,7 @@ public abstract class Emulator {
 			String address = extractAddressFromSerial(serial);
             logger.info("Attempting to connect to: {}", address);
 
-			String adbPath = this.consolePath+ File.separator + "adb.exe";
+			String adbPath = getProjectAdbPath();
 			ProcessBuilder pb = new ProcessBuilder(adbPath, "connect", address);
 			pb.directory(new File(adbPath).getParentFile());
 
@@ -270,12 +300,12 @@ public abstract class Emulator {
 	/**
 	 * Converts a RawImage to BufferedImage.
 	 * @param rawImage RawImage from ddmlib
-	 * @return BufferedImage representation
+	 * @param image BufferedImage to fill
 	 */
-	protected BufferedImage convertRawImageToBufferedImage(RawImage rawImage) {
-		BufferedImage image = new BufferedImage(rawImage.width, rawImage.height, BufferedImage.TYPE_INT_ARGB);
-
+	protected void convertRawImageToBufferedImage(RawImage rawImage, BufferedImage image) {
+		int[] pixels = new int[rawImage.width * rawImage.height];
 		int index = 0;
+
 		for (int y = 0; y < rawImage.height; y++) {
 			for (int x = 0; x < rawImage.width; x++) {
 				int offset = index * rawImage.bpp / 8;
@@ -283,16 +313,13 @@ public abstract class Emulator {
 				int r = getColorComponent(rawImage, offset, rawImage.red_offset);
 				int g = getColorComponent(rawImage, offset, rawImage.green_offset);
 				int b = getColorComponent(rawImage, offset, rawImage.blue_offset);
-				int a = rawImage.alpha_offset != -1 ? getColorComponent(rawImage, offset, rawImage.alpha_offset) : 255;
 
-				int argb = (a << 24) | (r << 16) | (g << 8) | b;
-
-				image.setRGB(x, y, argb);
+				pixels[index] = (r << 16) | (g << 8) | b; // Sin canal alpha
 				index++;
 			}
 		}
 
-		return image;
+		image.setRGB(0, 0, rawImage.width, rawImage.height, pixels, 0, rawImage.width);
 	}
 
 	/**
@@ -322,7 +349,14 @@ public abstract class Emulator {
 					throw new RuntimeException("RawImage es null");
 				}
 
-				BufferedImage image = convertRawImageToBufferedImage(rawImage);
+				BufferedImage image = reusableImage.get();
+				if (image == null ||
+						image.getWidth() != rawImage.width ||
+						image.getHeight() != rawImage.height) {
+						image = new BufferedImage(rawImage.width, rawImage.height, BufferedImage.TYPE_INT_RGB);
+					reusableImage.set(image);
+				}
+				convertRawImageToBufferedImage(rawImage, image);
 				ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				ImageIO.write(image, "png", baos);
 				return baos.toByteArray();
@@ -366,13 +400,16 @@ public abstract class Emulator {
 	}
 
 	/**
-	 * Restarts the ADB bridge using ddmlib.
+	 * Restarts the ADB bridge using the project's ADB executable.
 	 */
 	public void restartAdb() {
 		AndroidDebugBridge.disconnectBridge(5000, TimeUnit.MILLISECONDS);
 		AndroidDebugBridge.terminate();
 		AndroidDebugBridge.init(false);
-		bridge = AndroidDebugBridge.createBridge(consolePath + File.separator + "adb.exe", true, 5000, TimeUnit.MILLISECONDS);
+
+		String adbPath = getProjectAdbPath();
+		logger.info("Restarting ADB bridge with path: {}", adbPath);
+		bridge = AndroidDebugBridge.createBridge(adbPath, true, 5000, TimeUnit.MILLISECONDS);
 		logger.info("ADB restarted successfully");
 	}
 

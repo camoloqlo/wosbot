@@ -34,6 +34,7 @@ public enum EnumTemplates {
 	BUILDING_BUTTON_SPEED("/templates/building/speedButton.png"),
 	BUILDING_BUTTON_UPGRADE("/templates/building/upgradeButton.png"),
 	BUILDING_BUTTON_DETAILS("/templates/building/detailsButton.png"),
+	BUILDING_BUTTON_RESEARCH("/templates/building/researchButton.png"),
 
 	BUILDING_DETAILS_INFANTRY("/templates/building/detailsInfantry.png"),
 	BUILDING_DETAILS_LANCER("/templates/building/detailsLancer.png"),
@@ -241,8 +242,11 @@ public enum EnumTemplates {
 	TRAINING_MARKSMAN_T4("/templates/training/marksman4.png"),
 	TRAINING_MARKSMAN_T3("/templates/training/marksman3.png"),
 	TRAINING_MARKSMAN_T2("/templates/training/marksman2.png"),
-	TRAINING_MARKSMAN_T1("/templates/training/marksman1.png")
+	TRAINING_MARKSMAN_T1("/templates/training/marksman1.png"),
 
+
+
+	VALIDATION_WAR_ACADEMY_UI("/templates/validation/warAcademy.png")
 	;
 	// @formatter:on
 

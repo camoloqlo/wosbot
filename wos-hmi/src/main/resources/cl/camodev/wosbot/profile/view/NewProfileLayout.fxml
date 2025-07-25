@@ -29,21 +29,28 @@
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
         </rowConstraints>
          <children>
+
             <Label text="Profile Name:" />
             <TextField fx:id="textfieldProfileName" GridPane.columnIndex="1" />
-            <Label text="Emulator Number:" GridPane.rowIndex="1" />
-            <TextField fx:id="textfieldEmulatorNumber" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-            <Label text="Enabled:" GridPane.rowIndex="2" />
-            <CheckBox fx:id="checkboxEnabled" selected="true" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-            <HBox alignment="CENTER_LEFT" spacing="10.0" GridPane.rowIndex="3">
+
+            <Label text="Enabled:" GridPane.rowIndex="1" />
+            <CheckBox fx:id="checkboxEnabled" selected="true" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+
+            <Label text="Emulator Number:" GridPane.rowIndex="2" />
+            <TextField fx:id="textfieldEmulatorNumber" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+            <Label text="Reconnection Time (m):" GridPane.rowIndex="3" />
+            <TextField fx:id="textfieldReconnectionTime" text="30" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+
+
+            <HBox alignment="CENTER_LEFT" spacing="10.0" GridPane.rowIndex="4">
                <children>
                   <Label text="Priority:" />
                   <Label fx:id="labelPriorityValue" text="50" />
                </children>
             </HBox>
-            <Slider fx:id="sliderPriority" min="1" max="100" value="50" showTickLabels="true" showTickMarks="true" majorTickUnit="25" minorTickCount="4" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-            <Label text="Reconnection Time (m):" GridPane.rowIndex="4" />
-            <TextField fx:id="textfieldReconnectionTime" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+            <Slider fx:id="sliderPriority" min="1" max="100" value="50" showTickLabels="true" showTickMarks="true" majorTickUnit="25" minorTickCount="4" GridPane.columnIndex="1" GridPane.rowIndex="4" />
          </children>
       </GridPane>
 

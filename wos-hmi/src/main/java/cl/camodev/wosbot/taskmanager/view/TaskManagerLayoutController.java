@@ -395,15 +395,18 @@ public class TaskManagerLayoutController {
 		});
 
 		TableColumn<TaskManagerAux, Void> colActions = new TableColumn<>("Actions");
-		colActions.setPrefWidth(180);
+		colActions.setPrefWidth(250); // Aumentar el ancho para acomodar el tercer botón
 		colActions.setCellFactory(column -> new TableCell<>() {
 			private final Button btnSchedule = new Button("Schedule");
 			private final Button btnRemove = new Button("Remove");
+			private final Button btnExecute = new Button("Execute");
 
 			{
 				btnSchedule.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 11px; " +
 						"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
 				btnRemove.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 11px; " +
+						"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
+				btnExecute.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 11px; " +
 						"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
 
 				btnSchedule.setOnAction(ev -> {
@@ -424,6 +427,22 @@ public class TaskManagerLayoutController {
 								FXCollections.sort(dataList, TASK_AUX_COMPARATOR);
 							}
 						});
+					});
+				});
+
+				btnExecute.setOnAction(ev -> {
+					TaskManagerAux item = getTableView().getItems().get(getIndex());
+					DTOProfiles profile = taskManagerActionController.findProfileById(item.getProfileId());
+
+					taskManagerActionController.executeTaskDirectly(item);
+
+					// Refresh the table after execution
+					buildTaskManagerList(profile, list -> {
+						ObservableList<TaskManagerAux> dataList = tasks.get(profile.getId());
+						if (dataList != null) {
+							dataList.setAll(list);
+							FXCollections.sort(dataList, TASK_AUX_COMPARATOR);
+						}
 					});
 				});
 			}
@@ -465,11 +484,24 @@ public class TaskManagerLayoutController {
 							btnRemove.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 11px; " +
 									"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
 						}
+
+						// Enable/disable execute button based on queue status and task execution state
+						boolean canExecute = queueActive && !task.executingProperty().get();
+						btnExecute.setDisable(!canExecute);
+
+						// Update execute button style when disabled
+						if (!canExecute) {
+							btnExecute.setStyle("-fx-background-color: #757575; -fx-text-fill: #bdbdbd; -fx-font-size: 11px; " +
+									"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
+						} else {
+							btnExecute.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 11px; " +
+									"-fx-padding: 4px 8px; -fx-border-radius: 3px; -fx-background-radius: 3px;");
+						}
 					}
 
-					// Create HBox to hold both buttons
+					// Create HBox to hold all three buttons
 					javafx.scene.layout.HBox buttonBox = new javafx.scene.layout.HBox(5);
-					buttonBox.getChildren().addAll(btnSchedule, btnRemove);
+					buttonBox.getChildren().addAll(btnSchedule, btnRemove, btnExecute);
 					setGraphic(buttonBox);
 				}
 			}
