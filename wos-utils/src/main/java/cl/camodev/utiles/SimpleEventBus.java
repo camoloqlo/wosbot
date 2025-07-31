@@ -1,24 +1,23 @@
 package cl.camodev.utiles;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-/**
- * Minimal thread-safe event bus implementation.
- */
+/** Minimal thread-safe event bus implementation. */
 public class SimpleEventBus implements EventBus {
-    private final Map<Class<?>, List<Consumer<?>>> listeners = new HashMap<>();
+    private final Map<Class<?>, CopyOnWriteArrayList<Consumer<?>>> listeners =
+            new ConcurrentHashMap<>();
 
     @Override
-    public synchronized <T> void register(Class<T> type, Consumer<T> listener) {
-        listeners.computeIfAbsent(type, k -> new ArrayList<>()).add(listener);
+    public <T> void register(Class<T> type, Consumer<T> listener) {
+        listeners.computeIfAbsent(type, k -> new CopyOnWriteArrayList<>()).add(listener);
     }
 
     @Override
-    public synchronized <T> void unregister(Class<T> type, Consumer<T> listener) {
+    public <T> void unregister(Class<T> type, Consumer<T> listener) {
         List<Consumer<?>> list = listeners.get(type);
         if (list != null) {
             list.remove(listener);
@@ -27,11 +26,8 @@ public class SimpleEventBus implements EventBus {
 
     @Override
     public void post(Object event) {
-        List<Consumer<?>> list;
-        synchronized (this) {
-            list = new ArrayList<>(listeners.getOrDefault(event.getClass(), List.of()));
-        }
-        for (Consumer<?> c : list) {
+        for (Consumer<?> c :
+                listeners.getOrDefault(event.getClass(), new CopyOnWriteArrayList<>())) {
             @SuppressWarnings("unchecked")
             Consumer<Object> consumer = (Consumer<Object>) c;
             consumer.accept(event);
