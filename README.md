@@ -1,6 +1,6 @@
 # Whiteout Survival Bot (WIP)
 
-**The development of the project is currently on pause due to issues I'm experiencing with the emulator**
+
 
 A bot for automating tasks in **Whiteout Survival**. This project is a work in progress and is developed in my free time. If you have any requests or suggestions, feel free to ask—I’ll try to respond as soon as possible.
 
