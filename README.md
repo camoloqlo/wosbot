@@ -8,6 +8,28 @@ A bot for automating tasks in **Whiteout Survival**. This project is a work in p
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/Wk6YSr6mUp)
 ---
 
+## Quick Start
+
+### Build
+
+```sh
+mvn clean install
+```
+
+### Run
+
+```sh
+java -jar wos-bot-<version>.jar
+```
+
+### Requirements
+
+- Java 17+
+- Mumu Player configured at 720x1280 (320 DPI) with 2 cores and 2GB RAM
+- Environment variable `DISPLAY` must be set when running in headless environments
+
+---
+
 ## 📌 Current Features
 
 ✅ Multi-profile support (run multiple accounts simultaneously)  
