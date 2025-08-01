@@ -47,6 +47,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -56,24 +58,32 @@ import javafx.stage.Stage;
 
 public class LauncherLayoutController implements IProfileLoadListener {
 
-	@FXML
-	private VBox buttonsContainer;
-	@FXML
-	private Button buttonStartStop;
+        private static final double PROFILE_IMAGE_SIZE = 40.0;
 
-	@FXML
-	private Button buttonPauseResume;
+        @FXML
+        private VBox buttonsContainer;
+        @FXML
+        private Button buttonStartStop;
 
-	@FXML
-	private AnchorPane mainContentPane;
+        @FXML
+        private Button buttonPauseResume;
 
-	@FXML
-	private Label labelRunTime;
+        @FXML
+        private AnchorPane mainContentPane;
 
-	@FXML
-	private Label labelVersion;
+        @FXML
+        private Label labelRunTime;
 
-	private Stage stage;
+        @FXML
+        private Label labelVersion;
+
+        @FXML
+        private ImageView imageProfile;
+
+        @FXML
+        private Label labelProfileName;
+
+        private Stage stage;
 
 	private LauncherActionController actionController;
 
@@ -96,18 +106,26 @@ public class LauncherLayoutController implements IProfileLoadListener {
 		initializeLogModule();
 		initializeProfileModule();
 		initializeModules();
-		initializeExternalLibraries();
-		initializeEmulatorManager();
-		showVersion();
+                initializeExternalLibraries();
+                initializeEmulatorManager();
+                showVersion();
+                initializeProfileHeader();
 
-	}
+        }
 
-	private void showVersion() {
-		String version = getVersion();
-		labelVersion.setText("Version: " + version);
-	}
+        private void showVersion() {
+                String version = getVersion();
+                labelVersion.setText("Version: " + version);
+        }
 
-	private String getVersion() {
+        private void initializeProfileHeader() {
+                imageProfile.setFitHeight(PROFILE_IMAGE_SIZE);
+                imageProfile.setFitWidth(PROFILE_IMAGE_SIZE);
+                imageProfile.setImage(null);
+                labelProfileName.setText("");
+        }
+
+        private String getVersion() {
 		// If running as JAR
 		Package pkg = getClass().getPackage();
 		if (pkg != null && pkg.getImplementationVersion() != null) {
@@ -371,13 +389,20 @@ public class LauncherLayoutController implements IProfileLoadListener {
 		return type.cast(controller);
 	}
 
-	@Override
-	public void onProfileLoad(ProfileAux profile) {
-		String version = getVersion();
-		stage.setTitle("Whiteout Survival Bot v" + version + " - " + profile.getName());
-		buttonStartStop.setDisable(false);
-		buttonPauseResume.setDisable(true);
-	}
+        @Override
+        public void onProfileLoad(ProfileAux profile) {
+                labelProfileName.setText(profile.getName());
+                String photoPath = profile.getConfig(EnumConfigurationKey.PROFILE_IMAGE_PATH_STRING, String.class);
+                if (photoPath != null && !photoPath.trim().isEmpty() && new File(photoPath).exists()) {
+                        imageProfile.setImage(new Image(new File(photoPath).toURI().toString()));
+                } else {
+                        imageProfile.setImage(null);
+                }
+                String version = getVersion();
+                stage.setTitle("Whiteout Survival Bot v" + version + " - " + profile.getName());
+                buttonStartStop.setDisable(false);
+                buttonPauseResume.setDisable(true);
+        }
 
 	public void onBotStateChange(DTOBotState botState) {
 		if (botState != null) {
