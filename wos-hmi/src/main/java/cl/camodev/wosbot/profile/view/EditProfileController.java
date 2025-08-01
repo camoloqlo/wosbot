@@ -15,6 +15,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.scene.shape.Circle;
 
 import java.net.URL;
 import java.io.File;
@@ -22,7 +23,7 @@ import java.util.ResourceBundle;
 
 public class EditProfileController implements Initializable {
 
-    private static final double PROFILE_IMAGE_SIZE = 80.0;
+    private static final double PROFILE_IMAGE_DIAMETER = 80.0;
 
     @FXML
     private TextField txtProfileName;
@@ -63,8 +64,9 @@ public class EditProfileController implements Initializable {
             }
         });
 
-        imageProfile.setFitHeight(PROFILE_IMAGE_SIZE);
-        imageProfile.setFitWidth(PROFILE_IMAGE_SIZE);
+        imageProfile.setFitHeight(PROFILE_IMAGE_DIAMETER);
+        imageProfile.setFitWidth(PROFILE_IMAGE_DIAMETER);
+        imageProfile.setClip(new Circle(PROFILE_IMAGE_DIAMETER / 2, PROFILE_IMAGE_DIAMETER / 2, PROFILE_IMAGE_DIAMETER / 2));
         imageProfile.setImage(null);
     }
 

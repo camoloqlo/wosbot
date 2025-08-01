@@ -53,12 +53,13 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 public class LauncherLayoutController implements IProfileLoadListener {
 
-        private static final double PROFILE_IMAGE_SIZE = 40.0;
+       private static final double PROFILE_IMAGE_DIAMETER = 80.0;
 
         @FXML
         private VBox buttonsContainer;
@@ -83,6 +84,9 @@ public class LauncherLayoutController implements IProfileLoadListener {
         @FXML
         private Label labelProfileName;
 
+       @FXML
+       private Button buttonChangePhoto;
+
         private Stage stage;
 
 	private LauncherActionController actionController;
@@ -93,7 +97,9 @@ public class LauncherLayoutController implements IProfileLoadListener {
 
 	private Map<String, Object> moduleControllers = new HashMap<>();
 
-	private boolean estado = false;
+       private boolean estado = false;
+
+       private ProfileAux currentProfile;
 
 	public LauncherLayoutController(Stage stage) {
 		this.stage = stage;
@@ -118,12 +124,13 @@ public class LauncherLayoutController implements IProfileLoadListener {
                 labelVersion.setText("Version: " + version);
         }
 
-        private void initializeProfileHeader() {
-                imageProfile.setFitHeight(PROFILE_IMAGE_SIZE);
-                imageProfile.setFitWidth(PROFILE_IMAGE_SIZE);
-                imageProfile.setImage(null);
-                labelProfileName.setText("");
-        }
+       private void initializeProfileHeader() {
+               imageProfile.setFitHeight(PROFILE_IMAGE_DIAMETER);
+               imageProfile.setFitWidth(PROFILE_IMAGE_DIAMETER);
+               imageProfile.setClip(new Circle(PROFILE_IMAGE_DIAMETER / 2, PROFILE_IMAGE_DIAMETER / 2, PROFILE_IMAGE_DIAMETER / 2));
+               imageProfile.setImage(null);
+               labelProfileName.setText("");
+       }
 
         private String getVersion() {
 		// If running as JAR
@@ -391,18 +398,35 @@ public class LauncherLayoutController implements IProfileLoadListener {
 
         @Override
         public void onProfileLoad(ProfileAux profile) {
-                labelProfileName.setText(profile.getName());
-                String photoPath = profile.getConfig(EnumConfigurationKey.PROFILE_IMAGE_PATH_STRING, String.class);
-                if (photoPath != null && !photoPath.trim().isEmpty() && new File(photoPath).exists()) {
-                        imageProfile.setImage(new Image(new File(photoPath).toURI().toString()));
-                } else {
-                        imageProfile.setImage(null);
-                }
-                String version = getVersion();
-                stage.setTitle("Whiteout Survival Bot v" + version + " - " + profile.getName());
-                buttonStartStop.setDisable(false);
-                buttonPauseResume.setDisable(true);
-        }
+               currentProfile = profile;
+               labelProfileName.setText(profile.getName());
+               String photoPath = profile.getConfig(EnumConfigurationKey.PROFILE_IMAGE_PATH_STRING, String.class);
+               if (photoPath != null && !photoPath.trim().isEmpty() && new File(photoPath).exists()) {
+                       imageProfile.setImage(new Image(new File(photoPath).toURI().toString()));
+               } else {
+                       imageProfile.setImage(null);
+               }
+               String version = getVersion();
+               stage.setTitle("Whiteout Survival Bot v" + version + " - " + profile.getName());
+               buttonStartStop.setDisable(false);
+               buttonPauseResume.setDisable(true);
+       }
+
+       @FXML
+       private void handleChangePhoto() {
+               if (currentProfile == null) {
+                       return;
+               }
+               FileChooser fileChooser = new FileChooser();
+               fileChooser.setTitle("Select Profile Photo");
+               fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG Images", "*.png"));
+               File selectedFile = fileChooser.showOpenDialog(stage);
+               if (selectedFile != null) {
+                       imageProfile.setImage(new Image(selectedFile.toURI().toString()));
+                       currentProfile.setConfig(EnumConfigurationKey.PROFILE_IMAGE_PATH_STRING, selectedFile.getAbsolutePath());
+                       profileManagerLayoutController.saveProfile(currentProfile);
+               }
+       }
 
 	public void onBotStateChange(DTOBotState botState) {
 		if (botState != null) {

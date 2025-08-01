@@ -8,6 +8,7 @@
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
@@ -29,12 +30,17 @@
 
                 <VBox fx:id="buttonsContainer" prefHeight="325.0" prefWidth="140.0" style="-fx-border-color: black;">
                    <children>
-                      <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: #2E2E2E; -fx-padding: 10;">
+                      <VBox alignment="CENTER" spacing="5.0" style="-fx-background-color: #2E2E2E; -fx-padding: 10;">
                          <children>
-                            <ImageView fx:id="imageProfile" pickOnBounds="true" preserveRatio="true" />
+                            <StackPane>
+                               <children>
+                                  <ImageView fx:id="imageProfile" pickOnBounds="true" preserveRatio="true" />
+                                  <Button fx:id="buttonChangePhoto" mnemonicParsing="false" onAction="#handleChangePhoto" text="Change" StackPane.alignment="BOTTOM_RIGHT" style="-fx-background-color: #555555; -fx-text-fill: white; -fx-font-size: 10px;" />
+                               </children>
+                            </StackPane>
                             <Label fx:id="labelProfileName" style="-fx-text-fill: white; -fx-font-size: 14px;" />
                          </children>
-                      </HBox>
+                      </VBox>
                    </children>
                    <HBox.margin>
                       <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
