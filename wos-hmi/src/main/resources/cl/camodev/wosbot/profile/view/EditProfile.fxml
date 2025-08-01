@@ -5,6 +5,7 @@
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
@@ -14,6 +15,12 @@
 <VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="250.0" prefWidth="400.0" spacing="10.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cl.camodev.wosbot.profile.view.EditProfileController">
    <children>
       <Label style="-fx-font-size: 16px; -fx-font-weight: bold;" text="Edit Profile" />
+      <HBox alignment="CENTER_LEFT" spacing="10.0">
+         <children>
+            <ImageView fx:id="imageProfile" fitHeight="80.0" fitWidth="80.0" pickOnBounds="true" preserveRatio="true" />
+            <Button mnemonicParsing="false" onAction="#handleInsertPhoto" text="Insert Photo" />
+         </children>
+      </HBox>
 
       <GridPane hgap="10.0" vgap="10.0">
         <columnConstraints>

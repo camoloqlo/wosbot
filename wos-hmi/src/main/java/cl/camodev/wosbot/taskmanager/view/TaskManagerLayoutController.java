@@ -481,33 +481,46 @@ public class TaskManagerLayoutController {
 		return table;
 	}
 
-	public void updateTaskStatus(Long profileId, int taskNameId, DTOTaskState taskState) {
-		Platform.runLater(() -> {
-			ObservableList<TaskManagerAux> dataList = tasks.get(profileId);
-			if (dataList == null)
-				return;
-			Optional<TaskManagerAux> optionalTask = dataList.stream().filter(aux -> aux.getTaskEnum().getId() == taskNameId).findFirst();
-			if (!optionalTask.isPresent())
-				return;
+        public void updateTaskStatus(Long profileId, int taskNameId, DTOTaskState taskState) {
+                Platform.runLater(() -> {
+                        ObservableList<TaskManagerAux> dataList = tasks.get(profileId);
+                        if (dataList == null)
+                                return;
+                       TaskManagerAux taskAux = dataList.stream()
+                                       .filter(aux -> aux.getTaskEnum().getId() == taskNameId)
+                                       .findFirst()
+                                       .orElseGet(() -> {
+                                               TpDailyTaskEnum enumMatch = Arrays.stream(TpDailyTaskEnum.values())
+                                                               .filter(e -> e.getId() == taskNameId)
+                                                               .findFirst()
+                                                               .orElse(null);
+                                               if (enumMatch == null) {
+                                                       return null;
+                                               }
+                                               TaskManagerAux newTask = new TaskManagerAux(enumMatch.getName(), null, null, enumMatch, profileId, Long.MAX_VALUE, false, false, false);
+                                               dataList.add(newTask);
+                                               return newTask;
+                                       });
+                       if (taskAux == null)
+                               return;
 
-			Tab t = profileTabsMap.get(profileId);
-			boolean hasQueue = ServScheduler
-					.getServices()
-					.getQueueManager()
-					.getQueue(profileId) != null;
+                       Tab t = profileTabsMap.get(profileId);
+                       boolean hasQueue = ServScheduler
+                                       .getServices()
+                                       .getQueueManager()
+                                       .getQueue(profileId) != null;
 
-			ImageView iv = new ImageView(hasQueue ? iconTrue : iconFalse);
+                       ImageView iv = new ImageView(hasQueue ? iconTrue : iconFalse);
 
-			iv.setFitWidth(16);
-			iv.setFitHeight(16);
+                       iv.setFitWidth(16);
+                       iv.setFitHeight(16);
 
-			t.setGraphic(iv);
-			TaskManagerAux taskAux = optionalTask.get();
-			taskAux.setLastExecution(taskState.getLastExecutionTime());
-			taskAux.setNextExecution(taskState.getNextExecutionTime());
-			taskAux.setScheduled(taskState.isScheduled());
-			taskAux.setExecuting(taskState.isExecuting());
-			taskAux.setHasReadyTask(taskState.getNextExecutionTime() != null && ChronoUnit.SECONDS.between(LocalDateTime.now(), taskState.getNextExecutionTime()) <= 0);
+                       t.setGraphic(iv);
+                        taskAux.setLastExecution(taskState.getLastExecutionTime());
+                        taskAux.setNextExecution(taskState.getNextExecutionTime());
+                        taskAux.setScheduled(taskState.isScheduled());
+                        taskAux.setExecuting(taskState.isExecuting());
+                        taskAux.setHasReadyTask(taskState.getNextExecutionTime() != null && ChronoUnit.SECONDS.between(LocalDateTime.now(), taskState.getNextExecutionTime()) <= 0);
 			taskAux.setNearestMinutesUntilExecution(taskState.getNextExecutionTime() != null ? ChronoUnit.SECONDS.between(LocalDateTime.now(), taskState.getNextExecutionTime()) : Long.MAX_VALUE);
 
 			FXCollections.sort(dataList, TASK_AUX_COMPARATOR);

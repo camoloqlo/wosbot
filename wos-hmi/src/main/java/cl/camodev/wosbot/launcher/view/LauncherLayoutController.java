@@ -37,6 +37,7 @@ import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.shop.view.ShopLayoutController;
 import cl.camodev.wosbot.taskmanager.view.TaskManagerLayoutController;
 import cl.camodev.wosbot.training.view.TrainingLayoutController;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -47,33 +48,50 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 public class LauncherLayoutController implements IProfileLoadListener {
 
-	@FXML
-	private VBox buttonsContainer;
-	@FXML
-	private Button buttonStartStop;
+       private static final double PROFILE_IMAGE_SIZE = 128.0;
 
-	@FXML
-	private Button buttonPauseResume;
+        @FXML
+        private VBox buttonsContainer;
+        @FXML
+        private Button buttonStartStop;
 
-	@FXML
-	private AnchorPane mainContentPane;
+        @FXML
+        private Button buttonPauseResume;
 
-	@FXML
-	private Label labelRunTime;
+        @FXML
+        private AnchorPane mainContentPane;
 
-	@FXML
-	private Label labelVersion;
+        @FXML
+        private Label labelRunTime;
 
-	private Stage stage;
+        @FXML
+        private Label labelVersion;
+
+        @FXML
+       private ImageView imageProfile;
+
+       @FXML
+       private Label labelProfileName;
+
+       @FXML
+       private Button buttonChangePhoto;
+
+       @FXML
+       private Circle imagePlaceholder;
+
+        private Stage stage;
 
 	private LauncherActionController actionController;
 
@@ -83,7 +101,9 @@ public class LauncherLayoutController implements IProfileLoadListener {
 
 	private Map<String, Object> moduleControllers = new HashMap<>();
 
-	private boolean estado = false;
+       private boolean estado = false;
+
+       private ProfileAux currentProfile;
 
 	public LauncherLayoutController(Stage stage) {
 		this.stage = stage;
@@ -91,23 +111,50 @@ public class LauncherLayoutController implements IProfileLoadListener {
 
 	@FXML
 	private void initialize() {
-		initializeDiscordBot();
-		initializeEmulatorManager();
-		initializeLogModule();
-		initializeProfileModule();
-		initializeModules();
-		initializeExternalLibraries();
-		initializeEmulatorManager();
-		showVersion();
+               initializeDiscordBot();
+               initializeEmulatorManager();
+               initializeLogModule();
+               initializeProfileModule();
+               initializeModules();
+               initializeExternalLibraries();
+               showVersion();
+               initializeProfileHeader();
 
-	}
+        }
 
-	private void showVersion() {
-		String version = getVersion();
-		labelVersion.setText("Version: " + version);
-	}
+        private void showVersion() {
+                String version = getVersion();
+                labelVersion.setText("Version: " + version);
+        }
 
-	private String getVersion() {
+       private void initializeProfileHeader() {
+               imageProfile.setFitHeight(PROFILE_IMAGE_SIZE);
+               imageProfile.setFitWidth(PROFILE_IMAGE_SIZE);
+               imageProfile.setClip(new Circle(PROFILE_IMAGE_SIZE / 2, PROFILE_IMAGE_SIZE / 2, PROFILE_IMAGE_SIZE / 2));
+               imagePlaceholder.setRadius(PROFILE_IMAGE_SIZE / 2);
+               imagePlaceholder.setVisible(true);
+               imageProfile.setImage(null);
+               labelProfileName.setText("");
+       }
+
+       private void loadProfileImageAsync(File file) {
+               imageProfile.setImage(null);
+               imagePlaceholder.setVisible(true);
+               Task<Image> loadTask = new Task<>() {
+                       @Override
+                       protected Image call() {
+                               return new Image(file.toURI().toString(), PROFILE_IMAGE_SIZE, PROFILE_IMAGE_SIZE, true, true);
+                       }
+               };
+               loadTask.setOnSucceeded(e -> {
+                       imageProfile.setImage(loadTask.getValue());
+                       imagePlaceholder.setVisible(false);
+               });
+               loadTask.setOnFailed(e -> imagePlaceholder.setVisible(true));
+               new Thread(loadTask, "ProfileImageLoader").start();
+       }
+
+        private String getVersion() {
 		// If running as JAR
 		Package pkg = getClass().getPackage();
 		if (pkg != null && pkg.getImplementationVersion() != null) {
@@ -371,13 +418,44 @@ public class LauncherLayoutController implements IProfileLoadListener {
 		return type.cast(controller);
 	}
 
-	@Override
-	public void onProfileLoad(ProfileAux profile) {
-		String version = getVersion();
-		stage.setTitle("Whiteout Survival Bot v" + version + " - " + profile.getName());
-		buttonStartStop.setDisable(false);
-		buttonPauseResume.setDisable(true);
-	}
+        @Override
+        public void onProfileLoad(ProfileAux profile) {
+               currentProfile = profile;
+               labelProfileName.setText(profile.getName());
+               String photoPath = profile.getConfig(EnumConfigurationKey.PROFILE_IMAGE_PATH_STRING, String.class);
+               if (photoPath != null && !photoPath.trim().isEmpty()) {
+                       File photoFile = new File(photoPath);
+                       if (photoFile.exists()) {
+                               loadProfileImageAsync(photoFile);
+                       } else {
+                               imageProfile.setImage(null);
+                               imagePlaceholder.setVisible(true);
+                       }
+               } else {
+                       imageProfile.setImage(null);
+                       imagePlaceholder.setVisible(true);
+               }
+               String version = getVersion();
+               stage.setTitle("Whiteout Survival Bot v" + version + " - " + profile.getName());
+               buttonStartStop.setDisable(false);
+               buttonPauseResume.setDisable(true);
+       }
+
+       @FXML
+       private void handleChangePhoto() {
+               if (currentProfile == null) {
+                       return;
+               }
+               FileChooser fileChooser = new FileChooser();
+               fileChooser.setTitle("Select Profile Photo");
+               fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG Images", "*.png"));
+               File selectedFile = fileChooser.showOpenDialog(stage);
+               if (selectedFile != null) {
+                       loadProfileImageAsync(selectedFile);
+                       currentProfile.setConfig(EnumConfigurationKey.PROFILE_IMAGE_PATH_STRING, selectedFile.getAbsolutePath());
+                       profileManagerLayoutController.saveProfile(currentProfile);
+               }
+       }
 
 	public void onBotStateChange(DTOBotState botState) {
 		if (botState != null) {

@@ -62,7 +62,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 	@FXML
 	private Button btnBulkUpdate;
 	private Long loadedProfileId;
-	private List<IProfileLoadListener> profileLoadListeners;
+        private List<IProfileLoadListener> profileLoadListeners;
 
 	@FXML
 	private void initialize() {
@@ -76,24 +76,24 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 		profileManagerActionController = new ProfileManagerActionController(this);
 	}
 
-	private void initializeTableView() {
+        private void initializeTableView() {
 		profiles = FXCollections.observableArrayList();
 
 		columnProfileName.setCellValueFactory(cellData -> cellData.getValue().nameProperty());
 		columnEmulatorNumber.setCellValueFactory(cellData -> cellData.getValue().emulatorNumberProperty());
-		columnStatus.setCellValueFactory(cellData -> cellData.getValue().statusProperty());
+               columnStatus.setCellValueFactory(cellData -> cellData.getValue().statusProperty());
 
-		// Add double-click event handler to open edit dialog
-		tableviewLogMessages.setRowFactory(tv -> {
-			javafx.scene.control.TableRow<ProfileAux> row = new javafx.scene.control.TableRow<>();
-			row.setOnMouseClicked(event -> {
-				if (event.getClickCount() == 2 && (!row.isEmpty())) {
-					ProfileAux selectedProfile = row.getItem();
-					profileManagerActionController.showEditProfileDialog(selectedProfile, tableviewLogMessages);
-				}
-			});
-			return row;
-		});
+               // Add double-click event handler to open edit dialog
+               tableviewLogMessages.setRowFactory(tv -> {
+                        javafx.scene.control.TableRow<ProfileAux> row = new javafx.scene.control.TableRow<>();
+                        row.setOnMouseClicked(event -> {
+                                if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                                        ProfileAux selectedProfile = row.getItem();
+                                        profileManagerActionController.showEditProfileDialog(selectedProfile, tableviewLogMessages);
+                                }
+                        });
+                        return row;
+               });
 
 		columnDelete.setCellFactory(new Callback<TableColumn<ProfileAux, Void>, TableCell<ProfileAux, Void>>() {
 			@Override
@@ -291,12 +291,16 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 	}
 
 	@FXML
-	void handleButtonBulkUpdateProfiles(ActionEvent event) {
-		profileManagerActionController.showBulkUpdateDialog(loadedProfileId, profiles, btnBulkUpdate);
-	}
+        void handleButtonBulkUpdateProfiles(ActionEvent event) {
+                profileManagerActionController.showBulkUpdateDialog(loadedProfileId, profiles, btnBulkUpdate);
+        }
 
-	public void loadProfiles() {
-		profileManagerActionController.loadProfiles(dtoProfiles -> {
+       public boolean saveProfile(ProfileAux profile) {
+               return profileManagerActionController.saveProfile(profile);
+       }
+
+        public void loadProfiles() {
+                profileManagerActionController.loadProfiles(dtoProfiles -> {
 			Platform.runLater(() -> {
 				profiles.clear();
 				dtoProfiles.forEach(dtoProfile -> {

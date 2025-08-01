@@ -91,8 +91,9 @@ public enum EnumConfigurationKey {
 	
 	BOOL_BANK("false",Boolean.class),
 	INT_BANK_DELAY("1",Integer.class),
-	BOOL_MYSTERY_SHOP("false",Boolean.class),
-	;
+        BOOL_MYSTERY_SHOP("false",Boolean.class),
+        PROFILE_IMAGE_PATH_STRING("", String.class),
+        ;
 	//@formatter:on
     private final String defaultValue;
     private final Class<?> type;
