@@ -8,9 +8,10 @@
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.shape.Circle?>
 
 <GridPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="508.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1">
     
@@ -28,17 +29,18 @@
         <HBox>
             <children>
 
-                <VBox fx:id="buttonsContainer" prefHeight="325.0" prefWidth="140.0" style="-fx-border-color: black;">
+                <VBox fx:id="buttonsContainer" prefHeight="325.0" prefWidth="140.0" style="-fx-background-color: transparent;">
                    <children>
-                      <VBox alignment="CENTER" spacing="5.0" style="-fx-background-color: #2E2E2E; -fx-padding: 10;">
+                      <VBox alignment="TOP_CENTER" spacing="8.0" style="-fx-background-color: #2E2E2E; -fx-padding: 15; -fx-background-radius: 5;">
                          <children>
-                            <StackPane>
+                            <StackPane alignment="CENTER">
                                <children>
+                                  <Circle fx:id="imagePlaceholder" fill="#555555" radius="64.0" />
                                   <ImageView fx:id="imageProfile" pickOnBounds="true" preserveRatio="true" />
-                                  <Button fx:id="buttonChangePhoto" mnemonicParsing="false" onAction="#handleChangePhoto" text="Change" StackPane.alignment="BOTTOM_RIGHT" style="-fx-background-color: #555555; -fx-text-fill: white; -fx-font-size: 10px;" />
                                </children>
                             </StackPane>
                             <Label fx:id="labelProfileName" style="-fx-text-fill: white; -fx-font-size: 14px;" />
+                            <Button fx:id="buttonChangePhoto" mnemonicParsing="false" onAction="#handleChangePhoto" text="Upload Photo" style="-fx-background-color: #555555; -fx-text-fill: white; -fx-font-size: 10px;" />
                          </children>
                       </VBox>
                    </children>

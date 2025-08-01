@@ -5,6 +5,7 @@ import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
 import cl.camodev.wosbot.profile.controller.ProfileManagerActionController;
 import cl.camodev.wosbot.profile.model.ProfileAux;
 import cl.camodev.wosbot.serv.impl.ServLogs;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
@@ -23,7 +24,7 @@ import java.util.ResourceBundle;
 
 public class EditProfileController implements Initializable {
 
-    private static final double PROFILE_IMAGE_DIAMETER = 80.0;
+    private static final double PROFILE_IMAGE_SIZE = 128.0;
 
     @FXML
     private TextField txtProfileName;
@@ -64,9 +65,9 @@ public class EditProfileController implements Initializable {
             }
         });
 
-        imageProfile.setFitHeight(PROFILE_IMAGE_DIAMETER);
-        imageProfile.setFitWidth(PROFILE_IMAGE_DIAMETER);
-        imageProfile.setClip(new Circle(PROFILE_IMAGE_DIAMETER / 2, PROFILE_IMAGE_DIAMETER / 2, PROFILE_IMAGE_DIAMETER / 2));
+        imageProfile.setFitHeight(PROFILE_IMAGE_SIZE);
+        imageProfile.setFitWidth(PROFILE_IMAGE_SIZE);
+        imageProfile.setClip(new Circle(PROFILE_IMAGE_SIZE / 2, PROFILE_IMAGE_SIZE / 2, PROFILE_IMAGE_SIZE / 2));
         imageProfile.setImage(null);
     }
 
@@ -97,7 +98,7 @@ public class EditProfileController implements Initializable {
             if (photoPath != null && !photoPath.trim().isEmpty()) {
                 File photoFile = new File(photoPath);
                 if (photoFile.exists()) {
-                    imageProfile.setImage(new Image(photoFile.toURI().toString()));
+                    loadImageAsync(photoFile);
                 }
             }
         }
@@ -192,10 +193,22 @@ public class EditProfileController implements Initializable {
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG Images", "*.png"));
         File selectedFile = fileChooser.showOpenDialog(dialogStage);
         if (selectedFile != null) {
-            imageProfile.setImage(new Image(selectedFile.toURI().toString()));
+            loadImageAsync(selectedFile);
             if (profileToEdit != null) {
                 profileToEdit.setConfig(EnumConfigurationKey.PROFILE_IMAGE_PATH_STRING, selectedFile.getAbsolutePath());
             }
         }
+    }
+
+    private void loadImageAsync(File file) {
+        imageProfile.setImage(null);
+        Task<Image> loadTask = new Task<>() {
+            @Override
+            protected Image call() {
+                return new Image(file.toURI().toString(), PROFILE_IMAGE_SIZE, PROFILE_IMAGE_SIZE, true, true);
+            }
+        };
+        loadTask.setOnSucceeded(e -> imageProfile.setImage(loadTask.getValue()));
+        new Thread(loadTask, "ProfileEditorImageLoader").start();
     }
 }

@@ -37,6 +37,7 @@ import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.shop.view.ShopLayoutController;
 import cl.camodev.wosbot.taskmanager.view.TaskManagerLayoutController;
 import cl.camodev.wosbot.training.view.TrainingLayoutController;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -59,7 +60,7 @@ import javafx.stage.Stage;
 
 public class LauncherLayoutController implements IProfileLoadListener {
 
-       private static final double PROFILE_IMAGE_DIAMETER = 80.0;
+       private static final double PROFILE_IMAGE_SIZE = 128.0;
 
         @FXML
         private VBox buttonsContainer;
@@ -79,13 +80,16 @@ public class LauncherLayoutController implements IProfileLoadListener {
         private Label labelVersion;
 
         @FXML
-        private ImageView imageProfile;
+       private ImageView imageProfile;
 
-        @FXML
-        private Label labelProfileName;
+       @FXML
+       private Label labelProfileName;
 
        @FXML
        private Button buttonChangePhoto;
+
+       @FXML
+       private Circle imagePlaceholder;
 
         private Stage stage;
 
@@ -107,15 +111,14 @@ public class LauncherLayoutController implements IProfileLoadListener {
 
 	@FXML
 	private void initialize() {
-		initializeDiscordBot();
-		initializeEmulatorManager();
-		initializeLogModule();
-		initializeProfileModule();
-		initializeModules();
-                initializeExternalLibraries();
-                initializeEmulatorManager();
-                showVersion();
-                initializeProfileHeader();
+               initializeDiscordBot();
+               initializeEmulatorManager();
+               initializeLogModule();
+               initializeProfileModule();
+               initializeModules();
+               initializeExternalLibraries();
+               showVersion();
+               initializeProfileHeader();
 
         }
 
@@ -125,11 +128,30 @@ public class LauncherLayoutController implements IProfileLoadListener {
         }
 
        private void initializeProfileHeader() {
-               imageProfile.setFitHeight(PROFILE_IMAGE_DIAMETER);
-               imageProfile.setFitWidth(PROFILE_IMAGE_DIAMETER);
-               imageProfile.setClip(new Circle(PROFILE_IMAGE_DIAMETER / 2, PROFILE_IMAGE_DIAMETER / 2, PROFILE_IMAGE_DIAMETER / 2));
+               imageProfile.setFitHeight(PROFILE_IMAGE_SIZE);
+               imageProfile.setFitWidth(PROFILE_IMAGE_SIZE);
+               imageProfile.setClip(new Circle(PROFILE_IMAGE_SIZE / 2, PROFILE_IMAGE_SIZE / 2, PROFILE_IMAGE_SIZE / 2));
+               imagePlaceholder.setRadius(PROFILE_IMAGE_SIZE / 2);
+               imagePlaceholder.setVisible(true);
                imageProfile.setImage(null);
                labelProfileName.setText("");
+       }
+
+       private void loadProfileImageAsync(File file) {
+               imageProfile.setImage(null);
+               imagePlaceholder.setVisible(true);
+               Task<Image> loadTask = new Task<>() {
+                       @Override
+                       protected Image call() {
+                               return new Image(file.toURI().toString(), PROFILE_IMAGE_SIZE, PROFILE_IMAGE_SIZE, true, true);
+                       }
+               };
+               loadTask.setOnSucceeded(e -> {
+                       imageProfile.setImage(loadTask.getValue());
+                       imagePlaceholder.setVisible(false);
+               });
+               loadTask.setOnFailed(e -> imagePlaceholder.setVisible(true));
+               new Thread(loadTask, "ProfileImageLoader").start();
        }
 
         private String getVersion() {
@@ -401,10 +423,17 @@ public class LauncherLayoutController implements IProfileLoadListener {
                currentProfile = profile;
                labelProfileName.setText(profile.getName());
                String photoPath = profile.getConfig(EnumConfigurationKey.PROFILE_IMAGE_PATH_STRING, String.class);
-               if (photoPath != null && !photoPath.trim().isEmpty() && new File(photoPath).exists()) {
-                       imageProfile.setImage(new Image(new File(photoPath).toURI().toString()));
+               if (photoPath != null && !photoPath.trim().isEmpty()) {
+                       File photoFile = new File(photoPath);
+                       if (photoFile.exists()) {
+                               loadProfileImageAsync(photoFile);
+                       } else {
+                               imageProfile.setImage(null);
+                               imagePlaceholder.setVisible(true);
+                       }
                } else {
                        imageProfile.setImage(null);
+                       imagePlaceholder.setVisible(true);
                }
                String version = getVersion();
                stage.setTitle("Whiteout Survival Bot v" + version + " - " + profile.getName());
@@ -422,7 +451,7 @@ public class LauncherLayoutController implements IProfileLoadListener {
                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG Images", "*.png"));
                File selectedFile = fileChooser.showOpenDialog(stage);
                if (selectedFile != null) {
-                       imageProfile.setImage(new Image(selectedFile.toURI().toString()));
+                       loadProfileImageAsync(selectedFile);
                        currentProfile.setConfig(EnumConfigurationKey.PROFILE_IMAGE_PATH_STRING, selectedFile.getAbsolutePath());
                        profileManagerLayoutController.saveProfile(currentProfile);
                }
