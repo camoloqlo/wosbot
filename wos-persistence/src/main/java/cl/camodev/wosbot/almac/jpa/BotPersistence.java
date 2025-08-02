@@ -1,5 +1,10 @@
 package cl.camodev.wosbot.almac.jpa;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -10,30 +15,57 @@ import jakarta.persistence.Query;
 
 public final class BotPersistence {
 
-	private static final String PERSISTENCE_UNIT_NAME = "botPU";
-	private static BotPersistence instance;
-	private static EntityManagerFactory entityManagerFactory;
+        private static final String PERSISTENCE_UNIT_NAME = "botPU";
+        private static final String JDBC_URL_PROPERTY = "jakarta.persistence.jdbc.url";
+        private static final String DB_FOLDER = "db";
+        private static final String PROFILE_PROPERTY = "bot.profile";
+        private static final String SQLITE_PREFIX = "jdbc:sqlite:";
+        private static final String PRAGMA_JOURNAL_MODE_WAL = "PRAGMA journal_mode=WAL";
+        private static final String PRAGMA_SYNC_NORMAL = "PRAGMA synchronous=NORMAL";
+        private static BotPersistence instance;
+        private static EntityManagerFactory entityManagerFactory;
 
-	private BotPersistence() {
-		try {
-			entityManagerFactory = Persistence.createEntityManagerFactory(PERSISTENCE_UNIT_NAME);
-			PersistenceDataInitialization.initializeData();
-		} catch (Exception ex) {
-			System.err.println("Error inicializando EntityManagerFactory: " + ex.getMessage());
-			throw new ExceptionInInitializerError(ex);
-		}
-	}
+        private BotPersistence() {
+                try {
+                        Map<String, Object> properties = new HashMap<>();
+                        properties.put(JDBC_URL_PROPERTY, SQLITE_PREFIX + resolveDatabasePath());
+                        entityManagerFactory =
+                                        Persistence.createEntityManagerFactory(PERSISTENCE_UNIT_NAME, properties);
+                        configureSQLite();
+                        PersistenceDataInitialization.initializeData();
+                } catch (Exception ex) {
+                        System.err.println("Error inicializando EntityManagerFactory: " + ex.getMessage());
+                        throw new ExceptionInInitializerError(ex);
+                }
+        }
 
-	public static BotPersistence getInstance() {
-		if (instance == null) {
-			synchronized (BotPersistence.class) {
-				if (instance == null) {
-					instance = new BotPersistence();
-				}
-			}
-		}
-		return instance;
-	}
+        public static BotPersistence getInstance() {
+                if (instance == null) {
+                        synchronized (BotPersistence.class) {
+                                if (instance == null) {
+                                        instance = new BotPersistence();
+                                }
+                        }
+                }
+                return instance;
+        }
+
+        private static String resolveDatabasePath() throws IOException {
+                String profile = System.getProperty(PROFILE_PROPERTY, "default");
+                Path directory = Paths.get(DB_FOLDER);
+                Files.createDirectories(directory);
+                return directory.resolve(profile + ".db").toString();
+        }
+
+        private void configureSQLite() {
+                EntityManager entityManager = getEntityManager();
+                try {
+                        entityManager.createNativeQuery(PRAGMA_JOURNAL_MODE_WAL).getSingleResult();
+                        entityManager.createNativeQuery(PRAGMA_SYNC_NORMAL).executeUpdate();
+                } finally {
+                        entityManager.close();
+                }
+        }
 
 	private EntityManager getEntityManager() {
 		return entityManagerFactory.createEntityManager();
