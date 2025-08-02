@@ -19,6 +19,7 @@ public final class BotPersistence {
         private static final String JDBC_URL_PROPERTY = "jakarta.persistence.jdbc.url";
         private static final String DB_FOLDER = "db";
         private static final String PROFILE_PROPERTY = "bot.profile";
+        private static final String DEFAULT_PROFILE = "default";
         private static final String SQLITE_PREFIX = "jdbc:sqlite:";
         private static final String PRAGMA_JOURNAL_MODE_WAL = "PRAGMA journal_mode=WAL";
         private static final String PRAGMA_SYNC_NORMAL = "PRAGMA synchronous=NORMAL";
@@ -51,7 +52,7 @@ public final class BotPersistence {
         }
 
         private static String resolveDatabasePath() throws IOException {
-                String profile = System.getProperty(PROFILE_PROPERTY, "default");
+                String profile = System.getProperty(PROFILE_PROPERTY, DEFAULT_PROFILE);
                 Path directory = Paths.get(DB_FOLDER);
                 Files.createDirectories(directory);
                 return directory.resolve(profile + ".db").toString();
@@ -60,8 +61,15 @@ public final class BotPersistence {
         private void configureSQLite() {
                 EntityManager entityManager = getEntityManager();
                 try {
-                        entityManager.createNativeQuery(PRAGMA_JOURNAL_MODE_WAL).getSingleResult();
+                        entityManager.getTransaction().begin();
+                        entityManager.createNativeQuery(PRAGMA_JOURNAL_MODE_WAL).executeUpdate();
                         entityManager.createNativeQuery(PRAGMA_SYNC_NORMAL).executeUpdate();
+                        entityManager.getTransaction().commit();
+                } catch (Exception e) {
+                        System.err.println("Error configuring SQLite: " + e.getMessage());
+                        if (entityManager.getTransaction().isActive()) {
+                                entityManager.getTransaction().rollback();
+                        }
                 } finally {
                         entityManager.close();
                 }
