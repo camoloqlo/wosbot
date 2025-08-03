@@ -30,8 +30,10 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 public class ProfileManagerActionController implements IProfileStatusChangeListener {
+        private static final double EDIT_DIALOG_MIN_WIDTH = 600;
+        private static final double EDIT_DIALOG_MIN_HEIGHT = 400;
 
-	private final ProfileManagerLayoutController profileManagerLayoutController;
+        private final ProfileManagerLayoutController profileManagerLayoutController;
 
 	private Stage newProfileStage;
 
@@ -238,16 +240,16 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 			Scene scene = new Scene(root);
 			scene.getStylesheets().add(ILauncherConstants.getCssPath());
 
-			dialogStage.setScene(scene);
-			dialogStage.initModality(Modality.WINDOW_MODAL);
-			dialogStage.initOwner(ownerNode.getScene().getWindow());
-			dialogStage.setResizable(false);
+                        dialogStage.setScene(scene);
+                        dialogStage.initModality(Modality.WINDOW_MODAL);
+                        dialogStage.initOwner(ownerNode.getScene().getWindow());
+                        dialogStage.setResizable(false);
 
-			// Setup the dialog with current data
-			dialogController.setupDialog(templateProfile, new ArrayList<>(profiles), dialogStage);
+                        // Setup the dialog with current data
+                        dialogController.setupDialog(templateProfile, new ArrayList<>(profiles), dialogStage);
 
-			// Show dialog and wait for user response
-			dialogStage.showAndWait();
+                        // Show dialog and wait for user response
+                        dialogStage.showAndWait();
 
 			// Process the result if user confirmed
 			if (dialogController.isUpdateConfirmed()) {
@@ -305,10 +307,14 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 			Scene scene = new Scene(root);
 			scene.getStylesheets().add(ILauncherConstants.getCssPath());
 
-			dialogStage.setScene(scene);
-			dialogStage.initModality(Modality.WINDOW_MODAL);
-			dialogStage.initOwner(ownerNode.getScene().getWindow());
-			dialogStage.setResizable(false);
+                        dialogStage.setScene(scene);
+                        dialogStage.initModality(Modality.WINDOW_MODAL);
+                        dialogStage.initOwner(ownerNode.getScene().getWindow());
+                        dialogStage.setResizable(true);
+                        dialogStage.setMinWidth(EDIT_DIALOG_MIN_WIDTH);
+                        dialogStage.setMinHeight(EDIT_DIALOG_MIN_HEIGHT);
+                        dialogStage.setWidth(EDIT_DIALOG_MIN_WIDTH);
+                        dialogStage.setHeight(EDIT_DIALOG_MIN_HEIGHT);
 
 			// Set the dialog stage in the controller
 			dialogController.setDialogStage(dialogStage);
