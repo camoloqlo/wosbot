@@ -43,7 +43,8 @@ import javafx.util.Duration;
 
 public class ProfileManagerLayoutController implements IProfileChangeObserver {
 
-    private final ExecutorService profileQueueExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    // Serialize profile operations to avoid SQLite write contention
+    private final ExecutorService profileQueueExecutor = Executors.newSingleThreadExecutor();
 	private ProfileManagerActionController profileManagerActionController;
 	private ObservableList<ProfileAux> profiles;
 	private SortedList<ProfileAux> sortedProfiles;
