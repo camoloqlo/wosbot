@@ -8,9 +8,7 @@
 
 			<property name="jakarta.persistence.jdbc.driver"
 				value="org.sqlite.JDBC" />
-                        <property name="jakarta.persistence.jdbc.url"
-
-
+                        <property name="jakarta.persistence.jdbc.url" />
 			<property name="hibernate.dialect"
 				value="org.hibernate.community.dialect.SQLiteDialect" />
 
