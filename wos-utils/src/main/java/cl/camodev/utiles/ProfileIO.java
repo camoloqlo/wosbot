@@ -52,8 +52,9 @@ public final class ProfileIO {
             throw new IllegalArgumentException("Path must not be null");
         }
         try (Reader reader = Files.newBufferedReader(path)) {
-            return GSON.fromJson(reader, new TypeToken<List<DTOProfiles>>() {
+            List<DTOProfiles> profiles = GSON.fromJson(reader, new TypeToken<List<DTOProfiles>>() {
             }.getType());
+            return profiles != null ? profiles : List.of();
         }
     }
 }

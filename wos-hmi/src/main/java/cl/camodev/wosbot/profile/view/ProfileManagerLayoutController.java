@@ -47,7 +47,9 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 
     // Serialize profile operations to avoid SQLite write contention
     private final ExecutorService profileQueueExecutor = Executors.newSingleThreadExecutor();
-	private ProfileManagerActionController profileManagerActionController;
+    private static final String JSON_FILTER_DESCRIPTION = "JSON Files";
+    private static final String JSON_FILTER_EXTENSION = "*.json";
+        private ProfileManagerActionController profileManagerActionController;
 	private ObservableList<ProfileAux> profiles;
 	private SortedList<ProfileAux> sortedProfiles;
 	@FXML
@@ -304,8 +306,9 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 
        @FXML
        void handleButtonExportProfiles(ActionEvent event) {
-               FileChooser fileChooser = new FileChooser();
-               fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.getExtensionFilters()
+                                .add(new FileChooser.ExtensionFilter(JSON_FILTER_DESCRIPTION, JSON_FILTER_EXTENSION));
                File selectedFile = fileChooser.showSaveDialog(btnExportProfiles.getScene().getWindow());
                if (selectedFile != null) {
                        boolean exported = profileManagerActionController.exportProfiles(selectedFile);
@@ -321,8 +324,9 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 
        @FXML
        void handleButtonImportProfiles(ActionEvent event) {
-               FileChooser fileChooser = new FileChooser();
-               fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.getExtensionFilters()
+                                .add(new FileChooser.ExtensionFilter(JSON_FILTER_DESCRIPTION, JSON_FILTER_EXTENSION));
                File selectedFile = fileChooser.showOpenDialog(btnImportProfiles.getScene().getWindow());
                if (selectedFile != null) {
                        boolean imported = profileManagerActionController.importProfiles(selectedFile);
