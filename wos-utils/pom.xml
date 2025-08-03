@@ -10,12 +10,12 @@
 	<artifactId>wos-utils</artifactId>
 	<name>Utiles</name>
 
-	<dependencies>
-		<dependency>
-			<groupId>org.openpnp</groupId>
-			<artifactId>opencv</artifactId>
-			<version>4.9.0-0</version>
-		</dependency>
+        <dependencies>
+                <dependency>
+                        <groupId>org.openpnp</groupId>
+                        <artifactId>opencv</artifactId>
+                        <version>4.9.0-0</version>
+                </dependency>
 		<!-- https://mvnrepository.com/artifact/net.sourceforge.tess4j/tess4j -->
 		<dependency>
 			<groupId>net.sourceforge.tess4j</groupId>
@@ -23,16 +23,21 @@
 			<version>5.14.0</version>
 		</dependency>
 
-		<dependency>
-			<groupId>cl.camodev</groupId>
-			<artifactId>wos-ot</artifactId>
-			<version>${revision}</version>
-		</dependency>
-		<!-- API -->
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-		</dependency>
+                <dependency>
+                        <groupId>cl.camodev</groupId>
+                        <artifactId>wos-ot</artifactId>
+                        <version>${revision}</version>
+                </dependency>
+                <dependency>
+                        <groupId>com.google.code.gson</groupId>
+                        <artifactId>gson</artifactId>
+                        <version>2.10.1</version>
+                </dependency>
+                <!-- API -->
+                <dependency>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-api</artifactId>
+                </dependency>
 		<!-- Binding/implementación en tiempo de ejecución -->
 		<dependency>
                         <groupId>ch.qos.logback</groupId>

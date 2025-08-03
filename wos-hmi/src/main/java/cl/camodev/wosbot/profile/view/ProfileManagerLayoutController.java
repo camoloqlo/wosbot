@@ -1,5 +1,6 @@
 package cl.camodev.wosbot.profile.view;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -40,6 +41,7 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Callback;
 import javafx.util.Duration;
+import javafx.stage.FileChooser;
 
 public class ProfileManagerLayoutController implements IProfileChangeObserver {
 
@@ -57,11 +59,15 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 	@FXML
 	private TableColumn<ProfileAux, Boolean> columnEnabled;
 	@FXML
-	private TableColumn<ProfileAux, String> columnProfileName;
-	@FXML
-	private TableColumn<ProfileAux, String> columnStatus;
-	@FXML
-	private Button btnBulkUpdate;
+        private TableColumn<ProfileAux, String> columnProfileName;
+        @FXML
+        private TableColumn<ProfileAux, String> columnStatus;
+        @FXML
+        private Button btnBulkUpdate;
+       @FXML
+       private Button btnExportProfiles;
+       @FXML
+       private Button btnImportProfiles;
 	private Long loadedProfileId;
         private List<IProfileLoadListener> profileLoadListeners;
 
@@ -295,6 +301,41 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
         void handleButtonBulkUpdateProfiles(ActionEvent event) {
                 profileManagerActionController.showBulkUpdateDialog(loadedProfileId, profiles, btnBulkUpdate);
         }
+
+       @FXML
+       void handleButtonExportProfiles(ActionEvent event) {
+               FileChooser fileChooser = new FileChooser();
+               fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
+               File selectedFile = fileChooser.showSaveDialog(btnExportProfiles.getScene().getWindow());
+               if (selectedFile != null) {
+                       boolean exported = profileManagerActionController.exportProfiles(selectedFile);
+                       Alert alert;
+                       if (exported) {
+                               alert = new Alert(Alert.AlertType.INFORMATION, "Profiles exported successfully", ButtonType.OK);
+                       } else {
+                               alert = new Alert(Alert.AlertType.ERROR, "Error exporting profiles", ButtonType.OK);
+                       }
+                       alert.showAndWait();
+               }
+       }
+
+       @FXML
+       void handleButtonImportProfiles(ActionEvent event) {
+               FileChooser fileChooser = new FileChooser();
+               fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
+               File selectedFile = fileChooser.showOpenDialog(btnImportProfiles.getScene().getWindow());
+               if (selectedFile != null) {
+                       boolean imported = profileManagerActionController.importProfiles(selectedFile);
+                       Alert alert;
+                       if (imported) {
+                               alert = new Alert(Alert.AlertType.INFORMATION, "Profiles imported successfully", ButtonType.OK);
+                               loadProfiles();
+                       } else {
+                               alert = new Alert(Alert.AlertType.ERROR, "Error importing profiles", ButtonType.OK);
+                       }
+                       alert.showAndWait();
+               }
+       }
 
        public boolean saveProfile(ProfileAux profile) {
                return profileManagerActionController.saveProfile(profile);

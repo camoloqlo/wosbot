@@ -1,5 +1,6 @@
 package cl.camodev.wosbot.profile.controller;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ import cl.camodev.wosbot.profile.view.BulkUpdateDialogController;
 import cl.camodev.wosbot.profile.view.EditProfileController;
 import cl.camodev.wosbot.profile.view.NewProfileLayoutController;
 import cl.camodev.wosbot.profile.view.ProfileManagerLayoutController;
+import cl.camodev.utiles.ProfileIO;
 import cl.camodev.wosbot.serv.IProfileStatusChangeListener;
 import cl.camodev.wosbot.serv.impl.ServLogs;
 import javafx.fxml.FXMLLoader;
@@ -104,10 +106,10 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 	 * Updates only the selected profiles with settings from the template profile.
 	 * This method allows for selective bulk updates instead of updating all profiles.
 	 */
-	public boolean bulkUpdateSelectedProfiles(ProfileAux templateProfile, List<ProfileAux> selectedProfiles) {
-		if (templateProfile == null || selectedProfiles == null || selectedProfiles.isEmpty()) {
-			return false;
-		}
+        public boolean bulkUpdateSelectedProfiles(ProfileAux templateProfile, List<ProfileAux> selectedProfiles) {
+                if (templateProfile == null || selectedProfiles == null || selectedProfiles.isEmpty()) {
+                        return false;
+                }
 
 		try {
 			boolean allUpdatesSuccessful = true;
@@ -150,12 +152,70 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
                             "Error during bulk update of selected profiles: " + e.getMessage());
                     return false;
             }
-	}
+        }
 
-	@Override
-	public void onProfileStatusChange(DTOProfileStatus status) {
-		if (status != null) {
-			profileManagerLayoutController.handleProfileStatusChange(status);
+       public boolean exportProfiles(File file) {
+               try {
+                       List<DTOProfiles> profiles = iModel.getProfiles();
+                       ProfileIO.writeProfiles(profiles, file.toPath());
+                       return true;
+               } catch (Exception e) {
+                       ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-",
+                                       "Export failed: " + e.getMessage());
+                       return false;
+               }
+       }
+
+       public boolean importProfiles(File file) {
+               try {
+                       List<DTOProfiles> profiles = ProfileIO.readProfiles(file.toPath());
+                       if (profiles == null) {
+                               return false;
+                       }
+                       List<DTOProfiles> existing = iModel.getProfiles();
+                       for (DTOProfiles profile : profiles) {
+                               if (!isProfileValid(profile)) {
+                                       ServLogs.getServices().appendLog(EnumTpMessageSeverity.WARNING, "Profile Manager", "-",
+                                                       "Invalid profile skipped: " + profile);
+                                       continue;
+                               }
+                               DTOProfiles match = existing.stream()
+                                               .filter(p -> p.getName().equalsIgnoreCase(profile.getName()))
+                                               .findFirst().orElse(null);
+                               if (match != null) {
+                                       profile.setId(match.getId());
+                                       iModel.saveProfile(profile);
+                               } else {
+                                       boolean added = iModel.addProfile(profile);
+                                       if (added) {
+                                               existing = iModel.getProfiles();
+                                               DTOProfiles addedProfile = existing.stream()
+                                                               .filter(p -> p.getName().equalsIgnoreCase(profile.getName()))
+                                                               .findFirst().orElse(null);
+                                               if (addedProfile != null) {
+                                                       profile.setId(addedProfile.getId());
+                                                       iModel.saveProfile(profile);
+                                               }
+                                       }
+                               }
+                       }
+                       return true;
+               } catch (Exception e) {
+                       ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, "Profile Manager", "-",
+                                       "Import failed: " + e.getMessage());
+                       return false;
+               }
+       }
+
+       private boolean isProfileValid(DTOProfiles profile) {
+               return profile != null && profile.getName() != null && profile.getEmulatorNumber() != null
+                               && profile.getEnabled() != null;
+       }
+
+        @Override
+        public void onProfileStatusChange(DTOProfileStatus status) {
+                if (status != null) {
+                        profileManagerLayoutController.handleProfileStatusChange(status);
 
 		}
 

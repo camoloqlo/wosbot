@@ -35,6 +35,16 @@
       </TableView>
       <HBox alignment="CENTER_RIGHT" prefHeight="100.0" prefWidth="200.0" GridPane.rowIndex="1">
          <children>
+            <Button fx:id="btnExportProfiles" mnemonicParsing="false" onAction="#handleButtonExportProfiles" text="EXPORT">
+               <HBox.margin>
+                  <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
+               </HBox.margin>
+            </Button>
+            <Button fx:id="btnImportProfiles" mnemonicParsing="false" onAction="#handleButtonImportProfiles" text="IMPORT">
+               <HBox.margin>
+                  <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
+               </HBox.margin>
+            </Button>
             <Button fx:id="btnBulkUpdate" mnemonicParsing="false" onAction="#handleButtonBulkUpdateProfiles" text="BULK UPDATE PROFILES">
                <HBox.margin>
                   <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
