@@ -47,6 +47,13 @@ public class GatherTask extends DelayedTask {
             return;
         }
 
+        // Check if Intel task is active or scheduled soon to avoid march queue conflicts
+        if (isIntelTaskActiveOrScheduled()) {
+            logInfo("Intel task is active or scheduled soon. Postponing gathering to avoid march queue conflicts. Checking again in 10 minutes.");
+            reschedule(LocalDateTime.now().plusMinutes(10));
+            return;
+        }
+
         // Check active marches
         emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(2, 550));
         sleepTask(500);
@@ -221,7 +228,44 @@ public class GatherTask extends DelayedTask {
         return -1; // Returns -1 if the point is not in any of the ranges
     }
 
-    private boolean isGatherSpeedTaskReadyForGathering() {
+    private boolean isIntelTaskActiveOrScheduled() {
+        try {
+            // Check if Intel task is configured and enabled
+            if (!profile.getConfig(EnumConfigurationKey.INTEL_BOOL, Boolean.class)) {
+                return false; // Intel is disabled, no conflict
+            }
+
+            // Get Intel task from the database
+            DailyTask intelTask = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(),
+                    TpDailyTaskEnum.INTEL);
+
+            if (intelTask == null) {
+                return false; // Intel task has never been executed
+            }
+
+            LocalDateTime intelNextSchedule = intelTask.getNextSchedule();
+            if (intelNextSchedule == null) {
+                return false; // No next schedule
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            
+            // Check if Intel is scheduled to run within the next 30 minutes
+            // This gives enough buffer to avoid march queue conflicts
+            LocalDateTime conflictWindow = now.plusMinutes(30);
+            
+            if (intelNextSchedule.isBefore(conflictWindow)) {
+                logDebug("Intel task scheduled at " + intelNextSchedule + " conflicts with gathering window");
+                return true;
+            }
+
+            return false;
+
+        } catch (Exception e) {
+            logError("Error checking Intel task status: " + e.getMessage() + ". Assuming no conflict.");
+            return false; // Default to no conflict if check fails
+        }
+    }
         try {
             DailyTask gatherSpeedTask = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(),
                     TpDailyTaskEnum.GATHER_BOOST);

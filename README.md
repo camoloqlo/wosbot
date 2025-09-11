@@ -34,6 +34,15 @@ Hier werden neue Bot-Funktionen getestet:
 - **Lösung:** Verbesserte OCR-Text-Bereinigung und erweiterte Erkennungsregion
 - **Status:** ✅ Behoben - Stamina-Werte werden jetzt korrekt erkannt
 
+### March Queue Koordination implementiert
+- **Problem:** Intel und Gathering Tasks konkurrierten um die gleichen March-Slots
+- **Lösung:** Intelligente Task-Koordination verhindert March-Queue-Konflikte
+- **Details:** 
+  - Gathering wartet wenn Intel aktiv/geplant ist (30min Fenster)
+  - Intel wartet wenn Gathering aktiv/geplant ist (20min Fenster)
+  - Automatische Rescheduling bei Konflikten
+- **Status:** ✅ Implementiert - Optimale March-Slot-Nutzung
+
 ---
 
 ## ⚙️ Konfiguration
