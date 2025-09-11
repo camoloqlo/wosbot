@@ -34,7 +34,7 @@ public class PetsLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkboxTreasureSkill, EnumConfigurationKey.PET_SKILL_TRESURE_BOOL);
 
 		initializeChangeEvents();
-		checkboxGatheringSkill.setDisable(true);
+		checkboxGatheringSkill.setDisable(false);
 
 	}
 
