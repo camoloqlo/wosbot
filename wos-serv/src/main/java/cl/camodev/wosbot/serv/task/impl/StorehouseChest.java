@@ -1,6 +1,8 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.io.IOException;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -39,21 +41,37 @@ public class StorehouseChest extends DelayedTask {
 			return now;
 		}
 
-		// Correcting common OCR misreads
-		String correctedTime = ocrTime.replaceAll("[Oo]", "0").replaceAll("[lI]", "1").replaceAll("S", "5").replaceAll("[^0-9:]", "");
+		// Preprocessing: Remove spaces, correct common OCR errors, reduce multiple colons
+		String correctedTime = ocrTime
+			.replaceAll("[Oo]", "0")
+			.replaceAll("[lI]", "1")
+			.replaceAll("S", "5")
+			.replaceAll("[ \t]", "")
+			.replaceAll("[:]{2,}", ":")
+			.replaceAll("[^0-9:]", "");
 
+		// Try to match HH:mm:ss or mm:ss
 		try {
-			LocalTime parsedTime = LocalTime.parse(correctedTime, DateTimeFormatter.ofPattern("HH:mm:ss"));
-			return now.plusHours(parsedTime.getHour()).plusMinutes(parsedTime.getMinute()).plusSeconds(parsedTime.getSecond());
+			if (correctedTime.matches("\\d{2}:\\d{2}:\\d{2}")) {
+				LocalTime parsedTime = LocalTime.parse(correctedTime, DateTimeFormatter.ofPattern("HH:mm:ss"));
+				return now.plusHours(parsedTime.getHour()).plusMinutes(parsedTime.getMinute()).plusSeconds(parsedTime.getSecond());
+			} else if (correctedTime.matches("\\d{2}:\\d{2}")) {
+				// If only mm:ss, treat as 00:mm:ss
+				LocalTime parsedTime = LocalTime.parse("00:" + correctedTime, DateTimeFormatter.ofPattern("HH:mm:ss"));
+				return now.plusMinutes(parsedTime.getMinute()).plusSeconds(parsedTime.getSecond());
+			} else {
+				log.warn("OCR time format not recognized: '" + correctedTime + "' (original: '" + ocrTime + "')");
+				return now;
+			}
 		} catch (DateTimeParseException e) {
-			System.err.println("Error parsing time: " + correctedTime);
+			log.warn("Error parsing time: '" + correctedTime + "' (original: '" + ocrTime + ")");
 			return now;
 		}
 	}
 
 	@Override
 	protected void execute() {
-		logInfo("Navigating to the Storehouse.");
+	logInfo("Navigating to the storehouse.");
 
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(3, 513), new DTOPoint(26, 588));
 		sleepTask(500);
@@ -73,7 +91,7 @@ public class StorehouseChest extends DelayedTask {
 			sleepTask(700);
 
 			DTOImageSearchResult chest = null;
-			logInfo("Searching for the storehouse chest.");
+		logInfo("Searching for the storehouse chest.");
 			for (int i = 0; i < 10; i++) {
 				chest = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_CHEST,  90);
 
@@ -92,50 +110,59 @@ public class StorehouseChest extends DelayedTask {
 				}
 			}
 
-            logInfo("Searching for stamina rewards.");
+			logInfo("Searching for stamina rewards.");
             for (int j = 0; j < 10; j++) {
                 DTOImageSearchResult stamina = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_STAMINA, 90);
 
                 if (stamina.isFound()) {
-                    logInfo("Stamina reward found. Claiming it.");
+					logInfo("Stamina reward found. Claiming it.");
                     emuManager.tapAtRandomPoint(EMULATOR_NUMBER, stamina.getPoint(), stamina.getPoint());
                     sleepTask(500);
                     emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(250, 930), new DTOPoint(450, 950));
                     sleepTask(4000);
                     break;
                 } else {
-                    logDebug("Stamina reward not found on this attempt.");
+					logDebug("Stamina reward not found on this attempt.");
                     tapBackButton();
                     sleepTask(300);
                 }
             }
 
             // Reschedule based on OCR
-            try {
-                String nextRewardTime = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(285, 642), new DTOPoint(430, 666));
-                LocalDateTime nextReward = parseNextReward(nextRewardTime);
-                LocalDateTime nextReset = UtilTime.getNextReset();
 
-                LocalDateTime scheduledTime;
-                if (!nextReward.isBefore(nextReset)) {
-                    scheduledTime = nextReset;
-                    logInfo("Next reward time exceeds next reset, scheduling at reset to avoid missing stamina");
-                } else {
-                    scheduledTime = nextReward.minusSeconds(3);
-                }
+			try {
+				String nextRewardTime = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(285, 642), new DTOPoint(430, 666));
+				logInfo("OCR result for next reward time: '" + nextRewardTime + "'");
+				LocalDateTime nextReward = parseNextReward(nextRewardTime);
+				LocalDateTime nextReset = UtilTime.getNextReset();
 
-                this.reschedule(scheduledTime);
-                ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, scheduledTime);
-                logInfo("Storehouse chest claimed. Next check at " + scheduledTime);
+				// If OCR is empty or nextReward ~ now, handle as error
+				if (nextRewardTime == null || nextRewardTime.trim().isEmpty() || nextReward.isBefore(LocalDateTime.now().plusSeconds(10))) {
+					logWarning("OCR for storehouse chest cooldown failed or was invalid. Rescheduling in 5 minutes.");
+					this.reschedule(LocalDateTime.now().plusMinutes(5));
+					return;
+				}
 
-            } catch (TesseractException | IOException e) {
-                logError("Error during OCR, rescheduling for 5 minutes.", e);
-                this.reschedule(LocalDateTime.now().plusMinutes(5));
-            }
+				LocalDateTime scheduledTime;
+				if (!nextReward.isBefore(nextReset)) {
+					scheduledTime = nextReset;
+					logInfo("Next reward time exceeds next reset, scheduling at reset to avoid missing stamina.");
+				} else {
+					scheduledTime = nextReward.minusSeconds(3);
+				}
+
+				this.reschedule(scheduledTime);
+				ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, scheduledTime);
+				logInfo("Storehouse chest claimed. Next check at " + scheduledTime);
+
+			} catch (TesseractException | IOException e) {
+				logError("Error during OCR, rescheduling for 5 minutes.", e);
+				this.reschedule(LocalDateTime.now().plusMinutes(5));
+			}
 
 
 		} else {
-			logWarning("Research Center shortcut not found. Rescheduling for 5 minutes.");
+			logWarning("Research center shortcut not found. Rescheduling in 5 minutes.");
 			this.reschedule(LocalDateTime.now().plusMinutes(5));
 			emuManager.tapBackButton(EMULATOR_NUMBER);
 		}
