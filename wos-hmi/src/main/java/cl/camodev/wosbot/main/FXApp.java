@@ -51,7 +51,7 @@ public class FXApp extends Application {
 		scene.getStylesheets().add(ILauncherConstants.getCssPath());
 		stage.setScene(scene);
 		stage.getIcons().add(appIcon);
-		stage.setTitle("Launcher");
+		stage.setTitle("WOS-Bot for the Ghecko Family - EXE by Stargaterunner");
 
 		// Mostrar la ventana primero para que JavaFX calcule los tamaños correctamente
 		stage.show();

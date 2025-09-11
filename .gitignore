@@ -25,3 +25,11 @@ wos-hmi/.project
 /wos-hmi/log
 database.db
 log/bot.log
+dist/WosBot/app
+dist/WosBot/lib
+dist/WosBot/log
+dist/WosBot/runtime
+dist/WosBot_Optimized
+dist/WosBot.zip
+MANIFEST.MF
+WosBot.manifest
