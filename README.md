@@ -29,6 +29,15 @@ Hier werden neue Bot-Funktionen getestet:
 
 ## 🔧 Aktuelle Bugfixes
 
+
+### Storehouse Chest: Verbesserte Zeit-OCR und Fehlerbehandlung
+- **Problem:** Die Restzeit für die Storehouse Chest wurde oft nicht oder falsch erkannt, was zu Endlosschleifen führte.
+- **Lösung:**
+  - Robustes Preprocessing und Parsing für Zeitangaben (00:11:22, 11:22 etc.)
+  - Fehler-Logging bei nicht erkennbaren Formaten
+  - Automatisches Rescheduling bei OCR-Fehlern
+- **Status:** ✅ Behoben - Zeitangaben werden jetzt robuster erkannt und verarbeitet
+
 ### Stamina OCR-Problem behoben
 - **Problem:** Bot erkannte nur erste Ziffer bei Stamina-Werten über 1000 (z.B. "1" statt "1454")
 - **Lösung:** Verbesserte OCR-Text-Bereinigung und erweiterte Erkennungsregion
