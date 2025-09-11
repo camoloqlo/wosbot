@@ -58,11 +58,21 @@ public class IntelligenceTask extends DelayedTask {
             Integer staminaValue = null;
             for (int attempt = 0; attempt < 5 && staminaValue == null; attempt++) {
                 try {
-                    String ocr = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(582, 23), new DTOPoint(672, 55));
+                    String ocr = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(570, 20), new DTOPoint(690, 60));
+                    logDebug("Raw OCR text for stamina (attempt " + (attempt + 1) + "): '" + ocr + "'");
+                    
                     if (ocr != null && !ocr.trim().isEmpty()) {
-                        Matcher m = Pattern.compile("\\d+").matcher(ocr);
-                        if (m.find()) {
-                            staminaValue = Integer.valueOf(m.group());
+                        // Clean OCR text: remove spaces, commas, and non-numeric characters except digits
+                        String cleanedOcr = ocr.replaceAll("[^0-9]", "");
+                        logDebug("Cleaned OCR text: '" + cleanedOcr + "'");
+                        
+                        if (!cleanedOcr.isEmpty()) {
+                            try {
+                                staminaValue = Integer.valueOf(cleanedOcr);
+                                logDebug("Successfully parsed stamina value: " + staminaValue);
+                            } catch (NumberFormatException e) {
+                                logDebug("Failed to parse cleaned OCR as integer: " + cleanedOcr);
+                            }
                         }
                     }
                 } catch (IOException | TesseractException ex) {

@@ -27,6 +27,13 @@ Hier werden neue Bot-Funktionen getestet:
 - ✅ Claims **Tundra Trek Supplies**
 - ✅ Automates **Tundra Truck Event** "My Trucks" section
 
+## 🔧 Aktuelle Bugfixes
+
+### Stamina OCR-Problem behoben
+- **Problem:** Bot erkannte nur erste Ziffer bei Stamina-Werten über 1000 (z.B. "1" statt "1454")
+- **Lösung:** Verbesserte OCR-Text-Bereinigung und erweiterte Erkennungsregion
+- **Status:** ✅ Behoben - Stamina-Werte werden jetzt korrekt erkannt
+
 ---
 
 ## ⚙️ Konfiguration
