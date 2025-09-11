@@ -1,15 +1,10 @@
-# Whiteout Survival Bot
+# Whiteout Survival Bot - Interne Spielwiese
 
-[![](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/cearivera1z)
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/Wk6YSr6mUp)
+Dies ist eine interne Spielwiese zum Testen und Experimentieren mit dem Whiteout Survival Bot. Hier werden neue Features ausprobiert und getestet, bevor sie in die Hauptversion übernommen werden.
 
-> **⚠️ Project Status: Paused** - The development of this project is currently on hold due to personal matters.
+## 🧪 Experimentelle Features
 
-A bot for automating tasks in **Whiteout Survival**. This project is a work in progress and is developed in my free time. If you have any requests or suggestions, feel free to ask. I will try to respond as soon as possible.
-
----
-
-## 📌 Current Features
+Hier werden neue Bot-Funktionen getestet:
 
 - ✅ Multi-profile support (run multiple accounts simultaneously)
 - ✅ Automates daily **Nomadic Merchant** interactions
@@ -33,65 +28,46 @@ A bot for automating tasks in **Whiteout Survival**. This project is a work in p
 - ✅ Automates **Tundra Truck Event** "My Trucks" section
 
 ---
-## 🎬 Video Showcase
 
-[![SHOWCASE](./images/picture_yt.png)](https://www.youtube.com/watch?v=Nnjv68xiIV0)
+## ⚙️ Konfiguration
 
----
+Der Bot ist für **MuMu Player** konfiguriert mit folgenden Einstellungen:
 
-## 📸 Screenshots
-
-| | | |
-|:----------------------------------------------------------:|:----------------------------------------------------------:|:----------------------------------------------------------:|
-| ![image1](./images/picture1.png) | ![image2](./images/picture2.png) |
-| ![image3](./images/picture3.png) | ![image4](./images/picture4.png) | 
-| ![image5](./images/picture5.png) | ![image6](./images/picture6.png) |
-| ![image7](./images/picture7.png) | ![image8](./images/picture8.png) |
-| ![image9](./images/picture9.png) | ![image10](./images/picture10.png) |
-| ![image11](./images/picture11.png) | ![image12](./images/picture12.png) |
-| ![image13](./images/picture13.png) |
-
----
-
-## ⚙️ Configuration
-
-The bot is designed to run on **MuMu Player** with the following settings:
-
-- **Resolution:** 720x1280 (320 DPI)  
-- **CPU:** 2 Cores  
+- **Auflösung:** 720x1280 (320 DPI)  
+- **CPU:** 2 Kerne  
 - **RAM:** 2GB 
-- **Language:** English
+- **Sprache:** Englisch
 
 ---
 
-## 🛠️ How to Compile & Run
+## 🛠️ Kompilieren & Ausführen
 
-### To Compile:
+### Kompilieren:
 
 ```sh
 mvn clean install package
 ```
-This will generate a `.jar` file in the `wos-hmi/target` directory.
+Erstellt eine `.jar` Datei im `wos-hmi/target` Verzeichnis.
 
-### To Run:
+### Ausführen:
 
-#### From the Command Line (Recommended)
-Running from the command line allows you to see real-time logs, which is helpful for debugging.
+#### Über Kommandozeile (Empfohlen)
+Ausführung über die Kommandozeile zeigt Echtzeit-Logs an, was beim Debugging hilfreich ist.
 ```sh
-# Navigate to the target directory and run the bot
+# In das target Verzeichnis navigieren und Bot starten
 java -jar wos-bot-x.x.x.jar
 ```
 
-#### With a Double-Click
-You can also run the bot by double-clicking the `wos-bot-x.x.x.jar` file. Note that this will not display a console for logs.
+#### Per Doppelklick
+Der Bot kann auch durch Doppelklick auf die `wos-bot-x.x.x.jar` Datei gestartet werden. Dabei wird keine Konsole für Logs angezeigt.
 
 ---
 
-### 🚀 Future Features (Planned)
-- 🔹 **Arena Battles** – Manage arena battles automatically.
-- 🔹 **Beast Hunt** – Implement automatic beast hunting.
-- 🔹 **Polar Terror Hunt** – Implement automatic polar terror hunting.
-- 🔹 **And more...** 🔥
+### � Test-Features (In Entwicklung)
+- 🔹 **Arena Kämpfe** – Automatische Arena-Verwaltung
+- 🔹 **Bestien-Jagd** – Automatische Bestien-Jagd implementieren
+- 🔹 **Polar Terror Jagd** – Automatische Polar Terror Jagd implementieren
+- 🔹 **Und mehr...** 🔥
 
 
 
