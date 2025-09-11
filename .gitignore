@@ -24,7 +24,13 @@ wos-hmi/.project
 /.idea
 /wos-hmi/log
 database.db
-log/bot.log
+
+# Log files - exclude all log files and compressed logs
+log/
+*.log
+*.log.*
+*.gz
+*.zip.log
 dist/WosBot/app
 dist/WosBot/lib
 dist/WosBot/log
