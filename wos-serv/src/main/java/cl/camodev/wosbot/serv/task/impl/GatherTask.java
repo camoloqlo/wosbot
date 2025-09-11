@@ -266,6 +266,8 @@ public class GatherTask extends DelayedTask {
             return false; // Default to no conflict if check fails
         }
     }
+
+    private boolean isGatherSpeedTaskReadyForGathering() {
         try {
             DailyTask gatherSpeedTask = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(),
                     TpDailyTaskEnum.GATHER_BOOST);
