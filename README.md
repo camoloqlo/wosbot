@@ -1,3 +1,9 @@
+### PetSkillsTask: Verbesserte Gathering-Logik
+- **Problem:** Bei "Active" wurde Gathering zu oft versucht (Loop), obwohl kein neuer Start möglich war.
+- **Lösung:**
+  - Erkennt der Bot "Active", wird der Task jetzt für 1 Stunde später neu eingeplant (statt sofort oder in einer Endlosschleife).
+  - Bei Cooldown-Zeit wie gewohnt reschedule, bei Fehlern 5 Minuten.
+- **Status:** ✅ Behoben – Gathering wird nur noch sinnvoll wiederholt, keine Loops mehr bei "Active"
 # Whiteout Survival Bot - Interne Spielwiese
 
 Dies ist eine interne Spielwiese zum Testen und Experimentieren mit dem Whiteout Survival Bot. Hier werden neue Features ausprobiert und getestet, bevor sie in die Hauptversion übernommen werden.
