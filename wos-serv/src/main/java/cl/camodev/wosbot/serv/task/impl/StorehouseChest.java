@@ -90,48 +90,53 @@ public class StorehouseChest extends DelayedTask {
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(30, 430), new DTOPoint(50, 470));
 			sleepTask(700);
 
-			DTOImageSearchResult chest = null;
-		logInfo("Searching for the storehouse chest.");
-			for (int i = 0; i < 10; i++) {
-				chest = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_CHEST,  90);
 
+			boolean chestClaimed = false;
+			logInfo("Searching for the storehouse chest.");
+			for (int i = 0; i < 10; i++) {
+				DTOImageSearchResult chest = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_CHEST,  90);
 				if (chest.isFound()) {
-					// Claim reward, check for stamina and reschedule
 					logInfo("Storehouse chest found. Tapping to claim.");
 					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, chest.getPoint(), chest.getPoint());
 					sleepTask(500);
-					emuManager.tapBackButton(EMULATOR_NUMBER);
-                    break;
-
+					chestClaimed = true;
+					break;
 				} else {
 					logDebug("Storehouse chest not found on this attempt.");
-                    tapBackButton();
 					sleepTask(500);
 				}
 			}
 
+			boolean staminaClaimed = false;
 			logInfo("Searching for stamina rewards.");
-            for (int j = 0; j < 10; j++) {
-                DTOImageSearchResult stamina = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_STAMINA, 90);
-
-                if (stamina.isFound()) {
+			for (int j = 0; j < 10; j++) {
+				DTOImageSearchResult stamina = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_STAMINA, 90);
+				if (stamina.isFound()) {
 					logInfo("Stamina reward found. Claiming it.");
-                    emuManager.tapAtRandomPoint(EMULATOR_NUMBER, stamina.getPoint(), stamina.getPoint());
-                    sleepTask(500);
-                    emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(250, 930), new DTOPoint(450, 950));
-                    sleepTask(4000);
-                    break;
-                } else {
+					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, stamina.getPoint(), stamina.getPoint());
+					sleepTask(500);
+					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(250, 930), new DTOPoint(450, 950));
+					sleepTask(4000);
+					staminaClaimed = true;
+					break;
+				} else {
 					logDebug("Stamina reward not found on this attempt.");
-                    tapBackButton();
-                    sleepTask(300);
-                }
-            }
+					sleepTask(300);
+				}
+			}
 
-            // Reschedule based on OCR
+			// Nur wenn etwas eingesammelt wurde, Back-Button drücken
+			if (chestClaimed || staminaClaimed) {
+				emuManager.tapBackButton(EMULATOR_NUMBER);
+			}
+
+			// Reschedule based on OCR
 
 			try {
+				// Wait to ensure UI is updated before OCR
+				sleepTask(700);
 				String nextRewardTime = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(285, 642), new DTOPoint(430, 666));
+				sleepTask(700);
 				logInfo("OCR result for next reward time: '" + nextRewardTime + "'");
 				LocalDateTime nextReward = parseNextReward(nextRewardTime);
 				LocalDateTime nextReset = UtilTime.getNextReset();
