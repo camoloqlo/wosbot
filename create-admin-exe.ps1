@@ -35,7 +35,7 @@ namespace WosBotAdmin
                     catch (System.ComponentModel.Win32Exception)
                     {
                         MessageBox.Show("Administrator privileges are required to run WosBot.\n\nEXE created by: Stargaterunner", 
-                            "WosBot v1.5.4 - EXE by Stargaterunner", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            "WosBot v1.5.x_BETA - EXE by Stargaterunner", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                     
@@ -67,13 +67,13 @@ namespace WosBotAdmin
                 else
                 {
                     MessageBox.Show("WosBot.exe not found in the same directory!\n\nEXE created by: Stargaterunner", 
-                        "WosBot v1.5.4 - EXE by Stargaterunner", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        "WosBot v1.5.x_BETA - EXE by Stargaterunner", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error starting WosBot: " + ex.Message + "\n\nEXE created by: Stargaterunner", 
-                    "WosBot v1.5.4 - EXE by Stargaterunner", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    "WosBot v1.5.x_BETA - EXE by Stargaterunner", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

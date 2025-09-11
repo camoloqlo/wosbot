@@ -311,7 +311,7 @@ Für erweiterte Fehlersuche:
 
 ## 📈 Version Information
 
-**Version:** 1.5.4  
+**Version:** 1.5.x_BETA  
 **Windows EXE Build:** September 2025 by **Stargaterunner**  
 **Original JAR:** CamoDev  
 **Kompatibilität:** Whiteout Survival (Aktuell)
@@ -350,5 +350,5 @@ Für weitere Hilfe besuchen Sie die Discord-Community oder lesen Sie die detaill
 **🌐 Community & Support:** [Discord](https://discord.gg/Wk6YSr6mUp)  
 **☕ Support Original-Entwickler:** [Buy Me Coffee](https://buymeacoffee.com/cearivera1z)
 
-*📝 Diese Anleitung wurde automatisch generiert basierend auf der Codebase-Analyse von WosBot v1.5.4*  
+*📝 Diese Anleitung wurde automatisch generiert basierend auf der Codebase-Analyse von WosBot v1.5.x_BETA*  
 *🔧 EXE-Konvertierung und Anleitung von Stargaterunner - September 2025*

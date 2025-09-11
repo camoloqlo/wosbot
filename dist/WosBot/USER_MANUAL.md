@@ -311,7 +311,7 @@ For advanced troubleshooting:
 
 ## 📈 Version Information
 
-**Version:** 1.5.4  
+**Version:** 1.5.x_BETA  
 **Windows EXE Build:** September 2025 by **Stargaterunner**  
 **Original JAR:** CamoDev  
 **Compatibility:** Whiteout Survival (Current)
@@ -348,5 +348,5 @@ For further help, visit the Discord community or read the detailed logs in the c
 **🌐 Community & Support:** [Discord](https://discord.gg/Wk6YSr6mUp)  
 **☕ Support Original Developer:** [Buy Me Coffee](https://buymeacoffee.com/cearivera1z)
 
-*📝 This manual was automatically generated based on codebase analysis of WosBot v1.5.4*  
+*📝 This manual was automatically generated based on codebase analysis of WosBot v1.5.x_BETA*  
 *🔧 EXE conversion and manual by Stargaterunner - September 2025*

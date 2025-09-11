@@ -1,7 +1,7 @@
 @echo off
-title WosBot v1.5.4 - EXE by Stargaterunner - Admin Launcher
+title WosBot v1.5.x_BETA - EXE by Stargaterunner - Admin Launcher
 echo ========================================
-echo  WosBot v1.5.4 - EXE by Stargaterunner
+echo  WosBot v1.5.x_BETA - EXE by Stargaterunner
 echo  Original by CamoDev
 echo ========================================
 echo Starting WosBot with Administrator privileges...

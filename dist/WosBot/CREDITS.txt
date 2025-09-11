@@ -1,5 +1,5 @@
 =====================================
-    WosBot v1.5.4 - Windows EXE
+    WosBot v1.5.x_BETA - Windows EXE
 =====================================
 
 🔧 Windows EXE created by: Stargaterunner
