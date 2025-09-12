@@ -13,6 +13,9 @@ wos-ot/.classpath
 wos-ot/.project
 wos-persitence/.classpath
 wos-persitence/.project
+
+# Distribution folder (keep local, but not in Git)
+dist/
 wos-serv/.classpath
 wos-serv/.project
 wos-utiles/.classpath

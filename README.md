@@ -1,16 +1,10 @@
-### PetSkillsTask: Verbesserte Gathering-Logik
-- **Problem:** Bei "Active" wurde Gathering zu oft versucht (Loop), obwohl kein neuer Start möglich war.
-- **Lösung:**
-  - Erkennt der Bot "Active", wird der Task jetzt für 1 Stunde später neu eingeplant (statt sofort oder in einer Endlosschleife).
-  - Bei Cooldown-Zeit wie gewohnt reschedule, bei Fehlern 5 Minuten.
-- **Status:** ✅ Behoben – Gathering wird nur noch sinnvoll wiederholt, keine Loops mehr bei "Active"
-# Whiteout Survival Bot - Interne Spielwiese
+# Whiteout Survival Bot - Internal Testing Ground
 
-Dies ist eine interne Spielwiese zum Testen und Experimentieren mit dem Whiteout Survival Bot. Hier werden neue Features ausprobiert und getestet, bevor sie in die Hauptversion übernommen werden.
+This is an internal testing playground for experimenting with the Whiteout Survival Bot. New features are tested here before being merged into the main version.
 
-## 🧪 Experimentelle Features
+## 🧪 Experimental Features
 
-Hier werden neue Bot-Funktionen getestet:
+Testing new bot functionalities:
 
 - ✅ Multi-profile support (run multiple accounts simultaneously)
 - ✅ Automates daily **Nomadic Merchant** interactions
@@ -33,75 +27,83 @@ Hier werden neue Bot-Funktionen getestet:
 - ✅ Claims **Tundra Trek Supplies**
 - ✅ Automates **Tundra Truck Event** "My Trucks" section
 
-## 🔧 Aktuelle Bugfixes
+## 🔧 Recent Bugfixes
 
+### PetSkillsTask: Improved Gathering Logic
+- **Problem:** When "Active" status was detected, gathering was attempted too often (loop), even though no new start was possible.
+- **Solution:**
+  - When bot detects "Active", task is now rescheduled for 1 hour later (instead of immediately or endless loop).
+  - Cooldown time reschedule as usual, 5 minutes on errors.
+- **Status:** ✅ Fixed – Gathering only retries when sensible, no more loops on "Active"
 
+### Storehouse Chest: Improved Time OCR, Error Handling & Back Button Logic
+- **Problem:** Remaining time for Storehouse Chest was often not detected or incorrectly parsed, leading to endless loops. Back button interfered with detection.
+- **Solution:**
+  - Robust preprocessing and parsing for time formats (00:11:22, 11:22 etc.)
+  - Error logging for unrecognizable formats
+  - Automatic rescheduling on OCR errors
+  - Back button only pressed when something was actually collected (Chest or Stamina)
+- **Status:** ✅ Fixed - Time formats are now more robustly detected and processed, OCR runs more stable
 
-### Storehouse Chest: Verbesserte Zeit-OCR, Fehlerbehandlung & Back-Button-Logik
-- **Problem:** Die Restzeit für die Storehouse Chest wurde oft nicht oder falsch erkannt, was zu Endlosschleifen führte. Der Back-Button störte die Erkennung.
-- **Lösung:**
-  - Robustes Preprocessing und Parsing für Zeitangaben (00:11:22, 11:22 etc.)
-  - Fehler-Logging bei nicht erkennbaren Formaten
-  - Automatisches Rescheduling bei OCR-Fehlern
-  - Back-Button wird nur noch gedrückt, wenn tatsächlich etwas eingesammelt wurde (Chest oder Stamina)
-- **Status:** ✅ Behoben - Zeitangaben werden jetzt robuster erkannt und verarbeitet, OCR läuft stabiler
+### Stamina OCR Problem Fixed
+- **Problem:** Bot only detected first digit for stamina values over 1000 (e.g., "1" instead of "1454")
+- **Solution:** Improved OCR text cleaning and extended detection region
+- **Status:** ✅ Fixed - Stamina values are now correctly detected
 
-### Stamina OCR-Problem behoben
-- **Problem:** Bot erkannte nur erste Ziffer bei Stamina-Werten über 1000 (z.B. "1" statt "1454")
-- **Lösung:** Verbesserte OCR-Text-Bereinigung und erweiterte Erkennungsregion
-- **Status:** ✅ Behoben - Stamina-Werte werden jetzt korrekt erkannt
-
-### March Queue Koordination implementiert
-- **Problem:** Intel und Gathering Tasks konkurrierten um die gleichen March-Slots
-- **Lösung:** Intel hat absolute Priorität über Gathering Tasks
+### March Queue Coordination Implemented
+- **Problem:** Intel and Gathering Tasks competed for the same March slots
+- **Solution:** Intel has absolute priority over Gathering Tasks
 - **Details:** 
-  - Intel Tasks laufen sofort, unabhängig vom Gathering-Status
-  - Gathering wartet 10 Minuten wenn Intel aktiv/geplant ist
-  - PetSkillsTask wartet 1 Stunde wenn Skills "Active" sind
-- **Status:** ✅ Implementiert - Prioritätsbasierte Task-Ausführung
+  - Intel Tasks run immediately, regardless of Gathering status
+  - Gathering waits 10 minutes when Intel is active/scheduled
+  - PetSkillsTask waits 1 hour when skills are "Active"
+- **Status:** ✅ Implemented - Priority-based task execution
 
 ---
 
-## ⚙️ Konfiguration
+## ⚙️ Configuration
 
-Der Bot ist für **MuMu Player** konfiguriert mit folgenden Einstellungen:
+The bot is configured for **MEmu Android Emulator** with the following settings:
 
-- **Auflösung:** 720x1280 (320 DPI)  
-- **CPU:** 2 Kerne  
+- **Resolution:** 720x1280 (320 DPI)  
+- **CPU:** 2 cores  
 - **RAM:** 2GB 
-- **Sprache:** Englisch
+- **Language:** English
 
 ---
 
-## 🛠️ Kompilieren & Ausführen
+## 🛠️ Building & Running
 
-### Kompilieren:
+### Building:
 
 ```sh
 mvn clean install package
 ```
-Erstellt eine `.jar` Datei im `wos-hmi/target` Verzeichnis.
+Creates a `.jar` file in the `wos-hmi/target` directory.
 
-### Ausführen:
+### Running:
 
-#### Über Kommandozeile (Empfohlen)
-Ausführung über die Kommandozeile zeigt Echtzeit-Logs an, was beim Debugging hilfreich ist.
+#### Via Command Line (Recommended)
+Running via command line shows real-time logs, which is helpful for debugging.
 ```sh
-# In das target Verzeichnis navigieren und Bot starten
+# Navigate to target directory and start bot
 java -jar wos-bot-x.x.x.jar
 ```
 
-#### Per Doppelklick
-Der Bot kann auch durch Doppelklick auf die `wos-bot-x.x.x.jar` Datei gestartet werden. Dabei wird keine Konsole für Logs angezeigt.
+#### Via Admin Batch File
+For MEmu testing, use the included admin batch file to start with proper permissions:
+```sh
+# Run as administrator for MEmu compatibility
+run-as-admin.bat
+```
+
+#### Double-click
+The bot can also be started by double-clicking the `wos-bot-x.x.x.jar` file. No console will be shown for logs.
 
 ---
 
-### � Test-Features (In Entwicklung)
-- 🔹 **Arena Kämpfe** – Automatische Arena-Verwaltung
-- 🔹 **Bestien-Jagd** – Automatische Bestien-Jagd implementieren
-- 🔹 **Polar Terror Jagd** – Automatische Polar Terror Jagd implementieren
-- 🔹 **Und mehr...** 🔥
-
-
-
-
+### 🔮 Test Features (In Development)
+- 🔹 **Arena Battles** – Automatic arena management
+- 🔹 **Beast Hunting** – Implement automatic beast hunting
+- 🔹 **Polar Terror Hunting** – Implement automatic polar terror hunting
+- 🔹 **And more...** 🔥
