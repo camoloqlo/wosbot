@@ -44,12 +44,8 @@ public class IntelligenceTask extends DelayedTask {
 		marchQueueLimitReached = false;
 		beastMarchSent = false;
 
-        // Check if gathering tasks are active to avoid march queue conflicts
-        if (isGatheringTaskActive()) {
-            logInfo("Gathering task is active. Postponing Intel to avoid march queue conflicts. Checking again in 15 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(15));
-            return;
-        }
+        // Intel has priority over gathering - no need to check for gathering tasks
+        // Intel will proceed regardless of gathering status
 
 		ensureOnIntelScreen();
 		logInfo("Searching for completed missions to claim.");

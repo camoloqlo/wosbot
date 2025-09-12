@@ -53,12 +53,12 @@ Hier werden neue Bot-Funktionen getestet:
 
 ### March Queue Koordination implementiert
 - **Problem:** Intel und Gathering Tasks konkurrierten um die gleichen March-Slots
-- **Lösung:** Intelligente Task-Koordination verhindert March-Queue-Konflikte
+- **Lösung:** Intel hat absolute Priorität über Gathering Tasks
 - **Details:** 
-  - Gathering wartet wenn Intel aktiv/geplant ist (30min Fenster)
-  - Intel wartet wenn Gathering aktiv/geplant ist (20min Fenster)
-  - Automatische Rescheduling bei Konflikten
-- **Status:** ✅ Implementiert - Optimale March-Slot-Nutzung
+  - Intel Tasks laufen sofort, unabhängig vom Gathering-Status
+  - Gathering wartet 10 Minuten wenn Intel aktiv/geplant ist
+  - PetSkillsTask wartet 1 Stunde wenn Skills "Active" sind
+- **Status:** ✅ Implementiert - Prioritätsbasierte Task-Ausführung
 
 ---
 

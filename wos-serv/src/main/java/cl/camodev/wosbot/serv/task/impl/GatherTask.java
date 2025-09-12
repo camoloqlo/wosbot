@@ -47,9 +47,9 @@ public class GatherTask extends DelayedTask {
             return;
         }
 
-        // Check if Intel task is active or scheduled soon to avoid march queue conflicts
+        // Intel has absolute priority over gathering - always wait if Intel is active or scheduled
         if (isIntelTaskActiveOrScheduled()) {
-            logInfo("Intel task is active or scheduled soon. Postponing gathering to avoid march queue conflicts. Checking again in 10 minutes.");
+            logInfo("Intel task is active or scheduled soon. Intel has priority over gathering. Postponing gathering for 10 minutes.");
             reschedule(LocalDateTime.now().plusMinutes(10));
             return;
         }
