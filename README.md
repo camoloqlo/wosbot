@@ -1,31 +1,53 @@
-# Whiteout Survival Bot - Internal Testing Ground
 
-This is an internal testing playground for experimenting with the Whiteout Survival Bot. New features are tested here before being merged into the main version.
 
-## 🧪 Experimental Features
+# Whiteout Survival Bot - Beta Fork (Personal Optimizations)
 
-Testing new bot functionalities:
+**This is my personal beta fork of the original [wos-bot](https://github.com/your-original-wos-bot-link).**
 
-- ✅ Multi-profile support (run multiple accounts simultaneously)
-- ✅ Automates daily **Nomadic Merchant** interactions
-- ✅ Automatically buys **VIP points** from the merchant
-- ✅ **Hero Recruitment** automation
-- ✅ Collects **Daily Shards** from the **War Academy**
-- ✅ Collects **Fire Crystals** from the **Crystal Laboratory**
-- ✅ Opens **Exploration Chests**
-- ✅ Claims **Daily VIP Points**
-- ✅ Contributes to **Alliance Tech**
-- ✅ Collects **Alliance Chests**
-- ✅ Auto **Trains and Promotes Troops**
-- ✅ Auto activates **Pet Skills** (Food, Treasure and Stamina)
-- ✅ Claims **Online Rewards**
-- ✅ Claims **Pet Adventure** chests
-- ✅ Auto-collect rewards from mail
-- ✅ **Alliance Auto Join** for rallies
-- ✅ Automatically **Gathers** resources
-- ✅ Automate **Intel** completion
-- ✅ Claims **Tundra Trek Supplies**
-- ✅ Automates **Tundra Truck Event** "My Trucks" section
+## 🚀 My Personal Changes & Optimizations (Unique to This Fork)
+
+- **Absolute Intel Priority:** Intel tasks always take precedence over Gathering. Gathering will always wait if Intel is active or scheduled. No more mutual waiting.
+- **PetSkillsTask Improvements:** If a skill is "Active", the task is rescheduled for 1 hour instead of looping. Robust cooldown and error handling.
+- **Storehouse Chest OCR:** Improved time recognition, error handling, and only pressing the back button when something is actually claimed.
+- **Stamina OCR Fix:** Correctly recognizes stamina values over 1000.
+- **March Queue Coordination:** No more march slot conflicts between Intel and Gathering.
+- **Batch File Improvements:** Admin batch file for MEmu testing, with robust error handling and auto-detection of latest JAR.
+- **English Documentation:** All docs and logs are now in English for better maintainability.
+- **Project Hygiene:** .gitignore, README, and build scripts improved for internal use.
+- **Regular Upstream Sync:** I regularly merge improvements from the original repository to keep this fork up to date.
+
+> **This fork is for my own experiments and workflow improvements. It may contain features, workarounds, or changes not present in the official version. Use at your own risk!**
+
+---
+
+## 🧩 Features Inherited from the Original wos-bot
+
+The following features are provided by the original wos-bot project and are available here as well:
+
+- Multi-profile support (run multiple accounts simultaneously)
+- Automates daily **Nomadic Merchant** interactions
+- Automatically buys **VIP points** from the merchant
+- **Hero Recruitment** automation
+- Collects **Daily Shards** from the **War Academy**
+- Collects **Fire Crystals** from the **Crystal Laboratory**
+- Opens **Exploration Chests**
+- Claims **Daily VIP Points**
+- Contributes to **Alliance Tech**
+- Collects **Alliance Chests**
+- Auto **Trains and Promotes Troops**
+- Auto activates **Pet Skills** (Food, Treasure and Stamina)
+- Claims **Online Rewards**
+- Claims **Pet Adventure** chests
+- Auto-collect rewards from mail
+- **Alliance Auto Join** for rallies
+- Automatically **Gathers** resources
+- Automate **Intel** completion
+- Claims **Tundra Trek Supplies**
+- Automates **Tundra Truck Event** "My Trucks" section
+
+---
+
+
 
 ## 🔧 Recent Bugfixes
 
