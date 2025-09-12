@@ -1,17 +1,7 @@
 @echo off
 title WosBot - Administrator Mode
 
-:: Check:: Check exit code
-if %errorLevel% neq 0 (
-    echo.
-    echo Application exited with error code: %errorLevel%
-) else (
-    echo.
-    echo Application finished successfully.
-)
-
-echo Closing window in 3 seconds...
-timeout /t 3 /nobreak >nul running as administrator
+:: Check if running as administrator
 net session >nul 2>&1
 if %errorLevel% == 0 (
     echo Already running as administrator.
@@ -79,5 +69,9 @@ if %errorLevel% neq 0 (
     echo.
     echo Application finished successfully.
 )
+
+echo.
+echo Closing window in 3 seconds...
+timeout /t 3 /nobreak >nul
 
 :end
