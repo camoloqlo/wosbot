@@ -60,15 +60,12 @@ public class MercenaryPrestigeTask extends DelayedTask {
         // Step 3: Click 3.png
         clickTemplate(EnumTemplates.MERCENARY_3);
         sleepTask(2500);
-    // Step 4: Drag 4.png to 4drop.png (auskommentiert zum Testen)
-    // dragTemplate(EnumTemplates.MERCENARY_4, EnumTemplates.MERCENARY_4DROP);
-    // sleepTask(1000);
-        // OCR: Read cooldown time after dragDrop, with retries and normalization
+        // OCR: Read cooldown time with retries and normalization
         String cooldownText = "";
         int seconds = -1;
         int maxOcrAttempts = 5;
         for (int attempt = 1; attempt <= maxOcrAttempts; attempt++) {
-            cooldownText = ocrBetweenTemplates(EnumTemplates.MERCENARY_4, EnumTemplates.MERCENARY_4DROP);
+            cooldownText = ocrBetweenTemplates();
             if (cooldownText != null) cooldownText = cooldownText.trim().replace("O", "0").replace("l", "1").replace("I", "1").replace("|", "1").replace("\n", "").replace("\r", "");
             seconds = parseCooldown(cooldownText);
             if (seconds > 0) break;
@@ -104,17 +101,7 @@ public class MercenaryPrestigeTask extends DelayedTask {
         }
     }
 
-    private void dragTemplate(EnumTemplates from, EnumTemplates to) {
-        DTOImageSearchResult fromResult = emuManager.searchTemplate(EMULATOR_NUMBER, from, 0.8);
-        DTOImageSearchResult toResult = emuManager.searchTemplate(EMULATOR_NUMBER, to, 0.8);
-        if (fromResult != null && fromResult.isFound() && toResult != null && toResult.isFound()) {
-            emuManager.executeSwipe(EMULATOR_NUMBER, fromResult.getPoint(), toResult.getPoint());
-        } else {
-            logWarning("Drag templates not found: " + from.name() + " or " + to.name());
-        }
-    }
-
-    private String ocrBetweenTemplates(EnumTemplates from, EnumTemplates to) {
+    private String ocrBetweenTemplates() {
         try {
             // Use fixed region determined by adb getevent drag
             int x1 = 488;

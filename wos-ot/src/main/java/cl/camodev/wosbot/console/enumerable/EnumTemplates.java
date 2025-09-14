@@ -272,8 +272,6 @@ public enum EnumTemplates {
 	MERCENARY_MERC2("/templates/mercenary/Merc2.png"),
 	MERCENARY_2("/templates/mercenary/2.png"),
 	MERCENARY_3("/templates/mercenary/3.png"),
-	MERCENARY_4("/templates/mercenary/4.png"),
-	MERCENARY_4DROP("/templates/mercenary/4drop.png"),
 	MERCENARY_5("/templates/mercenary/5.png"),
 
 	TUNDRA_TREK_SUPPLIES("/templates/tundratrek/trekSupplies.png"),
