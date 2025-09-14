@@ -15,9 +15,6 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
-import cl.camodev.wosbot.almac.entity.DailyTask;
-import cl.camodev.wosbot.almac.repo.DailyTaskRepository;
-import cl.camodev.wosbot.almac.repo.IDailyTaskRepository;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
@@ -28,7 +25,6 @@ public class IntelligenceTask extends DelayedTask {
 	private boolean marchQueueLimitReached = false;
 	private boolean beastMarchSent = false;
 	private boolean fcEra = false;
-	private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
 
 	public IntelligenceTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
 		super(profile, tpTask);
@@ -43,9 +39,6 @@ public class IntelligenceTask extends DelayedTask {
 		boolean nonBeastIntelFound = false;
 		marchQueueLimitReached = false;
 		beastMarchSent = false;
-
-        // Intel has priority over gathering - no need to check for gathering tasks
-        // Intel will proceed regardless of gathering status
 
 		ensureOnIntelScreen();
 		logInfo("Searching for completed missions to claim.");
@@ -63,22 +56,22 @@ public class IntelligenceTask extends DelayedTask {
         // check is stamina enough to process any intel
         try {
             Integer staminaValue = null;
-            Pattern staminaPattern = Pattern.compile("(\\d{1,3}(?:[.,]\\d{3})*|\\d+)");
             for (int attempt = 0; attempt < 5 && staminaValue == null; attempt++) {
                 try {
                     String ocr = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(570, 20), new DTOPoint(690, 60));
                     logDebug("Raw OCR text for stamina (attempt " + (attempt + 1) + "): '" + ocr + "'");
                     
                     if (ocr != null && !ocr.trim().isEmpty()) {
-                        Matcher m = staminaPattern.matcher(ocr);
-                        if (m.find()) {
-                            String raw = m.group(1);
-                            // Remove separators (commas or dots)
-                            String normalized = raw.replaceAll("[.,]", "");
+                        // Clean OCR text: remove spaces, commas, and non-numeric characters except digits
+                        String cleanedOcr = ocr.replaceAll("[^0-9]", "");
+                        logDebug("Cleaned OCR text: '" + cleanedOcr + "'");
+                        
+                        if (!cleanedOcr.isEmpty()) {
                             try {
-                                staminaValue = Integer.valueOf(normalized);
-                            } catch (NumberFormatException nfe) {
-                                logDebug("Parsed stamina not a valid integer: '" + raw + "'");
+                                staminaValue = Integer.valueOf(cleanedOcr);
+                                logDebug("Successfully parsed stamina value: " + staminaValue);
+                            } catch (NumberFormatException e) {
+                                logDebug("Failed to parse cleaned OCR as integer: " + cleanedOcr);
                             }
                         }
                     }
@@ -431,59 +424,6 @@ public class IntelligenceTask extends DelayedTask {
 		
         return LocalDateTime.now().plusMinutes(1); // Default to 1 minute if parsing fails
 	}
-	
-	private boolean isGatheringTaskActive() {
-        try {
-            // List of all gathering task types
-            TpDailyTaskEnum[] gatheringTasks = {
-                TpDailyTaskEnum.GATHER_MEAT,
-                TpDailyTaskEnum.GATHER_WOOD, 
-                TpDailyTaskEnum.GATHER_COAL,
-                TpDailyTaskEnum.GATHER_IRON
-            };
-
-            LocalDateTime now = LocalDateTime.now();
-            
-            for (TpDailyTaskEnum taskType : gatheringTasks) {
-                // Check if this gathering type is enabled
-                EnumConfigurationKey configKey = getGatheringConfigKey(taskType);
-                if (configKey != null && profile.getConfig(configKey, Boolean.class)) {
-                    
-                    // Check if gathering task is scheduled to run soon
-                    try {
-                        DailyTask gatherTask = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(), taskType);
-                        if (gatherTask != null && gatherTask.getNextSchedule() != null) {
-                            LocalDateTime nextSchedule = gatherTask.getNextSchedule();
-                            
-                            // If gathering is scheduled within next 20 minutes, consider it active
-                            if (nextSchedule.isBefore(now.plusMinutes(20))) {
-                                logDebug("Gathering task " + taskType + " scheduled at " + nextSchedule + " conflicts with Intel");
-                                return true;
-                            }
-                        }
-                    } catch (Exception e) {
-                        logDebug("Error checking gathering task " + taskType + ": " + e.getMessage());
-                    }
-                }
-            }
-            
-            return false;
-            
-        } catch (Exception e) {
-            logError("Error checking gathering task status: " + e.getMessage() + ". Assuming no conflict.");
-            return false;
-        }
-    }
-    
-    private EnumConfigurationKey getGatheringConfigKey(TpDailyTaskEnum taskType) {
-        switch (taskType) {
-            case GATHER_MEAT: return EnumConfigurationKey.GATHER_MEAT_BOOL;
-            case GATHER_WOOD: return EnumConfigurationKey.GATHER_WOOD_BOOL;
-            case GATHER_COAL: return EnumConfigurationKey.GATHER_COAL_BOOL;
-            case GATHER_IRON: return EnumConfigurationKey.GATHER_IRON_BOOL;
-            default: return null;
-        }
-    }
 	
 	@Override
 	protected EnumStartLocation getRequiredStartLocation() {
