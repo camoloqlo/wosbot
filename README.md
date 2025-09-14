@@ -7,6 +7,7 @@
 ## 🚀 My Personal Changes & Optimizations (Unique to This Fork)
 
 - **Absolute Intel Priority:** Intel tasks always take precedence over Gathering. Gathering will always wait if Intel is active or scheduled. No more mutual waiting.
+- **Mercenary Prestige Automation:** Added automation for mercenary prestige events with multi-template recognition, OCR cooldown detection, and smart rescheduling.
 - **PetSkillsTask Improvements:** If a skill is "Active", the task is rescheduled for 1 hour instead of looping. Robust cooldown and error handling.
 - **Storehouse Chest OCR:** Improved time recognition, error handling, and only pressing the back button when something is actually claimed.
 - **Stamina OCR Fix:** Correctly recognizes stamina values over 1000.
