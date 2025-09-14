@@ -72,8 +72,11 @@ public class DelayedTaskRegistry {
         registry.put(TpDailyTaskEnum.EVENT_TUNDRA_TRUCK, profile -> new TundraTruckEventTask(profile, TpDailyTaskEnum.EVENT_TUNDRA_TRUCK));
         registry.put(TpDailyTaskEnum.EVENT_HERO_MISSION, profile -> new HeroMissionEventTask(profile, TpDailyTaskEnum.EVENT_HERO_MISSION));
 
-        // Initialize
-        registry.put(TpDailyTaskEnum.INITIALIZE, profile -> new InitializeTask(profile, TpDailyTaskEnum.INITIALIZE));
+    // Initialize
+    registry.put(TpDailyTaskEnum.INITIALIZE, profile -> new InitializeTask(profile, TpDailyTaskEnum.INITIALIZE));
+
+    // Mercenary Prestige
+    registry.put(TpDailyTaskEnum.MERCENARY_PRESTIGE, profile -> new MercenaryPrestigeTask(profile, TpDailyTaskEnum.MERCENARY_PRESTIGE));
     }
 
     /**

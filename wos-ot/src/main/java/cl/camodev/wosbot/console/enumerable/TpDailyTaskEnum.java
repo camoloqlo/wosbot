@@ -56,6 +56,7 @@ public enum TpDailyTaskEnum {
 		
 		EVENT_TUNDRA_TRUCK(200, "Tundra Truck Event",    EnumConfigurationKey.TUNDRA_TRUCK_EVENT_BOOL),
 		EVENT_HERO_MISSION(201, "Hero Mission Event",    EnumConfigurationKey.HERO_MISSION_EVENT_BOOL),
+		MERCENARY_PRESTIGE(202, "Mercenary Prestige",    EnumConfigurationKey.MERCENARY_EVENT_BOOL),
 		
 		
 		

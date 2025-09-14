@@ -266,6 +266,16 @@ public enum EnumTemplates {
 	TUNDRA_TRUCK_DEPARTED("/templates/tundratruck/tundraTruckDeparted.png"),
 	TUNDRA_TRUCK_ENDED("/templates/tundratruck/tundraTruckEnded.png"),
 
+	// Mercenary Prestige templates
+	MERCENARY_MERC("/templates/mercenary/Merc.png"),
+	MERCENARY_MERC1("/templates/mercenary/Merc1.png"),
+	MERCENARY_MERC2("/templates/mercenary/Merc2.png"),
+	MERCENARY_2("/templates/mercenary/2.png"),
+	MERCENARY_3("/templates/mercenary/3.png"),
+	MERCENARY_4("/templates/mercenary/4.png"),
+	MERCENARY_4DROP("/templates/mercenary/4drop.png"),
+	MERCENARY_5("/templates/mercenary/5.png"),
+
 	TUNDRA_TREK_SUPPLIES("/templates/tundratrek/trekSupplies.png"),
 	TUNDRA_TREK_CLAIM_BUTTON("/templates/tundratrek/trekClaimButton.png"),
 
