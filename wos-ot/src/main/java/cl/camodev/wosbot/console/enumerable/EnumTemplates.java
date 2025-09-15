@@ -279,6 +279,11 @@ public enum EnumTemplates {
 
 	ROMULUS_CLAIM_TROOPS_BUTTON("/templates/experts/romulusClaimTroopsButton.png"),
 	ROMULUS_CLAIM_TAG_BUTTON("/templates/experts/romulusClaimTagButton.png"),
+
+	MERCENARY_EVENT_TAB("/templates/mercenary/mercenaryEventTab.png"),
+	MERCENARY_SCOUT_BUTTON("/templates/mercenary/mercenaryEventScout.png"),
+	MERCENARY_ATTACK_BUTTON("/templates/mercenary/mercenaryEventAttack.png"),
+	MERCENARY_DEPLOY_BUTTON("/templates/mercenary/mercenaryEventDeploy.png"),
 	;
 	// @formatter:on
 

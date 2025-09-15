@@ -46,7 +46,6 @@ public class DelayedTaskRegistry {
 
         // Alliance tasks
         registry.put(TpDailyTaskEnum.ALLIANCE_AUTOJOIN, profile -> new AllianceAutojoinTask(profile, TpDailyTaskEnum.ALLIANCE_AUTOJOIN));
-        registry.put(TpDailyTaskEnum.ALLIANCE_HELP, profile -> new AllianceHelpTask(profile, TpDailyTaskEnum.ALLIANCE_HELP));
         registry.put(TpDailyTaskEnum.ALLIANCE_TECH, profile -> new AllianceTechTask(profile, TpDailyTaskEnum.ALLIANCE_TECH));
         registry.put(TpDailyTaskEnum.ALLIANCE_PET_TREASURE, profile -> new PetAllianceTreasuresTask(profile, TpDailyTaskEnum.ALLIANCE_PET_TREASURE));
         registry.put(TpDailyTaskEnum.ALLIANCE_CHESTS, profile -> new AllianceChestTask(profile, TpDailyTaskEnum.ALLIANCE_CHESTS));
@@ -71,6 +70,7 @@ public class DelayedTaskRegistry {
         // Events
         registry.put(TpDailyTaskEnum.EVENT_TUNDRA_TRUCK, profile -> new TundraTruckEventTask(profile, TpDailyTaskEnum.EVENT_TUNDRA_TRUCK));
         registry.put(TpDailyTaskEnum.EVENT_HERO_MISSION, profile -> new HeroMissionEventTask(profile, TpDailyTaskEnum.EVENT_HERO_MISSION));
+        registry.put(TpDailyTaskEnum.MERCENARY_EVENT, profile -> new MercenaryEventTask(profile, TpDailyTaskEnum.MERCENARY_EVENT));
 
     // Initialize
     registry.put(TpDailyTaskEnum.INITIALIZE, profile -> new InitializeTask(profile, TpDailyTaskEnum.INITIALIZE));

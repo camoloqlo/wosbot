@@ -27,7 +27,7 @@ public class ExpertsRomulusTagTask extends DelayedTask {
         for (int i = 0; i < 10; i++) {
             logDebug("Searching for claim button (Attempt " + (i + 1) + "/10).");
             DTOImageSearchResult claimButton = emuManager.searchTemplate(EMULATOR_NUMBER,
-                    EnumTemplates.ROMULUS_CLAIM_TAG_BUTTON, 85);
+                    EnumTemplates.ROMULUS_CLAIM_TAG_BUTTON, 80);
             if (claimButton.isFound()) {
                 logInfo("Claiming loyalty tags from Romulus. Rescheduling for next reset.");
                 emuManager.tapAtPoint(EMULATOR_NUMBER, claimButton.getPoint());
@@ -41,7 +41,7 @@ public class ExpertsRomulusTagTask extends DelayedTask {
         }
 
         if (!claimed) {
-            logWarning("Could not find the final claim button after 5 attempts. Assuming already claimed. Rescheduling for next reset.");
+            logWarning("Could not find the final claim button after 10 attempts. Assuming already claimed. Rescheduling for next reset.");
             LocalDateTime nextReset = UtilTime.getGameReset();
             this.reschedule(nextReset);
         }

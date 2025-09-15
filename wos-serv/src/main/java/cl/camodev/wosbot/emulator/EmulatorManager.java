@@ -102,7 +102,7 @@ public class EmulatorManager {
     }
 
 	/**
-	 * Verifica si el emulador ha sido configurado antes de ejecutar cualquier acción.
+	 * Checks if the emulator has been configured before executing any action.
 	 */
 	private void checkEmulatorInitialized() {
 		if (emulator == null) {
@@ -111,7 +111,7 @@ public class EmulatorManager {
 	}
 
     /**
-     * Captura una pantalla del emulador.
+     * Captures a screenshot of the emulator.
      */
     public byte[] captureScreenshotViaADB(String emulatorNumber) {
         checkEmulatorInitialized();
@@ -119,7 +119,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Realiza un tap en una coordenada específica.
+     * Taps at a specific coordinate.
      */
     public void tapAtPoint(String emulatorNumber, DTOPoint point) {
         checkEmulatorInitialized();
@@ -128,7 +128,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Realiza un tap en una coordenada aleatoria dentro de un área.
+     * Taps at a random coordinate within an area.
      */
     public boolean tapAtRandomPoint(String emulatorNumber, DTOPoint point1, DTOPoint point2) {
         checkEmulatorInitialized();
@@ -136,7 +136,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Realiza múltiples taps aleatorios dentro de un área con un delay entre ellos.
+     * Performs multiple random taps within an area with a delay between them.
      */
     public boolean tapAtRandomPoint(String emulatorNumber, DTOPoint point1, DTOPoint point2, int tapCount, int delayMs) {
         checkEmulatorInitialized();
@@ -144,7 +144,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Realiza un swipe entre dos puntos.
+     * Swipes between two points.
      */
     public void executeSwipe(String emulatorNumber, DTOPoint start, DTOPoint end) {
         checkEmulatorInitialized();
@@ -152,7 +152,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Verifica si una aplicación está instalada en el emulador.
+     * Checks if an application is installed on the emulator.
      */
     public boolean isWhiteoutSurvivalInstalled(String emulatorNumber) {
         checkEmulatorInitialized();
@@ -160,7 +160,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Presiona el botón de retroceso en el emulador.
+     * Presses the back button on the emulator.
      */
     public void tapBackButton(String emulatorNumber) {
         checkEmulatorInitialized();
@@ -168,7 +168,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Ejecuta OCR en una región de la pantalla y extrae texto.
+     * Executes OCR on a screen region and extracts text.
      */
     public String ocrRegionText(String emulatorNumber, DTOPoint p1, DTOPoint p2) throws IOException, TesseractException {
         checkEmulatorInitialized();
@@ -176,7 +176,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Genera el path de template específico de región basado en la versión del juego configurada
+     * Generates the region-specific template path based on the configured game version
      */
     private String getRegionSpecificTemplatePath(String originalPath) {
         try {
@@ -189,7 +189,7 @@ public class EmulatorManager {
                 return originalPath;
             }
 
-            // Insertar el sufijo antes de la extensión
+            // Insert the suffix before the extension
             int lastDotIndex = originalPath.lastIndexOf('.');
             if (lastDotIndex != -1) {
                 String pathWithoutExtension = originalPath.substring(0, lastDotIndex);
@@ -205,7 +205,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Verifica si un recurso de template existe
+     * Checks if a template resource exists
      */
     private boolean templateResourceExists(String templatePath) {
         try (var is = ImageSearchUtil.class.getResourceAsStream(templatePath)) {
@@ -216,41 +216,41 @@ public class EmulatorManager {
     }
 
     /**
-     * Obtiene el path de template más apropiado según la región configurada
+     * Gets the most appropriate template path according to the configured region
      */
     private String getBestTemplatePath(String originalPath) {
-        // Generar path específico de región
+        // Generate region-specific path
         String regionSpecificPath = getRegionSpecificTemplatePath(originalPath);
 
-        // Si es diferente al original, verificar si existe
+        // If it's different from the original, check if it exists
         if (!regionSpecificPath.equals(originalPath) && templateResourceExists(regionSpecificPath)) {
             logger.debug("Using region-specific template: {}", regionSpecificPath);
             return regionSpecificPath;
         }
 
-        // Si no existe la versión específica o es la versión global, usar el original
+        // If the specific version doesn't exist or it's the global version, use the original
         logger.debug("Using base template: {}", originalPath);
         return originalPath;
     }
 
     /**
-     * Busca una imagen en la pantalla capturada del emulador.
+     * Searches for an image on the captured screen of the emulator.
      */
     public DTOImageSearchResult searchTemplate(String emulatorNumber, EnumTemplates templatePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner , double threshold) {
         checkEmulatorInitialized();
         byte[] screenshot = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        return ImageSearchUtil.buscarTemplate(screenshot, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold);
+        return ImageSearchUtil.searchTemplate(screenshot, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold);
     }
 
     /**
-     * Busca una imagen en toda la pantalla del emulador.
+     * Searches for an image on the entire emulator screen.
      */
     public DTOImageSearchResult searchTemplate(String emulatorNumber, EnumTemplates templatePath, double threshold) {
         checkEmulatorInitialized();
         byte[] screenshot = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        return ImageSearchUtil.buscarTemplate(screenshot, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold);
+        return ImageSearchUtil.searchTemplate(screenshot, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold);
     }
 
     public List<DTOImageSearchResult> searchTemplates(String emulatorNumber, EnumTemplates templatePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner , double threshold, int maxResults) {
@@ -273,7 +273,7 @@ public class EmulatorManager {
     }
 
     /**
-     * Cierra el emulador.
+     * Closes the emulator.
      */
     public void closeEmulator(String emulatorNumber) {
         checkEmulatorInitialized();
@@ -303,7 +303,7 @@ public class EmulatorManager {
     public void adquireEmulatorSlot(DTOProfiles profile, PositionCallback callback) throws InterruptedException {
         lock.lock();
         try {
-            // Si hay slot disponible y nadie espera, se adquiere inmediatamente.
+            // If a slot is available and no one is waiting, it is acquired immediately.
             logger.info("Profile " + profile.getName() + " is getting queue slot.");
             if (MAX_RUNNING_EMULATORS > 0 && waitingQueue.isEmpty()) {
                 logger.info("Profile " + profile.getName() + " acquired slot immediately.");
@@ -311,26 +311,26 @@ public class EmulatorManager {
                 return;
             }
 
-            // Crear el objeto que representa al hilo actual con su prioridad
+            // Create the object representing the current thread with its priority
             WaitingThread currentWaiting = new WaitingThread(Thread.currentThread(), profile);
             waitingQueue.add(currentWaiting);
 
-            // Esperar con timeout para poder notificar la posición periódicamente.
+            // Wait with a timeout to be able to notify the position periodically.
 
             while (waitingQueue.peek() != currentWaiting || MAX_RUNNING_EMULATORS <= 0) {
-                // Esperar hasta 1 segundo.
+                // Wait for up to 1 second.
                 permitsAvailable.await(1, TimeUnit.SECONDS);
 
-                // Consultar y notificar la posición actual del hilo en la cola.
+                // Query and notify the current position of the thread in the queue.
                 int position = getPosition(currentWaiting);
                 callback.onPositionUpdate(Thread.currentThread(), position);
             }
             logger.info("Profile {} acquired slot", profile.getName());
-            // Es el turno y hay slot disponible.
-            waitingQueue.poll(); // Remover el hilo de la cola.
-            MAX_RUNNING_EMULATORS--; // Adquirir el slot.
+            // It's the turn and a slot is available.
+            waitingQueue.poll(); // Remove the thread from the queue.
+            MAX_RUNNING_EMULATORS--; // Acquire the slot.
 
-            // Notificar a los demás hilos para que vuelvan a evaluar la condición.
+            // Notify other threads to re-evaluate the condition.
             permitsAvailable.signalAll();
         } finally {
             lock.unlock();

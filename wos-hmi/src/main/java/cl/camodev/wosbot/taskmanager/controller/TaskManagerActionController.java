@@ -202,16 +202,7 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 			root.getStylesheets().add(getClass().getResource("/styles/style.css").toExternalForm());
 
 			// Get the parent window to make dialog modal to it
-			Stage parentStage = null;
-			try {
-				// Try to get the parent stage from the task manager layout controller
-				if (taskManagerLayoutController != null) {
-					// You might need to add a method to get the stage from the controller
-					// For now, we'll use the primary stage approach
-				}
-			} catch (Exception e) {
-				// If we can't get parent stage, dialog will still be modal
-			}
+			Stage parentStage = (Stage) taskManagerLayoutController.getSceneNode().getScene().getWindow();
 
 			// Create and configure stage
 			Stage dialogStage = new Stage();

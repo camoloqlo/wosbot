@@ -14,20 +14,20 @@ public class DTOProfiles {
     private Boolean enabled;
     private Long priority;
     private String status;
-    private Long reconnectionTime; // Tiempo de reconexión en segundos
+    private Long reconnectionTime; // Reconnection time in seconds
     private List<DTOConfig> configs = new ArrayList<>();
     private HashMap<String, String> globalsettings = new HashMap<>();
 
     /**
-     * Constructor de la clase DTOProfiles.
+     * Constructor for the DTOProfiles class.
      *
-     * @param id El identificador único del perfil.
+     * @param id The unique identifier of the profile.
      */
     public DTOProfiles(Long id) {
         this.id = id;
     }
 
-    // Constructor completo incluyendo reconnectionTime
+    // Full constructor including reconnectionTime
     public DTOProfiles(Long id, String name, String emulatorNumber, Boolean enabled, Long priority, Long reconnectionTime) {
         this.id = id;
         this.name = name;
@@ -37,7 +37,7 @@ public class DTOProfiles {
         this.reconnectionTime = reconnectionTime;
     }
 
-    // Getters y Setters
+    // Getters and Setters
 
     public Long getId() {
         return id;
@@ -85,31 +85,31 @@ public class DTOProfiles {
     }
 
     /**
-     * Obtiene el valor de una configuración específica utilizando EnumConfigurationKey. Es un método genérico que devuelve el tipo correcto
-     * basado en la clave.
+     * Gets the value of a specific configuration using EnumConfigurationKey. It is a generic method that returns the correct type
+     * based on the key.
      */
     public <T> T getConfig(EnumConfigurationKey key, Class<T> clazz) {
-        Optional<DTOConfig> configOptional = configs.stream().filter(config -> config.getNombreConfiguracion().equalsIgnoreCase(key.name())).findFirst();
+        Optional<DTOConfig> configOptional = configs.stream().filter(config -> config.getConfigurationName().equalsIgnoreCase(key.name())).findFirst();
 
         if (!configOptional.isPresent()) {
 
             DTOConfig defaultConfig = new DTOConfig(-1L, key.name(), key.getDefaultValue());
             configs.add(defaultConfig);
         }
-        String valor = configOptional.map(DTOConfig::getValor).orElse(key.getDefaultValue());
+        String value = configOptional.map(DTOConfig::getValue).orElse(key.getDefaultValue());
 
-        return key.castValue(valor);
+        return key.castValue(value);
     }
 
     public <T> void setConfig(EnumConfigurationKey key, T value) {
-        String valorAAlmacenar = value.toString();
-        Optional<DTOConfig> configOptional = configs.stream().filter(config -> config.getNombreConfiguracion().equalsIgnoreCase(key.name())).findFirst();
+        String valueToStore = value.toString();
+        Optional<DTOConfig> configOptional = configs.stream().filter(config -> config.getConfigurationName().equalsIgnoreCase(key.name())).findFirst();
 
         if (configOptional.isPresent()) {
-            configOptional.get().setValor(valorAAlmacenar);
+            configOptional.get().setValue(valueToStore);
         } else {
-            DTOConfig nuevaConfig = new DTOConfig(getId(), key.name(), valorAAlmacenar);
-            configs.add(nuevaConfig);
+            DTOConfig newConfig = new DTOConfig(getId(), key.name(), valueToStore);
+            configs.add(newConfig);
         }
     }
 

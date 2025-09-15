@@ -5,6 +5,8 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTODailyTaskStatus;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTaskState;
+import cl.camodev.wosbot.serv.IProfileDataChangeListener;
+import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.taskmanager.controller.TaskManagerActionController;
 import cl.camodev.wosbot.taskmanager.model.TaskManagerAux;
@@ -30,7 +32,11 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class TaskManagerLayoutController {
+public class TaskManagerLayoutController implements IProfileDataChangeListener {
+
+	public javafx.scene.Node getSceneNode() {
+		return tabPaneProfiles;
+	}
 
 	private static final Comparator<TaskManagerAux> TASK_AUX_COMPARATOR = (a, b) -> {
 		if (a.isScheduled() && !b.isScheduled())
@@ -64,6 +70,7 @@ public class TaskManagerLayoutController {
 
 	@FXML
 	public void initialize() {
+		ServProfiles.getServices().addProfileDataChangeListener(this);
 		loadProfiles();
 		setupFilterListener();
 
@@ -133,26 +140,44 @@ public class TaskManagerLayoutController {
 				if (tabPaneProfiles == null)
 					return;
 
-				for (DTOProfiles profile : dtoProfiles) {
+				// Create a set of current profile IDs for efficient lookup
+				Set<Long> currentProfileIds = dtoProfiles.stream()
+						.map(DTOProfiles::getId)
+						.collect(Collectors.toSet());
 
-					Tab existing = profileTabsMap.get(profile.getId());
-					if (existing == null) {
-						// Nuevo perfil → crea tab
+				// Remove tabs for deleted profiles
+				profileTabsMap.entrySet().removeIf(entry -> {
+					if (!currentProfileIds.contains(entry.getKey())) {
+						tabPaneProfiles.getTabs().remove(entry.getValue());
+						tasks.remove(entry.getKey());
+						filteredTasks.remove(entry.getKey());
+						return true;
+					}
+					return false;
+				});
+
+				// Add new tabs and update existing ones
+				for (DTOProfiles profile : dtoProfiles) {
+					Tab existingTab = profileTabsMap.get(profile.getId());
+					if (existingTab == null) {
+						// New profile -> create tab
 						Tab newTab = createProfileTab(profile);
 						profileTabsMap.put(profile.getId(), newTab);
 						tabPaneProfiles.getTabs().add(newTab);
 					} else {
-//						refreshProfileTab(profile);
+						// Existing profile -> update name
+						if (!existingTab.getText().equals(profile.getName())) {
+							existingTab.setText(profile.getName());
+						}
 					}
 				}
 
-				SingleSelectionModel<Tab> sel = tabPaneProfiles.getSelectionModel();
-				if (!tabPaneProfiles.getTabs().isEmpty()) {
-					sel.select(0);
+				// If no tab is selected and there are tabs, select the first one
+				if (tabPaneProfiles.getSelectionModel().getSelectedItem() == null && !tabPaneProfiles.getTabs().isEmpty()) {
+					tabPaneProfiles.getSelectionModel().selectFirst();
 				}
 			});
 		});
-
 	}
 
 	private Tab createProfileTab(DTOProfiles profile) {
@@ -160,33 +185,40 @@ public class TaskManagerLayoutController {
 		tab.setClosable(false);
 		tab.setUserData(profile.getId());
 
-		// 1) Prepara la tabla y la lista observable vacía
+		// 1) Prepare the table and the empty observable list
 		ObservableList<TaskManagerAux> dataList = FXCollections.observableArrayList();
 
-		// 2) Crea FilteredList para el filtrado
+		// 2) Create FilteredList for filtering
 		FilteredList<TaskManagerAux> filteredList = new FilteredList<>(dataList);
 
 		TableView<TaskManagerAux> table = createTaskTable();
 		table.setItems(filteredList);
 
-		// Guarda ambas listas para futuras actualizaciones
+		// Save both lists for future updates
 		tasks.put(profile.getId(), dataList);
 		filteredTasks.put(profile.getId(), filteredList);
 		tab.setContent(table);
 
-		// 3) Llama al builder asíncrono y actualiza la tabla cuando esté listo
+		// 3) Call the asynchronous builder and update the table when ready
 		buildTaskManagerList(profile, list -> {
-			// Siempre desde JavaFX Application Thread
+			// Always from JavaFX Application Thread
 			dataList.setAll(list);
 			FXCollections.sort(dataList, TASK_AUX_COMPARATOR);
 
-			// Aplica el filtro actual si existe
+			// Apply the current filter if it exists
 			if (txtFilterTaskName != null && !txtFilterTaskName.getText().isEmpty()) {
 				applyFilter(txtFilterTaskName.getText());
 			}
 		});
 
 		return tab;
+	}
+
+	@Override
+	public void onProfileDataChanged(DTOProfiles profile) {
+		Platform.runLater(() -> {
+			loadProfiles();
+		});
 	}
 
 //	private void refreshProfileTab(DTOProfiles profile) {
@@ -199,16 +231,16 @@ public class TaskManagerLayoutController {
 //	}
 
 	/**
-	 * Recarga el estado de las tareas y, cuando estén disponibles, construye la lista de TaskManagerAux y la entrega al consumidor.
+	 * Reloads the task status and, when available, builds the TaskManagerAux list and delivers it to the consumer.
 	 */
 	private void buildTaskManagerList(DTOProfiles profile, Consumer<List<TaskManagerAux>> onListReady) {
-		// Ahora `statuses` es una List<DTODailyTaskStatus>
+		// Now `statuses` is a List<DTODailyTaskStatus>
 		taskManagerActionController.loadDailyTaskStatus(profile.getId(), (List<DTODailyTaskStatus> statuses) -> {
 			List<TaskManagerAux> list = Arrays.stream(TpDailyTaskEnum.values()).map(task -> {
-				// Busca el status cuyo ID coincida con el ID de la tarea
-//				System.out.println(">>> statuses.size=" + statuses.size() + "  buscando id=" + task.getId());
+				// Search for the status whose ID matches the task ID
+//				System.out.println(">>> statuses.size=" + statuses.size() + "  searching for id=" + task.getId());
 
-				DTODailyTaskStatus s = statuses.stream().filter(st -> st.getIdTpDailyTask() == task.getId()) // o st.getTaskId()
+				DTODailyTaskStatus s = statuses.stream().filter(st -> st.getIdTpDailyTask() == task.getId()) // or st.getTaskId()
 						.findFirst().orElse(null);
 
 				if (s == null) {
@@ -257,7 +289,7 @@ public class TaskManagerLayoutController {
 			private final ImageView imageView = new ImageView();
 
 			{
-				// Ajusta tamaño del icono si es necesario
+				// Adjust icon size if necessary
 				imageView.setFitWidth(16);
 				imageView.setFitHeight(16);
 			}
@@ -271,10 +303,10 @@ public class TaskManagerLayoutController {
 					setStyle("");
 				} else {
 					setText(item);
-					// Obtén el objeto de la fila actual
+					// Get the current row's object
 					TaskManagerAux task = getTableRow().getItem();
 					if (task != null) {
-						// Elige el icono según la propiedad booleana
+						// Choose the icon based on the boolean property
 						boolean flag = task.scheduledProperty().get();
 						imageView.setImage(flag ? iconTrue : iconFalse);
 						setGraphic(imageView);
@@ -395,7 +427,7 @@ public class TaskManagerLayoutController {
 		});
 
 		TableColumn<TaskManagerAux, Void> colActions = new TableColumn<>("Actions");
-		colActions.setPrefWidth(250); // Aumentar el ancho para acomodar el tercer botón
+		colActions.setPrefWidth(250); // Increase width to accommodate the third button
 		colActions.setCellFactory(column -> new TableCell<>() {
 			private final Button btnSchedule = new Button("Schedule");
 			private final Button btnRemove = new Button("Remove");
@@ -553,7 +585,7 @@ public class TaskManagerLayoutController {
 						boolean b1 = ServScheduler.getServices().getQueueManager().getQueue(e1.getKey()) != null;
 						boolean b2 = ServScheduler.getServices().getQueueManager().getQueue(e2.getKey()) != null;
 						if (b1 == b2) return 0;
-						return b1 ? -1 : 1; // true primero
+						return b1 ? -1 : 1; // true first
 					})
 					.map(Map.Entry::getValue)
 					.collect(Collectors.toList());

@@ -142,34 +142,44 @@ public abstract class DelayedTask implements Runnable, Delayed {
         sleepTask(500);
         logInfo("Ensuring we are on the intel screen.");
 
-        // First, make sure we are on the world screen where the intel button is visible
-        ensureCorrectScreenLocation(EnumStartLocation.WORLD);
-
+        // First, check if we are already on the intel screen.
         for (int i = 0; i < 5; i++) {
             DTOImageSearchResult intelScreenResult = emuManager.searchTemplate(EMULATOR_NUMBER,
                     EnumTemplates.INTEL_SCREEN, 90);
             if (intelScreenResult.isFound()) {
                 logInfo("Already on the intel screen.");
-                return;
+                return; // We are on the correct screen, so we can exit.
             }
             logDebug("Intel screen not found. Attempt " + (i + 1) + "/5. Retrying...");
             sleepTask(300);
         }
-        logWarning("Failed to find intel screen after 5 attempts.");
+        logWarning("Not on intel screen. Attempting to navigate.");
 
+        // If not on the intel screen, make sure we are on the world screen to find the intel button.
+        ensureCorrectScreenLocation(EnumStartLocation.WORLD);
+
+        // Now, find and click the intel button.
         for (int i = 0; i < 5; i++) {
             DTOImageSearchResult intelButton = emuManager.searchTemplate(EMULATOR_NUMBER,
                     EnumTemplates.GAME_HOME_INTEL, 90);
             if (intelButton.isFound()) {
                 logInfo("Intel button found. Tapping to open the intel screen.");
                 emuManager.tapAtPoint(EMULATOR_NUMBER, intelButton.getPoint());
-                sleepTask(500); // Wait for screen transition
-                return; // Success
+                sleepTask(1000); // Wait for screen transition
+
+                // Final check to confirm we are on the intel screen
+                if (emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN, 90).isFound()) {
+                    logInfo("Successfully navigated to the intel screen.");
+                    return; // Success
+                } else {
+                    logWarning("Tapped intel button, but still not on intel screen. Retrying...");
+                }
             }
             logDebug("Intel button not found. Attempt " + (i + 1) + "/5. Retrying...");
             sleepTask(300);
         }
-        logWarning("Failed to find the intel button after 5 attempts.");
+        logError("Failed to find the intel button after 5 attempts.");
+        throw new HomeNotFoundException("Failed to navigate to intel screen.");
     }
 
     public boolean isRecurring() {

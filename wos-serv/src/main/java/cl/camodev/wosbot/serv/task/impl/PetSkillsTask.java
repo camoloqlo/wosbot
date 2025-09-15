@@ -104,19 +104,8 @@ public class PetSkillsTask extends DelayedTask {
 	}
 
 	public LocalDateTime parseCooldown(String input) {
-		if (input == null) {
-			log.warn("parseCooldown: input is null, returning now.");
-			return LocalDateTime.now();
-		}
-
-		String lower = input.toLowerCase();
-		if (lower.contains("active")) {
-			log.info("parseCooldown: 'Active' detected, gathering can be started immediately.");
-			return LocalDateTime.now();
-		}
-		if (!lower.contains("on cooldown:")) {
-			log.warn("parseCooldown: Unexpected format: '" + input + "', rescheduling in 5 minutes.");
-			return LocalDateTime.now().plusMinutes(5);
+		if (input == null || !input.toLowerCase().contains("on cooldown:")) {
+			throw new IllegalArgumentException("Invalid format: " + input);
 		}
 
 		try {
@@ -126,22 +115,20 @@ public class PetSkillsTask extends DelayedTask {
 			int days = 0, hours = 0, minutes = 0, seconds = 0;
 			if (timePart.contains("d")) {
 				String[] daySplit = timePart.split("d", 2);
-				days = parseNumber(daySplit[0]);
-				timePart = daySplit[1];
+				days = parseNumber(daySplit[0]); // Extract days
+				timePart = daySplit[1]; // Rest of the string without days
 			}
 			String[] parts = timePart.split(":");
-			if (parts.length == 3) {
+			if (parts.length == 3) { // Standard case hh:mm:ss
 				hours = parseNumber(parts[0]);
 				minutes = parseNumber(parts[1]);
 				seconds = parseNumber(parts[2]);
 			} else {
-				log.warn("parseCooldown: Time format not recognized: '" + timePart + "', rescheduling in 5 minutes.");
-				return LocalDateTime.now().plusMinutes(5);
+				throw new IllegalArgumentException("Incorrect time format: " + timePart);
 			}
 			return LocalDateTime.now().plusDays(days).plusHours(hours).plusMinutes(minutes).plusSeconds(seconds);
 		} catch (Exception e) {
-			log.warn("parseCooldown: Exception for input '" + input + "', rescheduling in 5 minutes.");
-			return LocalDateTime.now().plusMinutes(5);
+			throw new RuntimeException("Error processing cooldown: " + input, e);
 		}
 	}
 

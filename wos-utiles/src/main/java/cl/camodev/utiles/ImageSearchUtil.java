@@ -27,33 +27,33 @@ public class ImageSearchUtil {
 	// Cache thread-safe para templates precargados
 	private static final ConcurrentHashMap<String, Mat> templateCache = new ConcurrentHashMap<>();
 
-	// Pool de threads personalizado para operaciones de OpenCV
+	// Custom thread pool for OpenCV operations
 	private static final ForkJoinPool openCVThreadPool = new ForkJoinPool(
 		Math.min(Runtime.getRuntime().availableProcessors(), 4)
 	);
 
-	// Cache para byte arrays de templates
+	// Cache for template byte arrays
 	private static final ConcurrentHashMap<String, byte[]> templateBytesCache = new ConcurrentHashMap<>();
 
-	// Estado de inicialización del cache
+	// Cache initialization status
 	private static volatile boolean cacheInitialized = false;
 
 	static {
-		// Inicialización automática del cache en background
+		// Automatic cache initialization in the background
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			openCVThreadPool.shutdown();
-			// Limpiar cache y liberar memoria de OpenCV
+			// Clean cache and release OpenCV memory
 			templateCache.values().forEach(Mat::release);
 			templateCache.clear();
 			templateBytesCache.clear();
 		}));
 
-		// Precargar todos los templates del enum en background
+		// Preload all templates from the enum in the background
 		initializeTemplateCache();
 	}
 
 	/**
-	 * Inicializa el cache de templates cargando todos los templates del enum EnumTemplates
+	 * Initializes the template cache by loading all templates from the EnumTemplates enum.
 	 */
 	private static void initializeTemplateCache() {
 		if (cacheInitialized) return;
@@ -62,14 +62,14 @@ public class ImageSearchUtil {
 			try {
 				logger.info("Caching templates...");
 
-				// Precargar todos los templates del enum
+				// Preload all templates from the enum
 				for (EnumTemplates enumTemplate : EnumTemplates.values()) {
 					String templatePath = enumTemplate.getTemplate();
 					try {
 						loadTemplateOptimized(templatePath);
 						logger.debug("Template {} cached successfully", templatePath);
 					} catch (Exception e) {
-						logger.warn("Error precargando template {}: {}", templatePath, e.getMessage());
+						logger.warn("Error preloading template {}: {}", templatePath, e.getMessage());
 					}
 				}
 
@@ -83,33 +83,33 @@ public class ImageSearchUtil {
 	}
 
 	/**
-	 * Realiza la búsqueda de un template (plantilla) dentro de una imagen principal.
+	 * Performs the search for a template within a main image.
 	 */
-	public static DTOImageSearchResult buscarTemplate(byte[] image, String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage) {
-		// Delegar al método optimizado manteniendo la misma firma
-		return buscarTemplateOptimized(image, templateResourcePath, topLeftCorner, bottomRightCorner, thresholdPercentage);
+	public static DTOImageSearchResult searchTemplate(byte[] image, String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage) {
+		// Delegate to the optimized method while maintaining the same signature
+		return searchTemplateOptimized(image, templateResourcePath, topLeftCorner, bottomRightCorner, thresholdPercentage);
 	}
 
 	/**
 	 * Performs the search for multiple matches of a template within a main image.
 	 */
 	public static List<DTOImageSearchResult> searchTemplateMultiple(byte[] image, String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage, int maxResults) {
-		// Delegar al método optimizado manteniendo la misma firma
+		// Delegate to the optimized method while maintaining the same signature
 		return searchTemplateMultipleOptimized(image, templateResourcePath, topLeftCorner, bottomRightCorner, thresholdPercentage, maxResults);
 	}
 
 	/**
-	 * Método optimizado para carga y cache de templates
+	 * Optimized method for loading and caching templates.
 	 */
 	private static Mat loadTemplateOptimized(String templateResourcePath) {
-		// Intentar obtener del cache primero
+		// Try to get from cache first
 		Mat cachedTemplate = templateCache.get(templateResourcePath);
 		if (cachedTemplate != null && !cachedTemplate.empty()) {
-			return cachedTemplate.clone(); // Retornar copia para thread safety
+			return cachedTemplate.clone(); // Return a copy for thread safety
 		}
 
 		try {
-			// Cargar bytes del cache o del recurso
+			// Load bytes from cache or resource
 			byte[] templateBytes = templateBytesCache.computeIfAbsent(templateResourcePath, path -> {
 				try (InputStream is = ImageSearchUtil.class.getResourceAsStream(path)) {
 					if (is == null) {
@@ -124,15 +124,15 @@ public class ImageSearchUtil {
 			});
 
 			if (templateBytes == null) {
-				return new Mat(); // Mat vacío
+				return new Mat(); // Empty Mat
 			}
 
-			// Decodificar template
+			// Decode template
 			MatOfByte templateMatOfByte = new MatOfByte(templateBytes);
 			Mat template = Imgcodecs.imdecode(templateMatOfByte, Imgcodecs.IMREAD_COLOR);
 
 			if (!template.empty()) {
-				// Guardar en cache (clone para evitar modificaciones)
+				// Save to cache (clone to avoid modifications)
 				templateCache.put(templateResourcePath, template.clone());
 			}
 
@@ -145,9 +145,9 @@ public class ImageSearchUtil {
 	}
 
 	/**
-	 * Versión optimizada del método buscarTemplate con cache y mejor gestión de memoria
+	 * Optimized version of the searchTemplate method with cache and better memory management.
 	 */
-	public static DTOImageSearchResult buscarTemplateOptimized(byte[] image, String templateResourcePath,
+	public static DTOImageSearchResult searchTemplateOptimized(byte[] image, String templateResourcePath,
 			DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage) {
 
 		Mat imagenPrincipal = null;
@@ -156,7 +156,7 @@ public class ImageSearchUtil {
 		Mat resultado = null;
 
 		try {
-			// Validación rápida de ROI
+			// Quick ROI validation
 			int roiX = topLeftCorner.getX();
 			int roiY = topLeftCorner.getY();
 			int roiWidth = bottomRightCorner.getX() - topLeftCorner.getX();
@@ -167,7 +167,7 @@ public class ImageSearchUtil {
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Decodificación de imagen principal (reutilizable)
+			// Decoding of main image (reusable)
 			MatOfByte matOfByte = new MatOfByte(image);
 			imagenPrincipal = Imgcodecs.imdecode(matOfByte, Imgcodecs.IMREAD_COLOR);
 
@@ -175,23 +175,23 @@ public class ImageSearchUtil {
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Cargar template optimizado con cache
+			// Load optimized template with cache
 			template = loadTemplateOptimized(templateResourcePath);
 			if (template.empty()) {
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Validación de ROI vs imagen
+			// ROI vs image validation
 			if (roiX + roiWidth > imagenPrincipal.cols() || roiY + roiHeight > imagenPrincipal.rows()) {
 				logger.error("ROI exceeds image dimensions");
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
-			// Crear ROI
+			// Create ROI
 			Rect roi = new Rect(roiX, roiY, roiWidth, roiHeight);
 			imagenROI = new Mat(imagenPrincipal, roi);
 
-			// Verificación de tamaño optimizada
+			// Optimized size check
 			int resultCols = imagenROI.cols() - template.cols() + 1;
 			int resultRows = imagenROI.rows() - template.rows() + 1;
 			if (resultCols <= 0 || resultRows <= 0) {
@@ -202,7 +202,7 @@ public class ImageSearchUtil {
 			resultado = new Mat(resultRows, resultCols, CvType.CV_32FC1);
 			Imgproc.matchTemplate(imagenROI, template, resultado, Imgproc.TM_CCOEFF_NORMED);
 
-			// Búsqueda del mejor match
+			// Search for the best match
 			Core.MinMaxLocResult mmr = Core.minMaxLoc(resultado);
 			double matchPercentage = mmr.maxVal * 100.0;
 
@@ -213,7 +213,7 @@ public class ImageSearchUtil {
 
 			logger.info("Template {} found with match percentage: {}", templateResourcePath, matchPercentage);
 
-			// Calcular coordenadas del centro
+			// Calculate center coordinates
 			Point matchLoc = mmr.maxLoc;
 			double centerX = matchLoc.x + roi.x + (template.cols() / 2.0);
 			double centerY = matchLoc.y + roi.y + (template.rows() / 2.0);
@@ -224,7 +224,7 @@ public class ImageSearchUtil {
 			logger.error("Exception during optimized template search", e);
 			return new DTOImageSearchResult(false, null, 0.0);
 		} finally {
-			// Liberación explícita de memoria OpenCV
+			// Explicit release of OpenCV memory
 			if (imagenPrincipal != null) imagenPrincipal.release();
 			if (template != null) template.release();
 			if (imagenROI != null) imagenROI.release();
@@ -233,7 +233,7 @@ public class ImageSearchUtil {
 	}
 
 	/**
-	 * Versión optimizada para búsqueda múltiple con paralelización
+	 * Optimized version for multiple search with parallelization.
 	 */
 	public static CompletableFuture<List<DTOImageSearchResult>> searchTemplateMultipleAsync(
 			byte[] image, String templateResourcePath, DTOPoint topLeftCorner,
@@ -246,7 +246,7 @@ public class ImageSearchUtil {
 	}
 
 	/**
-	 * Versión optimizada de búsqueda múltiple con mejor gestión de memoria
+	 * Optimized version of multiple search with better memory management.
 	 */
 	public static List<DTOImageSearchResult> searchTemplateMultipleOptimized(byte[] image,
 			String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner,
@@ -260,7 +260,7 @@ public class ImageSearchUtil {
 		Mat resultCopy = null;
 
 		try {
-			// Validación rápida de ROI
+			// Quick ROI validation
 			int roiX = topLeftCorner.getX();
 			int roiY = topLeftCorner.getY();
 			int roiWidth = bottomRightCorner.getX() - topLeftCorner.getX();
@@ -270,7 +270,7 @@ public class ImageSearchUtil {
 				return results;
 			}
 
-			// Decodificación optimizada
+			// Optimized decoding
 			MatOfByte matOfByte = new MatOfByte(image);
 			mainImage = Imgcodecs.imdecode(matOfByte, Imgcodecs.IMREAD_COLOR);
 
@@ -278,18 +278,18 @@ public class ImageSearchUtil {
 				return results;
 			}
 
-			// Cargar template con cache
+			// Load template with cache
 			template = loadTemplateOptimized(templateResourcePath);
 			if (template.empty()) {
 				return results;
 			}
 
-			// Validaciones
+			// Validations
 			if (roiX + roiWidth > mainImage.cols() || roiY + roiHeight > mainImage.rows()) {
 				return results;
 			}
 
-			// Crear ROI
+			// Create ROI
 			Rect roi = new Rect(roiX, roiY, roiWidth, roiHeight);
 			imageROI = new Mat(mainImage, roi);
 
@@ -303,13 +303,13 @@ public class ImageSearchUtil {
 			matchResult = new Mat(resultRows, resultCols, CvType.CV_32FC1);
 			Imgproc.matchTemplate(imageROI, template, matchResult, Imgproc.TM_CCOEFF_NORMED);
 
-			// Búsqueda optimizada de múltiples matches
+			// Optimized search for multiple matches
 			double thresholdDecimal = thresholdPercentage / 100.0;
 			resultCopy = matchResult.clone();
 			int templateWidth = template.cols();
 			int templateHeight = template.rows();
 
-			// Pre-calcular para optimización
+			// Pre-calculate for optimization
 			int halfTemplateWidth = templateWidth / 2;
 			int halfTemplateHeight = templateHeight / 2;
 
@@ -328,7 +328,7 @@ public class ImageSearchUtil {
 				results.add(new DTOImageSearchResult(true,
 					new DTOPoint((int) centerX, (int) centerY), matchValue * 100.0));
 
-				// Supresión optimizada
+				// Optimized suppression
 				int suppressX = Math.max(0, (int)matchLoc.x - halfTemplateWidth);
 				int suppressY = Math.max(0, (int)matchLoc.y - halfTemplateHeight);
 				int suppressWidth = Math.min(templateWidth, resultCopy.cols() - suppressX);
@@ -345,7 +345,7 @@ public class ImageSearchUtil {
 		} catch (Exception e) {
 			logger.error("Exception during optimized multiple template search", e);
 		} finally {
-			// Liberación explícita de memoria
+			// Explicit memory release
 			if (mainImage != null) mainImage.release();
 			if (template != null) template.release();
 			if (imageROI != null) imageROI.release();
@@ -357,14 +357,14 @@ public class ImageSearchUtil {
 	}
 
 	/**
-	 * Método para precarga de templates comunes
+	 * Method for preloading common templates.
 	 */
 	public static void preloadTemplate(String templateResourcePath) {
 		openCVThreadPool.submit(() -> loadTemplateOptimized(templateResourcePath));
 	}
 
 	/**
-	 * Método para limpiar cache manualmente
+	 * Method to clear cache manually.
 	 */
 	public static void clearCache() {
 		templateCache.values().forEach(Mat::release);
@@ -374,15 +374,15 @@ public class ImageSearchUtil {
 	}
 
 	/**
-	 * Buscar template usando directamente el enum EnumTemplates
+	 * Search for a template using the EnumTemplates enum directly.
 	 */
-	public static DTOImageSearchResult buscarTemplate(byte[] image, EnumTemplates enumTemplate,
+	public static DTOImageSearchResult searchTemplate(byte[] image, EnumTemplates enumTemplate,
 			DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage) {
-		return buscarTemplate(image, enumTemplate.getTemplate(), topLeftCorner, bottomRightCorner, thresholdPercentage);
+		return searchTemplate(image, enumTemplate.getTemplate(), topLeftCorner, bottomRightCorner, thresholdPercentage);
 	}
 
 	/**
-	 * Buscar múltiples templates usando directamente el enum EnumTemplates
+	 * Search for multiple templates using the EnumTemplates enum directly.
 	 */
 	public static List<DTOImageSearchResult> searchTemplateMultiple(byte[] image, EnumTemplates enumTemplate,
 			DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage, int maxResults) {
@@ -390,7 +390,7 @@ public class ImageSearchUtil {
 	}
 
 	/**
-	 * Versión asíncrona usando enum
+	 * Asynchronous version using enum.
 	 */
 	public static CompletableFuture<List<DTOImageSearchResult>> searchTemplateMultipleAsync(
 			byte[] image, EnumTemplates enumTemplate, DTOPoint topLeftCorner,
@@ -399,35 +399,35 @@ public class ImageSearchUtil {
 	}
 
 	/**
-	 * Verifica si el cache está completamente inicializado
+	 * Checks if the cache is fully initialized.
 	 */
 	public static boolean isCacheInitialized() {
 		return cacheInitialized;
 	}
 
 	/**
-	 * Obtiene estadísticas del cache
+	 * Gets cache statistics.
 	 */
 	public static String getCacheStats() {
-		return String.format("Templates en cache: %d/%d, Bytes cache: %d",
+		return String.format("Templates in cache: %d/%d, Bytes cache: %d",
 			templateCache.size(), EnumTemplates.values().length, templateBytesCache.size());
 	}
 
 	public static void loadNativeLibrary(String resourcePath) throws IOException {
-		// Obtener el nombre del archivo a partir de la ruta del recurso
+		// Get the file name from the resource path
 		String[] parts = resourcePath.split("/");
 		String libFileName = parts[parts.length - 1];
 
-		// Crear el directorio lib/opencv si no existe
+		// Create the lib/opencv directory if it doesn't exist
 		File libDir = new File("lib/opencv");
 		if (!libDir.exists()) {
 			libDir.mkdirs();
 		}
 
-		// Crear el archivo destino en lib/opencv
+		// Create the destination file in lib/opencv
 		File destLib = new File(libDir, libFileName);
 
-		// Abrir el recurso como stream
+		// Open the resource as a stream
 		try (InputStream in = ImageSearchUtil.class.getResourceAsStream(resourcePath); OutputStream out = new FileOutputStream(destLib)) {
 			if (in == null) {
 				logger.error("Resource not found: {}", resourcePath);
@@ -443,7 +443,7 @@ public class ImageSearchUtil {
 			throw e;
 		}
 
-		// Cargar la librería usando la ruta absoluta del archivo destino
+		// Load the library using the absolute path of the destination file
 		System.load(destLib.getAbsolutePath());
 		logger.info("Native library loaded from: {}", destLib.getAbsolutePath());
 	}

@@ -18,12 +18,8 @@ import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import net.sourceforge.tess4j.TesseractException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class StorehouseChest extends DelayedTask {
-
-    private static final Logger log = LoggerFactory.getLogger(StorehouseChest.class);
 
     public StorehouseChest(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
@@ -90,71 +86,50 @@ public class StorehouseChest extends DelayedTask {
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(30, 430), new DTOPoint(50, 470));
 			sleepTask(700);
 
-
-			boolean chestClaimed = false;
 			logInfo("Searching for the storehouse chest.");
-			for (int i = 0; i < 10; i++) {
+			for (int i = 0; i < 5; i++) {
 				DTOImageSearchResult chest = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_CHEST,  90);
+
+				logDebug("Searching for storehouse chest (Attempt " + (i + 1) + "/5).");
 				if (chest.isFound()) {
 					logInfo("Storehouse chest found. Tapping to claim.");
 					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, chest.getPoint(), chest.getPoint());
 					sleepTask(500);
-					chestClaimed = true;
-					break;
-				} else {
-					logDebug("Storehouse chest not found on this attempt.");
-					sleepTask(500);
+					emuManager.tapBackButton(EMULATOR_NUMBER);
+                    break;
 				}
+				sleepTask(300);
 			}
 
-			boolean staminaClaimed = false;
-			logInfo("Searching for stamina rewards.");
-			for (int j = 0; j < 10; j++) {
-				DTOImageSearchResult stamina = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_STAMINA, 90);
-				if (stamina.isFound()) {
-					logInfo("Stamina reward found. Claiming it.");
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, stamina.getPoint(), stamina.getPoint());
-					sleepTask(500);
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(250, 930), new DTOPoint(450, 950));
-					sleepTask(4000);
-					staminaClaimed = true;
-					break;
-				} else {
-					logDebug("Stamina reward not found on this attempt.");
-					sleepTask(300);
-				}
-			}
+            logInfo("Searching for stamina rewards.");
+            for (int j = 0; j < 5; j++) {
+                DTOImageSearchResult stamina = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_STAMINA, 90);
 
-			// Nur wenn etwas eingesammelt wurde, Back-Button drücken
-			if (chestClaimed || staminaClaimed) {
-				emuManager.tapBackButton(EMULATOR_NUMBER);
-			}
+				logDebug("Searching for stamina reward (Attempt " + (j + 1) + "/5).");
+                if (stamina.isFound()) {
+                    logInfo("Stamina reward found. Claiming it.");
+                    emuManager.tapAtRandomPoint(EMULATOR_NUMBER, stamina.getPoint(), stamina.getPoint());
+                    sleepTask(500);
+                    emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(250, 930), new DTOPoint(450, 950));
+                    sleepTask(1000);
+                    break;
+                }
+				sleepTask(300);
+            }
 
-			// Reschedule based on OCR
+            // Reschedule based on OCR
+            try {
+                String nextRewardTime = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(285, 642), new DTOPoint(430, 666));
+                LocalDateTime nextReward = parseNextReward(nextRewardTime);
+                LocalDateTime nextReset = UtilTime.getNextReset();
 
-			try {
-				// Wait to ensure UI is updated before OCR
-				sleepTask(700);
-				String nextRewardTime = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(285, 642), new DTOPoint(430, 666));
-				sleepTask(700);
-				logInfo("OCR result for next reward time: '" + nextRewardTime + "'");
-				LocalDateTime nextReward = parseNextReward(nextRewardTime);
-				LocalDateTime nextReset = UtilTime.getNextReset();
-
-				// If OCR is empty or nextReward ~ now, handle as error
-				if (nextRewardTime == null || nextRewardTime.trim().isEmpty() || nextReward.isBefore(LocalDateTime.now().plusSeconds(10))) {
-					logWarning("OCR for storehouse chest cooldown failed or was invalid. Rescheduling in 5 minutes.");
-					this.reschedule(LocalDateTime.now().plusMinutes(5));
-					return;
-				}
-
-				LocalDateTime scheduledTime;
-				if (!nextReward.isBefore(nextReset)) {
-					scheduledTime = nextReset;
-					logInfo("Next reward time exceeds next reset, scheduling at reset to avoid missing stamina.");
-				} else {
-					scheduledTime = nextReward.minusSeconds(3);
-				}
+                LocalDateTime scheduledTime;
+                if (!nextReward.isBefore(nextReset)) {
+                    scheduledTime = nextReset;
+                    logInfo("Next reward time exceeds next reset, scheduling at reset to avoid missing stamina.");
+                } else {
+                    scheduledTime = nextReward.minusSeconds(3);
+                }
 
 				this.reschedule(scheduledTime);
 				ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, scheduledTime);

@@ -18,11 +18,10 @@ public class AllianceAutojoinTask extends DelayedTask {
 
 	@Override
 	protected void execute() {
-		// Verificar si estamos en HOME o en WORLD
 
 		logInfo("Starting alliance auto-join task");
 
-		// Ir a la sección de cofres de alianza
+		// Go to the alliance chests section
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(493, 1187), new DTOPoint(561, 1240));
 		sleepTask(3000);
 

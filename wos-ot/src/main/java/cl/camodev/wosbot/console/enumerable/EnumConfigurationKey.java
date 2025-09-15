@@ -44,8 +44,7 @@ public enum EnumConfigurationKey {
 	ALLIANCE_AUTOJOIN_BOOL("false",Boolean.class),
 	ALLIANCE_AUTOJOIN_QUEUES_INT("1",Integer.class),
 	ALLIANCE_PET_TREASURE_BOOL("false",Boolean.class),
-	ALLIANCE_HELP_REQUESTS_BOOL("false",Boolean.class),
-	ALLIANCE_HELP_REQUESTS_OFFSET_INT("60",Integer.class),
+	ALLIANCE_HELP_BOOL("false",Boolean.class),
 	ALLIANCE_TRIUMPH_BOOL("false",Boolean.class),
 	ALLIANCE_TRIUMPH_OFFSET_INT("60",Integer.class),
 	

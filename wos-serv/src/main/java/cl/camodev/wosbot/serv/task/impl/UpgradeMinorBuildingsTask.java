@@ -13,8 +13,7 @@ public class UpgradeMinorBuildingsTask extends DelayedTask {
     @Override
     protected void execute() {
 
-        //verify if the queue is busy
-
+        // verify if the queue is busy
 
 
 

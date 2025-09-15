@@ -23,13 +23,13 @@ public class NewSurvivorsTask extends DelayedTask {
     protected void execute() {
         logInfo("Starting the New Survivors task.");
 
-        //i need to search for New Survivors Template
+        //I need to search for New Survivors Template
         logInfo("Searching for the 'New Survivors' notification.");
         DTOImageSearchResult newSurvivors = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_NEW_SURVIVORS,  90);
         if (newSurvivors.isFound()) {
             emuManager.tapAtPoint(EMULATOR_NUMBER, newSurvivors.getPoint());
             sleepTask(1000);
-            //i need to accept the survivors then check if there's empty spots in the buildings
+            //I need to accept the survivors then check if there's empty spots in the buildings
             logInfo("New survivors found. Welcoming them in.");
             DTOImageSearchResult welcomeIn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_NEW_SURVIVORS_WELCOME_IN,  90);
             if (welcomeIn.isFound()) {
@@ -51,7 +51,7 @@ public class NewSurvivorsTask extends DelayedTask {
                     sleepTask(50);
                 }
 
-                //scroll down a little bit an do the same
+                //scroll down a little bit and do the same
                 emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(340, 900),new DTOPoint(340, 610));
                 sleepTask(200);
                 while((plusButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_NEW_SURVIVORS_PLUS_BUTTON,  90)).isFound()){

@@ -6,12 +6,12 @@
 
 <GridPane hgap="10" vgap="10" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
 
-    <!-- Define las columnas para que ocupen todo el espacio -->
+    <!-- Define columns to take up all available space -->
     <columnConstraints>
         <ColumnConstraints hgrow="ALWAYS" maxWidth="1.7976931348623157E308" />
     </columnConstraints>
 
-    <!-- Define las filas para que ocupen todo el espacio -->
+    <!-- Define rows to take up all available space -->
     <rowConstraints>
         <RowConstraints maxHeight="1.7976931348623157E308" vgrow="ALWAYS" />
       <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
@@ -32,7 +32,7 @@
    </TableView>
    <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="3">
       <children>
-         <Label text="Max Concurrent Intances" />
+         <Label text="Max Concurrent Instances" />
          <TextField fx:id="textfieldMaxConcurrentInstances" maxWidth="50.0" minWidth="50.0" prefWidth="50.0">
             <HBox.margin>
                <Insets right="5.0" />

@@ -9,6 +9,7 @@ import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
 import cl.camodev.wosbot.console.model.LogMessageAux;
 import cl.camodev.wosbot.ot.DTOLogMessage;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.serv.IProfileDataChangeListener;
 import cl.camodev.wosbot.serv.impl.ServProfiles;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -25,7 +26,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.text.Text;
 
-public class ConsoleLogLayoutController {
+public class ConsoleLogLayoutController implements IProfileDataChangeListener {
 
 	@FXML
 	private Button buttonClearLogs;
@@ -105,6 +106,7 @@ public class ConsoleLogLayoutController {
 		
 		// Set up filter listeners
 		setupFilterListeners();
+		ServProfiles.getServices().addProfileDataChangeListener(this);
 	}
 
 	@FXML
@@ -129,7 +131,14 @@ public class ConsoleLogLayoutController {
 				profileNames.add("All profiles");
 				profiles.forEach(profile -> profileNames.add(profile.getName()));
 				comboBoxProfileFilter.setItems(profileNames);
-				comboBoxProfileFilter.getSelectionModel().selectFirst(); // Select "All profiles" by default
+
+				// Keep the current selection if it's still valid, otherwise select "All profiles"
+				String currentSelection = comboBoxProfileFilter.getSelectionModel().getSelectedItem();
+				if (currentSelection != null && profileNames.contains(currentSelection)) {
+					comboBoxProfileFilter.getSelectionModel().select(currentSelection);
+				} else {
+					comboBoxProfileFilter.getSelectionModel().selectFirst();
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -172,6 +181,13 @@ public class ConsoleLogLayoutController {
 			if (logMessages.size() > 600) {
 				logMessages.remove(logMessages.size() - 1);
 			}
+		});
+	}
+
+	@Override
+	public void onProfileDataChanged(DTOProfiles profile) {
+		Platform.runLater(() -> {
+			initializeProfileFilter();
 		});
 	}
 

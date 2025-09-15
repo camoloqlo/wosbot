@@ -71,7 +71,7 @@ public class EditProfileController implements Initializable {
             }
         });
 
-        // Configurar el slider de prioridad
+        // Configure the priority slider
         sliderPriority.valueProperty().addListener((observable, oldValue, newValue) -> {
             int priorityValue = newValue.intValue();
             lblPriorityValue.setText(String.valueOf(priorityValue));

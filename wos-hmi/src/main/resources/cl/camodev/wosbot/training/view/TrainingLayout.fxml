@@ -28,7 +28,7 @@
             <Insets />
          </GridPane.margin>
       </CheckBox>
-      <CheckBox fx:id="checkBoxTrainMarksman" mnemonicParsing="false" text="Train Marksmans" GridPane.rowIndex="1" />
+      <CheckBox fx:id="checkBoxTrainMarksman" mnemonicParsing="false" text="Train Marksmen" GridPane.rowIndex="1" />
       <CheckBox fx:id="checkBoxTrainLancers" mnemonicParsing="false" text="Train Lancers" GridPane.rowIndex="2" />
       <CheckBox fx:id="checkBoxTrainPrioritizePromotion" mnemonicParsing="false" text="Prioritize Troop Promotion" GridPane.rowIndex="3" />
    </children>

@@ -52,7 +52,7 @@ public class EmuConfigLayoutController {
 
 	private final FileChooser fileChooser = new FileChooser();
 
-	// Lista fija de emuladores que se derivan del enum
+	// Fixed list of emulators derived from the enum
 	private final ObservableList<EmulatorAux> emulatorList = FXCollections.observableArrayList();
 
 	public void initialize() {
@@ -68,12 +68,12 @@ public class EmuConfigLayoutController {
 			emulatorList.add(emulator);
 		}
 
-		// Configurar columna de nombre (lectura únicamente)
+		// Configure name column (read-only)
 		tableColumnEmulatorName.setCellValueFactory(new PropertyValueFactory<>("name"));
-		// Configurar columna que muestra la ruta
+		// Configure column that displays the path
 		tableColumnEmulatorPath.setCellValueFactory(new PropertyValueFactory<>("path"));
 
-		// Configurar la columna de selección con RadioButton para elegir el emulador activo
+		// Configure the selection column with a RadioButton to choose the active emulator
 		tableColumnActive.setCellValueFactory(cellData -> cellData.getValue().activeProperty());
 
 		final ToggleGroup toggleGroup = new ToggleGroup();
@@ -83,7 +83,7 @@ public class EmuConfigLayoutController {
 				radioButton.setToggleGroup(toggleGroup);
 				radioButton.setOnAction(event -> {
 					EmulatorAux selected = getTableView().getItems().get(getIndex());
-					// Desactiva la bandera activa en todos
+					// Deactivates the active flag on all
 					for (EmulatorAux e : emulatorList) {
 						e.setActive(false);
 					}
@@ -104,17 +104,17 @@ public class EmuConfigLayoutController {
 			}
 		});
 
-		// Configurar la columna de acción para actualizar la ruta
+		// Configure the action column to update the path
 		tableColumnEmulatorAction.setCellFactory(col -> new TableCell<EmulatorAux, Void>() {
 			private final Button btn = new Button("...");
 
 			{
 				btn.setOnAction(event -> {
 					EmulatorAux emulator = getTableView().getItems().get(getIndex());
-					// Se puede utilizar el executableName para filtrar o validar el archivo
+					// The executableName can be used to filter or validate the file
 					File selectedFile = openFileChooser("Select" + emulator.getEmulatorType().getExecutableName());
 					if (selectedFile != null) {
-						// Verifica que el archivo seleccionado coincida con el esperado
+						// Verifies that the selected file matches the expected one
 						if (!selectedFile.getName().equalsIgnoreCase(emulator.getEmulatorType().getExecutableName())) {
 							showError("File not valid, please select: " + emulator.getEmulatorType().getExecutableName());
 							return;
@@ -132,7 +132,7 @@ public class EmuConfigLayoutController {
 			}
 		});
 
-		// Asignar la lista fija al TableView
+		// Assign the fixed list to the TableView
 		tableviewEmulators.setItems(emulatorList);
 
 		textfieldMaxConcurrentInstances.setText(globalConfig.getOrDefault(EnumConfigurationKey.MAX_RUNNING_EMULATORS_INT.name(), "1"));
@@ -143,7 +143,7 @@ public class EmuConfigLayoutController {
 		comboboxGameVersion.setValue(GameVersion.valueOf(gameVersionName));
 	}
 
-	// Guarda la configuración, recorriendo la lista para extraer la ruta y determinar el emulador activo
+	// Saves the configuration, iterating through the list to extract the path and determine the active emulator
 	@FXML
 	private void handleSaveConfiguration() {
 		String activeEmulatorName = null;
@@ -158,20 +158,20 @@ public class EmuConfigLayoutController {
 			return;
 		}
 
-		// Guarda el número máximo de instancias
+		// Saves the maximum number of instances
 		String maxInstances = textfieldMaxConcurrentInstances.getText();
 		if (maxInstances.isEmpty()) {
 			showError("Max instances cannot be empty.");
 			return;
 		}
 
-		// Guarda el tiempo máximo de inactividad
+		// Saves the maximum idle time
 		String maxIdleTime = textfieldMaxIdleTime.getText();
 		if (maxIdleTime.isEmpty()) {
 			showError("Max idle time cannot be empty.");
 			return;
 		}
-		// Guarda la configuración usando la clave definida en cada valor del enum
+		// Saves the configuration using the key defined in each enum value
 		for (EmulatorAux emulator : emulatorList) {
 			ServScheduler.getServices().saveEmulatorPath(emulator.getEmulatorType().getConfigKey(), emulator.getPath());
 		}
@@ -204,7 +204,7 @@ public class EmuConfigLayoutController {
 
 	private void showInfo(String message) {
 		Alert alert = new Alert(Alert.AlertType.INFORMATION);
-		alert.setTitle("Éxito");
+		alert.setTitle("Success");
 		alert.setHeaderText(null);
 		alert.setContentText(message);
 		alert.showAndWait();

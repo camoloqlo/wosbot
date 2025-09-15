@@ -33,11 +33,11 @@ public class ProfileRepository implements IProfileRepository {
 	public List<DTOProfiles> getProfiles() {
 		String queryProfiles = "SELECT new cl.camodev.wosbot.ot.DTOProfiles(p.id, p.name, p.emulatorNumber, p.enabled, p.priority, p.reconnectionTime) FROM Profile p";
 
-		// Obtener perfiles usando getQueryResults
+		// Get profiles using getQueryResults
 		List<DTOProfiles> profiles = persistence.getQueryResults(queryProfiles, DTOProfiles.class, null);
 
 		if (profiles == null || profiles.isEmpty()) {
-			// Crear perfil por defecto si no existen
+			// Create default profile if none exist
 			Profile defaultProfile = new Profile();
 			defaultProfile.setName("Default");
 			defaultProfile.setEmulatorNumber("0");
@@ -47,25 +47,25 @@ public class ProfileRepository implements IProfileRepository {
 
 			persistence.createEntity(defaultProfile);
 
-			// Reintentar obtener los perfiles
+			// Retry getting profiles
 			profiles = persistence.getQueryResults(queryProfiles, DTOProfiles.class, null);
 		}
 
 		List<Long> profileIds = profiles.stream().map(DTOProfiles::getId).collect(Collectors.toList());
 
 		if (!profileIds.isEmpty()) {
-			// Consulta para obtener las configuraciones de los perfiles
-			String queryConfigs = "SELECT new cl.camodev.wosbot.ot.DTOConfig(c.profile.id, c.key, c.valor) " + "FROM Config c WHERE c.profile.id IN :profileIds";
+			// Query to get the configurations for the profiles
+			String queryConfigs = "SELECT new cl.camodev.wosbot.ot.DTOConfig(c.profile.id, c.key, c.value) " + "FROM Config c WHERE c.profile.id IN :profileIds";
 
-			// Pasar parámetros a la consulta
+			// Pass parameters to the query
 			Map<String, Object> parameters = new HashMap<>();
 			parameters.put("profileIds", profileIds);
 
-			// Agrupar configuraciones por ID de perfil
+			// Group configurations by profile ID
 			List<DTOConfig> configs = persistence.getQueryResults(queryConfigs, DTOConfig.class, parameters);
 			Map<Long, List<DTOConfig>> configMap = configs.stream().collect(Collectors.groupingBy(DTOConfig::getProfileId));
 
-			// Asignar configuraciones a los perfiles
+			// Assign configurations to profiles
 			profiles.forEach(profile -> profile.setConfigs(configMap.getOrDefault(profile.getId(), new ArrayList<>())));
 		}
 

@@ -24,12 +24,12 @@ public class LifeEssenceCaringTask extends DelayedTask {
 
 		logInfo( "Starting Life Essence Caring task.");
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(1, 509), new DTOPoint(24, 592));
-		// asegurarse de esta en el shortcut de ciudad
+		// make sure we are in the city shortcut
 		sleepTask(2000);
 		emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(110, 270));
 		sleepTask(1000);
 
-		// hacer swipe hacia abajo
+		// swipe down
 		emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(220, 845), new DTOPoint(220, 94));
 		sleepTask(1000);
 		DTOImageSearchResult lifeEssenceMenu = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_MENU,  90);
@@ -48,7 +48,7 @@ public class LifeEssenceCaringTask extends DelayedTask {
 			if (dailyAttempt.isFound()) {
 				logInfo( "Daily caring attempt available. Proceeding.");
 
-				// bebo buscar y scrollear unas 7-8 veces, si no encuentro, reschedule de una hora
+				// I should search and scroll about 7-8 times, if I don't find anything, reschedule for an hour
 
 				for (int i = 0; i < 8; i++) {
 					DTOImageSearchResult caringAvailable = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_DAILY_CARING_GOTO_ISLAND, 90);
@@ -56,7 +56,7 @@ public class LifeEssenceCaringTask extends DelayedTask {
 						emuManager.tapAtRandomPoint(EMULATOR_NUMBER, caringAvailable.getPoint(), caringAvailable.getPoint());
 						sleepTask(5000);
 						logInfo( "Found an island that needs caring. Navigating to it.");
-						// buscar el boton de caring, debo buscañpr un par de veces debido al movimiento
+						// search for the caring button, I should search a couple of times due to movement
 
 						for (int j = 0; j < 3; j++) {
 							DTOImageSearchResult caringButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_DAILY_CARING_BUTTON,  90);

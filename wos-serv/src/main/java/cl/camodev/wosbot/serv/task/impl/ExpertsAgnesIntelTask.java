@@ -24,7 +24,7 @@ public class ExpertsAgnesIntelTask extends DelayedTask {
         boolean claimed = false;
         for (int i = 0; i < 10; i++) {
             logDebug("Searching for Agnes icon (Attempt " + (i + 1) + "/10).");
-            DTOImageSearchResult agnes = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_AGNES, 90);
+            DTOImageSearchResult agnes = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_AGNES, 80);
             if (agnes.isFound()) {
                 logInfo("Agnes icon found. Claiming intel.");
                 emuManager.tapAtPoint(EMULATOR_NUMBER, agnes.getPoint());
@@ -38,7 +38,7 @@ public class ExpertsAgnesIntelTask extends DelayedTask {
         }
 
         if (!claimed) {
-            logWarning("Could not find Agnes icon for extra intel after 5 attempts. Assuming already claimed. Rescheduling for next reset.");
+            logWarning("Could not find Agnes icon for extra intel after 10 attempts. Assuming already claimed. Rescheduling for next reset.");
             LocalDateTime nextReset = UtilTime.getGameReset();
             this.reschedule(nextReset);
         }

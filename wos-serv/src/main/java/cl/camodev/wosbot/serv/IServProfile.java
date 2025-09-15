@@ -17,4 +17,5 @@ public interface IServProfile {
 
 	public void addProfileStatusChangeListerner(IProfileStatusChangeListener listener);
 
+	public void addProfileDataChangeListener(IProfileDataChangeListener listener);
 }

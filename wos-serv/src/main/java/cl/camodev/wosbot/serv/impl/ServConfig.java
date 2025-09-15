@@ -33,7 +33,7 @@ public class ServConfig {
 
 		HashMap<String, String> globalConfig = new HashMap<>();
 		for (Config config : configs) {
-			globalConfig.put(config.getKey(), config.getValor());
+			globalConfig.put(config.getKey(), config.getValue());
 		}
 		return globalConfig;
 	}

@@ -331,7 +331,7 @@ public class IntelligenceTask extends DelayedTask {
 		DTOImageSearchResult equalizeButton = emuManager.searchTemplate(EMULATOR_NUMBER,
 		EnumTemplates.RALLY_EQUALIZE_BUTTON,  90);
 		
-		if (equalizeButton.isFound()) {
+		if (equalizeButton.isFound() && !useFlag) {
 			emuManager.tapAtPoint(EMULATOR_NUMBER, equalizeButton.getPoint());
 		} else {
 			emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(198, 1188));

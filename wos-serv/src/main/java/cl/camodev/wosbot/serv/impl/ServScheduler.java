@@ -108,7 +108,7 @@ public class ServScheduler {
 						for (Supplier<DelayedTask> sup : suppliers) {
 							DelayedTask task = sup.get();
 
-							// Construir estado y encolar
+							// Build state and enqueue
 							DTOTaskState taskState = new DTOTaskState();
 							taskState.setProfileId(profile.getId());
 							taskState.setTaskId(task.getTpTask().getId());
@@ -200,7 +200,7 @@ public class ServScheduler {
 		DailyTask dailyTask = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(), task);
 
 		if (dailyTask == null) {
-			// Crear nueva tarea si no existe
+			// Create new task if it doesn't exist
 			dailyTask = new DailyTask();
 
 			Profile profileEntity = iProfileRepository.getProfileById(profile.getId());
@@ -215,7 +215,7 @@ public class ServScheduler {
 		dailyTask.setLastExecution(LocalDateTime.now());
 		dailyTask.setNextSchedule(nextSchedule);
 
-		// Guardar la entidad (ya sea nueva o existente)
+		// Save the entity (whether new or existing)
 		iDailyTaskRepository.saveDailyTask(dailyTask);
 	}
 
@@ -272,11 +272,11 @@ public class ServScheduler {
 			TpConfig tpConfig = iConfigRepository.getTpConfig(TpConfigEnum.GLOBAL_CONFIG);
 			config = new Config();
 			config.setKey(enumConfigurationKey);
-			config.setValor(filePath);
+			config.setValue(filePath);
 			config.setTpConfig(tpConfig);
 			iConfigRepository.addConfig(config);
 		} else {
-			config.setValor(filePath);
+			config.setValue(filePath);
 			iConfigRepository.saveConfig(config);
 		}
 	}

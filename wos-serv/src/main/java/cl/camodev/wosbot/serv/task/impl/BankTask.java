@@ -255,12 +255,12 @@ public class BankTask extends DelayedTask {
 	}
 
 	public LocalDateTime parseAndAddToNow(String text) {
-		// Regular expression to match the input format [n]d HH:mm:ss' o 'HH:mm:ss
+		// Regular expression to match the input format [n]d HH:mm:ss' or 'HH:mm:ss
 		Pattern pattern = Pattern.compile("(?i).*?(?:(\\d+)\\s*d\\D*)?(\\d{1,2}:\\d{2}:\\d{2}).*", Pattern.DOTALL);
 		Matcher matcher = pattern.matcher(text.trim());
 
 		if (!matcher.matches()) {
-			throw new IllegalArgumentException("Input does not match the expected format. Expected format: [n]d HH:mm:ss' o 'HH:mm:ss");
+			throw new IllegalArgumentException("Input does not match the expected format. Expected format: [n]d HH:mm:ss' or 'HH:mm:ss");
 		}
 
 		String daysStr = matcher.group(1);

@@ -29,7 +29,6 @@ public class ScheduleTaskDialogController {
     @FXML
     private Label lblInfo;
 
-    private TaskManagerAux task;
     private boolean confirmed = false;
     private LocalDateTime scheduledTime;
     private boolean immediate;
@@ -46,8 +45,6 @@ public class ScheduleTaskDialogController {
     }
 
     public void setTask(TaskManagerAux task) {
-        this.task = task;
-
         // Set task name in header
         lblTaskName.setText("Schedule: " + task.getTaskEnum().getName());
 

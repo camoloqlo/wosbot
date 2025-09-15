@@ -18,7 +18,7 @@ public class MEmuEmulator extends Emulator {
 
 	@Override
 	protected String getDeviceSerial(String emulatorNumber) {
-		// MEmu usa el formato 127.0.0.1:XXXX donde XXXX = 21503 + (emulatorNumber * 10)
+		// MEmu uses the format 127.0.0.1:XXXX where XXXX = 21503 + (emulatorNumber * 10)
 		return "127.0.0.1:" + (21503 + Integer.parseInt(emulatorNumber) * 10);
 	}
 

@@ -105,12 +105,12 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 //					private final Button btnSave = new Button();
 
 					{
-						// Asignar iconos a los botones
+						// Assign icons to buttons
 						btnDelete.setGraphic(loadIcon("/icons/buttons/delete.png"));
 						btnLoad.setGraphic(loadIcon("/icons/buttons/load.png"));
 //						btnSave.setGraphic(loadIcon("/icons/buttons/save.png"));
 
-						// Configurar el tamaño de los botones (sin texto)
+						// Configure the size of the buttons (without text)
 						btnDelete.setPrefSize(30, 30);
 						btnLoad.setPrefSize(30, 30);
 //						btnSave.setPrefSize(30, 30);
@@ -119,50 +119,50 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 						btnLoad.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
 //						btnSave.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
 
-						// Acción para el botón Delete
+						// Action for the Delete button
 						btnDelete.setOnAction((ActionEvent event) -> {
 							if (getTableView().getItems().size() <= 1) {
 								Alert alert = new Alert(Alert.AlertType.WARNING);
 								alert.setTitle("WARNING");
 								alert.setHeaderText(null);
-								alert.setContentText("U MUST HAVE AT LEAST ONE PROFILE");
+								alert.setContentText("You must have at least one profile.");
 								alert.showAndWait();
 								return;
 							}
 
 							ProfileAux currentProfile = getTableView().getItems().get(getIndex());
-							System.out.println("Eliminando perfil con ID: " + currentProfile.getId());
+							System.out.println("Deleting profile with ID: " + currentProfile.getId());
 
 							boolean deletionResult = profileManagerActionController.deleteProfile(new DTOProfiles(currentProfile.getId()));
 
 							Alert alert;
 							if (deletionResult) {
 								alert = new Alert(Alert.AlertType.INFORMATION);
-								alert.setTitle("SUCCESS DELETE");
+								alert.setTitle("SUCCESS");
 								alert.setHeaderText(null);
 								alert.setContentText("Profile deleted successfully.");
 								loadProfiles();
 							} else {
 								alert = new Alert(Alert.AlertType.ERROR);
-								alert.setTitle("ERROR DELETE");
+								alert.setTitle("ERROR");
 								alert.setHeaderText(null);
 								alert.setContentText("Error deleting profile.");
 							}
 							alert.showAndWait();
 						});
 
-						// Acción para el botón Load
+						// Action for the Load button
 						btnLoad.setOnAction((ActionEvent event) -> {
 							ProfileAux currentProfile = getTableView().getItems().get(getIndex());
-							System.out.println("Cargando perfil con ID: " + currentProfile.getId());
+							System.out.println("Loading profile with ID: " + currentProfile.getId());
 							loadedProfileId = currentProfile.getId();
 							notifyProfileLoadListeners(currentProfile);
 						});
 
-						// Acción para el botón Save
+						// Action for the Save button
 //						btnSave.setOnAction((ActionEvent event) -> {
 //							ProfileAux currentProfile = getTableView().getItems().get(getIndex());
-//							System.out.println("Guardando perfil con ID: " + currentProfile.getId());
+//							System.out.println("Saving profile with ID: " + currentProfile.getId());
 //							boolean saved = profileManagerActionController.saveProfile(currentProfile);
 //
 //							Alert alert;
@@ -183,7 +183,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 //						});
 					}
 
-					// Método para cargar un icono desde los recursos
+					// Method to load an icon from resources
 					private ImageView loadIcon(String path) {
 						Image image = new Image(getClass().getResourceAsStream(path));
 						ImageView imageView = new ImageView(image);
@@ -217,23 +217,23 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 			private final Rectangle background;
 
 			{
-				// Fondo del switch más pequeño
+				// Smaller switch background
 				background = new Rectangle(30, 15, Color.LIGHTGRAY);
 				background.setArcWidth(15);
 				background.setArcHeight(15);
 
-				// Círculo más pequeño (botón)
+				// Smaller circle (knob)
 				knob = new Circle(6, Color.WHITE);
-				knob.setTranslateX(-7); // Posición inicial
+				knob.setTranslateX(-7); // Initial position
 
-				// Contenedor del switch
+				// Switch container
 				switchContainer = new StackPane(background, knob);
 				switchContainer.setMinSize(40, 20);
 				switchContainer.setMaxSize(40, 20);
-				switchContainer.setAlignment(Pos.CENTER); // Centra los elementos dentro del StackPane
+				switchContainer.setAlignment(Pos.CENTER); // Center the elements within the StackPane
 				switchContainer.setOnMouseClicked(event -> toggleSwitch());
 
-				// Acción al presionar el ToggleButton
+				// Action when pressing the ToggleButton
 				toggleButton.setOnAction(event -> {
 					ProfileAux currentProfile = getTableView().getItems().get(getIndex());
 					boolean newValue = toggleButton.isSelected();
@@ -248,7 +248,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 				toggleButton.setSelected(newValue);
 				animateSwitch(newValue);
 
-				// Actualizar el objeto en la tabla
+				// Update the object in the table
 				ProfileAux currentProfile = getTableView().getItems().get(getIndex());
 				if (currentProfile != null) {
 					currentProfile.setEnabled(newValue);
@@ -258,7 +258,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 
 			private void animateSwitch(boolean isOn) {
 				TranslateTransition slide = new TranslateTransition(Duration.millis(180), knob);
-				slide.setToX(isOn ? 7 : -7); // Movimiento más corto
+				slide.setToX(isOn ? 7 : -7); // Shorter movement
 				background.setFill(isOn ? Color.GREEN : Color.LIGHTGRAY);
 				slide.play();
 			}
@@ -273,9 +273,9 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 					background.setFill(item ? Color.GREEN : Color.LIGHTGRAY);
 					knob.setTranslateX(item ? 7 : -7);
 
-					// Asegurar que el switchContainer se centre en la celda
+					// Ensure the switchContainer is centered in the cell
 					setGraphic(switchContainer);
-					setAlignment(Pos.CENTER); // Centra el StackPane en la celda
+					setAlignment(Pos.CENTER); // Center the StackPane in the cell
 				}
 			}
 		});
@@ -303,7 +303,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 				dtoProfiles.forEach(dtoProfile -> {
 					ProfileAux profileAux = new ProfileAux(dtoProfile.getId(), dtoProfile.getName(), dtoProfile.getEmulatorNumber(), dtoProfile.getEnabled(), dtoProfile.getPriority(), "NOT RUNNING", dtoProfile.getReconnectionTime());
 					dtoProfile.getConfigs().forEach(config -> {
-						profileAux.getConfigs().add(new ConfigAux(config.getNombreConfiguracion(), config.getValor()));
+						profileAux.getConfigs().add(new ConfigAux(config.getConfigurationName(), config.getValue()));
 					});
 					profiles.add(profileAux);
 				});

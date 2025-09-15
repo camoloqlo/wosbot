@@ -7,12 +7,12 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
 
 <GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="468.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1">
   <columnConstraints>
       <ColumnConstraints hgrow="SOMETIMES" />
-      <ColumnConstraints hgrow="SOMETIMES" maxWidth="160.0" minWidth="160.0" prefWidth="160.0" />
       <ColumnConstraints hgrow="SOMETIMES" />
   </columnConstraints>
   <rowConstraints>
@@ -46,47 +46,37 @@
          </GridPane.margin>
       </CheckBox>
       <CheckBox fx:id="checkBoxHelpRequests" mnemonicParsing="false" text="Help request" GridPane.rowIndex="6" />
-      <Label text="Offset Time" GridPane.columnIndex="1">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </Label>
-      <Label text="Offset Time" GridPane.columnIndex="1" GridPane.rowIndex="1">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </Label>
-      <Label text="Number of queues" GridPane.columnIndex="1" GridPane.rowIndex="5">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </Label>
-      <Label text="Offset Time" GridPane.columnIndex="1" GridPane.rowIndex="6" />
-      <ComboBox fx:id="comboBoxAutojoinQueues" GridPane.columnIndex="2" GridPane.rowIndex="5">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </ComboBox>
-      <TextField fx:id="textfieldChestOffset" GridPane.columnIndex="2" GridPane.rowIndex="1">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </TextField>
-      <TextField fx:id="textfieldTechOffset" GridPane.columnIndex="2">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </TextField>
-      <TextField fx:id="textfieldHelpRequstOffset" GridPane.columnIndex="2" GridPane.rowIndex="6">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </TextField>
       <CheckBox fx:id="checkBoxTriumph" mnemonicParsing="false" text="Claim Triumph" GridPane.rowIndex="3" />
-      <Label text="Offset Time" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-      <TextField fx:id="textfieldTriumphOffset" GridPane.columnIndex="2" GridPane.rowIndex="3" />
       <CheckBox fx:id="checkBoxAlliesEssence" mnemonicParsing="false" text="Claim allies essence" GridPane.rowIndex="4" />
-      <Label text="Fail offset time" GridPane.columnIndex="1" GridPane.rowIndex="4" />
-      <TextField fx:id="textfieldAlliesEssenceOffsett" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1">
+         <children>
+            <Label text="Offset Time" />
+            <TextField fx:id="textfieldTechOffset" />
+         </children>
+      </HBox>
+      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+         <children>
+            <Label text="Offset Time" />
+            <TextField fx:id="textfieldChestOffset" />
+         </children>
+      </HBox>
+      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+         <children>
+            <Label text="Offset Time" />
+            <TextField fx:id="textfieldTriumphOffset" />
+         </children>
+      </HBox>
+      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
+         <children>
+            <Label text="Fail offset time" />
+            <TextField fx:id="textfieldAlliesEssenceOffsett" />
+         </children>
+      </HBox>
+      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
+         <children>
+            <Label text="Number of queues" />
+            <ComboBox fx:id="comboBoxAutojoinQueues" />
+         </children>
+      </HBox>
    </children>
 </GridPane>

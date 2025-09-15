@@ -42,3 +42,5 @@ dist/WosBot_Optimized
 dist/WosBot.zip
 MANIFEST.MF
 WosBot.manifest
+log/bot.log
+.vscode/settings.json

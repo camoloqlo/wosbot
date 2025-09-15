@@ -30,12 +30,12 @@ public class LifeEssenceTask extends DelayedTask {
 
 		logInfo("Navigating to the Life Essence menu.");
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(1, 509), new DTOPoint(24, 592));
-		// asegurarse de esta en el shortcut de ciudad
+		// make sure to be in the city shortcut
 		sleepTask(2000);
 		emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(110, 270));
 		sleepTask(1000);
 
-		// hacer swipe hacia abajo
+		// swipe down
 		emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(220, 845), new DTOPoint(220, 94));
 		sleepTask(1000);
 		DTOImageSearchResult lifeEssenceMenu = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_MENU,  90);

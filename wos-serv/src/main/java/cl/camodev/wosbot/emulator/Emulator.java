@@ -316,7 +316,7 @@ public abstract class Emulator {
 				int g = getColorComponent(rawImage, offset, rawImage.green_offset);
 				int b = getColorComponent(rawImage, offset, rawImage.blue_offset);
 
-				pixels[index] = (r << 16) | (g << 8) | b; // Sin canal alpha
+				pixels[index] = (r << 16) | (g << 8) | b; // No alpha channel
 				index++;
 			}
 		}
@@ -348,7 +348,7 @@ public abstract class Emulator {
 			try {
 				RawImage rawImage = device.getScreenshot();
 				if (rawImage == null) {
-					throw new RuntimeException("RawImage es null");
+					throw new RuntimeException("RawImage is null");
 				}
 
 				BufferedImage image = reusableImage.get();

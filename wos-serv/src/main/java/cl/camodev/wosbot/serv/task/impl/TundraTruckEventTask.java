@@ -21,6 +21,13 @@ import net.sourceforge.tess4j.TesseractException;
 
 public class TundraTruckEventTask extends DelayedTask {
 
+	private enum TundraNavigationResult {
+		SUCCESS,
+		FAILURE,
+		COUNTDOWN,
+		ENDED
+	}
+
 	private boolean useGems = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_USE_GEMS_BOOL, Boolean.class);
 	private boolean truckSSR = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_SSR_BOOL, Boolean.class);
 
@@ -30,24 +37,37 @@ public class TundraTruckEventTask extends DelayedTask {
 
 	@Override
 	public EnumStartLocation getRequiredStartLocation() {
-		return EnumStartLocation.HOME;
+		return EnumStartLocation.WORLD;
 	}
 
 	@Override
 	protected void execute() {
 		int attempt = 0;
 
-		while (attempt < 5) {
-			if (navigateToTundraEvent()) {
+		while (attempt < 2) {
+			TundraNavigationResult result = navigateToTundraEvent();
+			if (result == TundraNavigationResult.SUCCESS) {
+				logInfo("Successfully navigated to Tundra Truck event.");
 				handleTundraEvent();
 				return;
+			} else if (result == TundraNavigationResult.COUNTDOWN) {
+				logInfo("Tundra Truck event has not started yet. Waiting for next game reset.");
+				return;
+			} else if (result == TundraNavigationResult.ENDED) {
+				logInfo("Tundra Truck event has ended. Stopping task.");
+				return;
 			}
+
+			// Handle FAILURE case
+			logDebug("Failed to navigate to Tundra Truck event. Attempt " + (attempt + 1) + "/2.");
+			sleepTask(300);
+			tapBackButton();
 			attempt++;
 		}
 
-		// If menu is not found after 5 attempts, cancel the task
-		if (attempt >= 5) {
-			logWarning("Menu not found after 5 attempts. The task will be removed from the scheduler.");
+		// If menu is not found after 2 attempts, cancel the task
+		if (attempt >= 2) {
+			logWarning("Could not find the Tundra Truck event tab. Assuming event is unavailable. Task will be removed.");
 			this.setRecurring(false);
 		}
 
@@ -56,9 +76,9 @@ public class TundraTruckEventTask extends DelayedTask {
 	/**
 	 * Navigates to the tundra truck event section in the game
 	 *
-	 * @return true if navigation was successful, false otherwise
+	 * @return TundraNavigationResult indicating the outcome
 	 */
-	private boolean navigateToTundraEvent() {
+	private TundraNavigationResult navigateToTundraEvent() {
 
 		logInfo("Starting the Tundra Truck Event task.");
 
@@ -67,7 +87,7 @@ public class TundraTruckEventTask extends DelayedTask {
 				EnumTemplates.HOME_EVENTS_BUTTON, 90);
 		if (!eventsResult.isFound()) {
 			logWarning("The 'Events' button was not found.");
-			return false;
+			return TundraNavigationResult.FAILURE;
 		}
 
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, eventsResult.getPoint(), eventsResult.getPoint());
@@ -84,12 +104,23 @@ public class TundraTruckEventTask extends DelayedTask {
 			sleepTask(1000);
 			logInfo("Successfully navigated to the Tundra Truck event.");
 
-			// Check if the event has ended
-			if (eventHasEnded()) {
-				return false;
+			// Check if the event is in countdown
+			try {
+				String countdownText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(194, 943), new DTOPoint(345, 976));
+				if (countdownText != null && countdownText.toLowerCase().contains("countdown")) {
+					reschedule(UtilTime.getGameReset());
+					return TundraNavigationResult.COUNTDOWN; // Event not ready
+				}
+			} catch (IOException | TesseractException e) {
+				logWarning("Could not perform OCR to check for event countdown. Proceeding with caution. Error: " + e.getMessage());
 			}
 
-			return true;
+			// Check if the event has ended
+			if (eventHasEnded()) {
+				return TundraNavigationResult.ENDED;
+			}
+
+			return TundraNavigationResult.SUCCESS;
 		}
 
 		// Swipe completely to the left
@@ -100,7 +131,7 @@ public class TundraTruckEventTask extends DelayedTask {
 		}
 
 		int attempts = 0;
-		while (attempts < 3) {
+		while (attempts < 5) {
 			result = emuManager.searchTemplate(EMULATOR_NUMBER,
 					EnumTemplates.TUNDRA_TRUCK_TAB, 90);
 
@@ -109,11 +140,22 @@ public class TundraTruckEventTask extends DelayedTask {
 				sleepTask(1000);
 				logInfo("Successfully navigated to the Tundra Truck event.");
 
+				// Check if the event is in countdown
+				try {
+					String countdownText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(194, 943), new DTOPoint(345, 976));
+					if (countdownText != null && countdownText.toLowerCase().contains("countdown")) {
+						reschedule(UtilTime.getGameReset());
+						return TundraNavigationResult.COUNTDOWN; // Event not ready
+					}
+				} catch (IOException | TesseractException e) {
+					logWarning("Could not perform OCR to check for event countdown. Proceeding with caution. Error: " + e.getMessage());
+				}
+
 				// Check if the event has ended
 				if (eventHasEnded()) {
-					return false;
+					return TundraNavigationResult.ENDED;
 				}
-				return true;
+				return TundraNavigationResult.SUCCESS;
 			}
 
 			logInfo("Tundra Truck event not found. Swiping right and retrying...");
@@ -124,7 +166,7 @@ public class TundraTruckEventTask extends DelayedTask {
 
 		logWarning("Tundra Truck event not found after multiple attempts. Aborting the task.");
 		this.setRecurring(false);
-		return false;
+		return TundraNavigationResult.FAILURE;
 	}
 
 	private boolean eventHasEnded() {
@@ -171,7 +213,8 @@ public class TundraTruckEventTask extends DelayedTask {
 			nextSchedule = rightTime.get();
 			logInfo("Only the right truck time was extracted. Next check is scheduled for: " + nextSchedule);
 		} else {
-			logInfo("Could not extract time for either truck. Rescheduling in 1 hour as a fallback.");
+			nextSchedule = now.plusMinutes(30);
+			logInfo("Could not extract time for either truck. Rescheduling in 30 minutes as a fallback.");
 		}
 
 		reschedule(nextSchedule);

@@ -36,19 +36,19 @@ public class Config {
 	private String key;
 
 	@Column(name = "value", nullable = false)
-	private String valor;
+	private String value;
 
 	public Config() {
 	}
 
-	public Config(Profile profile, TpConfig tpConfig, String key, String valor) {
+	public Config(Profile profile, TpConfig tpConfig, String key, String value) {
 		this.profile = profile;
 		this.tpConfig = tpConfig;
 		this.key = key;
-		this.valor = valor;
+		this.value = value;
 	}
 
-	// Getters y Setters
+	// Getters and Setters
 	public Integer getId() {
 		return id;
 	}
@@ -81,16 +81,16 @@ public class Config {
 		this.key = key;
 	}
 
-	public String getValor() {
-		return valor;
+	public String getValue() {
+		return value;
 	}
 
-	public void setValor(String valor) {
-		this.valor = valor;
+	public void setValue(String value) {
+		this.value = value;
 	}
 
 	@Override
 	public String toString() {
-		return "Config{" + "id=" + id + ", profile=" + (profile != null ? profile.getId() : "Global") + ", tpConfig=" + tpConfig.getName() + ", key='" + key + '\'' + ", valor='" + valor + '\'' + '}';
+		return "Config{" + "id=" + id + ", profile=" + (profile != null ? profile.getId() : "Global") + ", tpConfig=" + tpConfig.getName() + ", key='" + key + '\'' + ", value='" + value + '\'' + '}';
 	}
 }

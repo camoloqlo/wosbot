@@ -15,6 +15,7 @@ import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.TpConfigEnum;
 import cl.camodev.wosbot.ot.DTOProfileStatus;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.serv.IProfileDataChangeListener;
 import cl.camodev.wosbot.serv.IProfileStatusChangeListener;
 import cl.camodev.wosbot.serv.IServProfile;
 import org.slf4j.Logger;
@@ -32,6 +33,8 @@ public class ServProfiles implements IServProfile {
 	private final IConfigRepository iConfigRepository;
 
 	private List<IProfileStatusChangeListener> listeners;
+
+	private List<IProfileDataChangeListener> dataChangeListeners;
 
 	private ServProfiles() {
 		iProfileRepository = ProfileRepository.getRepository();
@@ -55,7 +58,7 @@ public class ServProfiles implements IServProfile {
 		if (configs != null) {
 			HashMap<EnumConfigurationKey, String> settings = new HashMap<EnumConfigurationKey, String>();
 			for (Config config : configs) {
-				settings.put(EnumConfigurationKey.valueOf(config.getKey()), config.getValor());
+				settings.put(EnumConfigurationKey.valueOf(config.getKey()), config.getValue());
 			}
 			return settings;
 		} else {
@@ -78,7 +81,11 @@ public class ServProfiles implements IServProfile {
 			newProfile.setPriority(profile.getPriority());
 			newProfile.setReconnectionTime(profile.getReconnectionTime());
 
-            return iProfileRepository.addProfile(newProfile);
+			boolean success = iProfileRepository.addProfile(newProfile);
+			if (success) {
+				notifyProfileDataChange(null);
+			}
+			return success;
 
 		} catch (Exception e) {
 			logger.error("Error occurred while adding profile: {}", e.getMessage());
@@ -93,14 +100,14 @@ public class ServProfiles implements IServProfile {
 				return false;
 			}
 
-			// Obtener el perfil existente
+			// Get the existing profile
 			Profile existingProfile = iProfileRepository.getProfileById(profileDTO.getId());
 
 			if (existingProfile == null) {
 				return false;
 			}
 
-			// Actualizar los campos del perfil
+			// Update the profile fields
 			existingProfile.setName(profileDTO.getName());
 			existingProfile.setEmulatorNumber(profileDTO.getEmulatorNumber());
 			existingProfile.setEnabled(profileDTO.getEnabled());
@@ -118,11 +125,15 @@ public class ServProfiles implements IServProfile {
 				return false;
 			}
 
-			List<Config> newConfigs = profileDTO.getConfigs().stream().map(dtoConfig -> new Config(existingProfile, tpConfig, dtoConfig.getNombreConfiguracion(), dtoConfig.getValor())).collect(Collectors.toList());
+			List<Config> newConfigs = profileDTO.getConfigs().stream().map(dtoConfig -> new Config(existingProfile, tpConfig, dtoConfig.getConfigurationName(), dtoConfig.getValue())).collect(Collectors.toList());
 
 			newConfigs.forEach(config -> iConfigRepository.addConfig(config));
 
-			return iProfileRepository.saveProfile(existingProfile);
+			boolean success = iProfileRepository.saveProfile(existingProfile);
+			if (success) {
+				notifyProfileDataChange(profileDTO);
+			}
+			return success;
 
 		} catch (Exception e) {
 			logger.error("Error occurred while saving profile: {}", e.getMessage());
@@ -148,7 +159,11 @@ public class ServProfiles implements IServProfile {
 				iConfigRepository.deleteConfig(config);
 			}
 
-			return iProfileRepository.deleteProfile(existingProfile);
+			boolean success = iProfileRepository.deleteProfile(existingProfile);
+			if (success) {
+				notifyProfileDataChange(profile);
+			}
+			return success;
 
 		} catch (Exception e) {
 			logger.error("Error occurred while deleting profile: {}", e.getMessage());
@@ -214,4 +229,19 @@ public class ServProfiles implements IServProfile {
 		listeners.add(listener);
 	}
 
+	@Override
+	public void addProfileDataChangeListener(IProfileDataChangeListener listener) {
+		if (dataChangeListeners == null) {
+			dataChangeListeners = new ArrayList<>();
+		}
+		dataChangeListeners.add(listener);
+	}
+
+	private void notifyProfileDataChange(DTOProfiles profile) {
+		if (dataChangeListeners != null) {
+			for (IProfileDataChangeListener listener : dataChangeListeners) {
+				listener.onProfileDataChanged(profile);
+			}
+		}
+	}
 }

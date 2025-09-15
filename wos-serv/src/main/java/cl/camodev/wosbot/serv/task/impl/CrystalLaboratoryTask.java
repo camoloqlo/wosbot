@@ -21,24 +21,23 @@ public class CrystalLaboratoryTask extends DelayedTask {
 	}
 
 	/**
-	 * Parsea un String con el formato "Remaining today: <número>" y retorna el número encontrado. Se consideran espacios extra y no distingue
-	 * entre mayúsculas y minúsculas.
+	 * Parses a String with the format "Remaining today: <number>" and returns the found number. Extra spaces are considered and it is case-insensitive.
 	 *
-	 * @param input La cadena a parsear, por ejemplo: " Remaining today: 7 "
-	 * @return El número extraído del String.
-	 * @throws IllegalArgumentException si el formato del texto no es válido.
+	 * @param input The string to parse, for example: " Remaining today: 7 "
+	 * @return The number extracted from the String.
+	 * @throws IllegalArgumentException if the text format is invalid.
 	 */
 	public static int parseRemainingToday(String input) {
-		// Compila la expresión regular con flag CASE_INSENSITIVE para ignorar mayúsculas/minúsculas.
+		// Compiles the regular expression with CASE_INSENSITIVE flag to ignore case.
 		Pattern pattern = Pattern.compile("^\\s*remaining\\s*(today)?\\s*:\\s*(\\d+|—)\\s*$", Pattern.CASE_INSENSITIVE);
 		Matcher matcher = pattern.matcher(input);
 
 		if (matcher.matches()) {
 			String value = matcher.group(2);
-			// Si el valor capturado es "—", retorna 0
+			// If the captured value is "—", return 0
 			return "—".equals(value) ? 0 : Integer.parseInt(value);
 		} else {
-			throw new IllegalArgumentException("El formato del texto no es válido: " + input);
+			throw new IllegalArgumentException("The text format is invalid: " + input);
 		}
 	}
 

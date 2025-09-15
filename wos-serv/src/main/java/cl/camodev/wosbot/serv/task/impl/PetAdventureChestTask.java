@@ -65,10 +65,10 @@ public class PetAdventureChestTask extends DelayedTask {
 
 				List<EnumTemplates> chests = List.of(EnumTemplates.PETS_CHEST_RED, EnumTemplates.PETS_CHEST_PURPLE, EnumTemplates.PETS_CHEST_BLUE);
 
-				boolean foundAnyChest; // Variable de control
+				boolean foundAnyChest; // Control variable
 
 				do {
-					foundAnyChest = false; // Reiniciar en cada iteración
+					foundAnyChest = false; // Reset on each iteration
 
 					for (EnumTemplates enumTemplates : chests) {
 						for (int attempt = 0; attempt < 5; attempt++) {
@@ -76,7 +76,7 @@ public class PetAdventureChestTask extends DelayedTask {
 
 							DTOImageSearchResult result = emuManager.searchTemplate(EMULATOR_NUMBER, enumTemplates,  90);
 							if (result.isFound()) {
-								foundAnyChest = true; // Se encontró un cofre, el bucle se repetirá
+								foundAnyChest = true; // A chest was found, the loop will repeat
 
 								logInfo("Found chest: " + enumTemplates + ". Attempting to start adventure.");
 
@@ -97,7 +97,7 @@ public class PetAdventureChestTask extends DelayedTask {
 
 										emuManager.tapBackButton(EMULATOR_NUMBER);
 										sleepTask(500);
-										break; // Sale del intento, pero no del ciclo principal
+										break; // Exits the attempt, but not the main loop
 									} else {
 										DTOImageSearchResult attemptsResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_CHEST_ATTEMPT,  90);
 										if (attemptsResult.isFound()) {
@@ -118,10 +118,10 @@ public class PetAdventureChestTask extends DelayedTask {
 
 					if (foundAnyChest) {
 						logInfo("At least one chest was found and started. Restarting search for more chests.");
-						sleepTask(500); // Espera 5 segundos antes de repetir
+						sleepTask(5000); // Wait 5 seconds before repeating
 					}
 
-				} while (foundAnyChest); // El bucle se repite hasta que no se encuentren más cofres
+				} while (foundAnyChest); // The loop repeats until no more chests are found
 
 				logInfo("No more available chests found to start. Rescheduling for 2 hours.");
 				ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, LocalDateTime.now().plusHours(2));
@@ -140,13 +140,13 @@ public class PetAdventureChestTask extends DelayedTask {
 
 	public Integer extractRemainingAttempts(String ocrText) {
 		if (ocrText == null || ocrText.isEmpty()) {
-			return null; // Manejo de casos nulos o vacíos
+			return null; // Handle null or empty cases
 		}
 
-		// Normalizar texto para reducir errores OCR
+		// Normalize text to reduce OCR errors
 		String normalizedText = ocrText.replaceAll("[^a-zA-Z0-9: ]", "").trim();
 
-		// Expresión regular para buscar un número después de "attempts"
+		// Regular expression to search for a number after "attempts"
 		Pattern pattern = Pattern.compile("(?i)attempts.*?\\b(\\d+)\\b");
 		Matcher matcher = pattern.matcher(normalizedText);
 
@@ -154,11 +154,11 @@ public class PetAdventureChestTask extends DelayedTask {
 			try {
 				return Integer.parseInt(matcher.group(1));
 			} catch (NumberFormatException e) {
-				return null; // Retorna null si el número no se puede parsear
+				return null; // Return null if the number cannot be parsed
 			}
 		}
 
-		return null; // Retorna null si no se encuentra el número
+		return null; // Return null if the number is not found
 	}
 
 	@Override

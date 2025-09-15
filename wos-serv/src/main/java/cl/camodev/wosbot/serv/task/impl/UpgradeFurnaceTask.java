@@ -51,13 +51,13 @@ public class UpgradeFurnaceTask extends DelayedTask {
 						break;
 					}
 
-					// Sumar la mitad al tiempo actual
+					// Add half the time to the current time
 					upgradeTime = parseNextFree(rawText);
 
 					success = true;
 					break;
 				} catch (Exception e) {
-					// Opcional: loggear intento fallido
+					// Optional: log failed attempt
 					// System.out.println("OCR parsing failed at attempt " + (i + 1));
 				}
 			}
@@ -69,7 +69,7 @@ public class UpgradeFurnaceTask extends DelayedTask {
 			} else {
 
 				logInfo("No upgrades are in progress. Proceeding to upgrade the furnace.");
-				// going to check current furnace requierements
+				// going to check current furnace requirements
 				// survivor status
 				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(320, 30));
 				sleepTask(500);
@@ -142,12 +142,12 @@ public class UpgradeFurnaceTask extends DelayedTask {
 	}
 
 	public LocalDateTime parseNextFree(String input) {
-		// Regular expression to match the input format [n]d HH:mm:ss' o 'HH:mm:ss
+		// Regular expression to match the input format [n]d HH:mm:ss or HH:mm:ss
 		Pattern pattern = Pattern.compile("(?i).*?(?:(\\d+)\\s*d\\s*)?(\\d{1,2}:\\d{2}:\\d{2}).*", Pattern.DOTALL);
 		Matcher matcher = pattern.matcher(input.trim());
 
 		if (!matcher.matches()) {
-			throw new IllegalArgumentException("Input does not match the expected format. Expected format: [n]d HH:mm:ss' o 'HH:mm:ss");
+			throw new IllegalArgumentException("Input does not match the expected format. Expected format: [n]d HH:mm:ss or HH:mm:ss");
 		}
 
 

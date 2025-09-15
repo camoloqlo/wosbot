@@ -48,7 +48,7 @@ public class NewProfileLayoutController {
 	@FXML
 	private void initialize() {
 
-		// Filtro para emulator number - solo números
+		// Filter for emulator number - only numbers
 		UnaryOperator<TextFormatter.Change> emulatorFilter = change -> {
 			String newText = change.getControlNewText();
 			if (newText.matches("\\d*")) {
@@ -57,7 +57,7 @@ public class NewProfileLayoutController {
 			return null;
 		};
 
-		// Filtro para reconnection time - solo números no negativos
+		// Filter for reconnection time - only non-negative numbers
 		UnaryOperator<TextFormatter.Change> reconnectionTimeFilter = change -> {
 			String newText = change.getControlNewText();
 			if (newText.matches("\\d*")) {

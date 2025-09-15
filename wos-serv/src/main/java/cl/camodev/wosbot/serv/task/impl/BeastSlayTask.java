@@ -31,7 +31,7 @@ public class BeastSlayTask extends DelayedTask {
 
 	public static LocalDateTime calculateFullStaminaTime(int currentStamina, int maxStamina, int regenRateMinutes) {
 		if (currentStamina >= maxStamina) {
-			return LocalDateTime.now(); // Ya está lleno
+			return LocalDateTime.now(); // Already full
 		}
 
 		int staminaNeeded = maxStamina - currentStamina;
@@ -43,13 +43,13 @@ public class BeastSlayTask extends DelayedTask {
 	@Override
 	protected void execute() {
 
-		// ir al perfil a ver la stamina
+		// go to profile to see stamina
 		emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(50, 50));
 		sleepTask(500);
-		// ir al menu stamina
+		// go to stamina menu
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(220, 1100), new DTOPoint(250, 1125));
 		sleepTask(2000);
-		// hacer ocr a la stamina 350,270 490,300
+		// ocr the stamina 350,270 490,300
 
 		try {
 			String staminaText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(350, 270), new DTOPoint(490, 300));
@@ -72,14 +72,14 @@ public class BeastSlayTask extends DelayedTask {
 			return; // Can't continue without stamina info
 		}
 
-		// deberoa obtener la cantidad de colas disponibles para atacar bestias
+		// should get the number of available queues to attack beasts
 
 		try {
-			// ir al perfil
+			// go to profile
 			emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(50, 50));
 			sleepTask(1000);
 
-			// ir al menu de colas
+			// go to queue menu
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(210, 1190), new DTOPoint(330, 1250));
 			sleepTask(1000);
 
@@ -101,33 +101,32 @@ public class BeastSlayTask extends DelayedTask {
 			return;
 		}
 
-		// si llego hasta aqui, tengo mas de 10 de stamina y deberia atacar bestias hasta que la stamina sea menor a 10, el consumo es de 8-10 por
-		// ataque
+		// if we got here, we have more than 10 stamina and should attack beasts until stamina is less than 10, consumption is 8-10 per attack
 		int beastLevel = 30;
-		List<Long> activeBeasts = new ArrayList<>(); // Lista de tiempos de finalización de las bestias
+		List<Long> activeBeasts = new ArrayList<>(); // List of beast completion times
 		logInfo("Starting beast attacks.");
 
 		while (stamina >= 10) {
 
-			// Revisar si alguna bestia ha terminado su tiempo
+			// Check if any beast has finished its time
 			long currentTime = System.currentTimeMillis();
 			Iterator<Long> iterator = activeBeasts.iterator();
 			while (iterator.hasNext()) {
 				if (currentTime >= iterator.next()) {
-					iterator.remove(); // Eliminar bestia que ya terminó su tiempo
-					availableQueues++; // Liberar una queue
+					iterator.remove(); // Remove beast that has finished its time
+					availableQueues++; // Free up a queue
 					logInfo("A beast attack has finished. Available queues: " + availableQueues);
 				}
 			}
 
-			// Solo atacar si hay una queue disponible
+			// Only attack if there is an available queue
 			if (availableQueues > 0) {
 				for (int i = 0; i < maxQueues; i++) {
 					if (availableQueues <= 0)
-						break; // Si no hay más queues, salir del loop
+						break; // If no more queues, exit the loop
 
 					sleepTask(6000);
-					// ir a la bestia
+					// go to the beast
 					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(25, 850), new DTOPoint(67, 898));
 					sleepTask(1000);
 
@@ -136,7 +135,7 @@ public class BeastSlayTask extends DelayedTask {
 					// beast button
 					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(70, 880), new DTOPoint(120, 930));
 					sleepTask(1000);
-					// ir a nivel 1
+					// go to level 1
 					emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(180, 1050), new DTOPoint(1, 1050));
 
 					// select beast level
@@ -151,14 +150,14 @@ public class BeastSlayTask extends DelayedTask {
 					sleepTask(6000);
 
 					try {
-						// Obtener stamina y tiempo restante via OCR
+						// Get stamina and remaining time via OCR
 
 						String timeText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(519, 1141), new DTOPoint(618, 1164));
 						logInfo("Attack time detected: " + timeText);
 
-						timeText = timeText.trim().replaceAll("[^0-9:]", ""); // Solo dejar números y ":"
+						timeText = timeText.trim().replaceAll("[^0-9:]", ""); // Only keep numbers and ":"
 
-						// atacar
+						// attack
 						emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(450, 1183), new DTOPoint(640, 1240));
 
 						stamina -= 10;
@@ -168,18 +167,18 @@ public class BeastSlayTask extends DelayedTask {
 						String[] timeParts = timeText.split(":");
 
 						if (timeParts.length == 3) {
-							// Formato HH:mm:ss
+							// HH:mm:ss format
 							totalSeconds = Integer.parseInt(timeParts[0]) * 3600 + Integer.parseInt(timeParts[1]) * 60 + Integer.parseInt(timeParts[2]);
 						} else if (timeParts.length == 2) {
-							// Formato mm:ss
+							// mm:ss format
 							totalSeconds = Integer.parseInt(timeParts[0]) * 60 + Integer.parseInt(timeParts[1]);
 						} else {
-							// Formato inválido o incompleto, asignar un valor por defecto
+							// invalid or incomplete format, assign a default value
 							logWarning("Invalid time format from OCR: '" + timeText + "'. Using default 10 seconds.");
-							totalSeconds = 10; // Por defecto 10 segundos de espera
+							totalSeconds = 10; // Default 10 seconds wait
 						}
 
-						// Calcular el tiempo de finalización de la bestia
+						// Calculate the beast's finish time
 						long finishTime = System.currentTimeMillis() + ((totalSeconds * 1000L) * 2);
 						activeBeasts.add(finishTime);
 						logInfo("Beast attacked. March will return in approximately " + (totalSeconds * 2) + " seconds.");
@@ -189,9 +188,9 @@ public class BeastSlayTask extends DelayedTask {
 					}
 				}
 			} else {
-				// Si no hay queues disponibles, esperar un poco antes de volver a verificar
+				// If no queues are available, wait a bit before checking again
 				logInfo("All queues are busy. Waiting for a beast attack to finish...");
-				sleepTask(5000); // Espera de 5 segundos antes de revisar de nuevo
+				sleepTask(5000); // 5 second wait before checking again
 			}
 		}
 
@@ -205,22 +204,22 @@ public class BeastSlayTask extends DelayedTask {
 
 	private int extractFirstNumber(String text) {
 		if (text == null || text.isEmpty()) {
-			throw new IllegalArgumentException("El texto OCR no puede ser nulo o vacío.");
+			throw new IllegalArgumentException("OCR text cannot be null or empty.");
 		}
 
-		// Normalizar el texto OCR (reemplazo de posibles errores comunes)
-		String normalizedText = text.replaceAll("[oO]", "0") // Reemplazar 'o' o 'O' por '0'
-				.replaceAll("[^0-9/]", "") // Eliminar caracteres que no sean números o '/'
-				.trim(); // Eliminar espacios en los extremos
+		// Normalize OCR text (replace common errors)
+		String normalizedText = text.replaceAll("[oO]", "0") // Replace 'o' or 'O' with '0'
+				.replaceAll("[^0-9/]", "") // Remove characters that are not numbers or '/'
+				.trim(); // Remove spaces at the ends
 
-		// Expresión regular para capturar la parte antes del "/"
+		// Regular expression to capture the part before the "/"
 		Pattern pattern = Pattern.compile("^(\\d+)/\\d+$");
 		Matcher matcher = pattern.matcher(normalizedText);
 
 		if (matcher.find()) {
-			return Integer.parseInt(matcher.group(1)); // Extrae la primera parte de la fracción como entero
+			return Integer.parseInt(matcher.group(1)); // Extracts the first part of the fraction as an integer
 		} else {
-			throw new NumberFormatException("No se encontró un formato válido en el texto OCR: " + normalizedText);
+			throw new NumberFormatException("No valid format found in OCR text: " + normalizedText);
 		}
 	}
 
