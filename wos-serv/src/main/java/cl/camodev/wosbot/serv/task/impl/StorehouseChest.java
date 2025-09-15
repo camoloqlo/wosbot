@@ -30,12 +30,7 @@ public class StorehouseChest extends DelayedTask {
 		return EnumStartLocation.HOME;
 	}
 
-	@Override
-	public EnumStartLocation getRequiredStartLocation() {
-		return EnumStartLocation.HOME;
-	}
-
-	public static LocalDateTime parseNextReward(String ocrTime) {
+	private LocalDateTime parseNextReward(String ocrTime) {
 		LocalDateTime now = LocalDateTime.now();
 
 		if (ocrTime == null || ocrTime.isEmpty()) {
