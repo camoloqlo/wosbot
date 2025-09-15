@@ -44,3 +44,6 @@ MANIFEST.MF
 WosBot.manifest
 log/bot.log
 .vscode/settings.json
+
+# Analysis and documentation files (local only)
+UNUSED_FILES_ANALYSIS.md
