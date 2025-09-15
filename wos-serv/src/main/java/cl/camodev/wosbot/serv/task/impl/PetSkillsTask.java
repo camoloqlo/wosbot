@@ -109,6 +109,7 @@ public class PetSkillsTask extends DelayedTask {
 		}
 
 		try {
+			String lower = input.toLowerCase();
 			String timePart = input.substring(lower.indexOf("on cooldown:") + 12).trim();
 			timePart = timePart.replaceAll("\\s+", "").replaceAll("[Oo]", "0").replaceAll("[lI]", "1").replaceAll("[S]", "5").replaceAll("[B]", "8").replaceAll("[Z]", "2").replaceAll("[^0-9d:]", "");
 

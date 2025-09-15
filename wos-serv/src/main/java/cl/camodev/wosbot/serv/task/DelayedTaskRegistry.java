@@ -75,8 +75,8 @@ public class DelayedTaskRegistry {
     // Initialize
     registry.put(TpDailyTaskEnum.INITIALIZE, profile -> new InitializeTask(profile, TpDailyTaskEnum.INITIALIZE));
 
-    // Mercenary Prestige
-    registry.put(TpDailyTaskEnum.MERCENARY_PRESTIGE, profile -> new MercenaryPrestigeTask(profile, TpDailyTaskEnum.MERCENARY_PRESTIGE));
+    // Mercenary Prestige (deferred - enum removed)
+    // registry.put(TpDailyTaskEnum.MERCENARY_PRESTIGE, profile -> new MercenaryPrestigeTask(profile, TpDailyTaskEnum.MERCENARY_PRESTIGE));
     }
 
     /**

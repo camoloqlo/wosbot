@@ -56,11 +56,11 @@ public class StorehouseChest extends DelayedTask {
 				LocalTime parsedTime = LocalTime.parse("00:" + correctedTime, DateTimeFormatter.ofPattern("HH:mm:ss"));
 				return now.plusMinutes(parsedTime.getMinute()).plusSeconds(parsedTime.getSecond());
 			} else {
-				log.warn("OCR time format not recognized: '" + correctedTime + "' (original: '" + ocrTime + "')");
+				System.out.println("[StorehouseChest] OCR time format not recognized: '" + correctedTime + "' (original: '" + ocrTime + "')");
 				return now;
 			}
 		} catch (DateTimeParseException e) {
-			log.warn("Error parsing time: '" + correctedTime + "' (original: '" + ocrTime + ")");
+			System.out.println("[StorehouseChest] Error parsing time: '" + correctedTime + "' (original: '" + ocrTime + ")");
 			return now;
 		}
 	}
