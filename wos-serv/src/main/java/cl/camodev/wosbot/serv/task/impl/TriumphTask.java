@@ -71,6 +71,7 @@ public class TriumphTask extends DelayedTask {
 				logInfo("Weekly Triumph rewards are ready. Tapping to claim.");
 				emuManager.tapAtPoint(EMULATOR_NUMBER, result.getPoint());
 				sleepTask(1000);
+				emuManager.tapBackButton(EMULATOR_NUMBER);
 				logInfo("Weekly Triumph claimed successfully.");
 			} else {
 				logInfo("Weekly Triumph not ready to claim or already claimed.");
