@@ -64,16 +64,17 @@ public class TriumphTask extends DelayedTask {
 			}
 
 			// verify if can claim weekly
+			logInfo("Checking for Weekly Triumph rewards.");
+			result = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ALLIANCE_TRIUMPH_WEEKLY, 90);
 
-//			result = emulatorManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ALLIANCE_TRIUMPH_WEEKLY,  90);
-//			result = emulatorManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ALLIANCE_TRIUMPH_WEEKLY,  90);
-//
-//			if (result.isFound()) {
-//				emulatorManager.tapAtRandomPoint(EMULATOR_NUMBER, result.getPoint(), result.getPoint(), 50, 10);
-//				servLogs.appendLog(EnumTpMessageSeverity.INFO, taskName, profile.getName(), "Weekly Triumph claimed successfully.");
-//			} else {
-//				servLogs.appendLog(EnumTpMessageSeverity.INFO, taskName, profile.getName(), "Weekly Triumph not ready to claim");
-//			}
+			if (result.isFound()) {
+				logInfo("Weekly Triumph rewards are ready. Tapping to claim.");
+				emuManager.tapAtPoint(EMULATOR_NUMBER, result.getPoint());
+				sleepTask(1000);
+				logInfo("Weekly Triumph claimed successfully.");
+			} else {
+				logInfo("Weekly Triumph not ready to claim or already claimed.");
+			}
 
 		} else {
 			logError("Alliance Triumph button not found. Unable to claim rewards. Rescheduling based on the configured offset.");
