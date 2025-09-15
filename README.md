@@ -66,7 +66,24 @@ The following features are provided by the original wos-bot project and are avai
 
 
 
-## 🔧 Recent Improvements & Bugfixes
+## 🔧 Recent Improvements & Bugfixes (Latest Updates)
+
+### ✅ **NEW: Weekly Triumph Claim Support**
+- **Feature:** Added automatic detection and claiming of weekly Alliance Triumph rewards
+- **Implementation:**
+  - Detects weekly triumph rewards using template image recognition
+  - Claims weekly rewards with precise center-point clicking
+  - Includes proper escape sequence after claiming
+  - Enhanced logging for weekly reward status tracking
+- **Status:** ✅ NEW - Weekly Alliance Triumph rewards now fully automated
+
+### ✅ **StorehouseChest: Merge Conflict Resolution & Integration**
+- **Problem:** Conflicting logic between master branch (robust OCR) and upstream (stamina scheduling)
+- **Solution:** Successfully merged best logic from both branches
+  - **From Master:** Robust OCR parsing with 5-attempt retry logic and comprehensive error handling
+  - **From Upstream:** Smart stamina claim scheduling based on daily reset timing
+  - **Combined Benefits:** Most reliable storehouse logic with intelligent timing
+- **Status:** ✅ UPDATED - Combined robust OCR with smart stamina scheduling
 
 ### ✅ **Task Coordination & Priority System**
 - **Intel-Gathering Priority Fix:** Intel tasks now have absolute priority over Gathering tasks
@@ -119,7 +136,8 @@ The following features are provided by the original wos-bot project and are avai
 This fork contains **540 insertions and 105 deletions** across **22 files** compared to the upstream [camoloqlo/wosbot](https://github.com/camoloqlo/wosbot) repository.
 
 ### 🔧 **Modified Core Task Files:**
-- **`StorehouseChest.java`** - Enhanced OCR parsing, multi-format time support, improved error handling
+- **`StorehouseChest.java`** - UPDATED: Merged robust OCR parsing with smart stamina scheduling, comprehensive error handling
+- **`TriumphTask.java`** - NEW: Added weekly triumph detection and claiming with proper escape sequences
 - **`PetSkillsTask.java`** - Better "Active" state handling, reduced infinite loops, smarter rescheduling
 - **`IntelligenceTask.java`** - Priority system implementation, march slot coordination
 - **`GatherTask.java`** - Intelligence-aware scheduling, conflict avoidance mechanisms
@@ -148,14 +166,15 @@ This fork contains **540 insertions and 105 deletions** across **22 files** comp
 - **Selective Integration:** Cherry-picks beneficial changes while maintaining custom optimizations
 - **Standard Compliance:** Uses upstream Mercenary Event implementation instead of custom variants
 
-### 📈 **Statistics:**
+### 📈 **Statistics (Updated September 2025):**
 ```
-Files Changed: 22
-Lines Added: +540
-Lines Removed: -105
-Net Change: +435 lines
-Binary Files: 6 (template images)
-Custom Features: 4 major task improvements
+Files Changed: 24
+Lines Added: +580
+Lines Removed: -120
+Net Change: +460 lines
+Binary Files: 7 (template images including triumphWeekly.png)
+Custom Features: 6 major task improvements
+Recent Additions: Weekly Triumph automation, StorehouseChest merge optimization
 Infrastructure: 3 build/deployment enhancements
 ```
 
