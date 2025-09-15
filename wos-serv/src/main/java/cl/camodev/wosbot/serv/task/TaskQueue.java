@@ -33,6 +33,7 @@ public class TaskQueue {
 
 	private static final Logger logger = LoggerFactory.getLogger(TaskQueue.class);
 	private final PriorityBlockingQueue<DelayedTask> taskQueue = new PriorityBlockingQueue<>();
+	protected EmulatorManager emuManager = EmulatorManager.getInstance();
 	// Flag to stop the scheduler loop.
 	private volatile boolean running = false;
 	// Flag to pause/resume the scheduler.
@@ -41,7 +42,6 @@ public class TaskQueue {
 	private Thread schedulerThread;
 	private DTOProfiles profile;
 	private int helpAlliesCount = 0;
-	protected EmulatorManager emuManager = EmulatorManager.getInstance();
 
 	public TaskQueue(DTOProfiles profile) {
 		this.profile = profile;
@@ -200,6 +200,19 @@ public class TaskQueue {
 
 								}
 							}).start();
+                            taskState.setExecuting(false);
+                            taskState.setScheduled(task.isRecurring());
+                            taskState.setLastExecutionTime(LocalDateTime.now());
+                            taskState.setNextExecutionTime(task.getScheduled());
+
+                            ServTaskManager.getInstance().setTaskState(profile.getId(), taskState);
+                            ServScheduler.getServices().updateDailyTaskStatus(profile, task.getTpTask(), task.getScheduled());
+                            if (task.isRecurring()) {
+                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, task.getTaskName(), profile.getName(), "Next schedule: " + UtilTime.localDateTimeToDDHHMMSS(task.getScheduled()));
+                                addTask(task);
+                            } else {
+                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, task.getTaskName(), profile.getName(), "Task removed from schedule");
+                            }
                             continue;
 						} else {
 							ServLogs.getServices().appendLog(EnumTpMessageSeverity.ERROR, task.getTaskName(), profile.getName(), "Profile in reconnect state, but no reconnection time set");
@@ -429,7 +442,7 @@ public class TaskQueue {
         logger.info("TaskQueue resumed for profile " + profile.getName());
     }
 
-	public void executeTaskNow(TpDailyTaskEnum taskEnum) {
+	public void executeTaskNow(TpDailyTaskEnum taskEnum, boolean recurring) {
 
 		// Obtain the task prototype from the registry
 		DelayedTask prototype = DelayedTaskRegistry.create(taskEnum, profile);
@@ -445,14 +458,14 @@ public class TaskQueue {
 			// task already exists, reschedule it to run now
 			taskQueue.remove(existing);
 			existing.reschedule(LocalDateTime.now());
-			existing.setRecurring(true);
+			existing.setRecurring(recurring);
 			taskQueue.offer(existing);
 
 			ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueue", profile.getName(), "Rescheduled existing " + taskEnum + " to run now");
 		} else {
 			// task does not exist, create a new instance and schedule it just once
 			prototype.reschedule(LocalDateTime.now());
-			prototype.setRecurring(false);
+			prototype.setRecurring(recurring);
 			taskQueue.offer(prototype);
 			ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueue", profile.getName(), "Enqueued new immediate " + taskEnum);
 		}

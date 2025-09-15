@@ -12,9 +12,11 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.impl.ServLogs;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.impl.InitializeTask;
+import net.sourceforge.tess4j.TesseractException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -145,11 +147,26 @@ public abstract class DelayedTask implements Runnable, Delayed {
         // First, check if we are already on the intel screen.
         for (int i = 0; i < 5; i++) {
             DTOImageSearchResult intelScreenResult = emuManager.searchTemplate(EMULATOR_NUMBER,
-                    EnumTemplates.INTEL_SCREEN, 90);
-            if (intelScreenResult.isFound()) {
-                logInfo("Already on the intel screen.");
+                    EnumTemplates.INTEL_SCREEN_1, 90);
+            DTOImageSearchResult intelScreenResult2 = emuManager.searchTemplate(EMULATOR_NUMBER,
+                    EnumTemplates.INTEL_SCREEN_2, 90);
+            if (intelScreenResult.isFound() || intelScreenResult2.isFound()) {
+                logInfo("Already on the intel screen (found via image search).");
                 return; // We are on the correct screen, so we can exit.
             }
+
+            // Fallback to OCR check
+            try {
+                String intelText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(85, 15), new DTOPoint(171, 62));
+                if (intelText != null && intelText.toLowerCase().contains("intel")) {
+                    logInfo("Already on the intel screen (found via OCR).");
+                    return; // We are on the correct screen
+                }
+            } catch (IOException | TesseractException e) {
+                logWarning("Could not perform OCR to check for intel screen. Error: " + e.getMessage());
+            }
+
+
             logDebug("Intel screen not found. Attempt " + (i + 1) + "/5. Retrying...");
             sleepTask(300);
         }
@@ -167,13 +184,26 @@ public abstract class DelayedTask implements Runnable, Delayed {
                 emuManager.tapAtPoint(EMULATOR_NUMBER, intelButton.getPoint());
                 sleepTask(1000); // Wait for screen transition
 
-                // Final check to confirm we are on the intel screen
-                if (emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN, 90).isFound()) {
-                    logInfo("Successfully navigated to the intel screen.");
+                // Final check to confirm we are on the intel screen (image search)
+                if (emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_1, 90).isFound() ||
+                    emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_2, 90).isFound()) {
+                    logInfo("Successfully navigated to the intel screen (confirmed by image).");
                     return; // Success
-                } else {
-                    logWarning("Tapped intel button, but still not on intel screen. Retrying...");
                 }
+
+                // Fallback to OCR check
+                try {
+                    String intelText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(85, 15), new DTOPoint(171, 62));
+                    if (intelText != null && intelText.toLowerCase().contains("intel")) {
+                        logInfo("Successfully navigated to the intel screen (confirmed by OCR).");
+                        return; // Success
+                    }
+                } catch (IOException | TesseractException e) {
+                    logWarning("Could not perform OCR to confirm intel screen. Error: " + e.getMessage());
+                }
+
+                logWarning("Tapped intel button, but still not on intel screen. Retrying...");
+                tapBackButton();
             }
             logDebug("Intel button not found. Attempt " + (i + 1) + "/5. Retrying...");
             sleepTask(300);

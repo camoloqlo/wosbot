@@ -28,6 +28,12 @@ public class TundraTruckEventTask extends DelayedTask {
 		ENDED
 	}
 
+	private enum TruckStatus {
+		AVAILABLE,
+		DEPARTED,
+		NOT_FOUND
+	}
+
 	private boolean useGems = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_USE_GEMS_BOOL, Boolean.class);
 	private boolean truckSSR = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_SSR_BOOL, Boolean.class);
 
@@ -226,20 +232,23 @@ public class TundraTruckEventTask extends DelayedTask {
 				new DTOPoint(300, 1150), new DTOPoint(450, 1200), 2, 300);
 	}
 
-	private void handleGemRefresh(DTOImageSearchResult popupGems) {
+	private boolean handleGemRefresh(DTOImageSearchResult popupGems) {
 		logInfo("A gem refresh pop-up was detected.");
 		if (useGems) {
+			logInfo("Proceeding with gem refresh as 'useGems' is true.");
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(200, 704), new DTOPoint(220, 722));
 			sleepTask(500);
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, popupGems.getPoint(), popupGems.getPoint());
+			return true;
 		} else {
 			logInfo("Gem refresh was requested, but 'useGems' is set to false. Cancelling the refresh.");
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(626, 438), new DTOPoint(643, 454));
 			closeWindow();
+			return false;
 		}
 	}
 
-	private void refreshTrucks() {
+	private boolean refreshTrucks() {
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(588, 405), new DTOPoint(622, 436));
 		sleepTask(1000);
 
@@ -253,22 +262,78 @@ public class TundraTruckEventTask extends DelayedTask {
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(200, 704), new DTOPoint(220, 722));
 			sleepTask(500);
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, popup.getPoint(), popup.getPoint());
+			return true;
 		} else if (popupGems.isFound()) {
-			handleGemRefresh(popupGems);
+			return handleGemRefresh(popupGems);
 		}
+		logInfo("Trucks refreshed successfully without requiring confirmation.");
+		return true;
 	}
 
 	private boolean findSSRTruck() {
+		final int MAX_REFRESH_ATTEMPTS = 10;
+		int refreshAttempts = 0;
+
 		DTOImageSearchResult truckRaritySSR = emuManager.searchTemplate(
 				EMULATOR_NUMBER, EnumTemplates.TUNDRA_TRUCK_YELLOW, 90);
 
-		while (!truckRaritySSR.isFound()) {
-			logInfo("SSR Truck not found. Refreshing trucks...");
-			refreshTrucks();
+		while (!truckRaritySSR.isFound() && refreshAttempts < MAX_REFRESH_ATTEMPTS) {
+			logInfo("SSR Truck not found. Refreshing trucks (Attempt " + (refreshAttempts + 1) + "/" + MAX_REFRESH_ATTEMPTS + ")...");
+
+			if (!refreshTrucks()) {
+				logWarning("Failed to refresh trucks, likely due to 'useGems' being false and no free refreshes available. Aborting SSR search.");
+				return false;
+			}
+
 			truckRaritySSR = emuManager.searchTemplate(
 					EMULATOR_NUMBER, EnumTemplates.TUNDRA_TRUCK_YELLOW, 90);
+			refreshAttempts++;
 		}
+
+		if (!truckRaritySSR.isFound()) {
+			logWarning("Could not find an SSR truck after " + MAX_REFRESH_ATTEMPTS + " refresh attempts.");
+		}
+
 		return truckRaritySSR.isFound();
+	}
+
+	private TruckStatus checkTruckStatus(int side) {
+		int xStart = (side == 0) ? 205 : 450;
+		int xEnd = (side == 0) ? 265 : 515;
+		int yStart = 643, yEnd = 790;
+
+		// Tap to open the truck details
+		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(xStart, yStart), new DTOPoint(xEnd, yEnd));
+		sleepTask(500);
+
+		// Check if the truck has already departed
+		DTOImageSearchResult departedResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TRUCK_DEPARTED, 90);
+		if (departedResult.isFound()) {
+			logInfo("Truck on the " + (side == 0 ? "left" : "right") + " side has already departed.");
+			// Close the detail window
+			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(617, 770), new DTOPoint(650, 795));
+			sleepTask(300);
+			closeWindow();
+			return TruckStatus.DEPARTED;
+		}
+
+		// Check if the truck is available to be sent
+		DTOImageSearchResult escortResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TRUCK_ESCORT, 90);
+		if (escortResult.isFound()) {
+			logInfo("Truck on the " + (side == 0 ? "left" : "right") + " side is available to send.");
+			// Close the detail window without sending
+			tapBackButton();
+			sleepTask(300);
+			closeWindow();
+			return TruckStatus.AVAILABLE;
+		}
+
+		logWarning("Could not determine the status of the truck on the " + (side == 0 ? "left" : "right") + " side.");
+		// Close any potentially open window
+		tapBackButton();
+		sleepTask(300);
+		closeWindow();
+		return TruckStatus.NOT_FOUND;
 	}
 
 	private boolean truckAlreadyDeparted(int side) {
@@ -313,19 +378,41 @@ public class TundraTruckEventTask extends DelayedTask {
 	}
 
 	private void attemptSendTrucks() {
-		int[] xStart = { 205, 450 };
-		int[] xEnd = { 265, 515 };
-		int yStart = 643, yEnd = 790;
+		TruckStatus leftStatus = checkTruckStatus(0);
+		TruckStatus rightStatus = checkTruckStatus(1);
 
-		boolean found = false;
+		boolean leftSent = false;
+		boolean rightSent = false;
 
-		for (int side = 0; side < 2; side++) {
-			if (trySendTruck(side, xStart[side], xEnd[side], yStart, yEnd)) {
-				found = true;
-			}
+		if (leftStatus == TruckStatus.DEPARTED && rightStatus == TruckStatus.DEPARTED) {
+			logInfo("Both trucks have already been sent. Scheduling for next check.");
+			scheduleNextTruckForBothSides();
+			return;
 		}
 
-		if (found) {
+		// If SSR is required, we must find it before sending any truck.
+		if (truckSSR) {
+			if (!findSSRTruck()) {
+				logWarning("SSR truck is required but was not found after multiple refreshes. Rescheduling for the next game reset.");
+				reschedule(UtilTime.getGameReset());
+				return; // Stop further execution
+			}
+			logInfo("SSR truck found. Proceeding to send trucks.");
+		}
+
+		if (leftStatus == TruckStatus.AVAILABLE) {
+			leftSent = trySendTruck(0, 205, 265, 643, 790);
+		}
+
+		if (rightStatus == TruckStatus.AVAILABLE) {
+			rightSent = trySendTruck(1, 450, 515, 643, 790);
+		}
+
+		if (leftSent || rightSent) {
+			logInfo("At least one truck was sent. Scheduling for next check.");
+			scheduleNextTruckForBothSides();
+		} else {
+			logInfo("No trucks were sent in this cycle. This might be because they already departed or were not available. Scheduling for next check.");
 			scheduleNextTruckForBothSides();
 		}
 	}

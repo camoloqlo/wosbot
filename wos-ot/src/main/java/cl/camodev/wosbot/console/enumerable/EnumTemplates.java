@@ -107,7 +107,8 @@ public enum EnumTemplates {
 	INTEL_RESCUE("/templates/intel/survivorRescue.png"),
 	INTEL_EXPLORE("/templates/intel/journeyExplore.png"),
 	INTEL_FIRE_BEAST("/templates/intel/beastFire.png"),
-	INTEL_SCREEN("/templates/intel/intelScreen.png"),
+	INTEL_SCREEN_1("/templates/intel/intelScreen1.png"),
+	INTEL_SCREEN_2("/templates/intel/intelScreen2.png"),
 	INTEL_AGNES("/templates/experts/intelAgnes.png"),
 	
 	DEPLOY_BUTTON("/templates/intel/deploy.png"),

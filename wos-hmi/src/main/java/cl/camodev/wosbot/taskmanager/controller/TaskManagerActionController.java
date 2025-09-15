@@ -106,7 +106,7 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 	/**
 	 * Handles the execute now action
 	 */
-	public void executeTaskNow(TaskManagerAux task) {
+	public void executeTaskNow(TaskManagerAux task, boolean recurring) {
 		DTOProfiles profile = findProfileById(task.getProfileId());
 		if (profile == null) {
 			System.err.println("Profile not found: " + task.getProfileId());
@@ -115,7 +115,7 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 
 		ServScheduler scheduler = ServScheduler.getServices();
 		scheduler.updateDailyTaskStatus(profile, task.getTaskEnum(), LocalDateTime.now());
-		scheduler.getQueueManager().getQueue(profile.getId()).executeTaskNow(task.getTaskEnum());
+		scheduler.getQueueManager().getQueue(profile.getId()).executeTaskNow(task.getTaskEnum(), recurring);
 	}
 
 	/**
@@ -145,7 +145,7 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 		} else {
 			// Task is not scheduled - execute once
 			scheduler.updateDailyTaskStatus(profile, task.getTaskEnum(), LocalDateTime.now());
-			queue.executeTaskNow(task.getTaskEnum());
+			queue.executeTaskNow(task.getTaskEnum(),false);
 			ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskExecutor", profile.getName(),
 				"Executed task " + task.getTaskEnum().getName() + " one time");
 		}
@@ -231,7 +231,7 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 			if (controller.isConfirmed()) {
 				if (controller.isImmediate()) {
 					// Execute immediately
-					executeTaskNow(task);
+					executeTaskNow(task,controller.isRecurring());
 				} else {
 					// Schedule task with specified time
 					scheduleTask(task, controller.getScheduledTime(), controller.isRecurring());
