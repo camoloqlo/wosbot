@@ -21,24 +21,44 @@ import net.sourceforge.tess4j.TesseractException;
 
 public class TundraTruckEventTask extends DelayedTask {
 
-	private enum TundraNavigationResult {
-		SUCCESS,
-		FAILURE,
-		COUNTDOWN,
-		ENDED
-	}
-
-	private enum TruckStatus {
-		AVAILABLE,
-		DEPARTED,
-		NOT_FOUND
-	}
-
 	private boolean useGems = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_USE_GEMS_BOOL, Boolean.class);
 	private boolean truckSSR = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_SSR_BOOL, Boolean.class);
 
 	public TundraTruckEventTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
+	}
+
+	/**
+	 * Parse time string and add it to the current LocalDateTime
+	 *
+	 * @param baseTime   Base time to add to (unused but kept for method signature
+	 *                   compatibility)
+	 * @param timeString Time string in format "[n]d HH:mm:ss"
+	 * @return LocalDateTime with the parsed time added
+	 */
+	public static LocalDateTime addTimeToLocalDateTime(LocalDateTime baseTime, String timeString) {
+		Pattern pattern = Pattern.compile("(?i).*?(?:(\\d+)\\s*d\\s*)?(\\d{1,2}:\\d{2}:\\d{2}).*", Pattern.DOTALL);
+		Matcher matcher = pattern.matcher(timeString.trim());
+
+		if (!matcher.matches()) {
+			throw new IllegalArgumentException(
+					"Time string does not match expected format [n]d HH:mm:ss: " + timeString);
+		}
+
+		String daysStr = matcher.group(1); // Optional days component
+		String timeStr = matcher.group(2); // Required time component
+
+		int daysToAdd = (daysStr != null) ? Integer.parseInt(daysStr) : 0;
+
+		// Parse time component
+		DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("H:mm:ss");
+		LocalTime timePart = LocalTime.parse(timeStr, timeFormatter);
+
+		return baseTime
+				.plusDays(daysToAdd)
+				.plusHours(timePart.getHour())
+				.plusMinutes(timePart.getMinute())
+				.plusSeconds(timePart.getSecond());
 	}
 
 	@Override
@@ -390,15 +410,6 @@ public class TundraTruckEventTask extends DelayedTask {
 			return;
 		}
 
-		// If SSR is required, we must find it before sending any truck.
-		if (truckSSR) {
-			if (!findSSRTruck()) {
-				logWarning("SSR truck is required but was not found after multiple refreshes. Rescheduling for the next game reset.");
-				reschedule(UtilTime.getGameReset());
-				return; // Stop further execution
-			}
-			logInfo("SSR truck found. Proceeding to send trucks.");
-		}
 
 		if (leftStatus == TruckStatus.AVAILABLE) {
 			leftSent = trySendTruck(0, 205, 265, 643, 790);
@@ -465,7 +476,7 @@ public class TundraTruckEventTask extends DelayedTask {
 
 	/**
 	 * Extract the next training completion time from the UI
-	 * 
+	 *
 	 * @return Optional containing the next training time, or empty if extraction
 	 *         failed
 	 */
@@ -495,36 +506,16 @@ public class TundraTruckEventTask extends DelayedTask {
 		}
 	}
 
-	/**
-	 * Parse time string and add it to the current LocalDateTime
-	 * 
-	 * @param baseTime   Base time to add to (unused but kept for method signature
-	 *                   compatibility)
-	 * @param timeString Time string in format "[n]d HH:mm:ss"
-	 * @return LocalDateTime with the parsed time added
-	 */
-	public static LocalDateTime addTimeToLocalDateTime(LocalDateTime baseTime, String timeString) {
-		Pattern pattern = Pattern.compile("(?i).*?(?:(\\d+)\\s*d\\s*)?(\\d{1,2}:\\d{2}:\\d{2}).*", Pattern.DOTALL);
-		Matcher matcher = pattern.matcher(timeString.trim());
+	private enum TundraNavigationResult {
+		SUCCESS,
+		FAILURE,
+		COUNTDOWN,
+		ENDED
+	}
 
-		if (!matcher.matches()) {
-			throw new IllegalArgumentException(
-					"Time string does not match expected format [n]d HH:mm:ss: " + timeString);
-		}
-
-		String daysStr = matcher.group(1); // Optional days component
-		String timeStr = matcher.group(2); // Required time component
-
-		int daysToAdd = (daysStr != null) ? Integer.parseInt(daysStr) : 0;
-
-		// Parse time component
-		DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("H:mm:ss");
-		LocalTime timePart = LocalTime.parse(timeStr, timeFormatter);
-
-		return baseTime
-				.plusDays(daysToAdd)
-				.plusHours(timePart.getHour())
-				.plusMinutes(timePart.getMinute())
-				.plusSeconds(timePart.getSecond());
+	private enum TruckStatus {
+		AVAILABLE,
+		DEPARTED,
+		NOT_FOUND
 	}
 }
