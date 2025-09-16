@@ -44,6 +44,10 @@ public enum TpDailyTaskEnum {
 
 	SHOP_MYSTERY(80, "Shop Mystery",              EnumConfigurationKey.BOOL_MYSTERY_SHOP),
 
+	CHIEF_ORDER_RUSH_JOB(300, "Chief Order: Rush Job", EnumConfigurationKey.BOOL_CHIEF_ORDER_RUSH_JOB),
+	CHIEF_ORDER_URGENT_MOBILISATION(301, "Chief Order: Urgent Mobilisation", EnumConfigurationKey.BOOL_CHIEF_ORDER_URGENT_MOBILISATION),
+	CHIEF_ORDER_PRODUCTIVITY_DAY(302, "Chief Order: Productivity Day", EnumConfigurationKey.BOOL_CHIEF_ORDER_PRODUCTIVITY_DAY),
+
 	INITIALIZE(100, "Initialize",                  null),
 
 	GATHER_BOOST(101, "Gather Speed Boost",       EnumConfigurationKey.GATHER_SPEED_BOOL),

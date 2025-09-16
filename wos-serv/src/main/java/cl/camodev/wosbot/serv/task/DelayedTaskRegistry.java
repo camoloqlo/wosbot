@@ -62,6 +62,13 @@ public class DelayedTaskRegistry {
         registry.put(TpDailyTaskEnum.TRAINING_LANCER, profile -> new TrainingTroopsTask(profile, TpDailyTaskEnum.TRAINING_LANCER, TrainingTroopsTask.TroopType.LANCER));
         registry.put(TpDailyTaskEnum.TRAINING_MARKSMAN, profile -> new TrainingTroopsTask(profile, TpDailyTaskEnum.TRAINING_MARKSMAN, TrainingTroopsTask.TroopType.MARKSMAN));
 
+
+        // Chief Order tasks
+        registry.put(TpDailyTaskEnum.CHIEF_ORDER_RUSH_JOB, profile -> new ChiefOrderTask(profile, TpDailyTaskEnum.CHIEF_ORDER_RUSH_JOB, cl.camodev.wosbot.serv.task.impl.ChiefOrderTask.ChiefOrderType.RUSH_JOB));
+        registry.put(TpDailyTaskEnum.CHIEF_ORDER_URGENT_MOBILISATION, profile -> new ChiefOrderTask(profile, TpDailyTaskEnum.CHIEF_ORDER_URGENT_MOBILISATION, cl.camodev.wosbot.serv.task.impl.ChiefOrderTask.ChiefOrderType.URGENT_MOBILISATION));
+        registry.put(TpDailyTaskEnum.CHIEF_ORDER_PRODUCTIVITY_DAY, profile -> new ChiefOrderTask(profile, TpDailyTaskEnum.CHIEF_ORDER_PRODUCTIVITY_DAY, cl.camodev.wosbot.serv.task.impl.ChiefOrderTask.ChiefOrderType.PRODUCTIVITY_DAY));
+
+
         // City upgrade
         registry.put(TpDailyTaskEnum.CITY_UPGRADE_FURNACE, profile -> new UpgradeFurnaceTask(profile, TpDailyTaskEnum.CITY_UPGRADE_FURNACE));
 //		registry.put(TpDailyTaskEnum.CITY_UPGRADE_OTHERS, profile -> new ArenaTask(profile, TpDailyTaskEnum.CITY_UPGRADE_OTHERS));

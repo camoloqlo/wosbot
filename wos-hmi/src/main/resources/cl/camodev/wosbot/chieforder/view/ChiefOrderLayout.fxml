@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="580.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+   <columnConstraints>
+      <ColumnConstraints hgrow="SOMETIMES" percentWidth="100.0" />
+   </columnConstraints>
+   <rowConstraints>
+      <RowConstraints maxHeight="1.7976931348623157E308" percentHeight="33.33333333333333" vgrow="SOMETIMES" />
+      <RowConstraints maxHeight="1.7976931348623157E308" percentHeight="33.33333333333333" vgrow="SOMETIMES" />
+      <RowConstraints maxHeight="1.7976931348623157E308" percentHeight="33.33333333333333" vgrow="SOMETIMES" />
+   </rowConstraints>
+   <children>
+   <CheckBox fx:id="checkBoxRushJob" graphicTextGap="3.0" mnemonicParsing="false" text="Rush Job (every 24h)">
+         <GridPane.margin>
+            <Insets />
+         </GridPane.margin>
+      </CheckBox>
+   <CheckBox fx:id="checkBoxUrgentMobilisation" graphicTextGap="3.0" mnemonicParsing="false" text="Urgent Mobilisation (every 8h)" GridPane.rowIndex="1">
+         <GridPane.margin>
+            <Insets />
+         </GridPane.margin>
+      </CheckBox>
+   <CheckBox fx:id="checkBoxProductivityDay" graphicTextGap="3.0" mnemonicParsing="false" text="Productivity Day (12h)" GridPane.rowIndex="2">
+         <GridPane.margin>
+            <Insets />
+         </GridPane.margin>
+      </CheckBox>
+   </children>
+</GridPane>

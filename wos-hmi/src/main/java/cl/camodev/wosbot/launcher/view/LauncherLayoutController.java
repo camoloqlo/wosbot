@@ -377,8 +377,8 @@ public class LauncherLayoutController implements IProfileLoadListener {
 				new ModuleDefinition("PetsLayout", "Pets", PetsLayoutController::new),
 				new ModuleDefinition("EventsLayout", "Events", EventsLayoutController::new),
 				new ModuleDefinition("ExpertsLayout", "Experts", ExpertsLayoutController::new),
+				new ModuleDefinition("ChiefOrderLayout", "Chief Order", cl.camodev.wosbot.chieforder.view.ChiefOrderLayoutController::new),
 				new ModuleDefinition("EmuConfigLayout", "Config", EmuConfigLayoutController::new)
-				
 				);
 		//@formatter:on
 

@@ -97,6 +97,11 @@ public enum EnumConfigurationKey {
 	BOOL_MYSTERY_SHOP("false",Boolean.class),
     BOOL_MYSTERY_SHOP_50D_GEAR("false",Boolean.class),
 
+	// Chief Order feature
+	BOOL_CHIEF_ORDER_RUSH_JOB("false", Boolean.class),
+	BOOL_CHIEF_ORDER_URGENT_MOBILISATION("false", Boolean.class),
+	BOOL_CHIEF_ORDER_PRODUCTIVITY_DAY("false", Boolean.class),
+
 	TUNDRA_TRUCK_EVENT_BOOL("false",Boolean.class),
 	TUNDRA_TRUCK_USE_GEMS_BOOL("false",Boolean.class),
 	TUNDRA_TRUCK_SSR_BOOL("false",Boolean.class),
