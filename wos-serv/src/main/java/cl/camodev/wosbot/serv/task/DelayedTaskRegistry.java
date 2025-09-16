@@ -65,7 +65,7 @@ public class DelayedTaskRegistry {
 
         // Chief Order tasks
         registry.put(TpDailyTaskEnum.CHIEF_ORDER_RUSH_JOB, profile -> new ChiefOrderTask(profile, TpDailyTaskEnum.CHIEF_ORDER_RUSH_JOB, cl.camodev.wosbot.serv.task.impl.ChiefOrderTask.ChiefOrderType.RUSH_JOB));
-        registry.put(TpDailyTaskEnum.CHIEF_ORDER_URGENT_MOBILISATION, profile -> new ChiefOrderTask(profile, TpDailyTaskEnum.CHIEF_ORDER_URGENT_MOBILISATION, cl.camodev.wosbot.serv.task.impl.ChiefOrderTask.ChiefOrderType.URGENT_MOBILISATION));
+        registry.put(TpDailyTaskEnum.CHIEF_ORDER_URGENT_MOBILIZATION, profile -> new ChiefOrderTask(profile, TpDailyTaskEnum.CHIEF_ORDER_URGENT_MOBILIZATION, cl.camodev.wosbot.serv.task.impl.ChiefOrderTask.ChiefOrderType.URGENT_MOBILIZATION));
         registry.put(TpDailyTaskEnum.CHIEF_ORDER_PRODUCTIVITY_DAY, profile -> new ChiefOrderTask(profile, TpDailyTaskEnum.CHIEF_ORDER_PRODUCTIVITY_DAY, cl.camodev.wosbot.serv.task.impl.ChiefOrderTask.ChiefOrderType.PRODUCTIVITY_DAY));
 
 

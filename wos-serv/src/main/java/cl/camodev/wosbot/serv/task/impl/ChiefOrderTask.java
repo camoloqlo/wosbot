@@ -109,9 +109,9 @@ public class ChiefOrderTask extends DelayedTask {
 				
 			} else {
 				logWarning(chiefOrderType.getDescription() + " button not found or currently on cooldown.");
-				// Reschedule for shorter retry interval (30 minutes) when not available
-				logInfo("Rescheduling for retry in 30 minutes.");
-				this.reschedule(LocalDateTime.now().plusMinutes(30));
+				// Reschedule for shorter retry interval (6 hours) when not available
+				logInfo("Rescheduling for retry in 6 hours.");
+				this.reschedule(LocalDateTime.now().plusHours(6));
 			}
 
 		// Navigate back to main screen
