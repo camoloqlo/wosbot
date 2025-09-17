@@ -12,6 +12,11 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 
+/**
+ * Task responsible for claiming daily and weekly alliance triumph rewards.
+ * The task checks if rewards are available and claims them accordingly.
+ * If rewards are not available, it reschedules itself based on configuration.
+ */
 public class TriumphTask extends DelayedTask {
 
 	public TriumphTask(DTOProfiles profile, TpDailyTaskEnum dailyMission) {
@@ -25,10 +30,14 @@ public class TriumphTask extends DelayedTask {
 
 	@Override
 	protected void execute() {
-		logInfo("Navigating to the Alliance Menu to claim Triumph rewards.");
+		logInfo("Starting Alliance Triumph task to claim rewards");
+		
+		// Navigate to alliance menu
+		logInfo("Tapping alliance button at bottom of screen");
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(493, 1187), new DTOPoint(561, 1240));
 		sleepTask(3000);
 
+		// Search for the Triumph button
 		DTOImageSearchResult result = emuManager.searchTemplate(EMULATOR_NUMBER,
 				EnumTemplates.ALLIANCE_TRIUMPH_BUTTON, 90);
 		if (result.isFound()) {
@@ -36,53 +45,63 @@ public class TriumphTask extends DelayedTask {
 			emuManager.tapAtPoint(EMULATOR_NUMBER, result.getPoint());
 			sleepTask(2000);
 
-			logInfo("Verifying if Triumph rewards have already been claimed.");
-			// verify if its already claimed daily
+			logInfo("Checking daily Triumph rewards status");
+			// Check if daily rewards have already been claimed
 			result = emuManager.searchTemplate(EMULATOR_NUMBER,
 					EnumTemplates.ALLIANCE_TRIUMPH_DAILY_CLAIMED, 90);
 
 			if (result.isFound()) {
-				logInfo("Daily Triumph rewards have already been claimed. Rescheduling for the next game reset.");
+				logInfo("Daily Triumph rewards already claimed - rescheduling for next game reset");
 				this.reschedule(UtilTime.getGameReset());
 			} else {
-				// verify if its ready to claim
-				logInfo("Daily Triumph rewards have not been claimed yet. Checking if they are ready to be claimed.");
-				result = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ALLIANCE_TRIUMPH_DAILY,
-						 90);
+				// Check if daily rewards are ready to claim
+				logInfo("Daily rewards not claimed yet, checking if they are available");
+				result = emuManager.searchTemplate(EMULATOR_NUMBER, 
+				        EnumTemplates.ALLIANCE_TRIUMPH_DAILY, 90);
+				        
 				if (result.isFound()) {
-					logInfo("Daily Triumph rewards are ready. Tapping to claim.");
+					logInfo("Daily Triumph rewards are available - claiming now");
 					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, result.getPoint(), result.getPoint(), 10, 50);
+					sleepTask(1000); // Add delay after claiming to ensure UI updates
+					logInfo("Daily rewards claimed successfully");
 					reschedule(UtilTime.getGameReset());
 				} else {
-					// not ready, reschedule for next schedule using offset configuration
-					logWarning("Daily Triumph rewards are not ready to be claimed. Rescheduling based on the configured offset.");
-
-					reschedule(LocalDateTime.now().plusMinutes(profile.getConfig(EnumConfigurationKey.ALLIANCE_TRIUMPH_OFFSET_INT, Integer.class)));
-
+					// Rewards not ready yet
+					int offset = profile.getConfig(EnumConfigurationKey.ALLIANCE_TRIUMPH_OFFSET_INT, Integer.class);
+					logWarning("Daily Triumph rewards not available - rescheduling to check in " + offset + " minutes");
+					reschedule(LocalDateTime.now().plusMinutes(offset));
 				}
-
 			}
 
-			// verify if can claim weekly
-			logInfo("Checking for Weekly Triumph rewards.");
+			// Check for weekly rewards
+			logInfo("Checking weekly Triumph rewards status");
 			result = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ALLIANCE_TRIUMPH_WEEKLY, 90);
 
 			if (result.isFound()) {
-				logInfo("Weekly Triumph rewards are ready. Tapping to claim.");
+				logInfo("Weekly Triumph rewards are available - claiming now");
 				emuManager.tapAtPoint(EMULATOR_NUMBER, result.getPoint());
-				sleepTask(1000);
-				emuManager.tapBackButton(EMULATOR_NUMBER);
-				logInfo("Weekly Triumph claimed successfully.");
+				sleepTask(1500); // Increased delay to ensure reward animation completes
+				tapBackButton();
+				logInfo("Weekly Triumph claimed successfully");
 			} else {
-				logInfo("Weekly Triumph not ready to claim or already claimed.");
+				logInfo("Weekly Triumph rewards not available or already claimed");
 			}
 
+			// Return to home screen
+			logDebug("Returning to home screen");
+			tapBackButton();
+			sleepTask(300);
+			tapBackButton();
 		} else {
-			logError("Alliance Triumph button not found. Unable to claim rewards. Rescheduling based on the configured offset.");
-
-			reschedule(LocalDateTime.now().plusMinutes(profile.getConfig(EnumConfigurationKey.ALLIANCE_TRIUMPH_OFFSET_INT, Integer.class)));
+			int offset = profile.getConfig(EnumConfigurationKey.ALLIANCE_TRIUMPH_OFFSET_INT, Integer.class);
+			logError("Alliance Triumph button not found - unable to claim rewards");
+			logInfo("Rescheduling task to try again in " + offset + " minutes");
+			tapBackButton();
+			sleepTask(500);
+			reschedule(LocalDateTime.now().plusMinutes(offset));
 		}
-
+		
+		logInfo("Alliance Triumph task completed");
 	}
 
 }

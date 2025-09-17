@@ -12,111 +12,220 @@ import cl.camodev.wosbot.serv.task.DelayedTask;
 
 public class AllianceChestTask extends DelayedTask {
 
+	// Wait times
+	private static final int TAB_CHANGE_WAIT_TIME = 500;
+	private static final int CLAIM_WAIT_TIME = 1500;
+	private static final int SHORT_WAIT_TIME = 300;
+
 	public AllianceChestTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
 	}
 
 	@Override
 	protected void execute() {
-
 		logInfo("Starting alliance chest collection task.");
 
-		// Go to the alliance chest section
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(493, 1187), new DTOPoint(561, 1240));
-		sleepTask(3000);
-
-		DTOImageSearchResult allianceChestResult = emuManager.searchTemplate(EMULATOR_NUMBER,
-				EnumTemplates.ALLIANCE_CHEST_BUTTON, 90);
-		if (!allianceChestResult.isFound()) {
-			logWarning("Alliance chest button not found. Rescheduling.");
-			LocalDateTime nextExecutionTime = LocalDateTime.now()
-					.plusMinutes(profile.getConfig(EnumConfigurationKey.ALLIANCE_CHESTS_OFFSET_INT, Integer.class));
-			this.reschedule(nextExecutionTime);
+		if (!navigateToAllianceScreen()) {
+			rescheduleAndExit("Failed to navigate to alliance screen");
 			return;
 		}
 
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, allianceChestResult.getPoint(), allianceChestResult.getPoint());
-		sleepTask(500);
+		if (!openAllianceChestScreen()) {
+			rescheduleAndExit("Failed to open alliance chest screen");
+			return;
+		}
 
+		// Collect from all available sections
+		collectLootChests();
+		collectAllianceGifts();
+		collectHonorChest();
 		
-		// Open the loot chests section
+		// Return to home screen
+		returnToHomeScreen();
+		
+		// Reschedule task
+		scheduleNextRun();
+	}
+	
+	/**
+	 * Navigates to the alliance screen from the home screen
+	 * @return true if navigation was successful, false otherwise
+	 */
+	private boolean navigateToAllianceScreen() {
+		logInfo("Navigating to alliance screen");
+		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(493, 1187), new DTOPoint(561, 1240));
+		sleepTask(3000);
+		
+		// Verify we're on the alliance screen by checking for the alliance chest button
+		DTOImageSearchResult allianceVerification = emuManager.searchTemplate(EMULATOR_NUMBER, 
+				EnumTemplates.ALLIANCE_CHEST_BUTTON, 90);
+		return allianceVerification.isFound();
+	}
+	
+	/**
+	 * Opens the alliance chest screen
+	 * @return true if successful, false otherwise
+	 */
+	private boolean openAllianceChestScreen() {
+		DTOImageSearchResult allianceChestResult = emuManager.searchTemplate(EMULATOR_NUMBER,
+				EnumTemplates.ALLIANCE_CHEST_BUTTON, 90);
+		if (!allianceChestResult.isFound()) {
+			logWarning("Alliance chest button not found.");
+			return false;
+		}
+
+		emuManager.tapAtPoint(EMULATOR_NUMBER, allianceChestResult.getPoint());
+		sleepTask(TAB_CHANGE_WAIT_TIME);
+		return true;
+	}
+	
+	/**
+	 * Collects rewards from the loot chests section
+	 */
+	private void collectLootChests() {
 		logInfo("Opening loot chests section.");
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(56, 375), new DTOPoint(320, 420));
-		sleepTask(500);
+		sleepTask(TAB_CHANGE_WAIT_TIME);
 		
 		// Search for the claim rewards button
 		DTOImageSearchResult claimAllButton = emuManager.searchTemplate(EMULATOR_NUMBER,
-		EnumTemplates.ALLIANCE_CHEST_CLAIM_ALL_BUTTON, 98);
+				EnumTemplates.ALLIANCE_CHEST_CLAIM_ALL_BUTTON, 90);
+		
 		if (claimAllButton.isFound()) {
 			logInfo("'Claim All' button found. Claiming all loot chests.");
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, claimAllButton.getPoint(), claimAllButton.getPoint(), 2,
-			500);
-			sleepTask(500);
+			emuManager.tapAtPoint(EMULATOR_NUMBER, claimAllButton.getPoint());
+			sleepTask(CLAIM_WAIT_TIME);
 			
-			// Close the window
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(578, 1180), new DTOPoint(641, 1200), 2, 500);
+			// Close the result window if it appears
+			closePopupIfPresent();
 		} else {
-			logInfo("No 'Claim All' button found for loot chests.");
+			logInfo("No 'Claim All' button found for loot chests. Nothing to claim.");
 		}
-		sleepTask(500);
-		
-		// Move to alliance gifts section
+		sleepTask(SHORT_WAIT_TIME);
+	}
+	
+	/**
+	 * Collects rewards from the alliance gifts section
+	 */
+	private void collectAllianceGifts() {
 		logInfo("Opening alliance gifts section.");
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(410, 375), new DTOPoint(626, 420));
-		sleepTask(500);
+		sleepTask(TAB_CHANGE_WAIT_TIME);
 		
-		// Search for the claim rewards button
-		DTOImageSearchResult claimAllButtonGifts = emuManager.searchTemplate(EMULATOR_NUMBER,
-		EnumTemplates.ALLIANCE_CHEST_CLAIM_ALL_BUTTON, 98);
-		if (claimAllButtonGifts.isFound()) {
+		// First try to use "Claim All" button
+		DTOImageSearchResult claimAllButton = emuManager.searchTemplate(EMULATOR_NUMBER,
+				EnumTemplates.ALLIANCE_CHEST_CLAIM_ALL_BUTTON, 90);
+		
+		if (claimAllButton.isFound()) {
 			logInfo("'Claim All' button found. Claiming all gifts.");
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, claimAllButtonGifts.getPoint(),
-			claimAllButtonGifts.getPoint(),
-			2, 500);
-			sleepTask(500);
+			emuManager.tapAtPoint(EMULATOR_NUMBER, claimAllButton.getPoint());
+			sleepTask(CLAIM_WAIT_TIME);
 			
-			// Close the window
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(578, 1180), new DTOPoint(641, 1200), 2, 500);
+			// Close the result window
+			closePopupIfPresent();
 		} else {
 			logInfo("No 'Claim All' button for gifts. Checking for individual gifts.");
-			while (true) {
-				DTOImageSearchResult claimButton = emuManager.searchTemplate(EMULATOR_NUMBER,
-				EnumTemplates.ALLIANCE_CHEST_CLAIM_BUTTON, 90);
-				if (claimButton.isFound()) {
-					logInfo("Claiming individual gift.");
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, claimButton.getPoint(), claimButton.getPoint(), 1,
-					500);
-					sleepTask(500);
-				} else {
-					logInfo("No more individual gifts to claim.");
+			collectIndividualGifts();
+		}
+		sleepTask(SHORT_WAIT_TIME);
+	}
+	
+	/**
+	 * Collects individual gifts when "Claim All" button is not available.
+	 * The game automatically scrolls to the next gift after claiming one.
+	 */
+	private void collectIndividualGifts() {
+		int giftsClaimed = 0;
+		int consecutiveFailures = 0;
+		int maxConsecutiveFailures = 3; // Number of consecutive failures before giving up
+		
+		// Continue claiming gifts until no more are found
+		while (consecutiveFailures < maxConsecutiveFailures) {
+			DTOImageSearchResult claimButton = emuManager.searchTemplate(EMULATOR_NUMBER,
+					EnumTemplates.ALLIANCE_CHEST_CLAIM_BUTTON, 90);
+			
+			if (claimButton.isFound()) {
+				logDebug("Claiming individual gift #" + (giftsClaimed + 1));
+				emuManager.tapAtPoint(EMULATOR_NUMBER, claimButton.getPoint());
+				sleepTask(CLAIM_WAIT_TIME);
+				giftsClaimed++;
+				consecutiveFailures = 0; // Reset failure counter on success
+				
+				// Close any popup that might appear
+				closePopupIfPresent();
+			} else {
+				consecutiveFailures++;
+				
+				// If we've had multiple failures in a row, assume we're done
+				if (consecutiveFailures >= maxConsecutiveFailures) {
+					logDebug("No more individual gifts found.");
 					break;
 				}
 			}
 		}
-		sleepTask(500);
-
-		// Check if honor chest is to be claimed
+		
+		if (giftsClaimed > 0) {
+			logInfo("Successfully claimed " + giftsClaimed + " individual gifts.");
+		} else {
+			logInfo("No individual gifts to claim.");
+		}
+	}
+	
+	/**
+	 * Collects the honor chest if enabled
+	 */
+	private void collectHonorChest() {
 		boolean honorChestEnabled = profile.getConfig(EnumConfigurationKey.ALLIANCE_HONOR_CHEST_BOOL, Boolean.class);
 		
 		if (honorChestEnabled) {
-			// Search for the honor chest
-			logInfo("Honor chest is enabled. Opening honor chest.");
+			logInfo("Claiming honor chest.");
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(320, 200), new DTOPoint(400, 250));
-			sleepTask(300);
-				
-			// Close the window
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(578, 1180), new DTOPoint(641, 1200), 2, 500);
-			sleepTask(300);
+			sleepTask(TAB_CHANGE_WAIT_TIME);
+			
+			// Close the honor chest window
+			closePopupIfPresent();
+		} else {
+			logInfo("Honor chest collection is disabled. Skipping.");
 		}
-		
+	}
+	
+	/**
+	 * Closes any popup window that might be present
+	 */
+	private void closePopupIfPresent() {
+		// Tap the close button twice with a small delay between taps to handle multiple windows
+		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(578, 1180), new DTOPoint(641, 1200), 2, 200);
+		sleepTask(SHORT_WAIT_TIME);
+	}
+	
+	/**
+	 * Returns to the home screen by pressing back button twice
+	 */
+	private void returnToHomeScreen() {
+		logInfo("Returning to home screen.");
 		emuManager.tapBackButton(EMULATOR_NUMBER);
+		sleepTask(SHORT_WAIT_TIME);
 		emuManager.tapBackButton(EMULATOR_NUMBER);
+		sleepTask(SHORT_WAIT_TIME);
 		
-		LocalDateTime nextExecutionTime = LocalDateTime.now()
-		.plusMinutes(profile.getConfig(EnumConfigurationKey.ALLIANCE_CHESTS_OFFSET_INT, Integer.class));
+		// Verify we're back at the home screen (could add additional verification here)
+	}
+	
+	/**
+	 * Reschedules the task and logs a message before exiting
+	 */
+	private void rescheduleAndExit(String reason) {
+		logWarning(reason + ". Rescheduling task.");
+		scheduleNextRun();
+	}
+	
+	/**
+	 * Schedules the next execution of this task
+	 */
+	private void scheduleNextRun() {
+		int offsetMinutes = profile.getConfig(EnumConfigurationKey.ALLIANCE_CHESTS_OFFSET_INT, Integer.class);
+		LocalDateTime nextExecutionTime = LocalDateTime.now().plusMinutes(offsetMinutes);
 		this.reschedule(nextExecutionTime);
-		logInfo("Alliance chest task completed. Next execution scheduled in "
-				+ profile.getConfig(EnumConfigurationKey.ALLIANCE_CHESTS_OFFSET_INT, Integer.class) + " minutes.");
-
+		logInfo("Alliance chest task completed. Next execution scheduled in " + offsetMinutes + " minutes.");
 	}
 }

@@ -5,7 +5,9 @@ import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
 
 public class AllianceLayoutController extends AbstractProfileController {
 
@@ -22,6 +24,12 @@ public class AllianceLayoutController extends AbstractProfileController {
 
 	@FXML
 	private ComboBox<Integer> comboBoxAutojoinQueues;
+	
+	@FXML
+	private RadioButton radioAllTroops, radioUseFormation;
+	
+	@FXML
+	private ToggleGroup Autojoin;
 
 	@FXML
 	private void initialize() {
@@ -36,6 +44,22 @@ public class AllianceLayoutController extends AbstractProfileController {
 		// Initialize ComboBox with auto-join queue values
 		comboBoxAutojoinQueues.getItems().addAll(1, 2, 3, 4, 5, 6);
 		comboBoxMappings.put(comboBoxAutojoinQueues, EnumConfigurationKey.ALLIANCE_AUTOJOIN_QUEUES_INT);
+		
+		// Initialize radio buttons for troop selection
+		radioButtonMappings.put(radioAllTroops, EnumConfigurationKey.ALLIANCE_AUTOJOIN_USE_ALL_TROOPS_BOOL);
+		// Set default selection to "All Troops"
+		radioAllTroops.setSelected(true);
+		
+		// Set initial visibility based on auto-join checkbox state
+		boolean autoJoinEnabled = checkBoxAutojoin.isSelected();
+		radioAllTroops.setVisible(autoJoinEnabled);
+		radioUseFormation.setVisible(autoJoinEnabled);
+		
+		// Add listener to auto-join checkbox to control radio buttons visibility
+		checkBoxAutojoin.selectedProperty().addListener((obs, oldVal, newVal) -> {
+			radioAllTroops.setVisible(newVal);
+			radioUseFormation.setVisible(newVal);
+		});
 
 		textFieldMappings.put(textfieldChestOffset, EnumConfigurationKey.ALLIANCE_CHESTS_OFFSET_INT);
 		textFieldMappings.put(textfieldTechOffset, EnumConfigurationKey.ALLIANCE_TECH_OFFSET_INT);

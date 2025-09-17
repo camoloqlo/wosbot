@@ -11,12 +11,15 @@ public class GatherLayoutController extends AbstractProfileController {
 	@FXML
 	private CheckBox checkBoxGatherCoal, checkBoxGatherIron, 
 	checkBoxGatherMeat, checkBoxGatherWood, 
-	checkBoxGatherSpeedBoost,checkBoxRemoveHeros;
+	checkBoxGatherSpeedBoost, checkBoxRemoveHeros;
 
 	@FXML
 	private ComboBox<Integer> comboBoxActiveMarchQueue, comboBoxLevelCoal, 
 	comboBoxLevelIron, comboBoxLevelMeat, 
 	comboBoxLevelWood;
+	
+	@FXML
+	private ComboBox<String> comboBoxGatherSpeedBoostType;
 
 	@FXML
 	private void initialize() {
@@ -26,7 +29,7 @@ public class GatherLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxGatherWood, EnumConfigurationKey.GATHER_WOOD_BOOL);
 		checkBoxMappings.put(checkBoxGatherSpeedBoost, EnumConfigurationKey.GATHER_SPEED_BOOL);
         checkBoxMappings.put(checkBoxRemoveHeros, EnumConfigurationKey.GATHER_REMOVE_HEROS_BOOL);
-
+        
 		comboBoxLevelCoal.getItems().addAll(1, 2, 3, 4, 5, 6, 7, 8);
 		comboBoxLevelIron.getItems().addAll(1, 2, 3, 4, 5, 6, 7, 8);
 		comboBoxLevelMeat.getItems().addAll(1, 2, 3, 4, 5, 6, 7, 8);
@@ -36,9 +39,25 @@ public class GatherLayoutController extends AbstractProfileController {
 		comboBoxMappings.put(comboBoxLevelMeat, EnumConfigurationKey.GATHER_MEAT_LEVEL_INT);
 		comboBoxMappings.put(comboBoxLevelWood, EnumConfigurationKey.GATHER_WOOD_LEVEL_INT);
 
+		// Initialize boost type ComboBox
+		comboBoxGatherSpeedBoostType.getItems().addAll("8h (250 gems)", "24h (600 gems)");
+		comboBoxGatherSpeedBoostType.setValue("8h (250 gems)"); // Default to 8h
+		comboBoxMappings.put(comboBoxGatherSpeedBoostType, 
+		EnumConfigurationKey.GATHER_SPEED_BOOST_TYPE_STRING);
+		
 		// Initialize ComboBox with values 1-6
 		comboBoxActiveMarchQueue.getItems().addAll(1, 2, 3, 4, 5, 6);
 		comboBoxMappings.put(comboBoxActiveMarchQueue, EnumConfigurationKey.GATHER_ACTIVE_MARCH_QUEUE_INT);
+		
+		// Set initial visibility of boost type ComboBox based on checkbox state
+		comboBoxGatherSpeedBoostType.setVisible(checkBoxGatherSpeedBoost.isSelected());
+		comboBoxGatherSpeedBoostType.setManaged(checkBoxGatherSpeedBoost.isSelected());
+		
+        // Set up listener to show/hide boost type ComboBox based on checkbox state
+        checkBoxGatherSpeedBoost.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            comboBoxGatherSpeedBoostType.setVisible(newVal);
+            comboBoxGatherSpeedBoostType.setManaged(newVal); // This helps with layout
+        });
 
 		initializeChangeEvents();
 	}

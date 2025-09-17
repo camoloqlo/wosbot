@@ -137,34 +137,34 @@ public class StorehouseChest extends DelayedTask {
 				logInfo("Skipping stamina search until " + nextStaminaClaim);
 			}
 
-			// Reschedule based on OCR with retry logic
-			try {
-				for (int attempt = 0; attempt < 5; attempt++) {
-					String nextRewardTime = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(285, 642), new DTOPoint(430, 666));
-					LocalDateTime nextReward = parseNextReward(nextRewardTime);
-					LocalDateTime nextReset = UtilTime.getNextReset();
+				// Reschedule based on OCR with retry logic
+				try {
+					for (int attempt = 0; attempt < 5; attempt++) {
+						String nextRewardTime = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(285, 642), new DTOPoint(430, 666));
+						LocalDateTime nextReward = parseNextReward(nextRewardTime);
+						LocalDateTime nextReset = UtilTime.getNextReset();
 
-					LocalDateTime scheduledTime;
-					if (!nextReward.isBefore(nextReset)) {
-						scheduledTime = nextReset;
-						logInfo("Next reward time exceeds next reset, scheduling at reset to avoid missing stamina.");
-					} else {
-						scheduledTime = nextReward.minusSeconds(3);
+						LocalDateTime scheduledTime;
+						if (!nextReward.isBefore(nextReset)) {
+							scheduledTime = nextReset;
+							logInfo("Next reward time exceeds next reset, scheduling at reset to avoid missing stamina.");
+						} else {
+							scheduledTime = nextReward.minusSeconds(3);
+						}
+
+						this.reschedule(scheduledTime);
+						ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, scheduledTime);
+						logInfo("Storehouse chest claimed. Next check at " + scheduledTime);
+						break;
 					}
 
-					this.reschedule(scheduledTime);
-					ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, scheduledTime);
-					logInfo("Storehouse chest claimed. Next check at " + scheduledTime);
-					break;
+				} catch (TesseractException | IOException e) {
+					logError("Error during OCR, rescheduling for 5 minutes.", e);
+					this.reschedule(LocalDateTime.now().plusMinutes(5));
+				} catch (Exception e) {
+					logError("Unexpected error during OCR, rescheduling for 5 minutes.", e);
+					this.reschedule(LocalDateTime.now().plusMinutes(5));
 				}
-
-			} catch (TesseractException | IOException e) {
-				logError("Error during OCR, rescheduling for 5 minutes.", e);
-				this.reschedule(LocalDateTime.now().plusMinutes(5));
-			} catch (Exception e) {
-				logError("Unexpected error during OCR, rescheduling for 5 minutes.", e);
-				this.reschedule(LocalDateTime.now().plusMinutes(5));
-			}
 
 		} else {
 			logWarning("Research center shortcut not found. Rescheduling in 5 minutes.");
