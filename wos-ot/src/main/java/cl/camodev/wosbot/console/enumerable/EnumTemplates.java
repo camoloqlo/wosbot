@@ -74,8 +74,12 @@ public enum EnumTemplates {
 	VIP_UNLOCK_BUTTON("/templates/vip/unlockButton.png"),
 	
 	TRAINING_TRAIN_BUTTON("/templates/home/camp/training.png"),
-	
-	CRYSTAL_LAB_FC_BUTTON("/templates/crystallab/fcButton.png"),
+
+
+	CRYSTAL_LAB_FC_BUTTON("/templates/crystallab/fc.png"),
+    CRYSTAL_LAB_REFINE_BUTTON("/templates/crystallab/fcRefine.png"),
+    CRYSTAL_LAB_DAILY_DISCOUNTED_RFC("/templates/crystallab/dailyDiscountedRFC.png"),
+    CRYSTAL_LAB_RFC_REFINE_BUTTON("/templates/crystallab/rfcRefineButton.png"),
 	
 	ALLIANCE_CHEST_BUTTON("/templates/alliance/chestButton.png"),
 	ALLIANCE_HONOR_CHEST("/templates/alliance/honorChest.png"),
@@ -253,6 +257,7 @@ public enum EnumTemplates {
 	MAIL_UNCLAIMED_REWARDS("/templates/mail/unclaimedRewards.png"),
 
 	VALIDATION_WAR_ACADEMY_UI("/templates/validation/warAcademy.png"),
+    VALIDATION_CRYSTAL_LAB_UI("/templates/validation/crystalLab.png"),
 
 	TUNDRA_TRUCK_TAB("/templates/tundratruck/tundraTruckTab.png"),
 	TUNDRA_TRUCK_ARRIVED("/templates/tundratruck/tundraTruckArrived.png"),

@@ -9,7 +9,7 @@ import javafx.scene.control.TextField;
 public class CityEventsLayoutController extends AbstractProfileController {
 
 	@FXML
-	private CheckBox checkBoxCrystalLabFC;
+	private CheckBox checkBoxCrystalLabFC, checkBoxDailyDiscountedRFC;
 
 	@FXML
 	private CheckBox checkBoxDailyVipRewards;
@@ -60,6 +60,7 @@ public class CityEventsLayoutController extends AbstractProfileController {
 	private void initialize() {
 
 		checkBoxMappings.put(checkBoxCrystalLabFC, EnumConfigurationKey.BOOL_CRYSTAL_LAB_FC);
+        checkBoxMappings.put(checkBoxDailyDiscountedRFC, EnumConfigurationKey.BOOL_CRYSTAL_LAB_DAILY_DISCOUNTED_RFC);
 		checkBoxMappings.put(checkBoxExplorationChest, EnumConfigurationKey.BOOL_EXPLORATION_CHEST);
 		checkBoxMappings.put(checkBoxHeroRecruitment, EnumConfigurationKey.BOOL_HERO_RECRUITMENT);
 		checkBoxMappings.put(checkBoxWarAcademyShards, EnumConfigurationKey.BOOL_WAR_ACADEMY_SHARDS);

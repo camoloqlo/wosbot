@@ -18,6 +18,7 @@ public enum EnumConfigurationKey {
 	BOOL_NOMADIC_MERCHANT_VIP_POINTS("false", Boolean.class), 
 	BOOL_WAR_ACADEMY_SHARDS("false", Boolean.class),
 	BOOL_CRYSTAL_LAB_FC("false",Boolean.class),
+    BOOL_CRYSTAL_LAB_DAILY_DISCOUNTED_RFC("false",Boolean.class),
 	BOOL_EXPLORATION_CHEST("false",Boolean.class),
 	INT_EXPLORATION_CHEST_OFFSET("60",Integer.class),
 	BOOL_HERO_RECRUITMENT("false",Boolean.class),
