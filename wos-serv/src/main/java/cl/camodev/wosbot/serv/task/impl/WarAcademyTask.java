@@ -138,10 +138,8 @@ public class WarAcademyTask extends DelayedTask {
         tapPoint(new DTOPoint(642, 164));
         sleepTask(500);
 
-        //STEP 6: check the remaining shards using OCR with retry logic
-        String ocrResult;
-        Pattern pattern = Pattern.compile("\\d+");
-        Matcher matcher;
+    //STEP 6: check the remaining shards using OCR with retry logic
+    String ocrResult;
         int remainingShards = -1;
 
         for (int ocrAttempt = 1; ocrAttempt <= MAX_RETRY_ATTEMPTS; ocrAttempt++) {
@@ -150,11 +148,9 @@ public class WarAcademyTask extends DelayedTask {
 
             try {
                 ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(466, 456), new DTOPoint(624, 484));
-                matcher = pattern.matcher(ocrResult);
-
-                if (matcher.find()) {
-                    String numericValue = matcher.group();
-                    remainingShards = Integer.parseInt(numericValue);
+                int parsed = parseOcrDigits(ocrResult);
+                if (parsed >= 0) {
+                    remainingShards = parsed;
                     logInfo("OCR was successful on attempt " + ocrAttempt + ". Found " + remainingShards + " shards.");
                     break;
                 } else {
@@ -196,7 +192,7 @@ public class WarAcademyTask extends DelayedTask {
         sleepTask(1000);
 
         //STEP 9: check if there's additional shards to redeem with retry logic
-        int finalRemainingShards = -1;
+    int finalRemainingShards = -1;
 
         for (int finalOcrAttempt = 1; finalOcrAttempt <= MAX_RETRY_ATTEMPTS; finalOcrAttempt++) {
             logInfo("Reading the final number of remaining shards via OCR");
@@ -204,11 +200,9 @@ public class WarAcademyTask extends DelayedTask {
 
             try {
                 ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(466, 456), new DTOPoint(624, 484));
-                matcher = pattern.matcher(ocrResult);
-
-                if (matcher.find()) {
-                    String numericValue = matcher.group();
-                    finalRemainingShards = Integer.parseInt(numericValue);
+                int parsed = parseOcrDigits(ocrResult);
+                if (parsed >= 0) {
+                    finalRemainingShards = parsed;
                     logInfo("Final OCR was successful on attempt " + finalOcrAttempt + ". Found " + finalRemainingShards + " shards.");
                     break;
                 } else {
@@ -241,6 +235,20 @@ public class WarAcademyTask extends DelayedTask {
             reschedule(UtilTime.getGameReset());
 
         }
+    
     }
 
+    private int parseOcrDigits(String text) {
+            if (text == null) return -1;
+            try {
+                String normalized = text
+                        .replaceAll("[Oo]", "0")
+                        .replaceAll("[Il!\\|]", "1")
+                        .replaceAll("[^0-9]", "");
+                if (normalized.isEmpty()) return -1;
+                return Integer.parseInt(normalized);
+            } catch (Exception ex) {
+                return -1;
+            }
+        }
 }
