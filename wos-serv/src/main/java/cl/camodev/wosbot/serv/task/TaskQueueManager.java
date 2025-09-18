@@ -3,8 +3,10 @@ package cl.camodev.wosbot.serv.task;
 import java.util.HashMap;
 import java.util.Map;
 
+import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
+import cl.camodev.wosbot.emulator.EmulatorManager;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTaskState;
 import cl.camodev.wosbot.serv.impl.ServLogs;
@@ -30,12 +32,34 @@ public class TaskQueueManager {
 		ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueueManager", "-", "Starting queues");
 		logger.info("Starting queues ");
 		taskQueues.entrySet().stream()
-			.sorted(Map.Entry.<Long, TaskQueue>comparingByValue((queue1, queue2) ->
-				Long.compare(queue2.getProfile().getPriority(), queue1.getProfile().getPriority())))
+			.sorted(Map.Entry.<Long, TaskQueue>comparingByValue((queue1, queue2) -> {
+				// Get the delay configuration for both queues
+				Integer delay = queue1.getProfile().getConfig(EnumConfigurationKey.MAX_IDLE_TIME_INT, Integer.class);
+
+				// Check if queues have tasks with acceptable idle time
+				boolean hasAcceptableIdle1 = queue1.hasTasksWithAcceptableIdleTime(delay);
+				boolean hasAcceptableIdle2 = queue2.hasTasksWithAcceptableIdleTime(delay);
+
+				// Prioritize queues with tasks having acceptable idle time
+				if (hasAcceptableIdle1 && !hasAcceptableIdle2) {
+					return -1; // queue1 has priority
+				} else if (!hasAcceptableIdle1 && hasAcceptableIdle2) {
+					return 1; // queue2 has priority
+				} else {
+					// If both have acceptable idle time or both don't, use original priority logic
+					return Long.compare(queue2.getProfile().getPriority(), queue1.getProfile().getPriority());
+				}
+			}))
 			.forEach(entry -> {
-				logger.info("Starting queue for profile: {} with priority: {}",
-					entry.getValue().getProfile().getName(), entry.getValue().getProfile().getPriority());
-				entry.getValue().start();
+				TaskQueue queue = entry.getValue();
+				DTOProfiles profile = queue.getProfile();
+				Integer delay = profile.getConfig(EnumConfigurationKey.MAX_IDLE_TIME_INT, Integer.class);
+				boolean hasAcceptableIdle = queue.hasTasksWithAcceptableIdleTime(delay);
+
+				logger.info("Starting queue for profile: {} with priority: {} (has tasks with idle < {} min: {})",
+					profile.getName(), profile.getPriority(), delay, hasAcceptableIdle);
+
+				queue.start();
 				try {
 					Thread.sleep(200);
 				} catch (InterruptedException e) {

@@ -80,7 +80,7 @@ public class CrystalLaboratoryTask extends DelayedTask {
 
                 // Backup method with retry logic
                 for (int backupAttempt = 1; backupAttempt <= MAX_SEARCH_RETRIES && !crystalLabFound; backupAttempt++) {
-                    logDebug("Backup method attempt " + backupAttempt + "/" + MAX_SEARCH_RETRIES + " - tapping at coordinates (444, 761)");
+                    logDebug("Backup method attempt " + backupAttempt + "/" + MAX_SEARCH_RETRIES );
                     emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(281, 697));
                     sleepTask(1000);
 

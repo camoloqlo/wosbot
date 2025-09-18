@@ -160,9 +160,16 @@ public class TaskQueue {
      * @return true if the task was executed, false if it wasn't
      */
     private boolean executeTask(DelayedTask task) {
+        // Special handling for Initialize tasks - check if next task has acceptable delay
+        if (task.getTpTask() == TpDailyTaskEnum.INITIALIZE && !shouldExecuteInitializeTask()) {
+            logInfoWithTask(task, "Skipping Initialize task - no upcoming tasks within acceptable idle time");
+            return false;
+        }
+
         LocalDateTime scheduledBefore = task.getScheduled();
         DTOTaskState taskState = createInitialTaskState(task);
-        
+        boolean executionSuccessful = false;
+
         try {
             logInfoWithTask(task, "Starting task execution: " + task.getTaskName());
             updateProfileStatus("Executing " + task.getTaskName());
@@ -170,9 +177,8 @@ public class TaskQueue {
             task.setLastExecutionTime(LocalDateTime.now());
             task.run();
             
-            // Schedule the next run if the task is recurring
-            handleTaskRescheduling(task, scheduledBefore);
-            
+            executionSuccessful = true;
+
             // Check if daily missions should be scheduled
             checkAndScheduleDailyMissions(task);
             
@@ -181,15 +187,32 @@ public class TaskQueue {
                 // Handle triumph progress logic here if needed
             }
             
-            return true;
         } catch (Exception e) {
             handleTaskExecutionException(task, e);
-            return false;
         } finally {
+            // Always handle task rescheduling, regardless of success or failure
+            handleTaskRescheduling(task, scheduledBefore);
             finalizeTaskState(task, taskState);
         }
+
+        return executionSuccessful;
     }
     
+    /**
+     * Determines if an Initialize task should be executed by checking if there are
+     * upcoming tasks within the acceptable idle time window
+     * @return true if the Initialize task should proceed, false otherwise
+     */
+    private boolean shouldExecuteInitializeTask() {
+        // Get the maximum idle time configuration
+        long maxIdleMinutes = Optional.ofNullable(profile.getGlobalsettings().get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name()))
+            .map(Integer::parseInt)
+            .orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue()));
+
+        // Check if there are tasks with acceptable idle time (excluding Initialize tasks)
+        return hasTasksWithAcceptableIdleTime((int) maxIdleMinutes);
+    }
+
     private DTOTaskState createInitialTaskState(DelayedTask task) {
         DTOTaskState taskState = new DTOTaskState();
         taskState.setProfileId(profile.getId());
@@ -468,6 +491,26 @@ public class TaskQueue {
         }
     }
     
+    /**
+     * Checks if there are queued tasks (excluding Initialize tasks) with idle time less than the specified delay
+     * @param maxIdleMinutes Maximum idle time allowed in minutes
+     * @return true if there are tasks with acceptable idle time, false otherwise
+     */
+    public boolean hasTasksWithAcceptableIdleTime(int maxIdleMinutes) {
+        if (taskQueue.isEmpty()) {
+            return false;
+        }
+
+        long maxIdleSeconds = TimeUnit.MINUTES.toSeconds(maxIdleMinutes);
+
+        return taskQueue.stream()
+            .filter(task -> task.getTpTask() != TpDailyTaskEnum.INITIALIZE) // Exclude Initialize tasks
+            .anyMatch(task -> {
+                long taskDelay = task.getDelay(TimeUnit.SECONDS);
+                return taskDelay >= 0 && taskDelay < maxIdleSeconds;
+            });
+    }
+
     // Logging helper methods
     private void logInfo(String message) {
         logger.info(message);
@@ -592,3 +635,4 @@ public class TaskQueue {
         return profile;
     }
 }
+
