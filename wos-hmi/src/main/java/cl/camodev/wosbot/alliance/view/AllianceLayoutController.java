@@ -27,9 +27,6 @@ public class AllianceLayoutController extends AbstractProfileController {
 	
 	@FXML
 	private RadioButton radioAllTroops, radioUseFormation;
-	
-	@FXML
-	private ToggleGroup Autojoin;
 
 	@FXML
 	private void initialize() {
@@ -47,6 +44,8 @@ public class AllianceLayoutController extends AbstractProfileController {
 		
 		// Initialize radio buttons for troop selection
 		radioButtonMappings.put(radioAllTroops, EnumConfigurationKey.ALLIANCE_AUTOJOIN_USE_ALL_TROOPS_BOOL);
+        radioButtonMappings.put(radioUseFormation, EnumConfigurationKey.ALLIANCE_AUTOJOIN_USE_PREDEFINED_FORMATION_BOOL);
+        createToggleGroup(radioAllTroops, radioUseFormation);
 		// Set default selection to "All Troops"
 		radioAllTroops.setSelected(true);
 		
@@ -60,6 +59,7 @@ public class AllianceLayoutController extends AbstractProfileController {
 			radioAllTroops.setVisible(newVal);
 			radioUseFormation.setVisible(newVal);
 		});
+
 
 		textFieldMappings.put(textfieldChestOffset, EnumConfigurationKey.ALLIANCE_CHESTS_OFFSET_INT);
 		textFieldMappings.put(textfieldTechOffset, EnumConfigurationKey.ALLIANCE_TECH_OFFSET_INT);
