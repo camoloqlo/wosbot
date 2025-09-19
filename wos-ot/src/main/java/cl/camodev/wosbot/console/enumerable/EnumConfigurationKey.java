@@ -73,6 +73,7 @@ public enum EnumConfigurationKey {
 	INTEL_BEASTS_FLAG_INT("1", Integer.class),
 	INTEL_USE_FLAG_BOOL("false", Boolean.class),
 	INTEL_FC_ERA_BOOL("false",Boolean.class),
+    INTEL_SMART_PROCESSING_BOOL("true",Boolean.class),
 	
 	LIFE_ESSENCE_BOOL("false",Boolean.class),
 	LIFE_ESSENCE_OFFSET_INT("60",Integer.class),

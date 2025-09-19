@@ -57,5 +57,11 @@
             <CheckBox fx:id="checkBoxFireCrystalEra" mnemonicParsing="false" text="Fire Crystal Era?" />
          </children>
       </HBox>
+       <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+           <children>
+               <CheckBox fx:id="checkBoxSmartIntel" mnemonicParsing="false" text="Use Smart Intel Processing" />
+           </children>
+       </HBox>
+
    </children>
 </GridPane>

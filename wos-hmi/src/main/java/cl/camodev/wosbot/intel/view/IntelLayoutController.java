@@ -27,6 +27,9 @@ public class IntelLayoutController extends AbstractProfileController {
 	@FXML
 	private CheckBox checkBoxFireCrystalEra;
 
+    @FXML
+    private CheckBox checkBoxSmartIntel;
+
 	@FXML
 	private CheckBox checkBoxUseFlag;
 
@@ -49,6 +52,7 @@ public class IntelLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxSurvivors, EnumConfigurationKey.INTEL_CAMP_BOOL);
 		checkBoxMappings.put(checkBoxFireCrystalEra, EnumConfigurationKey.INTEL_FC_ERA_BOOL);
 		checkBoxMappings.put(checkBoxUseFlag, EnumConfigurationKey.INTEL_USE_FLAG_BOOL);
+        checkBoxMappings.put(checkBoxSmartIntel, EnumConfigurationKey.INTEL_SMART_PROCESSING_BOOL);
 		initializeChangeEvents();
 
 	}

@@ -9,6 +9,8 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import cl.camodev.wosbot.almac.repo.DailyTaskRepository;
+import cl.camodev.wosbot.almac.repo.IDailyTaskRepository;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -25,7 +27,7 @@ public class IntelligenceTask extends DelayedTask {
 	private boolean marchQueueLimitReached = false;
 	private boolean beastMarchSent = false;
 	private boolean fcEra = false;
-
+    private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
 	public IntelligenceTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
 		super(profile, tpTask);
 	}
@@ -35,10 +37,22 @@ public class IntelligenceTask extends DelayedTask {
 		logInfo("Starting Intel task.");
 		fcEra = profile.getConfig(EnumConfigurationKey.INTEL_FC_ERA_BOOL, Boolean.class);
 
+        MarchesAvailable marchesAvailable;
+        boolean useSmartProcessing = profile.getConfig(EnumConfigurationKey.INTEL_SMART_PROCESSING_BOOL, Boolean.class);
 		boolean intelFound = false;
 		boolean nonBeastIntelFound = false;
 		marchQueueLimitReached = false;
 		beastMarchSent = false;
+
+        if (useSmartProcessing) {
+            // Check how many marches are available
+            marchesAvailable = checkMarchesAvailable();
+            if (!marchesAvailable.available()) {
+                marchQueueLimitReached = true;
+            }
+        } else {
+           marchesAvailable = new MarchesAvailable(true, LocalDateTime.now());
+        }
 
 		ensureOnIntelScreen();
 		logInfo("Searching for completed missions to claim.");
@@ -100,43 +114,37 @@ public class IntelligenceTask extends DelayedTask {
         }
 
 		if (profile.getConfig(EnumConfigurationKey.INTEL_BEASTS_BOOL, Boolean.class)) {
-			if (marchQueueLimitReached) {
-				logInfo("Skipping beast search: march queue is full.");
-			} else {
-				ensureOnIntelScreen();
-				// @formatter:off
+            if (useSmartProcessing || !marchQueueLimitReached) {
+                ensureOnIntelScreen();
 
-				List<EnumTemplates> beastPriorities;
-				if (fcEra) {
-					beastPriorities = Arrays.asList(
-							EnumTemplates.INTEL_FIRE_BEAST,
-							EnumTemplates.INTEL_BEAST_YELLOW,
-							EnumTemplates.INTEL_BEAST_PURPLE,
-							EnumTemplates.INTEL_BEAST_BLUE);
-					logInfo("Searching for beasts (FC era).");
-				} else {
-					beastPriorities = Arrays.asList(
-							EnumTemplates.INTEL_FIRE_BEAST,
-							EnumTemplates.INTEL_PREFC_BEAST_YELLOW,
-							EnumTemplates.INTEL_PREFC_BEAST_PURPLE,
-							EnumTemplates.INTEL_PREFC_BEAST_BLUE,
-							EnumTemplates.INTEL_PREFC_BEAST_GREEN,
-							EnumTemplates.INTEL_PREFC_BEAST_GREY);
-					logInfo("Searching for beasts (pre-FC era).");
-				}
+                List<EnumTemplates> beastPriorities;
+                if (fcEra) {
+                    beastPriorities = Arrays.asList(
+                            EnumTemplates.INTEL_FIRE_BEAST,
+                            EnumTemplates.INTEL_BEAST_YELLOW,
+                            EnumTemplates.INTEL_BEAST_PURPLE,
+                            EnumTemplates.INTEL_BEAST_BLUE);
+                    logInfo("Searching for beasts (FC era).");
+                } else {
+                    beastPriorities = Arrays.asList(
+                            EnumTemplates.INTEL_FIRE_BEAST,
+                            EnumTemplates.INTEL_PREFC_BEAST_YELLOW,
+                            EnumTemplates.INTEL_PREFC_BEAST_PURPLE,
+                            EnumTemplates.INTEL_PREFC_BEAST_BLUE,
+                            EnumTemplates.INTEL_PREFC_BEAST_GREEN,
+                            EnumTemplates.INTEL_PREFC_BEAST_GREY);
+                    logInfo("Searching for beasts (pre-FC era).");
+                }
 
-				// @formatter:on
-				for (EnumTemplates beast : beastPriorities) {
-					if (marchQueueLimitReached) {
-						logInfo("March queue is full. Skipping remaining beast searches.");
-						break;
-					}
-					if (searchAndProcess(beast, 5, 90, this::processBeast)) {
-						intelFound = true;
-						break;
-					}
-				}
-			}
+                for (EnumTemplates beast : beastPriorities) {
+                    if (searchAndProcess(beast, 5, 90, this::processBeast)) {
+                        intelFound = true;
+                        break;
+                    }
+                }
+            } else {
+                logInfo("No marches available, will not run beast search");
+            }
 		}
 
 		if (profile.getConfig(EnumConfigurationKey.INTEL_CAMP_BOOL, Boolean.class)) {
@@ -163,7 +171,7 @@ public class IntelligenceTask extends DelayedTask {
 			// @formatter:on
 			for (EnumTemplates beast : priorities) {
 				if (searchAndProcess(beast, 5, 90, this::processSurvivor)) {
-					intelFound = true;
+                    intelFound = true;
 					nonBeastIntelFound = true;
 					break;
 				}
@@ -196,7 +204,7 @@ public class IntelligenceTask extends DelayedTask {
 			// @formatter:on
 			for (EnumTemplates beast : priorities) {
 				if (searchAndProcess(beast, 5, 90, this::processJourney)) {
-					intelFound = true;
+                    intelFound = true;
 					nonBeastIntelFound = true;
 					break;
 				}
@@ -219,11 +227,17 @@ public class IntelligenceTask extends DelayedTask {
 				logError("Error reading intel cooldown timer: " + e.getMessage(), e);
 			}
 		} else if (marchQueueLimitReached && !nonBeastIntelFound && !beastMarchSent) {
-			LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(5);
-			this.reschedule(rescheduleTime);
-			ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, rescheduleTime);
-			logInfo("March queue is full, and only beasts remain. Rescheduling for 5 minutes at " + rescheduleTime);
-		} else if (!beastMarchSent) {
+            if (useSmartProcessing) {
+                this.reschedule(marchesAvailable.rescheduleTo());
+                ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, marchesAvailable.rescheduleTo());
+                logInfo("March queue is full, and only beasts remain. Rescheduling for when marches will be available at " + marchesAvailable.rescheduleTo());
+            } else {
+                LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(5);
+                this.reschedule(rescheduleTime);
+                ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, rescheduleTime);
+                logInfo("March queue is full, and only beasts remain. Rescheduling for 5 minutes at " + rescheduleTime);
+            }
+        } else if (!beastMarchSent) {
 			this.reschedule(LocalDateTime.now());
 			logInfo("Intel tasks processed. Rescheduling immediately to check for more.");
 		}
@@ -288,7 +302,11 @@ public class IntelligenceTask extends DelayedTask {
 	}
 	
 	private void processBeast(DTOImageSearchResult beast) {
-		emuManager.tapAtPoint(EMULATOR_NUMBER, beast.getPoint());
+        if (marchQueueLimitReached) {
+            logInfo("March queue is full. Skipping beast hunt.");
+            return;
+        }
+        emuManager.tapAtPoint(EMULATOR_NUMBER, beast.getPoint());
 		sleepTask(2000);
 		
 		DTOImageSearchResult view = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_VIEW,  90);
@@ -422,8 +440,90 @@ public class IntelligenceTask extends DelayedTask {
 		
         return LocalDateTime.now().plusMinutes(1); // Default to 1 minute if parsing fails
 	}
-	
-	@Override
+
+    private MarchesAvailable checkMarchesAvailable() {
+        // open active marches panel
+        emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(2, 550));
+        sleepTask(500);
+        emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(340, 265));
+        sleepTask(500);
+        // OCR Search for an empty march
+        try {
+            for (int i = 0; i < 10; i++) { // search 10x for the OCR text
+                String ocrSearchResult = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(10, 342), new DTOPoint(435, 772));
+                Pattern idleMarchesPattern = Pattern.compile("idle");
+                Matcher m = idleMarchesPattern.matcher(ocrSearchResult.toLowerCase());
+                if (m.find()) {
+                    logInfo("Idle marches detected, continuing with intel");
+                    return new MarchesAvailable(true, null);
+                } else {
+                    logInfo("No idle marches detected, trying again (Attempt " + (i + 1) + "/10).");
+                }
+            }
+        } catch (IOException | TesseractException e) {
+            logDebug("OCR attempt failed: " + e.getMessage());
+        }
+        logInfo("No idle marches detected. Checking for used march queues...");
+        // Collect active march queue counts
+        int totalMarchesAvailable = profile.getConfig(EnumConfigurationKey.GATHER_ACTIVE_MARCH_QUEUE_INT, Integer.class);
+        int activeMarchQueues = 0;
+        boolean resourceFound = false;
+        LocalDateTime earliestAvailableMarch = LocalDateTime.now().plusHours(14); // Set to earliest available march to a very long time (impossible for gatherer to take so long)
+        for (GatherType gatherType : GatherType.values()) { // iterate over all the gather types
+            resourceFound = false;
+            for (int i = 0; i < 5; i++) {
+                DTOImageSearchResult resource = emuManager.searchTemplate(EMULATOR_NUMBER,
+                        gatherType.getTemplate(), new DTOPoint(10, 342), new DTOPoint(435, 772), 90);
+                if (!resource.isFound()) {
+                    logInfo("March queue for " + gatherType.getName() + " not found (Attempt " + i + 1 + "/5) (Used: " + activeMarchQueues + "/" + totalMarchesAvailable + ")");
+                    continue;
+                }
+                resourceFound = true;
+                activeMarchQueues++;
+                logInfo("March queue for " + gatherType.getName() + " is used. Checking for remaining available march queues... (Used: " + activeMarchQueues + "/" + totalMarchesAvailable + ")");
+                LocalDateTime task = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(), gatherType.getTask()).getNextSchedule();
+                if (task.isBefore(earliestAvailableMarch)) {
+                    earliestAvailableMarch = task;
+                    logInfo("Updated earliest available march: " + earliestAvailableMarch);
+                }
+                break;
+            }
+            if (!resourceFound) {
+                logInfo("March queue for " + gatherType.getName() + " is not used. Checking for next available march queue... (Used: " + activeMarchQueues + "/" + totalMarchesAvailable + ")");
+            }
+        }
+        if (activeMarchQueues >= totalMarchesAvailable) {
+            logInfo("All march queues used. Earliest available march: " + earliestAvailableMarch);
+            return new MarchesAvailable(false, earliestAvailableMarch);
+        }
+        // there MAY be some returning marches, resscheduling for the near future to check later
+        logInfo("No idle marches detected. Not all marches are used. Suspected auto-rally marches. Setting 5 minute delay for any marches to return. ");
+        return new MarchesAvailable(false, LocalDateTime.now().plusMinutes(5));
+    }
+
+    private enum GatherType {
+        MEAT( "meat", EnumTemplates.GAME_HOME_SHORTCUTS_MEAT, TpDailyTaskEnum.GATHER_MEAT),
+        WOOD( "wood", EnumTemplates.GAME_HOME_SHORTCUTS_WOOD, TpDailyTaskEnum.GATHER_WOOD),
+        COAL( "coal", EnumTemplates.GAME_HOME_SHORTCUTS_COAL, TpDailyTaskEnum.GATHER_COAL),
+        IRON( "iron", EnumTemplates.GAME_HOME_SHORTCUTS_IRON, TpDailyTaskEnum.GATHER_IRON);
+
+        final String name;
+        final EnumTemplates template;
+        final TpDailyTaskEnum task;
+
+        GatherType(String name, EnumTemplates enumTemplate, TpDailyTaskEnum task) {
+            this.name = name;
+            this.template = enumTemplate;
+            this.task = task;
+        }
+        public String getName() { return name; }
+        public EnumTemplates getTemplate() { return template; }
+        public TpDailyTaskEnum getTask() { return task; }
+    }
+
+    public record MarchesAvailable(boolean available, LocalDateTime rescheduleTo) { }
+
+    @Override
 	protected EnumStartLocation getRequiredStartLocation() {
 		return EnumStartLocation.WORLD;
 	}
