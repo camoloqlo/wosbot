@@ -54,8 +54,8 @@ public class BeastSlayTask extends DelayedTask {
 		try {
 			String staminaText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(350, 270), new DTOPoint(490, 300));
 			logInfo("Stamina detected: " + staminaText);
-			emuManager.tapBackButton(EMULATOR_NUMBER);
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
+			tapBackButton();
 
 			stamina = extractFirstNumber(staminaText);
 
@@ -85,8 +85,8 @@ public class BeastSlayTask extends DelayedTask {
 
 			String queueText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(280, 230), new DTOPoint(340, 252));
 			logInfo("Available queues detected: " + queueText);
-			emuManager.tapBackButton(EMULATOR_NUMBER);
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
+			tapBackButton();
 
 			availableQueues = extractFirstNumber(queueText);
 

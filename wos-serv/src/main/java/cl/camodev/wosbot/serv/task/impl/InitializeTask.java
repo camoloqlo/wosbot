@@ -65,7 +65,7 @@ public class InitializeTask extends DelayedTask {
 				}
 
 				logWarning("Home screen not found. Waiting 5 seconds before retrying...");
-				emuManager.tapBackButton(EMULATOR_NUMBER);
+				tapBackButton();
 				sleepTask(WAIT_TIME);
 				attempts++;
 			}

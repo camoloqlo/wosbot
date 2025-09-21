@@ -53,7 +53,7 @@ public class ExplorationTask extends DelayedTask {
 			logInfo("Exploration task completed. Next execution scheduled in " + minutes + " minutes.");
 
 		}
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 		sleepTask(500);
 	}
 

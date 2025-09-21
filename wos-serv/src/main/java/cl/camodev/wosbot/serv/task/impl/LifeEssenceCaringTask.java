@@ -37,8 +37,8 @@ public class LifeEssenceCaringTask extends DelayedTask {
 		if (lifeEssenceMenu.isFound()) {
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, lifeEssenceMenu.getPoint(), lifeEssenceMenu.getPoint());
 			sleepTask(3000);
-			emuManager.tapBackButton(EMULATOR_NUMBER);
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
+			tapBackButton();
 			sleepTask(500);
 			logInfo("Checking for available daily caring attempts.");
 			emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(670, 100));

@@ -61,7 +61,7 @@
             <TextField fx:id="textfieldAlliesEssenceOffsett" />
          </children>
       </HBox>
-      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
+      <HBox fx:id="hboxAutojoinQueues" alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
          <children>
             <Label text="Number of queues" />
             <ComboBox fx:id="comboBoxAutojoinQueues" />

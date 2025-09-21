@@ -98,7 +98,7 @@ public class ChiefOrderTask extends DelayedTask {
 				}
 				
 			// Navigate back after Enact
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
 			sleepTask(5000);
 				
 				logInfo(chiefOrderType.getDescription() + " activated successfully. " +
@@ -115,7 +115,7 @@ public class ChiefOrderTask extends DelayedTask {
 			}
 
 		// Navigate back to main screen
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 		} else {
 			logError("Chief Order menu button not found. Unable to access Chief Orders.");
 			// Reschedule for retry in 10 minutes when menu not accessible

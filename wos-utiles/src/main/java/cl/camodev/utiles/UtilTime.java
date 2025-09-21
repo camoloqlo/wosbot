@@ -96,5 +96,22 @@ public class UtilTime {
 
         throw new IllegalArgumentException("Input does not match expected format. Input: " + input);
     }
-
+    
+    /**
+     * Ensures a scheduled time doesn't go beyond the game reset time.
+     * If the proposed schedule time is after game reset, returns a time 5 minutes before game reset.
+     * 
+     * @param proposedSchedule The proposed schedule time
+     * @return The adjusted schedule time (either the original time or 5 minutes before reset)
+     */
+    public static LocalDateTime ensureBeforeGameReset(LocalDateTime proposedSchedule) {
+        LocalDateTime gameReset = getGameReset();
+        LocalDateTime fiveMinutesBeforeReset = gameReset.minusMinutes(5);
+        
+        if (proposedSchedule.isAfter(fiveMinutesBeforeReset)) {
+            return fiveMinutesBeforeReset;
+        }
+        
+        return proposedSchedule;
+    }
 }

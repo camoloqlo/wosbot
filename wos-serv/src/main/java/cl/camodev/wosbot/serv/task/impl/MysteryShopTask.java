@@ -73,7 +73,7 @@ public class MysteryShopTask extends DelayedTask {
 
 		if (!mysteryShopResult.isFound()) {
 			logWarning("Mystery Shop button not found inside the shop. Rescheduling for 1 hour.");
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
 			LocalDateTime nextAttempt = LocalDateTime.now().plusHours(1);
 			this.reschedule(nextAttempt);
 			return false;
@@ -148,9 +148,9 @@ public class MysteryShopTask extends DelayedTask {
 		}
 
 		// Navigate back
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 		sleepTask(1000);
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 
 		// If no more actions possible, reschedule to game reset time
 		if (!foundFreeRewards && !foundConfiguredPurchases) {

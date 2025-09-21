@@ -6,6 +6,7 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.emulator.EmulatorManager;
 import cl.camodev.wosbot.ex.HomeNotFoundException;
 import cl.camodev.wosbot.ex.ProfileInReconnectStateException;
+import cl.camodev.wosbot.logging.ProfileLogger;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
@@ -13,8 +14,6 @@ import cl.camodev.wosbot.serv.impl.ServLogs;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.impl.InitializeTask;
 import net.sourceforge.tess4j.TesseractException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -26,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class DelayedTask implements Runnable, Delayed {
 
-    private static final Logger logger = LoggerFactory.getLogger(DelayedTask.class);
+    private ProfileLogger logger; // Will be initialized in constructor
 
     protected volatile boolean recurring = true;
     protected LocalDateTime lastExecutionTime;
@@ -46,6 +45,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
         this.scheduledTime = LocalDateTime.now();
         this.EMULATOR_NUMBER = profile.getEmulatorNumber();
         this.tpTask = tpTask;
+        this.logger = new ProfileLogger(this.getClass(), profile);
     }
 
     protected Object getDistinctKey() {
@@ -325,27 +325,32 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     public void logInfo(String message) {
-        logger.info(message);
+        String prefixedMessage = profile.getName() + " - " + message;
+        logger.info(prefixedMessage);
         servLogs.appendLog(EnumTpMessageSeverity.INFO, taskName, profile.getName(), message);
     }
 
     public void logWarning(String message) {
-        logger.warn(message);
+        String prefixedMessage = profile.getName() + " - " + message;
+        logger.warn(prefixedMessage);
         servLogs.appendLog(EnumTpMessageSeverity.WARNING, taskName, profile.getName(), message);
     }
 
     public void logError(String message) {
-        logger.error(message);
+        String prefixedMessage = profile.getName() + " - " + message;
+        logger.error(prefixedMessage);
         servLogs.appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), message);
     }
 
     public void logError(String message, Throwable t) {
-        logger.error(message, t);
+        String prefixedMessage = profile.getName() + " - " + message;
+        logger.error(prefixedMessage, t);
         servLogs.appendLog(EnumTpMessageSeverity.ERROR, taskName, profile.getName(), message);
     }
 
     public void logDebug(String message) {
-        logger.debug(message);
+        String prefixedMessage = profile.getName() + " - " + message;
+        logger.debug(prefixedMessage);
         servLogs.appendLog(EnumTpMessageSeverity.DEBUG, taskName, profile.getName(), message);
     }
 

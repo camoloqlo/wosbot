@@ -68,8 +68,17 @@ public class TriumphTask extends DelayedTask {
 				} else {
 					// Rewards not ready yet
 					int offset = profile.getConfig(EnumConfigurationKey.ALLIANCE_TRIUMPH_OFFSET_INT, Integer.class);
-					logWarning("Daily Triumph rewards not available - rescheduling to check in " + offset + " minutes");
-					reschedule(LocalDateTime.now().plusMinutes(offset));
+					LocalDateTime proposedSchedule = LocalDateTime.now().plusMinutes(offset);
+					
+					// Check if the proposed schedule would be after game reset and adjust if needed
+					LocalDateTime nextSchedule = UtilTime.ensureBeforeGameReset(proposedSchedule);
+					
+					if (!nextSchedule.equals(proposedSchedule)) {
+						logInfo("Next scheduled time would be after game reset. Adjusting to 5 minutes before reset.");
+					}
+					
+					logInfo("Daily Triumph rewards not available - rescheduling for " + nextSchedule);
+					reschedule(nextSchedule);
 				}
 			}
 
@@ -95,10 +104,18 @@ public class TriumphTask extends DelayedTask {
 		} else {
 			int offset = profile.getConfig(EnumConfigurationKey.ALLIANCE_TRIUMPH_OFFSET_INT, Integer.class);
 			logError("Alliance Triumph button not found - unable to claim rewards");
-			logInfo("Rescheduling task to try again in " + offset + " minutes");
+			
+			LocalDateTime proposedSchedule = LocalDateTime.now().plusMinutes(offset);
+			LocalDateTime nextSchedule = cl.camodev.utiles.UtilTime.ensureBeforeGameReset(proposedSchedule);
+			
+			if (!nextSchedule.equals(proposedSchedule)) {
+				logInfo("Next scheduled time would be after game reset. Adjusting to 5 minutes before reset.");
+			}
+			
+			logInfo("Rescheduling task for " + nextSchedule);
 			tapBackButton();
 			sleepTask(500);
-			reschedule(LocalDateTime.now().plusMinutes(offset));
+			reschedule(nextSchedule);
 		}
 		
 		logInfo("Alliance Triumph task completed");

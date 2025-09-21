@@ -43,7 +43,7 @@ public class ExpertsAgnesIntelTask extends DelayedTask {
             this.reschedule(nextReset);
         }
 
-        emuManager.tapBackButton(EMULATOR_NUMBER);
+        tapBackButton();
         logInfo("Agnes Intel task finished.");
     }
 

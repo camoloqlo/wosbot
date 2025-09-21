@@ -56,9 +56,9 @@ public class AllianceTechTask extends DelayedTask {
 
 		logInfo("Donating to alliance tech...");
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(450, 1000), new DTOPoint(580, 1050), 25, 150);
-		emuManager.tapBackButton(EMULATOR_NUMBER);
-		emuManager.tapBackButton(EMULATOR_NUMBER);
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
+		tapBackButton();
+		tapBackButton();
 
 		Integer minutes = profile.getConfig(EnumConfigurationKey.ALLIANCE_TECH_OFFSET_INT, Integer.class);
 		LocalDateTime nextSchedule = LocalDateTime.now()

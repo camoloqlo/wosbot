@@ -56,7 +56,7 @@ public class PetSkillsTask extends DelayedTask {
 			if (!infoSkill.isFound()) {
 				logInfo("Skill " + petSkill.name() + " is not learned yet. Task will not recur.");
 				this.setRecurring(false);
-				emuManager.tapBackButton(EMULATOR_NUMBER);
+				tapBackButton();
 				return;
 			}
 
@@ -64,7 +64,7 @@ public class PetSkillsTask extends DelayedTask {
 
 			if (unlockText.isFound()) {
 				logInfo("Skill " + petSkill.name() + " is locked. Task will not recur.");
-				emuManager.tapBackButton(EMULATOR_NUMBER);
+				tapBackButton();
 				this.setRecurring(false);
 				return;
 			}
@@ -96,7 +96,7 @@ public class PetSkillsTask extends DelayedTask {
 				logError("Error parsing cooldown for " + petSkill.name() + ". Rescheduling for 5 minutes.", e);
 				this.reschedule(LocalDateTime.now().plusMinutes(5));
 			}
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
 		} else {
 			logWarning("Pets button not found. Retrying later.");
 			attempts++;

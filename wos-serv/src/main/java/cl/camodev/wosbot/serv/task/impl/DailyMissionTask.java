@@ -2,6 +2,7 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
 
+import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -54,16 +55,24 @@ public class DailyMissionTask extends DelayedTask {
 			}
 			logInfo("No more claim buttons found. All available missions claimed.");
 		}
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 		sleepTask(50);
 
 		this.setRecurring(!profile.getConfig(EnumConfigurationKey.DAILY_MISSION_AUTO_SCHEDULE_BOOL,Boolean.class));
 
 		if (recurring){
 			Integer minutes = profile.getConfig(EnumConfigurationKey.DAILY_MISSION_OFFSET_INT, Integer.class);
-			LocalDateTime nextSchedule = LocalDateTime.now().plusMinutes(minutes);
+			LocalDateTime proposedSchedule = LocalDateTime.now().plusMinutes(minutes);
+			
+			// Check if the proposed schedule would be after game reset and adjust if needed
+			LocalDateTime nextSchedule = UtilTime.ensureBeforeGameReset(proposedSchedule);
+			
+			if (!nextSchedule.equals(proposedSchedule)) {
+				logInfo("Next scheduled time would be after game reset. Adjusting to 5 minutes before reset.");
+			}
+			
 			this.reschedule(nextSchedule);
-			logInfo("Daily mission task completed. Next execution scheduled in " + minutes + " minutes.");
+			logInfo("Daily mission task completed. Next execution scheduled for " + nextSchedule);
 		}else{
 			this.reschedule(LocalDateTime.now().plusMinutes(30));
 			logInfo("Daily mission task completed. Auto-scheduling is disabled. A safety reschedule is set for 30 minutes from now.");

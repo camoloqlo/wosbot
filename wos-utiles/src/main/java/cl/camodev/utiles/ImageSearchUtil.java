@@ -38,6 +38,37 @@ public class ImageSearchUtil {
 	// Cache initialization status
 	private static volatile boolean cacheInitialized = false;
 
+	// Thread-local storage for profile name context
+	private static final ThreadLocal<String> currentProfileName = new ThreadLocal<>();
+
+	/**
+	 * Set the current profile name for logging context.
+	 * This is used to prefix log messages with the profile name.
+	 * 
+	 * @param profileName The profile name to use
+	 */
+	public static void setProfileName(String profileName) {
+		currentProfileName.set(profileName);
+	}
+	
+	/**
+	 * Clear the current profile name
+	 */
+	public static void clearProfileName() {
+		currentProfileName.remove();
+	}
+	
+	/**
+	 * Get formatted log message with profile name prefix if available
+	 */
+	private static String formatLogMessage(String message) {
+		String profileName = currentProfileName.get();
+		if (profileName != null && !profileName.isEmpty()) {
+			return profileName + " - " + message;
+		}
+		return message;
+	}
+	
 	static {
 		// Automatic cache initialization in the background
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -67,17 +98,17 @@ public class ImageSearchUtil {
 					String templatePath = enumTemplate.getTemplate();
 					try {
 						loadTemplateOptimized(templatePath);
-						logger.debug("Template {} cached successfully", templatePath);
+						logger.debug(formatLogMessage("Template " + templatePath + " cached successfully"));
 					} catch (Exception e) {
-						logger.warn("Error preloading template {}: {}", templatePath, e.getMessage());
+						logger.warn(formatLogMessage("Error preloading template " + templatePath + ": " + e.getMessage()));
 					}
 				}
 
 				cacheInitialized = true;
-				logger.info("Template cache initialized with {} templates", templateCache.size());
+				logger.info(formatLogMessage("Template cache initialized with " + templateCache.size() + " templates"));
 
 			} catch (Exception e) {
-				logger.error("Error initializing template cache: {}", e.getMessage());
+				logger.error(formatLogMessage("Error initializing template cache: " + e.getMessage()));
 			}
 		});
 	}
@@ -113,12 +144,12 @@ public class ImageSearchUtil {
 			byte[] templateBytes = templateBytesCache.computeIfAbsent(templateResourcePath, path -> {
 				try (InputStream is = ImageSearchUtil.class.getResourceAsStream(path)) {
 					if (is == null) {
-						logger.error("Template resource not found: {}", path);
+						logger.error(formatLogMessage("Template resource not found: " + path));
 						return null;
 					}
 					return is.readAllBytes();
 				} catch (IOException e) {
-					logger.error("Error loading template bytes for: {}", path, e);
+					logger.error(formatLogMessage("Error loading template bytes for: " + path), e);
 					return null;
 				}
 			});
@@ -139,7 +170,7 @@ public class ImageSearchUtil {
 			return template;
 
 		} catch (Exception e) {
-			logger.error("Exception loading template: {}", templateResourcePath, e);
+			logger.error(formatLogMessage("Exception loading template: " + templateResourcePath), e);
 			return new Mat();
 		}
 	}
@@ -163,7 +194,7 @@ public class ImageSearchUtil {
 			int roiHeight = bottomRightCorner.getY() - topLeftCorner.getY();
 
 			if (roiWidth <= 0 || roiHeight <= 0) {
-				logger.error("Invalid ROI dimensions");
+				logger.error(formatLogMessage("Invalid ROI dimensions"));
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
@@ -183,7 +214,7 @@ public class ImageSearchUtil {
 
 			// ROI vs image validation
 			if (roiX + roiWidth > imagenPrincipal.cols() || roiY + roiHeight > imagenPrincipal.rows()) {
-				logger.error("ROI exceeds image dimensions");
+				logger.error(formatLogMessage("ROI exceeds image dimensions"));
 				return new DTOImageSearchResult(false, null, 0.0);
 			}
 
@@ -207,11 +238,11 @@ public class ImageSearchUtil {
 			double matchPercentage = mmr.maxVal * 100.0;
 
 			if (matchPercentage < thresholdPercentage) {
-				logger.warn("Template {} match percentage {} below threshold {}", templateResourcePath, matchPercentage, thresholdPercentage);
+				logger.warn(formatLogMessage("Template " + templateResourcePath + " match percentage " + matchPercentage + " below threshold " + thresholdPercentage));
 				return new DTOImageSearchResult(false, null, matchPercentage);
 			}
 
-			logger.info("Template {} found with match percentage: {}", templateResourcePath, matchPercentage);
+			logger.info(formatLogMessage("Template " + templateResourcePath + " found with match percentage: " + matchPercentage));
 
 			// Calculate center coordinates
 			Point matchLoc = mmr.maxLoc;
@@ -221,7 +252,7 @@ public class ImageSearchUtil {
 			return new DTOImageSearchResult(true, new DTOPoint((int) centerX, (int) centerY), matchPercentage);
 
 		} catch (Exception e) {
-			logger.error("Exception during optimized template search", e);
+			logger.error(formatLogMessage("Exception during optimized template search"), e);
 			return new DTOImageSearchResult(false, null, 0.0);
 		} finally {
 			// Explicit release of OpenCV memory
@@ -343,7 +374,7 @@ public class ImageSearchUtil {
 			}
 
 		} catch (Exception e) {
-			logger.error("Exception during optimized multiple template search", e);
+			logger.error(formatLogMessage("Exception during optimized multiple template search"), e);
 		} finally {
 			// Explicit memory release
 			if (mainImage != null) mainImage.release();
@@ -430,7 +461,7 @@ public class ImageSearchUtil {
 		// Open the resource as a stream
 		try (InputStream in = ImageSearchUtil.class.getResourceAsStream(resourcePath); OutputStream out = new FileOutputStream(destLib)) {
 			if (in == null) {
-				logger.error("Resource not found: {}", resourcePath);
+				logger.error(formatLogMessage("Resource not found: " + resourcePath));
 				throw new IOException("Resource not found: " + resourcePath);
 			}
 			byte[] buffer = new byte[4096];
@@ -439,12 +470,12 @@ public class ImageSearchUtil {
 				out.write(buffer, 0, bytesRead);
 			}
 		} catch (IOException e) {
-			logger.error("Error extracting native library: {}", e.getMessage());
+			logger.error(formatLogMessage("Error extracting native library: " + e.getMessage()));
 			throw e;
 		}
 
 		// Load the library using the absolute path of the destination file
 		System.load(destLib.getAbsolutePath());
-		logger.info("Native library loaded from: {}", destLib.getAbsolutePath());
+		logger.info(formatLogMessage("Native library loaded from: " + destLib.getAbsolutePath()));
 	}
 }

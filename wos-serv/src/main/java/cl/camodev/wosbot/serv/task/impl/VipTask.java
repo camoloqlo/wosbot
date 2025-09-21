@@ -40,7 +40,7 @@ public class VipTask extends DelayedTask {
 				sleepTask(500);
 				emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(250, 770), new DTOPoint(480, 800));
 				sleepTask(500);
-				emuManager.tapBackButton(EMULATOR_NUMBER);
+				tapBackButton();
 				sleepTask(500);
 
 			}
@@ -54,7 +54,7 @@ public class VipTask extends DelayedTask {
 
 		reschedule(UtilTime.getGameReset());
 		ServScheduler.getServices().updateDailyTaskStatus(profile, TpDailyTaskEnum.VIP_POINTS, UtilTime.getGameReset());
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 
 	}
 

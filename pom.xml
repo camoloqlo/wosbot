@@ -46,13 +46,13 @@
 				<artifactId>javafx-fxml</artifactId>
 				<version>${javafx-version}</version>
 			</dependency>
-			<!-- API de SLF4J -->
+			<!-- SLF4J API -->
 			<dependency>
 				<groupId>org.slf4j</groupId>
 				<artifactId>slf4j-api</artifactId>
 				<version>${slf4j.version}</version>
 			</dependency>
-			<!-- Implementación Logback (binding) -->
+			<!-- Logback implementation (binding) -->
 			<dependency>
 				<groupId>ch.qos.logback</groupId>
 				<artifactId>logback-classic</artifactId>

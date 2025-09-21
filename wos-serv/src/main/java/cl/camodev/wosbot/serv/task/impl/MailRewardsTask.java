@@ -71,7 +71,7 @@ public class MailRewardsTask extends DelayedTask {
 		this.reschedule(nextSchedule);
 		ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, nextSchedule);
 		logInfo("Mail rewards claimed. Rescheduling task for " + nextSchedule);
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 	}
 
 }

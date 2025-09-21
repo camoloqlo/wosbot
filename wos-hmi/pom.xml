@@ -17,6 +17,7 @@
 	</properties>
 
 	<dependencies>
+		<!-- JavaFX Dependencies -->
 		<dependency>
 			<groupId>org.openjfx</groupId>
 			<artifactId>javafx-controls</artifactId>
@@ -25,12 +26,15 @@
 			<groupId>org.openjfx</groupId>
 			<artifactId>javafx-fxml</artifactId>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/org.controlsfx/controlsfx -->
+		
+		<!-- UI Controls -->
 		<dependency>
 			<groupId>org.controlsfx</groupId>
 			<artifactId>controlsfx</artifactId>
 			<version>11.2.2</version>
 		</dependency>
+		
+		<!-- Project Modules -->
 		<dependency>
 			<groupId>cl.camodev</groupId>
 			<artifactId>wos-ot</artifactId>
@@ -43,27 +47,29 @@
 			<version>${revision}</version>
 			<scope>compile</scope>
 		</dependency>
-
-
-			<!-- API -->
-			<dependency>
-				<groupId>org.slf4j</groupId>
-				<artifactId>slf4j-api</artifactId>
-			</dependency>
-			<!-- Binding/implementación en tiempo de ejecución -->
+		<dependency>
+			<groupId>cl.camodev</groupId>
+			<artifactId>wos-utiles</artifactId>
+			<version>${revision}</version>
+			<scope>compile</scope>
+		</dependency>
+		
+		<!-- Logging Dependencies -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
-            <version>1.5.13</version>
-            <scope>runtime</scope>
+			<version>1.5.13</version>
+			<scope>runtime</scope>
 		</dependency>
-
-
-    </dependencies>
+	</dependencies>
 
 	<build>
 		<plugins>
-			<!-- 1. Plugin para generar un JAR ejecutable con el nombre
+			<!-- 1. Plugin to generate an executable JAR with the name
 			wos-bot-x.x.x.jar -->
 
 			<plugin>
@@ -93,7 +99,7 @@
 			</plugin>
 
 
-			<!-- 2. Plugin para copiar dependencias en lib/ -->
+			<!-- 2. Plugin to copy dependencies to lib/ -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
@@ -116,7 +122,7 @@
 				</executions>
 			</plugin>
 
-			<!-- 3. Plugin para copiar la carpeta tessdata dentro de target -->
+			<!-- 3. Plugin to copy the tessdata folder into target -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-resources-plugin</artifactId>

@@ -20,6 +20,7 @@ import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.impl.ServConfig;
+import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.task.WaitingThread;
 import net.sourceforge.tess4j.TesseractException;
 import org.slf4j.Logger;
@@ -123,8 +124,13 @@ public class EmulatorManager {
      */
     public void tapAtPoint(String emulatorNumber, DTOPoint point) {
         checkEmulatorInitialized();
+        
+        // Get profile name and log the tap
+        String profileName = getProfileNameForEmulator(emulatorNumber);
+        logger.info("{} - Tapping at ({},{}) for emulator {}", 
+                profileName, point.getX(), point.getY(), emulatorNumber);
+                
         emulator.tapAtRandomPoint(emulatorNumber, point, point);
-
     }
 
     /**
@@ -132,6 +138,12 @@ public class EmulatorManager {
      */
     public boolean tapAtRandomPoint(String emulatorNumber, DTOPoint point1, DTOPoint point2) {
         checkEmulatorInitialized();
+        
+        // Get profile name and log the tap
+        String profileName = getProfileNameForEmulator(emulatorNumber);
+        logger.info("{} - Random tapping in area ({},{}) to ({},{}) for emulator {}", 
+                profileName, point1.getX(), point1.getY(), point2.getX(), point2.getY(), emulatorNumber);
+                
         return emulator.tapAtRandomPoint(emulatorNumber, point1, point2);
     }
 
@@ -140,6 +152,12 @@ public class EmulatorManager {
      */
     public boolean tapAtRandomPoint(String emulatorNumber, DTOPoint point1, DTOPoint point2, int tapCount, int delayMs) {
         checkEmulatorInitialized();
+        
+        // Get profile name and log the tap
+        String profileName = getProfileNameForEmulator(emulatorNumber);
+        logger.info("{} - Multiple random tapping ({} times) in area ({},{}) to ({},{}) for emulator {}", 
+                profileName, tapCount, point1.getX(), point1.getY(), point2.getX(), point2.getY(), emulatorNumber);
+                
         return emulator.tapAtRandomPoint(emulatorNumber, point1, point2, tapCount, delayMs);
     }
 
@@ -148,6 +166,12 @@ public class EmulatorManager {
      */
     public void executeSwipe(String emulatorNumber, DTOPoint start, DTOPoint end) {
         checkEmulatorInitialized();
+        
+        // Get profile name and log the swipe
+        String profileName = getProfileNameForEmulator(emulatorNumber);
+        logger.info("{} - Swiping from ({},{}) to ({},{}) for emulator {}", 
+                profileName, start.getX(), start.getY(), end.getX(), end.getY(), emulatorNumber);
+                
         emulator.swipe(emulatorNumber, start, end);
     }
 
@@ -164,6 +188,12 @@ public class EmulatorManager {
      */
     public void tapBackButton(String emulatorNumber) {
         checkEmulatorInitialized();
+        
+        // Get profile name and log the back button press
+        String profileName = getProfileNameForEmulator(emulatorNumber);
+        logger.info("{} - Pressing back button for emulator {}", 
+                profileName, emulatorNumber);
+                
         emulator.pressBackButton(emulatorNumber);
     }
 
@@ -173,6 +203,29 @@ public class EmulatorManager {
     public String ocrRegionText(String emulatorNumber, DTOPoint p1, DTOPoint p2) throws IOException, TesseractException {
         checkEmulatorInitialized();
         return emulator.ocrRegionText(emulatorNumber, p1, p2);
+    }
+
+    /**
+     * Helper method to get profile name from emulator number
+     */
+    private String getProfileNameForEmulator(String emulatorNumber) {
+        try {
+            // Use ServProfiles to find profile with this emulator number
+            List<DTOProfiles> profiles = ServProfiles.getServices().getProfiles();
+            
+            if (profiles != null) {
+                for (DTOProfiles profile : profiles) {
+                    if (emulatorNumber.equals(profile.getEmulatorNumber())) {
+                        return profile.getName();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Could not get profile name for emulator {}: {}", 
+                    emulatorNumber, e.getMessage());
+        }
+        
+        return "Unknown";
     }
 
     /**
@@ -240,7 +293,17 @@ public class EmulatorManager {
         checkEmulatorInitialized();
         byte[] screenshot = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        return ImageSearchUtil.searchTemplate(screenshot, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold);
+        
+        try {
+            // Set profile name in ImageSearchUtil for logging
+            String profileName = getProfileNameForEmulator(emulatorNumber);
+            ImageSearchUtil.setProfileName(profileName);
+            
+            return ImageSearchUtil.searchTemplate(screenshot, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold);
+        } finally {
+            // Clear profile name after the search is done
+            ImageSearchUtil.clearProfileName();
+        }
     }
 
     /**
@@ -250,21 +313,51 @@ public class EmulatorManager {
         checkEmulatorInitialized();
         byte[] screenshot = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        return ImageSearchUtil.searchTemplate(screenshot, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold);
+        
+        try {
+            // Set profile name in ImageSearchUtil for logging
+            String profileName = getProfileNameForEmulator(emulatorNumber);
+            ImageSearchUtil.setProfileName(profileName);
+            
+            return ImageSearchUtil.searchTemplate(screenshot, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold);
+        } finally {
+            // Clear profile name after the search is done
+            ImageSearchUtil.clearProfileName();
+        }
     }
 
     public List<DTOImageSearchResult> searchTemplates(String emulatorNumber, EnumTemplates templatePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner , double threshold, int maxResults) {
         checkEmulatorInitialized();
         byte[] screenshot = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        return ImageSearchUtil.searchTemplateMultiple(screenshot, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold, maxResults);
+        
+        try {
+            // Set profile name in ImageSearchUtil for logging
+            String profileName = getProfileNameForEmulator(emulatorNumber);
+            ImageSearchUtil.setProfileName(profileName);
+            
+            return ImageSearchUtil.searchTemplateMultiple(screenshot, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold, maxResults);
+        } finally {
+            // Clear profile name after the search is done
+            ImageSearchUtil.clearProfileName();
+        }
     }
 
     public List<DTOImageSearchResult> searchTemplates(String emulatorNumber, EnumTemplates templatePath, double threshold, int maxResults) {
         checkEmulatorInitialized();
         byte[] screenshot = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        return ImageSearchUtil.searchTemplateMultiple(screenshot, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold, maxResults);
+        
+        try {
+            // Set profile name in ImageSearchUtil for logging
+            String profileName = getProfileNameForEmulator(emulatorNumber);
+            ImageSearchUtil.setProfileName(profileName);
+            
+            return ImageSearchUtil.searchTemplateMultiple(screenshot, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold, maxResults);
+        } finally {
+            // Clear profile name after the search is done
+            ImageSearchUtil.clearProfileName();
+        }
     }
 
     public void launchEmulator(String emulatorNumber) {

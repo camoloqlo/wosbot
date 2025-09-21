@@ -2,9 +2,15 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
 <GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="468.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1">
   <columnConstraints>
@@ -26,19 +32,38 @@
       </CheckBox>
       <CheckBox fx:id="checkBoxHeroMission" mnemonicParsing="false" text="Hero's Mission" GridPane.rowIndex="1" />
       <CheckBox fx:id="checkBoxMercenaryEvent" mnemonicParsing="false" text="Mercenary Event" GridPane.rowIndex="2" />
-      <GridPane GridPane.columnIndex="1">
-        <columnConstraints>
-          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-        </columnConstraints>
-        <rowConstraints>
-          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-        </rowConstraints>
+      <VBox prefHeight="200.0" prefWidth="100.0" GridPane.columnIndex="1">
          <children>
             <CheckBox fx:id="checkBoxTundraUseGems" mnemonicParsing="false" text="Use gems for refresh" />
-            <CheckBox fx:id="checkBoxTundraSSR" mnemonicParsing="false" text="Go only for SSR trucks" GridPane.rowIndex="2" />
+            <CheckBox fx:id="checkBoxTundraSSR" mnemonicParsing="false" text="Go only for SSR trucks" />
+            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <Label fx:id="labelTundraActivationHour" text="Activation hour (UTC): " />
+                  <TextField fx:id="textfieldTundraActivationHour" prefWidth="60.0">
+                     <font>
+                        <Font size="10.0" />
+                     </font>
+                  </TextField>
+               </children>
+            </HBox>
          </children>
-      </GridPane>
+         <GridPane.margin>
+            <Insets />
+         </GridPane.margin>
+      </VBox>
+      <VBox prefHeight="200.0" prefWidth="100.0" spacing="10.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+         <children>
+            <CheckBox fx:id="checkBoxMercenaryUseFlag" mnemonicParsing="false" text="Use flag" />
+            <HBox fx:id="hboxMercenaryFlagSelection" prefHeight="100.0" prefWidth="200.0" spacing="5.0">
+               <children>
+                  <Label text="Flag selection" />
+                  <ComboBox fx:id="comboBoxMercenaryFlag" />
+               </children>
+            </HBox>
+         </children>
+         <GridPane.margin>
+            <Insets bottom="5.0" top="5.0" />
+         </GridPane.margin>
+      </VBox>
    </children>
 </GridPane>

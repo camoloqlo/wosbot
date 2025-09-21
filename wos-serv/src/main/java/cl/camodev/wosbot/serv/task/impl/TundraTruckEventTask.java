@@ -2,11 +2,10 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -23,42 +22,65 @@ public class TundraTruckEventTask extends DelayedTask {
 
 	private boolean useGems = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_USE_GEMS_BOOL, Boolean.class);
 	private boolean truckSSR = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_SSR_BOOL, Boolean.class);
+	private int activationHour = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_ACTIVATION_HOUR_INT, Integer.class);
 
 	public TundraTruckEventTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
+		
+		// Schedule based on the configured activation hour
+		if (activationHour >= 0 && activationHour <= 23) {
+			scheduleActivationTime();
+		}
+	}
+	
+	/**
+	 * Schedules the task based on the configured activation hour in UTC
+	 */
+	private void scheduleActivationTime() {
+		// Get the current UTC time
+		ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
+		
+		// Create a UTC time for today at the activation hour
+		ZonedDateTime activationTimeUtc = nowUtc.toLocalDate().atTime(activationHour, 0).atZone(ZoneId.of("UTC"));
+		
+		// If the activation time has already passed today, schedule for tomorrow
+		if (nowUtc.isAfter(activationTimeUtc)) {
+			activationTimeUtc = activationTimeUtc.plusDays(1);
+		}
+		
+		// Convert UTC time to system default time zone
+		ZonedDateTime localActivationTime = activationTimeUtc.withZoneSameInstant(ZoneId.systemDefault());
+		
+		// Schedule the task
+		logInfo("Scheduling Tundra Truck task for activation at " + activationHour + ":00 UTC (" + 
+				localActivationTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + " local time)");
+		reschedule(localActivationTime.toLocalDateTime());
 	}
 
 	/**
-	 * Parse time string and add it to the current LocalDateTime
-	 *
-	 * @param baseTime   Base time to add to (unused but kept for method signature
-	 *                   compatibility)
-	 * @param timeString Time string in format "[n]d HH:mm:ss"
-	 * @return LocalDateTime with the parsed time added
+	 * Special reschedule method that respects the configured activation hour
+	 * If activation hour is configured (0-23), it uses that time for the next day
+	 * Otherwise, it uses the standard game reset time
 	 */
-	public static LocalDateTime addTimeToLocalDateTime(LocalDateTime baseTime, String timeString) {
-		Pattern pattern = Pattern.compile("(?i).*?(?:(\\d+)\\s*d\\s*)?(\\d{1,2}:\\d{2}:\\d{2}).*", Pattern.DOTALL);
-		Matcher matcher = pattern.matcher(timeString.trim());
-
-		if (!matcher.matches()) {
-			throw new IllegalArgumentException(
-					"Time string does not match expected format [n]d HH:mm:ss: " + timeString);
+	private void rescheduleWithActivationHour() {
+		// If activation hour is configured to a valid hour (0-23)
+		if (activationHour >= 0 && activationHour <= 23) {
+			// Schedule based on the configured activation hour for the next day
+			ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
+			ZonedDateTime tomorrowActivationUtc = nowUtc.toLocalDate().plusDays(1)
+				.atTime(activationHour, 0).atZone(ZoneId.of("UTC"));
+			ZonedDateTime localActivationTime = tomorrowActivationUtc.withZoneSameInstant(ZoneId.systemDefault());
+			
+			logInfo("Rescheduling Tundra Truck task for next activation at " + activationHour + 
+				":00 UTC tomorrow (" + localActivationTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + 
+				" local time)");
+			
+			reschedule(localActivationTime.toLocalDateTime());
+		} else {
+			// Use standard game reset time
+			logInfo("Rescheduling Tundra Truck task for game reset time");
+			reschedule(UtilTime.getGameReset());
 		}
-
-		String daysStr = matcher.group(1); // Optional days component
-		String timeStr = matcher.group(2); // Required time component
-
-		int daysToAdd = (daysStr != null) ? Integer.parseInt(daysStr) : 0;
-
-		// Parse time component
-		DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("H:mm:ss");
-		LocalTime timePart = LocalTime.parse(timeStr, timeFormatter);
-
-		return baseTime
-				.plusDays(daysToAdd)
-				.plusHours(timePart.getHour())
-				.plusMinutes(timePart.getMinute())
-				.plusSeconds(timePart.getSecond());
 	}
 
 	@Override
@@ -77,10 +99,10 @@ public class TundraTruckEventTask extends DelayedTask {
 				handleTundraEvent();
 				return;
 			} else if (result == TundraNavigationResult.COUNTDOWN) {
-				logInfo("Tundra Truck event has not started yet. Waiting for next game reset.");
+				logInfo("Tundra Truck event has not started yet. Waiting for next activation time.");
 				return;
 			} else if (result == TundraNavigationResult.ENDED) {
-				logInfo("Tundra Truck event has ended. Stopping task.");
+				logInfo("Tundra Truck event has ended. Task rescheduled for next activation time.");
 				return;
 			}
 
@@ -134,7 +156,7 @@ public class TundraTruckEventTask extends DelayedTask {
 			try {
 				String countdownText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(194, 943), new DTOPoint(345, 976));
 				if (countdownText != null && countdownText.toLowerCase().contains("countdown")) {
-					reschedule(UtilTime.getGameReset());
+					rescheduleWithActivationHour();
 					return TundraNavigationResult.COUNTDOWN; // Event not ready
 				}
 			} catch (IOException | TesseractException e) {
@@ -170,7 +192,7 @@ public class TundraTruckEventTask extends DelayedTask {
 				try {
 					String countdownText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(194, 943), new DTOPoint(345, 976));
 					if (countdownText != null && countdownText.toLowerCase().contains("countdown")) {
-						reschedule(UtilTime.getGameReset());
+						rescheduleWithActivationHour();
 						return TundraNavigationResult.COUNTDOWN; // Event not ready
 					}
 				} catch (IOException | TesseractException e) {
@@ -436,7 +458,7 @@ public class TundraTruckEventTask extends DelayedTask {
 
 			if (text != null && text.trim().matches("0\\s*/\\s*\\d+")) {
 				logInfo("No trucks available to send (" + text.trim() + "). The task will be rescheduled.");
-				reschedule(UtilTime.getGameReset());
+				rescheduleWithActivationHour();
 				return false;
 			}
 		} catch (IOException | TesseractException e) {
@@ -477,8 +499,7 @@ public class TundraTruckEventTask extends DelayedTask {
 	/**
 	 * Extract the next training completion time from the UI
 	 *
-	 * @return Optional containing the next training time, or empty if extraction
-	 *         failed
+	 * @return Optional containing the next training time, or empty if extraction failed
 	 */
 	private Optional<LocalDateTime> extractNextTime(int side) {
 		try {
@@ -493,7 +514,8 @@ public class TundraTruckEventTask extends DelayedTask {
 			}
 			logInfo("OCR extracted the following text for side " + side + ": '" + text + "'");
 
-			LocalDateTime nextTime = addTimeToLocalDateTime(LocalDateTime.now(), text);
+			// Use UtilTime to parse the time
+			LocalDateTime nextTime = UtilTime.parseTime(text);
 			logInfo("Successfully extracted the truck's remaining time: " + nextTime);
 			return Optional.of(nextTime);
 
@@ -501,7 +523,7 @@ public class TundraTruckEventTask extends DelayedTask {
 			logError("An OCR error occurred while extracting the truck's remaining time.", e);
 			return Optional.empty();
 		} catch (Exception e) {
-			logError("An unexpected error occurred while extracting the truck's remaining time.", e);
+			logError("An unexpected error occurred while extracting the truck's remaining time: " + e.getMessage(), e);
 			return Optional.empty();
 		}
 	}

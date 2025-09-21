@@ -64,7 +64,7 @@ public class ExpertsRomulusTagTask extends DelayedTask {
         } else {
 			logWarning("Research Center shortcut not found. Rescheduling for 5 minutes.");
 			this.reschedule(LocalDateTime.now().plusMinutes(5));
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
 		}
     }
 

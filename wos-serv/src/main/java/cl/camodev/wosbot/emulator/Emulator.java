@@ -21,7 +21,6 @@ import cl.camodev.wosbot.ex.ADBConnectionException;
 import com.android.ddmlib.*;
 
 import cl.camodev.wosbot.ot.DTOPoint;
-import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -391,7 +390,8 @@ public abstract class Emulator {
 
 				try {
 					device.executeShellCommand("input tap " + x + " " + y, new NullOutputReceiver());
-                    logger.info("Tap {}/{} sent to ({},{}) on emulator {}", i, tapCount, x, y,emulatorNumber);
+                    // Detailed log with coordinates and tap count
+                    logger.debug("Tap {}/{} executed at ({},{}) on emulator {}", i, tapCount, x, y, emulatorNumber);
 					Thread.sleep(delayMs);
 				} catch (Exception ex) {
 					throw new RuntimeException(ex);
@@ -426,7 +426,7 @@ public abstract class Emulator {
 			try {
 				String command = String.format("input swipe %d %d %d %d", point.getX(), point.getY(), point2.getX(), point2.getY());
 				device.executeShellCommand(command, new NullOutputReceiver());
-				logger.info("Swipe executed from ({},{}) to ({},{}) on emulator {}",
+				logger.debug("Swipe executed from ({},{}) to ({},{}) on emulator {}",
 						point.getX(), point.getY(), point2.getX(), point2.getY(), emulatorNumber);
 				return null;
 			} catch (Exception e) {
@@ -443,7 +443,7 @@ public abstract class Emulator {
 		withRetries(emulatorNumber, device -> {
 			try {
 				device.executeShellCommand("input keyevent KEYCODE_BACK", new NullOutputReceiver());
-                logger.info("Back button pressed on emulator {}", emulatorNumber);
+                logger.debug("Back button pressed on emulator {}", emulatorNumber);
 				return null;
 			} catch (Exception e) {
 				throw new RuntimeException("Error pressing back button", e);

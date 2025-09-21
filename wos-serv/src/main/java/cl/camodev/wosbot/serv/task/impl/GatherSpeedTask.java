@@ -93,7 +93,7 @@ public class GatherSpeedTask extends DelayedTask {
 		logInfo("Gather speed boost activated successfully.");
 
 		// Go back to home
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 	}
 	
 	/**

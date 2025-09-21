@@ -87,11 +87,11 @@ public class AllianceAutojoinTask extends DelayedTask {
 		
 		// Return to home screen
 		logDebug("Returning to home screen");
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 		sleepTask(300);
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 		sleepTask(300);
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 		
 		// Schedule next run based on successful completion
 		scheduleNextRun();
@@ -129,9 +129,9 @@ public class AllianceAutojoinTask extends DelayedTask {
 		
 		// Attempt to return to home screen in case we're in a menu
 		try {
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
 			sleepTask(300);
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
 			sleepTask(300);
 		} catch (Exception e) {
 			logError("Error while trying to return to home screen: " + e.getMessage());

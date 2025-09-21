@@ -89,7 +89,7 @@ public class BankTask extends DelayedTask {
 		}
 
 		// Navigate back
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 	}
 
 	/**

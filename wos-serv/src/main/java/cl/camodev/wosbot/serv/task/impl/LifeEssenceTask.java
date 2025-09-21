@@ -43,8 +43,8 @@ public class LifeEssenceTask extends DelayedTask {
 		if (lifeEssenceMenu.isFound()) {
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, lifeEssenceMenu.getPoint(), lifeEssenceMenu.getPoint());
 			sleepTask(3000);
-			emuManager.tapBackButton(EMULATOR_NUMBER);
-			emuManager.tapBackButton(EMULATOR_NUMBER);
+			tapBackButton();
+			tapBackButton();
 			logInfo("Searching for Life Essence to claim.");
 			for (int i = 1; i < 11; i++) {
 				logDebug("Searching for Life Essence, attempt " + i + ".");

@@ -97,6 +97,7 @@ public enum EnumTemplates {
 	ALLIANCE_CHEST_CLAIM_ALL_BUTTON("/templates/alliance/lootClaimAllButton.png"),
 	
 	STOREHOUSE_CHEST("/templates/storehouse/chest.png"),
+	STOREHOUSE_CHEST_2("/templates/storehouse/chest2.png"),
 	STOREHOUSE_STAMINA("/templates/storehouse/stamina.png"),
 	
 	
@@ -288,6 +289,7 @@ public enum EnumTemplates {
 
 	MERCENARY_EVENT_TAB("/templates/mercenary/mercenaryEventTab.png"),
 	MERCENARY_SCOUT_BUTTON("/templates/mercenary/mercenaryEventScout.png"),
+	MERCENARY_CHALLENGE_BUTTON("/templates/mercenary/mercenaryEventChallenge.png"),
 	MERCENARY_ATTACK_BUTTON("/templates/mercenary/mercenaryEventAttack.png"),
 	MERCENARY_DEPLOY_BUTTON("/templates/mercenary/mercenaryEventDeploy.png"),
 

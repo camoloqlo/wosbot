@@ -52,7 +52,7 @@ public class ExpertsRomulusTroopsTask extends DelayedTask {
             if (troopChoice.isFound()) {
                 emuManager.tapAtPoint(EMULATOR_NUMBER, troopChoice.getPoint());
                 sleepTask(1000);
-                emuManager.tapBackButton(EMULATOR_NUMBER);
+                tapBackButton();
                 sleepTask(500);
 
                 boolean claimed = false;

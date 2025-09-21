@@ -104,7 +104,7 @@ public class TundraTrekTask extends DelayedTask {
                 logInfo("Successfully returned to the main screen.");
                 return;
             }
-            emuManager.tapBackButton(EMULATOR_NUMBER);
+            tapBackButton();
             sleepTask(500);
         }
         logWarning("Could not confirm the return to the main screen after multiple back taps.");

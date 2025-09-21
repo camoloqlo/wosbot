@@ -58,7 +58,7 @@ public class PetAdventureChestTask extends DelayedTask {
 							emuManager.tapAtRandomPoint(EMULATOR_NUMBER, share.getPoint(), share.getPoint());
 							sleepTask(500);
 						}
-						emuManager.tapBackButton(EMULATOR_NUMBER);
+						tapBackButton();
 						sleepTask(500);
 					}
 				}
@@ -95,7 +95,7 @@ public class PetAdventureChestTask extends DelayedTask {
 										emuManager.tapAtPoint(EMULATOR_NUMBER, chestStart.getPoint());
 										sleepTask(500);
 
-										emuManager.tapBackButton(EMULATOR_NUMBER);
+										tapBackButton();
 										sleepTask(500);
 										break; // Exits the attempt, but not the main loop
 									} else {
@@ -104,10 +104,10 @@ public class PetAdventureChestTask extends DelayedTask {
 											logInfo("No more adventure attempts available. Rescheduling for the next game reset.");
 											this.reschedule(UtilTime.getGameReset());
 											ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, UtilTime.getGameReset());
-											emuManager.tapBackButton(EMULATOR_NUMBER);
-											emuManager.tapBackButton(EMULATOR_NUMBER);
-											emuManager.tapBackButton(EMULATOR_NUMBER);
-											emuManager.tapBackButton(EMULATOR_NUMBER);
+											tapBackButton();
+											tapBackButton();
+											tapBackButton();
+											tapBackButton();
 											return;
 										}
 									}
@@ -126,8 +126,8 @@ public class PetAdventureChestTask extends DelayedTask {
 				logInfo("No more available chests found to start. Rescheduling for 2 hours.");
 				ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, LocalDateTime.now().plusHours(2));
 				this.reschedule(LocalDateTime.now().plusHours(2));
-				emuManager.tapBackButton(EMULATOR_NUMBER);
-				emuManager.tapBackButton(EMULATOR_NUMBER);
+				tapBackButton();
+				tapBackButton();
 
 			}
 

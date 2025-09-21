@@ -1,12 +1,7 @@
 package cl.camodev.utiles;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 
-import javax.imageio.ImageIO;
-
-import cl.camodev.wosbot.console.enumerable.GameVersion;
 import cl.camodev.wosbot.ot.DTOPoint;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;

@@ -73,6 +73,7 @@ public enum EnumConfigurationKey {
 	INTEL_BEASTS_FLAG_INT("1", Integer.class),
 	INTEL_USE_FLAG_BOOL("false", Boolean.class),
 	INTEL_FC_ERA_BOOL("false",Boolean.class),
+    INTEL_SMART_PROCESSING_BOOL("true",Boolean.class),
 	
 	LIFE_ESSENCE_BOOL("false",Boolean.class),
 	LIFE_ESSENCE_OFFSET_INT("60",Integer.class),
@@ -87,29 +88,34 @@ public enum EnumConfigurationKey {
 	DAILY_MISSION_AUTO_SCHEDULE_BOOL("false",Boolean.class),
 	
 	STOREHOUSE_CHEST_BOOL("false",Boolean.class),
-
+	
 	PET_SKILL_STAMINA_BOOL("false",Boolean.class),
 	PET_SKILL_FOOD_BOOL("false",Boolean.class),
 	PET_SKILL_TRESURE_BOOL("false",Boolean.class),
 	PET_SKILL_GATHERING_BOOL("false",Boolean.class),
 	PET_PERSONAL_TREASURE_BOOL("false",Boolean.class),
-
+	
 	DAILY_LABYRINTH_BOOL("false",Boolean.class),
 	
 	BOOL_BANK("false",Boolean.class),
 	INT_BANK_DELAY("1",Integer.class),
 	BOOL_MYSTERY_SHOP("false",Boolean.class),
     BOOL_MYSTERY_SHOP_50D_GEAR("false",Boolean.class),
-
+	
 	// Chief Order feature
 	BOOL_CHIEF_ORDER_RUSH_JOB("false", Boolean.class),
 	BOOL_CHIEF_ORDER_URGENT_MOBILISATION("false", Boolean.class),
 	BOOL_CHIEF_ORDER_PRODUCTIVITY_DAY("false", Boolean.class),
-
+	
 	TUNDRA_TRUCK_EVENT_BOOL("false",Boolean.class),
 	TUNDRA_TRUCK_USE_GEMS_BOOL("false",Boolean.class),
 	TUNDRA_TRUCK_SSR_BOOL("false",Boolean.class),
+	TUNDRA_TRUCK_ACTIVATION_HOUR_INT("0", Integer.class),
+	
 	MERCENARY_EVENT_BOOL("false",Boolean.class),
+	MERCENARY_USE_FLAG_BOOL("false", Boolean.class),
+	MERCENARY_FLAG_INT("1", Integer.class),
+
 	HERO_MISSION_EVENT_BOOL("false",Boolean.class),
 
 	TUNDRA_TREK_SUPPLIES_BOOL("false",Boolean.class),

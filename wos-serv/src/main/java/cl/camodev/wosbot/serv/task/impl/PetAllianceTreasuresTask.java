@@ -56,16 +56,16 @@ public class PetAllianceTreasuresTask extends DelayedTask {
 					ServScheduler.getServices().updateDailyTaskStatus(profile, TpDailyTaskEnum.ALLIANCE_PET_TREASURE, UtilTime.getGameReset());
 					this.reschedule(UtilTime.getGameReset());
 					logInfo("Alliance treasure claimed. Rescheduling for the next game reset.");
-					emuManager.tapBackButton(EMULATOR_NUMBER);
-					emuManager.tapBackButton(EMULATOR_NUMBER);
-					emuManager.tapBackButton(EMULATOR_NUMBER);
+					tapBackButton();
+					tapBackButton();
+					tapBackButton();
 				} else {
 					logWarning("Claimable reward not found. Rescheduling for the next game reset.");
 					ServScheduler.getServices().updateDailyTaskStatus(profile, TpDailyTaskEnum.ALLIANCE_PET_TREASURE, UtilTime.getGameReset());
 					this.reschedule(UtilTime.getGameReset());
-					emuManager.tapBackButton(EMULATOR_NUMBER);
-					emuManager.tapBackButton(EMULATOR_NUMBER);
-					emuManager.tapBackButton(EMULATOR_NUMBER);
+					tapBackButton();
+					tapBackButton();
+					tapBackButton();
 				}
 
 			} else {

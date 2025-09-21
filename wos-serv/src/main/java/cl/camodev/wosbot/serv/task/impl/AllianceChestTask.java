@@ -83,24 +83,16 @@ public class AllianceChestTask extends DelayedTask {
 	 * Collects rewards from the loot chests section
 	 */
 	private void collectLootChests() {
-		logInfo("Opening loot chests section.");
+		logInfo("Claiming loot chests.");
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(56, 375), new DTOPoint(320, 420));
 		sleepTask(TAB_CHANGE_WAIT_TIME);
 		
-		// Search for the claim rewards button
-		DTOImageSearchResult claimAllButton = emuManager.searchTemplate(EMULATOR_NUMBER,
-				EnumTemplates.ALLIANCE_CHEST_CLAIM_ALL_BUTTON, 90);
+		// Tap "Claim All" button
+		emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(360, 1204));
+		sleepTask(CLAIM_WAIT_TIME);
 		
-		if (claimAllButton.isFound()) {
-			logInfo("'Claim All' button found. Claiming all loot chests.");
-			emuManager.tapAtPoint(EMULATOR_NUMBER, claimAllButton.getPoint());
-			sleepTask(CLAIM_WAIT_TIME);
-			
-			// Close the result window if it appears
-			closePopupIfPresent();
-		} else {
-			logInfo("No 'Claim All' button found for loot chests. Nothing to claim.");
-		}
+		// Close the result window if it appears
+		closePopupIfPresent();
 		sleepTask(SHORT_WAIT_TIME);
 	}
 	
@@ -203,9 +195,9 @@ public class AllianceChestTask extends DelayedTask {
 	 */
 	private void returnToHomeScreen() {
 		logInfo("Returning to home screen.");
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 		sleepTask(SHORT_WAIT_TIME);
-		emuManager.tapBackButton(EMULATOR_NUMBER);
+		tapBackButton();
 		sleepTask(SHORT_WAIT_TIME);
 		
 		// Verify we're back at the home screen (could add additional verification here)

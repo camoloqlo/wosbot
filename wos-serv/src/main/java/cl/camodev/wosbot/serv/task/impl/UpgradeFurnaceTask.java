@@ -112,13 +112,13 @@ public class UpgradeFurnaceTask extends DelayedTask {
 								logInfo("Furnace cannot be upgraded at this time. Checking for missing requirements.");
 								// check for missing requirements
 								// go back
-								emuManager.tapBackButton(EMULATOR_NUMBER);
+								tapBackButton();
 								sleepTask(500);
-								emuManager.tapBackButton(EMULATOR_NUMBER);
+								tapBackButton();
 								sleepTask(500);
-								emuManager.tapBackButton(EMULATOR_NUMBER);
+								tapBackButton();
 								sleepTask(500);
-								emuManager.tapBackButton(EMULATOR_NUMBER);
+								tapBackButton();
 								sleepTask(500);
 								reschedule(LocalDateTime.now().plusHours(1));
 							}

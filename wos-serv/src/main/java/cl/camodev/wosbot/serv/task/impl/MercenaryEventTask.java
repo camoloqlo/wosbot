@@ -1,5 +1,6 @@
 package cl.camodev.wosbot.serv.task.impl;
 
+import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
@@ -105,12 +106,16 @@ public class MercenaryEventTask extends DelayedTask {
 
     private void handleMercenaryEvent() {
         try {
-            if (isEventCompleted()) {
-                logInfo("Mercenary event seems to be completed. Removing task.");
+            // Check for scout or challenge buttons
+            DTOImageSearchResult eventButton = findMercenaryEventButton();
+            
+            if (eventButton == null) {
+                logInfo("No scout or challenge button found, assuming event is completed. Removing task.");
                 this.setRecurring(false);
                 return;
             }
-            scoutAndAttack();
+            
+            scoutAndAttack(eventButton);
         } catch (Exception e) {
             logError("An error occurred during the Mercenary Event task: " + e.getMessage(), e);
             this.reschedule(LocalDateTime.now().plusMinutes(30)); // Reschedule on error
@@ -175,17 +180,37 @@ public class MercenaryEventTask extends DelayedTask {
 		return false;
 	}
 
-    private boolean isEventCompleted() {
-        logInfo("Checking if event is completed by looking for the Scout button.");
-        DTOImageSearchResult scoutButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.MERCENARY_SCOUT_BUTTON, 90);
-        return !scoutButton.isFound();
-    }
-
-    private void scoutAndAttack() throws IOException, TesseractException {
-        logInfo("Scouting for mercenary.");
+    /**
+     * Finds either the scout button or challenge button for the mercenary event.
+     * @return The search result of the found button, or null if neither button is found
+     */
+    private DTOImageSearchResult findMercenaryEventButton() {
+        logInfo("Checking for mercenary event buttons.");
+        
+        // First check for scout button
         DTOImageSearchResult scoutButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.MERCENARY_SCOUT_BUTTON, 90);
         if (scoutButton.isFound()) {
-            emuManager.tapAtPoint(EMULATOR_NUMBER, scoutButton.getPoint());
+            logInfo("Found scout button for mercenary event.");
+            return scoutButton;
+        }
+        
+        // If scout button not found, check for challenge button
+        DTOImageSearchResult challengeButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.MERCENARY_CHALLENGE_BUTTON, 90);
+        if (challengeButton.isFound()) {
+            logInfo("Found challenge button for mercenary event.");
+            return challengeButton;
+        }
+        
+        logInfo("Neither scout nor challenge button found for mercenary event.");
+        return null;
+    }
+
+    private void scoutAndAttack(DTOImageSearchResult eventButton) throws IOException, TesseractException {
+        logInfo("Starting scout/attack process for mercenary event.");
+        
+        if (eventButton != null) {
+            // Click on the button (whether it's scout or challenge)
+            emuManager.tapAtPoint(EMULATOR_NUMBER, eventButton.getPoint());
             sleepTask(4000); // Wait to travel to mercenary location on map
 
             DTOImageSearchResult attackButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.MERCENARY_ATTACK_BUTTON, 90);
@@ -202,15 +227,21 @@ public class MercenaryEventTask extends DelayedTask {
                     return;
                 }
 
-                // Send troops
-                emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(198, 1188));
-                sleepTask(500);
+                // Check if we should use a specific flag
+                boolean useFlag = profile.getConfig(EnumConfigurationKey.MERCENARY_USE_FLAG_BOOL, Boolean.class);
+                if (useFlag) {
+                    // Select the specified flag
+                    int flagToSelect = profile.getConfig(EnumConfigurationKey.MERCENARY_FLAG_INT, Integer.class);
+                    selectMarchFlag(flagToSelect);
+                    sleepTask(500); // Wait for flag selection
+                }
 
                 try {
                     String timeStr = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(521, 1141), new DTOPoint(608, 1162));
                     long travelTimeSeconds = parseTimeToSeconds(timeStr);
 
                     if (travelTimeSeconds > 0) {
+                        // Proceed to deploy troops
                         emuManager.tapAtPoint(EMULATOR_NUMBER, deployButton.getPoint());
                         sleepTask(1000); // Wait for march to start
                         long returnTimeSeconds = (travelTimeSeconds * 2) + 2;
@@ -219,17 +250,17 @@ public class MercenaryEventTask extends DelayedTask {
                         logInfo("Mercenary march sent. Task will run again at " + rescheduleTime + ".");
                     } else {
                         logError("Failed to parse march time. Aborting attack.");
-                        emuManager.tapBackButton(EMULATOR_NUMBER); // Go back from march screen
+                        tapBackButton(); // Go back from march screen
                     }
                 } catch (IOException | TesseractException e) {
                     logError("Failed to read march time using OCR. Aborting attack. Error: " + e.getMessage(), e);
-                    emuManager.tapBackButton(EMULATOR_NUMBER); // Go back from march screen
+                    tapBackButton(); // Go back from march screen
                 }
             } else {
-                logWarning("Attack button not found after scouting.");
+                logWarning("Attack button not found after scouting/challenging.");
             }
         } else {
-            logInfo("Scout button not found, assuming event is completed. Removing task.");
+            logInfo("No scout or challenge button found, assuming event is completed. Removing task.");
             this.setRecurring(false);
         }
     }
@@ -252,6 +283,30 @@ public class MercenaryEventTask extends DelayedTask {
         }
         logWarning("Could not parse march time from OCR string: '" + timeStr + "'.");
         return 0;
+    }
+
+    /**
+     * Selects a flag for the march.
+     * @param flagNumber The flag number to select (1-8)
+     */
+    private void selectMarchFlag(int flagNumber) {
+        logInfo("Selecting march flag " + flagNumber + ".");
+        DTOPoint flagPoint = null;
+        switch (flagNumber) {
+            case 1: flagPoint = new DTOPoint(70, 120); break;
+            case 2: flagPoint = new DTOPoint(140, 120); break;
+            case 3: flagPoint = new DTOPoint(210, 120); break;
+            case 4: flagPoint = new DTOPoint(280, 120); break;
+            case 5: flagPoint = new DTOPoint(350, 120); break;
+            case 6: flagPoint = new DTOPoint(420, 120); break;
+            case 7: flagPoint = new DTOPoint(490, 120); break;
+            case 8: flagPoint = new DTOPoint(560, 120); break;
+            default:
+                logError("Invalid flag number: " + flagNumber + ". Defaulting to flag 1.");
+                flagPoint = new DTOPoint(70, 120);
+                break;
+        }
+        emuManager.tapAtPoint(EMULATOR_NUMBER, flagPoint);
     }
 
 }

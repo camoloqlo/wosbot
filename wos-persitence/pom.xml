@@ -10,7 +10,7 @@
 	<artifactId>wos-persitence</artifactId>
 
 	<dependencies>
-		<!-- JDBC Driver para SQLite -->
+		<!-- JDBC Driver for SQLite -->
 		<dependency>
 			<groupId>org.xerial</groupId>
 			<artifactId>sqlite-jdbc</artifactId>
@@ -31,7 +31,7 @@
 			<version>5.0.1</version>
 		</dependency>
 
-		<!-- API de JPA -->
+		<!-- JPA API -->
 		<dependency>
 			<groupId>jakarta.persistence</groupId>
 			<artifactId>jakarta.persistence-api</artifactId>
@@ -50,8 +50,7 @@
 			<version>4.0.0</version>
 		</dependency>
 
-		<!-- JAXB Runtime (necesario para ejecución y algunos usos en
-		compilación) -->
+		<!-- JAXB Runtime (required for execution and some compile-time uses) -->
 		<dependency>
 			<groupId>org.glassfish.jaxb</groupId>
 			<artifactId>jaxb-runtime</artifactId>
@@ -69,7 +68,7 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 		</dependency>
-		<!-- Binding/implementación en tiempo de ejecución -->
+		<!-- Runtime binding/implementation -->
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
