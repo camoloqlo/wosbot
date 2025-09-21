@@ -1,6 +1,5 @@
 package cl.camodev.wosbot.serv.task.impl;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 
 import cl.camodev.utiles.UtilTime;
@@ -12,7 +11,6 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
-import net.sourceforge.tess4j.TesseractException;
 
 public class StorehouseChest extends DelayedTask {
 
@@ -29,7 +27,7 @@ public class StorehouseChest extends DelayedTask {
 
 	@Override
 	protected void execute() {
-		logInfo("Navigating to the storehouse.");
+		logInfo("Navigating to the Storehouse.");
 
 		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(3, 513), new DTOPoint(26, 588));
 		sleepTask(500);
@@ -47,8 +45,7 @@ public class StorehouseChest extends DelayedTask {
 			sleepTask(1000);
 			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(30, 430), new DTOPoint(50, 470));
 			sleepTask(1000);
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(1,636), new DTOPoint(2,636),2,300);
-
+            emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(1,636), new DTOPoint(2,636),2,300);
 			logInfo("Searching for the storehouse chest.");
 			for (int i = 0; i < 5; i++) {
 				DTOImageSearchResult chest = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_CHEST,  90);
@@ -85,13 +82,13 @@ public class StorehouseChest extends DelayedTask {
                         emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(250, 930), new DTOPoint(450, 950));
                         sleepTask(4000);
 
-						// After successfully claiming stamina, schedule next claim at next reset
-						try {
-							nextStaminaClaim = UtilTime.getNextReset();
-							logInfo("Next stamina claim scheduled at " + nextStaminaClaim);
-						} catch (Exception e) {
-							logDebug("Error obtaining next reset for stamina claim; keeping previous schedule.");
-						}
+                        // After successfully claiming stamina, schedule next claim at next reset
+                        try {
+                            nextStaminaClaim = UtilTime.getNextReset();
+                            logInfo("Next stamina claim scheduled at " + nextStaminaClaim);
+                        } catch (Exception e) {
+                            logDebug("Error obtaining next reset for stamina claim; keeping previous schedule.");
+                        }
 
                         break;
                     } else {
@@ -137,16 +134,9 @@ public class StorehouseChest extends DelayedTask {
                 this.reschedule(LocalDateTime.now().plusMinutes(5));
             }
 
-				} catch (TesseractException | IOException e) {
-					logError("Error during OCR, rescheduling for 5 minutes.", e);
-					this.reschedule(LocalDateTime.now().plusMinutes(5));
-				} catch (Exception e) {
-					logError("Unexpected error during OCR, rescheduling for 5 minutes.", e);
-					this.reschedule(LocalDateTime.now().plusMinutes(5));
-				}
 
 		} else {
-			logWarning("Research center shortcut not found. Rescheduling in 5 minutes.");
+			logWarning("Research Center shortcut not found. Rescheduling for 5 minutes.");
 			this.reschedule(LocalDateTime.now().plusMinutes(5));
 			tapBackButton();
 		}
