@@ -26,6 +26,9 @@ public class ImageSearchUtil {
 
 	// Cache thread-safe para templates precargados
 	private static final ConcurrentHashMap<String, Mat> templateCache = new ConcurrentHashMap<>();
+	
+	// Cache for grayscale templates
+	private static final ConcurrentHashMap<String, Mat> grayscaleTemplateCache = new ConcurrentHashMap<>();
 
 	// Custom thread pool for OpenCV operations
 	private static final ForkJoinPool openCVThreadPool = new ForkJoinPool(
@@ -76,6 +79,8 @@ public class ImageSearchUtil {
 			// Clean cache and release OpenCV memory
 			templateCache.values().forEach(Mat::release);
 			templateCache.clear();
+			grayscaleTemplateCache.values().forEach(Mat::release);
+			grayscaleTemplateCache.clear();
 			templateBytesCache.clear();
 		}));
 
@@ -93,19 +98,25 @@ public class ImageSearchUtil {
 			try {
 				logger.info("Caching templates...");
 
-				// Preload all templates from the enum
+				// Preload all templates from the enum (both color and grayscale)
 				for (EnumTemplates enumTemplate : EnumTemplates.values()) {
 					String templatePath = enumTemplate.getTemplate();
 					try {
+						// Load color template
 						loadTemplateOptimized(templatePath);
 						logger.debug(formatLogMessage("Template " + templatePath + " cached successfully"));
+						
+						// Also load grayscale version
+						loadTemplateGrayscale(templatePath);
+						logger.debug(formatLogMessage("Grayscale template " + templatePath + " cached successfully"));
 					} catch (Exception e) {
 						logger.warn(formatLogMessage("Error preloading template " + templatePath + ": " + e.getMessage()));
 					}
 				}
 
 				cacheInitialized = true;
-				logger.info(formatLogMessage("Template cache initialized with " + templateCache.size() + " templates"));
+				logger.info(formatLogMessage("Template cache initialized with " + templateCache.size() + " color templates and " + 
+				                             grayscaleTemplateCache.size() + " grayscale templates"));
 
 			} catch (Exception e) {
 				logger.error(formatLogMessage("Error initializing template cache: " + e.getMessage()));
@@ -127,6 +138,22 @@ public class ImageSearchUtil {
 	public static List<DTOImageSearchResult> searchTemplateMultiple(byte[] image, String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage, int maxResults) {
 		// Delegate to the optimized method while maintaining the same signature
 		return searchTemplateMultipleOptimized(image, templateResourcePath, topLeftCorner, bottomRightCorner, thresholdPercentage, maxResults);
+	}
+	
+	/**
+	 * Performs a grayscale search for a template within a main image.
+	 * Both the template and the image are converted to grayscale before matching.
+	 */
+	public static DTOImageSearchResult searchTemplateGrayscale(byte[] image, String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage) {
+		return searchTemplateGrayscaleOptimized(image, templateResourcePath, topLeftCorner, bottomRightCorner, thresholdPercentage);
+	}
+	
+	/**
+	 * Performs a grayscale search for multiple matches of a template within a main image.
+	 * Both the template and the image are converted to grayscale before matching.
+	 */
+	public static List<DTOImageSearchResult> searchTemplateGrayscaleMultiple(byte[] image, String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage, int maxResults) {
+		return searchTemplateGrayscaleMultipleOptimized(image, templateResourcePath, topLeftCorner, bottomRightCorner, thresholdPercentage, maxResults);
 	}
 
 	/**
@@ -171,6 +198,42 @@ public class ImageSearchUtil {
 
 		} catch (Exception e) {
 			logger.error(formatLogMessage("Exception loading template: " + templateResourcePath), e);
+			return new Mat();
+		}
+	}
+	
+	/**
+	 * Optimized method for loading and caching grayscale templates.
+	 */
+	private static Mat loadTemplateGrayscale(String templateResourcePath) {
+		// Try to get from grayscale cache first
+		Mat cachedTemplate = grayscaleTemplateCache.get(templateResourcePath);
+		if (cachedTemplate != null && !cachedTemplate.empty()) {
+			return cachedTemplate.clone(); // Return a copy for thread safety
+		}
+
+		try {
+			// Load the color template first
+			Mat colorTemplate = loadTemplateOptimized(templateResourcePath);
+			if (colorTemplate.empty()) {
+				return new Mat();
+			}
+			
+			// Convert to grayscale
+			Mat grayTemplate = new Mat();
+			Imgproc.cvtColor(colorTemplate, grayTemplate, Imgproc.COLOR_BGR2GRAY);
+			
+			// Save to grayscale cache
+			if (!grayTemplate.empty()) {
+				grayscaleTemplateCache.put(templateResourcePath, grayTemplate.clone());
+			}
+			
+			// Release color template as we don't need it anymore
+			colorTemplate.release();
+			
+			return grayTemplate;
+		} catch (Exception e) {
+			logger.error(formatLogMessage("Exception loading grayscale template: " + templateResourcePath), e);
 			return new Mat();
 		}
 	}
@@ -388,6 +451,220 @@ public class ImageSearchUtil {
 	}
 
 	/**
+	 * Performs a grayscale search for a template within a main image.
+	 * Both the template and the image are converted to grayscale before matching.
+	 */
+	public static DTOImageSearchResult searchTemplateGrayscaleOptimized(byte[] image, String templateResourcePath,
+			DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage) {
+
+		Mat imagenPrincipal = null;
+		Mat imagenPrincipalGray = null;
+		Mat template = null;
+		Mat imagenROI = null;
+		Mat resultado = null;
+
+		try {
+			// Quick ROI validation
+			int roiX = topLeftCorner.getX();
+			int roiY = topLeftCorner.getY();
+			int roiWidth = bottomRightCorner.getX() - topLeftCorner.getX();
+			int roiHeight = bottomRightCorner.getY() - topLeftCorner.getY();
+
+			if (roiWidth <= 0 || roiHeight <= 0) {
+				logger.error(formatLogMessage("Invalid ROI dimensions"));
+				return new DTOImageSearchResult(false, null, 0.0);
+			}
+
+			// Decoding of main image (reusable)
+			MatOfByte matOfByte = new MatOfByte(image);
+			imagenPrincipal = Imgcodecs.imdecode(matOfByte, Imgcodecs.IMREAD_COLOR);
+
+			if (imagenPrincipal.empty()) {
+				return new DTOImageSearchResult(false, null, 0.0);
+			}
+			
+			// Convert main image to grayscale
+			imagenPrincipalGray = new Mat();
+			Imgproc.cvtColor(imagenPrincipal, imagenPrincipalGray, Imgproc.COLOR_BGR2GRAY);
+			imagenPrincipal.release();
+			imagenPrincipal = null;
+
+			// Load optimized grayscale template with cache
+			template = loadTemplateGrayscale(templateResourcePath);
+			if (template.empty()) {
+				return new DTOImageSearchResult(false, null, 0.0);
+			}
+
+			// ROI vs image validation
+			if (roiX + roiWidth > imagenPrincipalGray.cols() || roiY + roiHeight > imagenPrincipalGray.rows()) {
+				logger.error(formatLogMessage("ROI exceeds image dimensions"));
+				return new DTOImageSearchResult(false, null, 0.0);
+			}
+
+			// Create ROI
+			Rect roi = new Rect(roiX, roiY, roiWidth, roiHeight);
+			imagenROI = new Mat(imagenPrincipalGray, roi);
+
+			// Optimized size check
+			int resultCols = imagenROI.cols() - template.cols() + 1;
+			int resultRows = imagenROI.rows() - template.rows() + 1;
+			if (resultCols <= 0 || resultRows <= 0) {
+				return new DTOImageSearchResult(false, null, 0.0);
+			}
+
+			// Template matching
+			resultado = new Mat(resultRows, resultCols, CvType.CV_32FC1);
+			Imgproc.matchTemplate(imagenROI, template, resultado, Imgproc.TM_CCOEFF_NORMED);
+
+			// Search for the best match
+			Core.MinMaxLocResult mmr = Core.minMaxLoc(resultado);
+			double matchPercentage = mmr.maxVal * 100.0;
+
+			if (matchPercentage < thresholdPercentage) {
+				logger.warn(formatLogMessage("Grayscale template " + templateResourcePath + " match percentage " + matchPercentage + " below threshold " + thresholdPercentage));
+				return new DTOImageSearchResult(false, null, matchPercentage);
+			}
+
+			// Calculate center point of the match (taking ROI into account)
+			int centerX = (int) (mmr.maxLoc.x + template.cols() / 2 + roiX);
+			int centerY = (int) (mmr.maxLoc.y + template.rows() / 2 + roiY);
+
+			return new DTOImageSearchResult(true, new DTOPoint(centerX, centerY), matchPercentage);
+
+		} catch (Exception e) {
+			logger.error(formatLogMessage("Exception during grayscale template search"), e);
+			return new DTOImageSearchResult(false, null, 0.0);
+		} finally {
+			// Explicit memory release for all Mat objects
+			if (imagenPrincipal != null) imagenPrincipal.release();
+			if (imagenPrincipalGray != null) imagenPrincipalGray.release();
+			if (template != null) template.release();
+			if (imagenROI != null) imagenROI.release();
+			if (resultado != null) resultado.release();
+		}
+	}
+	
+	/**
+	 * Performs a grayscale search for multiple matches of a template within a main image.
+	 * Both the template and the image are converted to grayscale before matching.
+	 */
+	public static List<DTOImageSearchResult> searchTemplateGrayscaleMultipleOptimized(byte[] image,
+			String templateResourcePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner,
+			double thresholdPercentage, int maxResults) {
+
+		List<DTOImageSearchResult> results = new ArrayList<>();
+		Mat mainImage = null;
+		Mat mainImageGray = null;
+		Mat template = null;
+		Mat imageROI = null;
+		Mat matchResult = null;
+		Mat resultCopy = null;
+
+		try {
+			// Quick ROI validation
+			int roiX = topLeftCorner.getX();
+			int roiY = topLeftCorner.getY();
+			int roiWidth = bottomRightCorner.getX() - topLeftCorner.getX();
+			int roiHeight = bottomRightCorner.getY() - topLeftCorner.getY();
+
+			if (roiWidth <= 0 || roiHeight <= 0) {
+				return results;
+			}
+
+			// Optimized decoding
+			MatOfByte matOfByte = new MatOfByte(image);
+			mainImage = Imgcodecs.imdecode(matOfByte, Imgcodecs.IMREAD_COLOR);
+
+			if (mainImage.empty()) {
+				return results;
+			}
+			
+			// Convert to grayscale
+			mainImageGray = new Mat();
+			Imgproc.cvtColor(mainImage, mainImageGray, Imgproc.COLOR_BGR2GRAY);
+			mainImage.release();
+			mainImage = null;
+
+			// Load grayscale template with cache
+			template = loadTemplateGrayscale(templateResourcePath);
+			if (template.empty()) {
+				return results;
+			}
+
+			// Validations
+			if (roiX + roiWidth > mainImageGray.cols() || roiY + roiHeight > mainImageGray.rows()) {
+				return results;
+			}
+
+			// Create ROI
+			Rect roi = new Rect(roiX, roiY, roiWidth, roiHeight);
+			imageROI = new Mat(mainImageGray, roi);
+
+			int resultCols = imageROI.cols() - template.cols() + 1;
+			int resultRows = imageROI.rows() - template.rows() + 1;
+			if (resultCols <= 0 || resultRows <= 0) {
+				return results;
+			}
+
+			// Template matching
+			matchResult = new Mat(resultRows, resultCols, CvType.CV_32FC1);
+			Imgproc.matchTemplate(imageROI, template, matchResult, Imgproc.TM_CCOEFF_NORMED);
+
+			// Optimized search for multiple matches
+			double thresholdDecimal = thresholdPercentage / 100.0;
+			resultCopy = matchResult.clone();
+			int templateWidth = template.cols();
+			int templateHeight = template.rows();
+
+			// Pre-calculate for optimization
+			int halfTemplateWidth = templateWidth / 2;
+			int halfTemplateHeight = templateHeight / 2;
+
+			while (results.size() < maxResults || maxResults <= 0) {
+				Core.MinMaxLocResult mmr = Core.minMaxLoc(resultCopy);
+				double matchValue = mmr.maxVal;
+
+				if (matchValue < thresholdDecimal) {
+					break;
+				}
+
+				Point matchLoc = mmr.maxLoc;
+				double centerX = matchLoc.x + roi.x + halfTemplateWidth;
+				double centerY = matchLoc.y + roi.y + halfTemplateHeight;
+
+				results.add(new DTOImageSearchResult(true,
+					new DTOPoint((int) centerX, (int) centerY), matchValue * 100.0));
+
+				// Optimized suppression
+				int suppressX = Math.max(0, (int)matchLoc.x - halfTemplateWidth);
+				int suppressY = Math.max(0, (int)matchLoc.y - halfTemplateHeight);
+				int suppressWidth = Math.min(templateWidth, resultCopy.cols() - suppressX);
+				int suppressHeight = Math.min(templateHeight, resultCopy.rows() - suppressY);
+
+				if (suppressWidth > 0 && suppressHeight > 0) {
+					Rect suppressRect = new Rect(suppressX, suppressY, suppressWidth, suppressHeight);
+					Mat suppressArea = new Mat(resultCopy, suppressRect);
+					suppressArea.setTo(new org.opencv.core.Scalar(0));
+					suppressArea.release();
+				}
+			}
+
+		} catch (Exception e) {
+			logger.error(formatLogMessage("Exception during optimized multiple grayscale template search"), e);
+		} finally {
+			// Explicit memory release
+			if (mainImage != null) mainImage.release();
+			if (mainImageGray != null) mainImageGray.release();
+			if (template != null) template.release();
+			if (imageROI != null) imageROI.release();
+			if (matchResult != null) matchResult.release();
+			if (resultCopy != null) resultCopy.release();
+		}
+
+		return results;
+	}
+
+	/**
 	 * Method for preloading common templates.
 	 */
 	public static void preloadTemplate(String templateResourcePath) {
@@ -400,6 +677,8 @@ public class ImageSearchUtil {
 	public static void clearCache() {
 		templateCache.values().forEach(Mat::release);
 		templateCache.clear();
+		grayscaleTemplateCache.values().forEach(Mat::release);
+		grayscaleTemplateCache.clear();
 		templateBytesCache.clear();
 		cacheInitialized = false;
 	}
@@ -418,6 +697,22 @@ public class ImageSearchUtil {
 	public static List<DTOImageSearchResult> searchTemplateMultiple(byte[] image, EnumTemplates enumTemplate,
 			DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage, int maxResults) {
 		return searchTemplateMultiple(image, enumTemplate.getTemplate(), topLeftCorner, bottomRightCorner, thresholdPercentage, maxResults);
+	}
+	
+	/**
+	 * Search for a template using grayscale and the EnumTemplates enum directly.
+	 */
+	public static DTOImageSearchResult searchTemplateGrayscale(byte[] image, EnumTemplates enumTemplate,
+			DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage) {
+		return searchTemplateGrayscale(image, enumTemplate.getTemplate(), topLeftCorner, bottomRightCorner, thresholdPercentage);
+	}
+
+	/**
+	 * Search for multiple templates using grayscale and the EnumTemplates enum directly.
+	 */
+	public static List<DTOImageSearchResult> searchTemplateGrayscaleMultiple(byte[] image, EnumTemplates enumTemplate,
+			DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double thresholdPercentage, int maxResults) {
+		return searchTemplateGrayscaleMultiple(image, enumTemplate.getTemplate(), topLeftCorner, bottomRightCorner, thresholdPercentage, maxResults);
 	}
 
 	/**

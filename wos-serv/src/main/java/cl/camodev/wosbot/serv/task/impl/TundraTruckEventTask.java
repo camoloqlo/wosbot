@@ -27,8 +27,9 @@ public class TundraTruckEventTask extends DelayedTask {
 	public TundraTruckEventTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
 		
-		// Schedule based on the configured activation hour
-		if (activationHour >= 0 && activationHour <= 23) {
+		// Only schedule if the task is enabled and activation hour is valid
+		boolean isTaskEnabled = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_EVENT_BOOL, Boolean.class);
+		if (isTaskEnabled && activationHour >= 0 && activationHour <= 23) {
 			scheduleActivationTime();
 		}
 	}

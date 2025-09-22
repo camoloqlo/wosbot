@@ -20,6 +20,7 @@
       <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
       <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
       <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
+      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
   </rowConstraints>
    <children>
       <CheckBox fx:id="checkBoxExplorationChest" graphicTextGap="3.0" mnemonicParsing="false" text="Claim exploration chest" GridPane.rowIndex="2">
@@ -27,22 +28,22 @@
             <Insets />
          </GridPane.margin>
       </CheckBox>
-      <CheckBox fx:id="checkBoxCrystalLabFC" graphicTextGap="3.0" mnemonicParsing="false" text="Claim crystal lab fire crystal" GridPane.rowIndex="5">
+      <CheckBox fx:id="checkBoxCrystalLabFC" graphicTextGap="3.0" mnemonicParsing="false" text="Claim crystal lab FC" GridPane.rowIndex="5">
          <GridPane.margin>
             <Insets />
          </GridPane.margin>
       </CheckBox>
-      <CheckBox fx:id="checkBoxWarAcademyShards" graphicTextGap="3.0" mnemonicParsing="false" text="Claim war academy crystal shards" GridPane.rowIndex="6">
+      <CheckBox fx:id="checkBoxWarAcademyShards" graphicTextGap="3.0" mnemonicParsing="false" text="Claim war academy crystal shards" GridPane.rowIndex="7">
          <GridPane.margin>
             <Insets />
          </GridPane.margin>
       </CheckBox>
-      <CheckBox fx:id="checkBoxHeroRecruitment" graphicTextGap="3.0" mnemonicParsing="false" text="Open recruitment hero chests" GridPane.rowIndex="9">
+      <CheckBox fx:id="checkBoxHeroRecruitment" graphicTextGap="3.0" mnemonicParsing="false" text="Open recruitment hero chests" GridPane.rowIndex="10">
          <GridPane.margin>
             <Insets />
          </GridPane.margin>
       </CheckBox>
-      <CheckBox fx:id="checkBoxDailyLabyrinth" graphicTextGap="3.0" mnemonicParsing="false" text="Complete daily labyrinth" GridPane.columnIndex="1" GridPane.rowIndex="8">
+      <CheckBox fx:id="checkBoxDailyLabyrinth" graphicTextGap="3.0" mnemonicParsing="false" text="Complete daily labyrinth" GridPane.columnIndex="1" GridPane.rowIndex="9">
          <GridPane.margin>
             <Insets />
          </GridPane.margin>
@@ -52,7 +53,7 @@
             <Insets />
          </GridPane.margin>
       </CheckBox>
-      <CheckBox fx:id="checkBoxDailyVipRewards" graphicTextGap="3.0" mnemonicParsing="false" text="Claim daily vip rewards" GridPane.rowIndex="7">
+      <CheckBox fx:id="checkBoxDailyVipRewards" graphicTextGap="3.0" mnemonicParsing="false" text="Claim daily vip rewards" GridPane.rowIndex="8">
          <GridPane.margin>
             <Insets />
          </GridPane.margin>
@@ -70,8 +71,8 @@
             <TextField fx:id="textfieldMailOffset" />
          </children>
       </HBox>
-      <CheckBox fx:id="checkBoxBuyMonthlyVip" graphicTextGap="3.0" mnemonicParsing="false" text="Buy monthly vip (10k gems)" GridPane.columnIndex="1" GridPane.rowIndex="7" />
-      <CheckBox fx:id="checkBoxStorehouseChest" mnemonicParsing="false" text="Claim storehouse chests + stamina" GridPane.rowIndex="8">
+      <CheckBox fx:id="checkBoxBuyMonthlyVip" graphicTextGap="3.0" mnemonicParsing="false" text="Buy monthly vip (10k gems)" GridPane.columnIndex="1" GridPane.rowIndex="8" />
+      <CheckBox fx:id="checkBoxStorehouseChest" mnemonicParsing="false" text="Claim storehouse chests + stamina" GridPane.rowIndex="9">
          <GridPane.margin>
             <Insets />
          </GridPane.margin>
@@ -90,7 +91,13 @@
          </children>
       </HBox>
       <CheckBox fx:id="checkBoxAutoScheduleDailyMission" mnemonicParsing="false" text="Auto schedule daily mission claim" GridPane.rowIndex="1" />
-      <CheckBox fx:id="checkBoxTrekSupplies" mnemonicParsing="false" text="Claim Trek Supplies" GridPane.columnIndex="1" GridPane.rowIndex="9" />
-      <CheckBox fx:id="checkBoxDailyDiscountedRFC" mnemonicParsing="false" text="Claim daily 50% refined fire crystal" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+      <CheckBox fx:id="checkBoxTrekSupplies" mnemonicParsing="false" text="Claim Trek Supplies" GridPane.columnIndex="1" GridPane.rowIndex="10" />
+      <CheckBox fx:id="checkBoxDailyDiscountedRFC" mnemonicParsing="false" text="Claim daily 50% RFC" GridPane.rowIndex="6" />
+      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
+         <children>
+            <Label text="Monday refinement(be careful with this)" />
+            <ComboBox fx:id="comboBoxMondayRefinements" prefHeight="25.0" prefWidth="63.0" />
+         </children>
+      </HBox>
    </children>
 </GridPane>

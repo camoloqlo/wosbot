@@ -52,6 +52,11 @@
                   <Insets right="10.0" />
                </HBox.margin>
             </Button>
+            <Button fx:id="buttonOpenLogFolder" mnemonicParsing="false" onAction="#handleButtonOpenLogFolder" text="Open Logs Folder" HBox.hgrow="NEVER">
+               <HBox.margin>
+                  <Insets right="10.0" />
+               </HBox.margin>
+            </Button>
             <Button fx:id="buttonClearLogs" mnemonicParsing="false" onAction="#handleButtonClearLogs" text="Clear Logs" HBox.hgrow="NEVER">
                <HBox.margin>
                   <Insets />

@@ -1,5 +1,8 @@
 package cl.camodev.wosbot.console.view;
 
+import java.awt.Desktop;
+import java.io.File;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -30,6 +33,9 @@ public class ConsoleLogLayoutController implements IProfileDataChangeListener {
 
 	@FXML
 	private Button buttonClearLogs;
+	
+	@FXML
+	private Button buttonOpenLogFolder;
 
 	@FXML
 	private CheckBox checkboxDebug;
@@ -120,6 +126,24 @@ public class ConsoleLogLayoutController implements IProfileDataChangeListener {
 	void handleButtonResetProfileFilter(ActionEvent event) {
 		comboBoxProfileFilter.getSelectionModel().selectFirst(); // Select "All profiles"
 		updateLogFilter();
+	}
+	
+	@FXML
+	void handleButtonOpenLogFolder(ActionEvent event) {
+		try {
+			// Path to logs folder - application logs are stored in the "log" directory
+			File logsDir = new File("log");
+			if (!logsDir.exists()) {
+				// Create logs directory if it doesn't exist
+				logsDir.mkdirs();
+			}
+			
+			// Open the logs directory
+			Desktop.getDesktop().open(logsDir);
+		} catch (IOException e) {
+			System.err.println("Error opening logs folder: " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	private void initializeProfileFilter() {

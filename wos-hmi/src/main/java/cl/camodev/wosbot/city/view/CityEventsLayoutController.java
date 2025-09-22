@@ -4,6 +4,7 @@ import cl.camodev.wosbot.common.view.AbstractProfileController;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 
 public class CityEventsLayoutController extends AbstractProfileController {
@@ -56,6 +57,9 @@ public class CityEventsLayoutController extends AbstractProfileController {
 	@FXML
 	private TextField textfieldDailyMissionOffset;
 
+    @FXML
+    private ComboBox<Integer> comboBoxMondayRefinements;
+
 	@FXML
 	private void initialize() {
 
@@ -78,6 +82,9 @@ public class CityEventsLayoutController extends AbstractProfileController {
 		textFieldMappings.put(textfieldMailOffset, EnumConfigurationKey.MAIL_REWARDS_OFFSET_INT);
 		textFieldMappings.put(textfieldLifeEssenceOffset, EnumConfigurationKey.LIFE_ESSENCE_OFFSET_INT);
 		textFieldMappings.put(textfieldDailyMissionOffset, EnumConfigurationKey.DAILY_MISSION_OFFSET_INT);
+
+        comboBoxMondayRefinements.getItems().addAll(0 ,20, 40, 60);
+        comboBoxMappings.put(comboBoxMondayRefinements, EnumConfigurationKey.INT_WEEKLY_RFC);
 
 		initializeChangeEvents();
 	}

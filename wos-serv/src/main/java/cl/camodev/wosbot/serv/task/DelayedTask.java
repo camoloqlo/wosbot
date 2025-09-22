@@ -145,30 +145,9 @@ public abstract class DelayedTask implements Runnable, Delayed {
         logInfo("Ensuring we are on the intel screen.");
 
         // First, check if we are already on the intel screen.
-        for (int i = 0; i < 5; i++) {
-            DTOImageSearchResult intelScreenResult = emuManager.searchTemplate(EMULATOR_NUMBER,
-                    EnumTemplates.INTEL_SCREEN_1, 90);
-            DTOImageSearchResult intelScreenResult2 = emuManager.searchTemplate(EMULATOR_NUMBER,
-                    EnumTemplates.INTEL_SCREEN_2, 90);
-            if (intelScreenResult.isFound() || intelScreenResult2.isFound()) {
-                logInfo("Already on the intel screen (found via image search).");
-                return; // We are on the correct screen, so we can exit.
-            }
-
-            // Fallback to OCR check
-            try {
-                String intelText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(85, 15), new DTOPoint(171, 62));
-                if (intelText != null && intelText.toLowerCase().contains("intel")) {
-                    logInfo("Already on the intel screen (found via OCR).");
-                    return; // We are on the correct screen
-                }
-            } catch (IOException | TesseractException e) {
-                logWarning("Could not perform OCR to check for intel screen. Error: " + e.getMessage());
-            }
-
-
-            logDebug("Intel screen not found. Attempt " + (i + 1) + "/5. Retrying...");
-            sleepTask(300);
+        if (isIntelScreenActive()) {
+            logInfo("Already on the intel screen.");
+            return;
         }
         logWarning("Not on intel screen. Attempting to navigate.");
 
@@ -176,7 +155,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
         ensureCorrectScreenLocation(EnumStartLocation.WORLD);
 
         // Now, find and click the intel button.
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 3; i++) {
             DTOImageSearchResult intelButton = emuManager.searchTemplate(EMULATOR_NUMBER,
                     EnumTemplates.GAME_HOME_INTEL, 90);
             if (intelButton.isFound()) {
@@ -184,32 +163,64 @@ public abstract class DelayedTask implements Runnable, Delayed {
                 emuManager.tapAtPoint(EMULATOR_NUMBER, intelButton.getPoint());
                 sleepTask(1000); // Wait for screen transition
 
-                // Final check to confirm we are on the intel screen (image search)
-                if (emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_1, 90).isFound() ||
-                    emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_2, 90).isFound()) {
-                    logInfo("Successfully navigated to the intel screen (confirmed by image).");
-                    return; // Success
-                }
-
-                // Fallback to OCR check
-                try {
-                    String intelText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(85, 15), new DTOPoint(171, 62));
-                    if (intelText != null && intelText.toLowerCase().contains("intel")) {
-                        logInfo("Successfully navigated to the intel screen (confirmed by OCR).");
-                        return; // Success
-                    }
-                } catch (IOException | TesseractException e) {
-                    logWarning("Could not perform OCR to confirm intel screen. Error: " + e.getMessage());
+                // Check if successfully navigated to intel screen
+                if (isIntelScreenActive()) {
+                    logInfo("Successfully navigated to the intel screen.");
+                    return;
                 }
 
                 logWarning("Tapped intel button, but still not on intel screen. Retrying...");
                 tapBackButton();
+                sleepTask(500);
+            } else {
+                logDebug("Intel button not found. Attempt " + (i + 1) + "/3. Retrying...");
+                sleepTask(300);
             }
-            logDebug("Intel button not found. Attempt " + (i + 1) + "/5. Retrying...");
-            sleepTask(300);
         }
-        logError("Failed to find the intel button after 5 attempts.");
+        
+        logError("Failed to find the intel button after 3 attempts.");
         throw new HomeNotFoundException("Failed to navigate to intel screen.");
+    }
+    
+    /**
+     * Helper method to check if we're currently on the intel screen.
+     * Uses both image recognition and OCR for verification.
+     * Makes two attempts before determining the screen state.
+     * 
+     * @return true if we're on the intel screen, false otherwise
+     */
+    private boolean isIntelScreenActive() {
+        // Make two attempts at detection
+        for (int attempt = 0; attempt < 2; attempt++) {
+            // Try image recognition first (faster)
+            DTOImageSearchResult intelScreen1 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_1, 90);
+            DTOImageSearchResult intelScreen2 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_2, 90);
+            
+            if (intelScreen1.isFound() || intelScreen2.isFound()) {
+                logDebug("Intel screen confirmed via image template (attempt " + (attempt + 1) + ")");
+                return true;
+            }
+            
+            // Fallback to OCR check
+            try {
+                String intelText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(85, 15), new DTOPoint(171, 62));
+                if (intelText != null && intelText.toLowerCase().contains("intel")) {
+                    logDebug("Intel screen confirmed via OCR (attempt " + (attempt + 1) + ")");
+                    return true;
+                }
+            } catch (IOException | TesseractException e) {
+                logWarning("Could not perform OCR to check for intel screen. Error: " + e.getMessage());
+            }
+            
+            // If this is the first attempt and we didn't find the intel screen, wait briefly before trying again
+            if (attempt == 0) {
+                sleepTask(300);
+            }
+        }
+        
+        // After two attempts, we still couldn't find the intel screen
+        logDebug("Intel screen not detected after two attempts");
+        return false;
     }
 
     public boolean isRecurring() {

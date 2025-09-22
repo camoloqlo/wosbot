@@ -3,7 +3,6 @@ package cl.camodev.wosbot.serv.task.impl;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -56,14 +55,25 @@ public class IntelligenceTask extends DelayedTask {
 
 		ensureOnIntelScreen();
 		logInfo("Searching for completed missions to claim.");
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < 2; i++) {
 			logDebug("Searching for completed missions. Attempt " + (i + 1) + ".");
-			DTOImageSearchResult completed = emuManager.searchTemplate(EMULATOR_NUMBER,
-					EnumTemplates.INTEL_COMPLETED, 90);
-			if (completed.isFound()) {
-				emuManager.tapAtPoint(EMULATOR_NUMBER, completed.getPoint());
+			List<DTOImageSearchResult> completed = emuManager.searchTemplates(EMULATOR_NUMBER,
+					EnumTemplates.INTEL_COMPLETED, 90, 10);
+
+			if (completed.isEmpty()) {
+				logInfo("No completed missions found on attempt " + (i + 1) + ".");
+				continue;
+			} else {
+				logInfo("Found " + completed.size() + " completed missions. Claiming them now.");
+			}
+
+			// Process all found completed missions
+			for (DTOImageSearchResult completedMission : completed) {
+				emuManager.tapAtPoint(EMULATOR_NUMBER, completedMission.getPoint());
+				sleepTask(500);
 				emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(700, 1270), new DTOPoint(710, 1280), 5,
 						250);
+				sleepTask(500);
 			}
 		}
 
@@ -116,102 +126,66 @@ public class IntelligenceTask extends DelayedTask {
         }
 
 		if (profile.getConfig(EnumConfigurationKey.INTEL_BEASTS_BOOL, Boolean.class)) {
-            if (useSmartProcessing || !marchQueueLimitReached) {
-                ensureOnIntelScreen();
+			if ((useSmartProcessing && !marchQueueLimitReached) || (!useSmartProcessing)) {
+				ensureOnIntelScreen();
 
-				List<EnumTemplates> beastPriorities;
-				if (fcEra) {
-					beastPriorities = Arrays.asList(
-							EnumTemplates.INTEL_FIRE_BEAST,
-							EnumTemplates.INTEL_BEAST_YELLOW,
-							EnumTemplates.INTEL_BEAST_PURPLE,
-							EnumTemplates.INTEL_BEAST_BLUE);
-					logInfo("Searching for beasts (FC era).");
-				} else {
-					beastPriorities = Arrays.asList(
-							EnumTemplates.INTEL_FIRE_BEAST,
-							EnumTemplates.INTEL_PREFC_BEAST_YELLOW,
-							EnumTemplates.INTEL_PREFC_BEAST_PURPLE,
-							EnumTemplates.INTEL_PREFC_BEAST_BLUE,
-							EnumTemplates.INTEL_PREFC_BEAST_GREEN,
-							EnumTemplates.INTEL_PREFC_BEAST_GREY);
-					logInfo("Searching for beasts (pre-FC era).");
+				boolean fireBeastsEnabled = profile.getConfig(EnumConfigurationKey.INTEL_FIRE_BEAST_BOOL, Boolean.class);
+				boolean useFlag = profile.getConfig(EnumConfigurationKey.INTEL_USE_FLAG_BOOL, Boolean.class);
+
+				// Search for fire beasts if enabled
+				if (fireBeastsEnabled) {
+					logInfo("Searching for fire beasts.");
+					if (searchAndProcess(EnumTemplates.INTEL_FIRE_BEAST, 5, 90, this::processBeast)) {
+						intelFound = true;
+					}
 				}
 
-                for (EnumTemplates beast : beastPriorities) {
-                    if (searchAndProcess(beast, 5, 90, this::processBeast)) {
-                        intelFound = true;
-                        break;
-                    }
-                }
-            } else {
-                logInfo("No marches available, will not run beast search");
-            }
+				// If flag feature is enabled, only one beast march should be sent per execution
+				if (useFlag) {
+					if (!marchQueueLimitReached && !beastMarchSent) {
+						logInfo("Searching for beasts using grayscale matching (flag mode, only one march allowed).");
+						EnumTemplates beastTemplate = fcEra ? EnumTemplates.INTEL_BEAST_GRAYSCALE_FC : EnumTemplates.INTEL_BEAST_GRAYSCALE;
+						if (searchAndProcessGrayscale(beastTemplate, 5, 90, this::processBeast)) {
+							intelFound = true;
+						}
+					} else if (beastMarchSent) {
+						logInfo("Beast march already sent (flag mode), skipping regular beast search.");
+					}
+				} else {
+					// If flag is disabled, allow both fire and regular beast marches in the same execution
+					if (!marchQueueLimitReached) {
+						logInfo("Searching for beasts using grayscale matching (multi-march mode).");
+						EnumTemplates beastTemplate = fcEra ? EnumTemplates.INTEL_BEAST_GRAYSCALE_FC : EnumTemplates.INTEL_BEAST_GRAYSCALE;
+						if (searchAndProcessGrayscale(beastTemplate, 5, 90, this::processBeast)) {
+							intelFound = true;
+						}
+					}
+				}
+			} else {
+				logInfo("No marches available, will not run beast search");
+			}
 		}
 
 		if (profile.getConfig(EnumConfigurationKey.INTEL_CAMP_BOOL, Boolean.class)) {
 			ensureOnIntelScreen();
-			// @formatter:off
-			
-			List<EnumTemplates> priorities;
-			if (fcEra) {
-				priorities = Arrays.asList(
-						EnumTemplates.INTEL_SURVIVOR_YELLOW,
-						EnumTemplates.INTEL_SURVIVOR_PURPLE,
-						EnumTemplates.INTEL_SURVIVOR_BLUE);
-				logInfo("Searching for survivor camps (FC era).");
-			} else {
-				priorities = Arrays.asList(
-						EnumTemplates.INTEL_PREFC_SURVIVOR_YELLOW,
-						EnumTemplates.INTEL_PREFC_SURVIVOR_PURPLE,
-						EnumTemplates.INTEL_PREFC_SURVIVOR_BLUE,
-						EnumTemplates.INTEL_PREFC_SURVIVOR_GREEN,
-						EnumTemplates.INTEL_PREFC_SURVIVOR_GREY);
-				logInfo("Searching for survivor camps (pre-FC era).");
-			}
-
-			// @formatter:on
-			for (EnumTemplates beast : priorities) {
-				if (searchAndProcess(beast, 5, 90, this::processSurvivor)) {
-					intelFound = true;
-					nonBeastIntelFound = true;
-					break;
-				}
-			}
-
+            
+            logInfo("Searching for survivor camps using grayscale matching.");
+            EnumTemplates survivorTemplate = fcEra ? EnumTemplates.INTEL_SURVIVOR_GRAYSCALE_FC : EnumTemplates.INTEL_SURVIVOR_GRAYSCALE;
+            if (searchAndProcessGrayscale(survivorTemplate, 5, 90, this::processSurvivor)) {
+                intelFound = true;
+                nonBeastIntelFound = true;
+            }
 		}
 
 		if (profile.getConfig(EnumConfigurationKey.INTEL_EXPLORATION_BOOL, Boolean.class)) {
 			ensureOnIntelScreen();
-			// @formatter:off
-
-			List<EnumTemplates> priorities;
-			if (fcEra) {
-				logInfo("Searching for explorations (FC era).");
-				priorities = Arrays.asList(
-						EnumTemplates.INTEL_JOURNEY_YELLOW,
-						EnumTemplates.INTEL_JOURNEY_PURPLE,
-						EnumTemplates.INTEL_JOURNEY_BLUE);
-
-			} else {
-				logInfo("Searching for explorations (pre-FC era).");
-			priorities = Arrays.asList(
-					EnumTemplates.INTEL_PREFC_JOURNEY_YELLOW,
-					EnumTemplates.INTEL_PREFC_JOURNEY_PURPLE,
-					EnumTemplates.INTEL_PREFC_JOURNEY_BLUE,
-					EnumTemplates.INTEL_PREFC_JOURNEY_GREEN,
-					EnumTemplates.INTEL_PREFC_JOURNEY_GREY);
-			}
-
-			// @formatter:on
-			for (EnumTemplates beast : priorities) {
-				if (searchAndProcess(beast, 5, 90, this::processJourney)) {
-					intelFound = true;
-					nonBeastIntelFound = true;
-					break;
-				}
-			}
-
+            
+            logInfo("Searching for explorations using grayscale matching.");
+            EnumTemplates journeyTemplate = fcEra ? EnumTemplates.INTEL_JOURNEY_GRAYSCALE_FC : EnumTemplates.INTEL_JOURNEY_GRAYSCALE;
+            if (searchAndProcessGrayscale(journeyTemplate, 5, 90, this::processJourney)) {
+                intelFound = true;
+                nonBeastIntelFound = true;
+            }
 		}
 
 		sleepTask(500);
@@ -247,6 +221,28 @@ public class IntelligenceTask extends DelayedTask {
 		logInfo("Intel Task finished.");
 	}
 	
+	/**
+	 * Search for a template using grayscale matching and process it with the provided method.
+	 * This method is optimized for icons that have the same shape but different colors.
+	 */
+	private boolean searchAndProcessGrayscale(EnumTemplates template, int maxAttempts, int confidence, Consumer<DTOImageSearchResult> processMethod) {
+		for (int attempt = 0; attempt < maxAttempts; attempt++) {
+			logDebug("Searching for grayscale template '" + template + "', attempt " + (attempt + 1) + ".");
+			DTOImageSearchResult result = emuManager.searchTemplateGrayscale(EMULATOR_NUMBER, template, confidence);
+			
+			if (result.isFound()) {
+				logInfo("Grayscale template found: " + template);
+				processMethod.accept(result);
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * Search for a template and process it with the provided method.
+	 * This method is used for non-grayscale templates like fire beasts.
+	 */
 	private boolean searchAndProcess(EnumTemplates template, int maxAttempts, int confidence, Consumer<DTOImageSearchResult> processMethod) {
 		for (int attempt = 0; attempt < maxAttempts; attempt++) {
 			logDebug("Searching for template '" + template + "', attempt " + (attempt + 1) + ".");
@@ -351,9 +347,6 @@ public class IntelligenceTask extends DelayedTask {
 		
 		if (equalizeButton.isFound() && !useFlag) {
 			emuManager.tapAtPoint(EMULATOR_NUMBER, equalizeButton.getPoint());
-		} else {
-			emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(198, 1188));
-			sleepTask(500);
 		}
 		
 		try {
