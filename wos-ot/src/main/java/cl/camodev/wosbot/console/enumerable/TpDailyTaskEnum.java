@@ -11,7 +11,6 @@ public enum TpDailyTaskEnum {
 	PET_ADVENTURE(6, "Pet Adventure",             	EnumConfigurationKey.PET_PERSONAL_TREASURE_BOOL),
 	EXPLORATION_CHEST(7, "Exploration Chest",       EnumConfigurationKey.BOOL_EXPLORATION_CHEST),
 	TREK_SUPPLIES(8, "Trek Supplies",            	EnumConfigurationKey.TUNDRA_TREK_SUPPLIES_BOOL),
-	TREK_AUTOMATION(12, "Tundra Trek Automation",  EnumConfigurationKey.TUNDRA_TREK_AUTOMATION_BOOL),
 	LIFE_ESSENCE(9, "Life Essence",                	EnumConfigurationKey.LIFE_ESSENCE_BOOL),
 	LIFE_ESSENCE_CARING(10, "Life Essence Caring",  EnumConfigurationKey.ALLIANCE_LIFE_ESSENCE_BOOL),
 	LABYRINTH(11, "Labyrinth",                   	EnumConfigurationKey.DAILY_LABYRINTH_BOOL),
