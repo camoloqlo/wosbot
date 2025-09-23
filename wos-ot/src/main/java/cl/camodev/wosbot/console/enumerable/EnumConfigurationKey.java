@@ -145,6 +145,7 @@ public enum EnumConfigurationKey {
 	TUNDRA_TRUCK_SSR_BOOL("false", Boolean.class),
 	TUNDRA_TRUCK_ACTIVATION_HOUR_INT("0", Integer.class),
 	TUNDRA_TREK_SUPPLIES_BOOL("false", Boolean.class),
+	TUNDRA_TREK_AUTOMATION_BOOL("false", Boolean.class),
 	
 	// Mercenary event
 	MERCENARY_EVENT_BOOL("false", Boolean.class),

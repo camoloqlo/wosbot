@@ -23,7 +23,8 @@ public class DelayedTaskRegistry {
         registry.put(TpDailyTaskEnum.LIFE_ESSENCE, profile -> new LifeEssenceTask(profile, TpDailyTaskEnum.LIFE_ESSENCE));
         registry.put(TpDailyTaskEnum.LIFE_ESSENCE_CARING, profile -> new LifeEssenceCaringTask(profile, TpDailyTaskEnum.LIFE_ESSENCE_CARING));
         registry.put(TpDailyTaskEnum.LABYRINTH, profile -> new DailyLabyrinthTask(profile, TpDailyTaskEnum.LABYRINTH));
-        registry.put(TpDailyTaskEnum.TREK_SUPPLIES, profile -> new TundraTrekTask(profile, TpDailyTaskEnum.TREK_SUPPLIES));
+    registry.put(TpDailyTaskEnum.TREK_SUPPLIES, profile -> new TundraTrekTask(profile, TpDailyTaskEnum.TREK_SUPPLIES));
+    registry.put(TpDailyTaskEnum.TREK_AUTOMATION, profile -> new TundraTrekAutoTask(profile, TpDailyTaskEnum.TREK_AUTOMATION));
 
         // Gathering tasks
         registry.put(TpDailyTaskEnum.GATHER_MEAT, profile -> new GatherTask(profile, TpDailyTaskEnum.GATHER_MEAT, GatherType.MEAT));

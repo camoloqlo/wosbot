@@ -17,6 +17,7 @@
 - **Stamina OCR Fix:** Correctly recognizes stamina values over 1000.
 - **Intelligence Task Optimization:** Better march slot management and improved conflict resolution.
 - **Gathering Task Enhancement:** Intelligence-aware scheduling with proper wait mechanisms.
+- **Tundra Trek Automation (TundraTrekAuto):** Fully automated Tundra Trek run with OCR-driven exit logic and robust timeouts (details below).
 
 ### 🎮 **Mercenary Event Support**
 - **Upstream Mercenary Event Integration:** Uses the official upstream Mercenary Event implementation from the original repository.
@@ -67,6 +68,23 @@ The following features are provided by the original wos-bot project and are avai
 
 
 ## 🔧 Recent Improvements & Bugfixes (Latest Updates)
+
+### ✅ **NEW: Tundra Trek Automation (TundraTrekAuto)**
+- **What it does:**
+  - Navigates to Tundra Trek via the left menu icon only.
+  - Presses `Auto` then `Bag` to start automation.
+  - Monitors the top-right trek counter (e.g., `14/100`) via OCR.
+- **Exit logic:**
+  - Pre-check on entry: If `0/100`, exit with a single back and reschedule in 12 hours.
+  - During run: Polls OCR every 2.5s.
+    - If OCR returns no valid numbers for 2 minutes: exit with double back and reschedule in 10 minutes.
+    - If valid numbers are parsed but the value does not decrease for 2 minutes (stays same or increases): exit with single back and reschedule in 10 minutes.
+    - If value reaches `0/100`: exit with single back and reschedule in 12 hours.
+- **Notes:**
+  - Uses calibrated region with multiple offsets and normalization to improve OCR robustness.
+  - Start location: `HOME`.
+  - UI label updated to "Tundra Trek Automation".
+  - Template assets used: `templates/tundratrek/autoTrek.png`, `templates/tundratrek/bagTrek.png`.
 
 ### ✅ **NEW: Weekly Triumph Claim Support**
 - **Feature:** Added automatic detection and claiming of weekly Alliance Triumph rewards
@@ -148,6 +166,7 @@ This fork contains **540 insertions and 105 deletions** across **22 files** comp
 - **6 Mercenary Template Images** - Comprehensive UI recognition resources
 - **`run-as-admin.bat`** - MEmu compatibility script (77 lines)
 - **`create-admin-exe.ps1`** - PowerShell automation script (87 lines)
+- **`TundraTrekAutoTask.java`** - Automated Tundra Trek with OCR-based exit and smart rescheduling
 
 ### 🖼️ **UI & Configuration Updates:**
 - **`EventsLayoutController.java`** - Enhanced event UI management
@@ -155,6 +174,7 @@ This fork contains **540 insertions and 105 deletions** across **22 files** comp
 - **`PetsLayoutController.java`** - Improved pets management UI
 - **`FXApp.java`** - Application initialization improvements
 - **`EnumTemplates.java`** - Added mercenary template definitions
+- **`CityEventsLayout.fxml` / `TpDailyTaskEnum.java`** - Label updated to "Tundra Trek Automation" and config mapping aligned
 
 ### 📁 **Project Infrastructure:**
 - **`.gitignore`** - Enhanced exclusion patterns (18 additions)

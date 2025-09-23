@@ -29,6 +29,7 @@ public enum EnumTemplates {
 	
 	LEFT_MENU_CITY_TAB("/templates/leftmenu/cityTab.png"),
 	LEFT_MENU_LABYRINTH_BUTTON("/templates/leftmenu/labyrinth.png"),
+	LEFT_MENU_TUNDRA_TREK_BUTTON("/templates/leftmenu/tundraTrek.png"),
 
     // ========================================================================
     // SHORTCUTS AND BUILDING ACCESS
@@ -270,7 +271,7 @@ public enum EnumTemplates {
     VALIDATION_CRYSTAL_LAB_UI("/templates/validation/crystalLab.png"),
 
     // ========================================================================
-    // TUNDRA TRUCK AND TREK EVENTS
+	// TUNDRA TRUCK AND TREK EVENTS
     // ========================================================================
 	TUNDRA_TRUCK_TAB("/templates/tundratruck/tundraTruckTab.png"),
 	TUNDRA_TRUCK_ARRIVED("/templates/tundratruck/tundraTruckArrived.png"),
@@ -295,6 +296,8 @@ public enum EnumTemplates {
 
 	TUNDRA_TREK_SUPPLIES("/templates/tundratrek/trekSupplies.png"),
 	TUNDRA_TREK_CLAIM_BUTTON("/templates/tundratrek/trekClaimButton.png"),
+	TUNDRA_TREK_AUTO_BUTTON("/templates/tundratrek/autoTrek.png"),
+	TUNDRA_TREK_BAG_BUTTON("/templates/tundratrek/bagTrek.png"),
 
     // ========================================================================
     // EXPERTS AND MERCENARY EVENT

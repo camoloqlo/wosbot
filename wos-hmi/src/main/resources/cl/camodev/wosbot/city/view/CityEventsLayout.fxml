@@ -91,7 +91,12 @@
          </children>
       </HBox>
       <CheckBox fx:id="checkBoxAutoScheduleDailyMission" mnemonicParsing="false" text="Auto schedule daily mission claim" GridPane.rowIndex="1" />
-      <CheckBox fx:id="checkBoxTrekSupplies" mnemonicParsing="false" text="Claim Trek Supplies" GridPane.columnIndex="1" GridPane.rowIndex="10" />
+      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="10">
+         <children>
+            <CheckBox fx:id="checkBoxTrekSupplies" mnemonicParsing="false" text="Claim Trek Supplies" />
+            <CheckBox fx:id="checkBoxTrekAutomation" mnemonicParsing="false" text="Tundra Trek Automation" />
+         </children>
+      </HBox>
       <CheckBox fx:id="checkBoxDailyDiscountedRFC" mnemonicParsing="false" text="Claim daily 50% RFC" GridPane.rowIndex="6" />
       <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
          <children>
