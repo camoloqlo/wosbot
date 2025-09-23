@@ -298,6 +298,7 @@ public enum EnumTemplates {
 	TUNDRA_TREK_CLAIM_BUTTON("/templates/tundratrek/trekClaimButton.png"),
 	TUNDRA_TREK_AUTO_BUTTON("/templates/tundratrek/autoTrek.png"),
 	TUNDRA_TREK_BAG_BUTTON("/templates/tundratrek/bagTrek.png"),
+	TUNDRA_TREK_SKIP_BUTTON("/templates/tundratrek/skipTrek.png"),
 
     // ========================================================================
     // EXPERTS AND MERCENARY EVENT

@@ -149,14 +149,37 @@ public class TundraTrekAutoTask extends DelayedTask {
     }
 
     private boolean clickAutoThenBag() {
-        // First click the Auto button
+        // First try to click the Auto button
         DTOImageSearchResult autoBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
         if (autoBtn.isFound()) {
             tapPoint(autoBtn.getPoint());
             sleepTask(500);
         } else {
-            logWarning("Auto button not found (autoTrek.png).");
-            return false;
+            logWarning("Auto button not found (autoTrek.png). Searching for Skip button as alternative...");
+
+            // If Auto button not found, try Skip button as alternative
+            DTOImageSearchResult skipBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_SKIP_BUTTON, 85);
+            if (skipBtn.isFound()) {
+                logInfo("Skip button found - clicking as Auto alternative.");
+                tapPoint(skipBtn.getPoint());
+                sleepTask(500);
+                // Additional tab press after skip
+                tapPoint(skipBtn.getPoint());
+                sleepTask(3000); // Give UI time to rebuild after skip clicks
+
+                // Check if Auto button is now visible after skip clicks
+                DTOImageSearchResult autoRetry = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
+                if (autoRetry.isFound()) {
+                    logInfo("Auto button now visible after skip - clicking it.");
+                    tapPoint(autoRetry.getPoint());
+                    sleepTask(500);
+                }
+            } else {
+                logWarning("Neither Auto button nor Skip button found. Cannot start automation.");
+                tapBackButton();
+                sleepTask(500);
+                return false;
+            }
         }
 
         // Then click the Bag button
@@ -165,8 +188,23 @@ public class TundraTrekAutoTask extends DelayedTask {
             tapPoint(bagBtn.getPoint());
             sleepTask(500);
         } else {
-            logWarning("Bag button not found (bagTrek.png).");
-            return false;
+            logWarning("Bag button not found (bagTrek.png). Searching for Skip button...");
+
+            // If Bag button not found, try Skip button
+            DTOImageSearchResult skipBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_SKIP_BUTTON, 85);
+            if (skipBtn.isFound()) {
+                logInfo("Skip button found - clicking to proceed.");
+                tapPoint(skipBtn.getPoint());
+                sleepTask(500);
+                // Additional tab press after skip
+                tapPoint(skipBtn.getPoint());
+                sleepTask(500);
+            } else {
+                logWarning("Neither Bag button nor Skip button found. Using back button to exit.");
+                tapBackButton();
+                sleepTask(500);
+                return false;
+            }
         }
         return true;
     }
@@ -283,7 +321,7 @@ public class TundraTrekAutoTask extends DelayedTask {
                 .trim();
     }
 
-    
+
 
     private Integer parseRemaining(String raw, String norm, Pattern fractionPattern, Pattern twoNumbersLoose) {
         // Helper to select the smallest plausible numerator among matches

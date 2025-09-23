@@ -78,8 +78,8 @@ public class CityEventsLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxDailyMission, EnumConfigurationKey.DAILY_MISSION_BOOL);
 		checkBoxMappings.put(checkBoxAutoScheduleDailyMission, EnumConfigurationKey.DAILY_MISSION_AUTO_SCHEDULE_BOOL);
 		checkBoxMappings.put(checkBoxDailyLabyrinth, EnumConfigurationKey.DAILY_LABYRINTH_BOOL);
-	checkBoxMappings.put(checkBoxTrekSupplies, EnumConfigurationKey.TUNDRA_TREK_SUPPLIES_BOOL);
-	checkBoxMappings.put(checkBoxTrekAutomation, EnumConfigurationKey.TUNDRA_TREK_AUTOMATION_BOOL);
+		checkBoxMappings.put(checkBoxTrekSupplies, EnumConfigurationKey.TUNDRA_TREK_SUPPLIES_BOOL);
+		checkBoxMappings.put(checkBoxTrekAutomation, EnumConfigurationKey.TUNDRA_TREK_AUTOMATION_BOOL);
 		checkBoxMappings.put(checkBoxStorehouseChest, EnumConfigurationKey.STOREHOUSE_CHEST_BOOL);
 
 		textFieldMappings.put(textfieldExplorationOffset, EnumConfigurationKey.INT_EXPLORATION_CHEST_OFFSET);
