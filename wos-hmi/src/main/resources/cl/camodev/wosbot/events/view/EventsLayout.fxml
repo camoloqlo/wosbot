@@ -30,9 +30,11 @@
             <Insets />
          </GridPane.margin>
       </CheckBox>
-      <CheckBox fx:id="checkBoxHeroMission" mnemonicParsing="false" text="Hero's Mission" GridPane.rowIndex="1" />
-      <CheckBox fx:id="checkBoxMercenaryEvent" mnemonicParsing="false" text="Mercenary Event" GridPane.rowIndex="2" />
-      <VBox prefHeight="200.0" prefWidth="100.0" GridPane.columnIndex="1">
+       <CheckBox fx:id="checkBoxHeroMission" mnemonicParsing="false" text="Hero's Mission" GridPane.rowIndex="1" />
+       <CheckBox fx:id="checkBoxMercenaryEvent" mnemonicParsing="false" text="Mercenary Event" GridPane.rowIndex="2" />
+       <CheckBox fx:id="checkBoxJourneyofLight" mnemonicParsing="false" text="Journey of Light" GridPane.rowIndex="3" />
+
+       <VBox prefHeight="200.0" prefWidth="100.0" GridPane.columnIndex="1">
          <children>
             <CheckBox fx:id="checkBoxTundraUseGems" mnemonicParsing="false" text="Use gems for refresh" />
             <CheckBox fx:id="checkBoxTundraSSR" mnemonicParsing="false" text="Go only for SSR trucks" />

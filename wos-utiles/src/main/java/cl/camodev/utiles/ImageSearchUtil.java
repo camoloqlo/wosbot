@@ -47,20 +47,20 @@ public class ImageSearchUtil {
 	/**
 	 * Set the current profile name for logging context.
 	 * This is used to prefix log messages with the profile name.
-	 * 
+	 *
 	 * @param profileName The profile name to use
 	 */
 	public static void setProfileName(String profileName) {
 		currentProfileName.set(profileName);
 	}
-	
+
 	/**
 	 * Clear the current profile name
 	 */
 	public static void clearProfileName() {
 		currentProfileName.remove();
 	}
-	
+
 	/**
 	 * Get formatted log message with profile name prefix if available
 	 */
@@ -71,7 +71,7 @@ public class ImageSearchUtil {
 		}
 		return message;
 	}
-	
+
 	static {
 		// Automatic cache initialization in the background
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -771,6 +771,6 @@ public class ImageSearchUtil {
 
 		// Load the library using the absolute path of the destination file
 		System.load(destLib.getAbsolutePath());
-		logger.info(formatLogMessage("Native library loaded from: " + destLib.getAbsolutePath()));
+		logger.info(formatLogMessage("Native library loaded from: " + destLib.getPath())); // print a relative path for privacy when sharing logs
 	}
 }

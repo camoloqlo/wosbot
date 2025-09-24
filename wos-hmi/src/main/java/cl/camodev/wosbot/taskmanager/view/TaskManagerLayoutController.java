@@ -8,6 +8,7 @@ import cl.camodev.wosbot.ot.DTOTaskState;
 import cl.camodev.wosbot.serv.IProfileDataChangeListener;
 import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
+import cl.camodev.wosbot.serv.task.TaskQueue;
 import cl.camodev.wosbot.taskmanager.controller.TaskManagerActionController;
 import cl.camodev.wosbot.taskmanager.model.TaskManagerAux;
 import javafx.animation.Animation;
@@ -21,9 +22,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.util.Duration;
 
 import java.time.LocalDateTime;
@@ -34,7 +37,7 @@ import java.util.stream.Collectors;
 
 public class TaskManagerLayoutController implements IProfileDataChangeListener {
 
-	public javafx.scene.Node getSceneNode() {
+	public Node getSceneNode() {
 		return tabPaneProfiles;
 	}
 
@@ -55,7 +58,9 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 	};
 
 	private final Image iconTrue = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/icons/indicators/green.png")));
-	private final Image iconFalse = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/icons/indicators/red.png")));
+    private final Image iconFalse = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/icons/indicators/red.png")));
+    private final Image iconWaiting = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/icons/indicators/yellow.png")));
+    private final Image iconIdle = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/icons/indicators/grey.png")));
 	private final ObjectProperty<LocalDateTime> globalClock = new SimpleObjectProperty<>(LocalDateTime.now());
 	private final Map<Long, Tab> profileTabsMap = new HashMap<>();
 	private final Map<Long, ObservableList<TaskManagerAux>> tasks = new HashMap<>();
@@ -307,9 +312,8 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 					TaskManagerAux task = getTableRow().getItem();
 					if (task != null) {
 						// Choose the icon based on the boolean property
-						boolean flag = task.scheduledProperty().get();
-						imageView.setImage(flag ? iconTrue : iconFalse);
-						setGraphic(imageView);
+                        ImageView iv = getTaskStatusIcon(task, imageView);
+                        setGraphic(iv);
 						setContentDisplay(ContentDisplay.LEFT);
 					} else {
 						setGraphic(null);
@@ -532,7 +536,7 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 					}
 
 					// Create HBox to hold all three buttons
-					javafx.scene.layout.HBox buttonBox = new javafx.scene.layout.HBox(5);
+					HBox buttonBox = new HBox(5);
 					buttonBox.getChildren().addAll(btnSchedule, btnRemove, btnExecute);
 					setGraphic(buttonBox);
 				}
@@ -548,50 +552,83 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 		return table;
 	}
 
+    public void updateTabOrder () {
+        profileTabsMap.forEach((profileId, tab) -> {
+            if (ServScheduler.getServices().getQueueManager().getQueue(profileId) != null) {
+                DTOProfiles profile = ServScheduler.getServices().getQueueManager().getQueue(profileId).getProfile();
+                ImageView iv = new ImageView();
+                if (profile.getQueuePosition() == 0) {
+                    iv.setImage(iconTrue);
+                } else if (profile.getQueuePosition() == Integer.MAX_VALUE && profile.getEnabled()) {
+                    iv.setImage(iconIdle);
+                } else if (!profile.getEnabled()) {
+                    iv.setImage(iconFalse);
+                } else if (profile.getQueuePosition() != 0 && profile.getQueuePosition() != Integer.MAX_VALUE){
+                    iv.setImage(iconWaiting);
+                }
+                iv.setFitWidth(16);
+                iv.setFitHeight(16);
+                profileTabsMap.get(profileId).graphicProperty().set(iv);
+            }
+        });
+
+        List<Tab> sortedTabs = profileTabsMap.entrySet().stream()
+                .sorted((e1, e2) -> {
+                    if (Objects.equals(e1.getKey(), e2.getKey())) return 0;
+                    TaskQueue q1 = ServScheduler.getServices().getQueueManager().getQueue(e1.getKey());
+                    TaskQueue q2 = ServScheduler.getServices().getQueueManager().getQueue(e2.getKey());
+                    boolean b1 = q1 != null;
+                    boolean b2 = q2 != null;
+                    if (b1 && b2) {
+                        int queuePos1 = q1.getProfile().getQueuePosition();
+                        int queuePos2 = q2.getProfile().getQueuePosition();
+                        if (queuePos1 == Integer.MAX_VALUE && queuePos2 == Integer.MAX_VALUE) return q1.getDelay() > q2.getDelay() ? 1 : -1;
+                        return queuePos1 > queuePos2 ? 1 : -1;
+                    }
+                    return b1 ? -1 : 1; // true first
+                })
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toList());
+        tabPaneProfiles.getTabs().setAll(sortedTabs);
+    }
+
+    private ImageView getTaskStatusIcon(TaskManagerAux task, ImageView iv) {
+        boolean flag = task.scheduledProperty().get();
+        boolean waiting = !task.isExecuting() && !task.hasReadyTask() && task.isScheduled() && ChronoUnit.SECONDS.between(LocalDateTime.now(), task.getNextExecution()) >= 60;
+        if (waiting) {
+            iv.setImage(iconWaiting);
+        } else if (flag) {
+            iv.setImage(iconTrue);
+        } else {
+            if (Objects.equals(task.getTaskName(), "Initialize") || task.getNextExecution() != null) {
+                iv.setImage(iconWaiting);
+            }
+            iv.setImage(iconIdle);
+        }
+        return iv;
+    }
+
 	public void updateTaskStatus(Long profileId, int taskNameId, DTOTaskState taskState) {
 		Platform.runLater(() -> {
-			ObservableList<TaskManagerAux> dataList = tasks.get(profileId);
-			if (dataList == null)
-				return;
-			Optional<TaskManagerAux> optionalTask = dataList.stream().filter(aux -> aux.getTaskEnum().getId() == taskNameId).findFirst();
-			if (!optionalTask.isPresent())
-				return;
+            ObservableList<TaskManagerAux> dataList = tasks.get(profileId);
+            if (dataList == null)
+                return;
+            Optional<TaskManagerAux> optionalTask = dataList.stream().filter(aux -> aux.getTaskEnum().getId() == taskNameId).findFirst();
+            if (!optionalTask.isPresent())
+                return;
 
-			Tab t = profileTabsMap.get(profileId);
-			boolean hasQueue = ServScheduler
-					.getServices()
-					.getQueueManager()
-					.getQueue(profileId) != null;
+            TaskManagerAux taskAux = optionalTask.get();
+            taskAux.setLastExecution(taskState.getLastExecutionTime());
+            taskAux.setNextExecution(taskState.getNextExecutionTime());
+            taskAux.setScheduled(taskState.isScheduled());
+            taskAux.setExecuting(taskState.isExecuting());
+            taskAux.setHasReadyTask(taskState.getNextExecutionTime() != null && ChronoUnit.SECONDS.between(LocalDateTime.now(), taskState.getNextExecutionTime()) <= 0);
+            taskAux.setNearestMinutesUntilExecution(taskState.getNextExecutionTime() != null ? ChronoUnit.SECONDS.between(LocalDateTime.now(), taskState.getNextExecutionTime()) : Long.MAX_VALUE);
 
-			ImageView iv = new ImageView(hasQueue ? iconTrue : iconFalse);
+            FXCollections.sort(dataList, TASK_AUX_COMPARATOR);
 
-			iv.setFitWidth(16);
-			iv.setFitHeight(16);
-
-			t.setGraphic(iv);
-			TaskManagerAux taskAux = optionalTask.get();
-			taskAux.setLastExecution(taskState.getLastExecutionTime());
-			taskAux.setNextExecution(taskState.getNextExecutionTime());
-			taskAux.setScheduled(taskState.isScheduled());
-			taskAux.setExecuting(taskState.isExecuting());
-			taskAux.setHasReadyTask(taskState.getNextExecutionTime() != null && ChronoUnit.SECONDS.between(LocalDateTime.now(), taskState.getNextExecutionTime()) <= 0);
-			taskAux.setNearestMinutesUntilExecution(taskState.getNextExecutionTime() != null ? ChronoUnit.SECONDS.between(LocalDateTime.now(), taskState.getNextExecutionTime()) : Long.MAX_VALUE);
-
-			FXCollections.sort(dataList, TASK_AUX_COMPARATOR);
-
-			List<Tab> sortedTabs = profileTabsMap.entrySet().stream()
-					.sorted((e1, e2) -> {
-
-						boolean b1 = ServScheduler.getServices().getQueueManager().getQueue(e1.getKey()) != null;
-						boolean b2 = ServScheduler.getServices().getQueueManager().getQueue(e2.getKey()) != null;
-						if (b1 == b2) return 0;
-						return b1 ? -1 : 1; // true first
-					})
-					.map(Map.Entry::getValue)
-					.collect(Collectors.toList());
-			tabPaneProfiles.getTabs().setAll(sortedTabs);
-		});
-
+            updateTabOrder();
+        });
 	}
 }
 

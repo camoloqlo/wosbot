@@ -177,16 +177,16 @@ public abstract class DelayedTask implements Runnable, Delayed {
                 sleepTask(300);
             }
         }
-        
+
         logError("Failed to find the intel button after 3 attempts.");
         throw new HomeNotFoundException("Failed to navigate to intel screen.");
     }
-    
+
     /**
      * Helper method to check if we're currently on the intel screen.
      * Uses both image recognition and OCR for verification.
      * Makes two attempts before determining the screen state.
-     * 
+     *
      * @return true if we're on the intel screen, false otherwise
      */
     private boolean isIntelScreenActive() {
@@ -195,12 +195,12 @@ public abstract class DelayedTask implements Runnable, Delayed {
             // Try image recognition first (faster)
             DTOImageSearchResult intelScreen1 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_1, 90);
             DTOImageSearchResult intelScreen2 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_2, 90);
-            
+
             if (intelScreen1.isFound() || intelScreen2.isFound()) {
                 logDebug("Intel screen confirmed via image template (attempt " + (attempt + 1) + ")");
                 return true;
             }
-            
+
             // Fallback to OCR check
             try {
                 String intelText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(85, 15), new DTOPoint(171, 62));
@@ -211,13 +211,13 @@ public abstract class DelayedTask implements Runnable, Delayed {
             } catch (IOException | TesseractException e) {
                 logWarning("Could not perform OCR to check for intel screen. Error: " + e.getMessage());
             }
-            
+
             // If this is the first attempt and we didn't find the intel screen, wait briefly before trying again
             if (attempt == 0) {
                 sleepTask(300);
             }
         }
-        
+
         // After two attempts, we still couldn't find the intel screen
         logDebug("Intel screen not detected after two attempts");
         return false;

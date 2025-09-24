@@ -166,7 +166,7 @@ public class IntelligenceTask extends DelayedTask {
 
 		if (profile.getConfig(EnumConfigurationKey.INTEL_CAMP_BOOL, Boolean.class)) {
 			ensureOnIntelScreen();
-            
+
             logInfo("Searching for survivor camps using grayscale matching.");
             EnumTemplates survivorTemplate = fcEra ? EnumTemplates.INTEL_SURVIVOR_GRAYSCALE_FC : EnumTemplates.INTEL_SURVIVOR_GRAYSCALE;
             if (searchAndProcessGrayscale(survivorTemplate, 5, 90, this::processSurvivor)) {
@@ -177,7 +177,7 @@ public class IntelligenceTask extends DelayedTask {
 
 		if (profile.getConfig(EnumConfigurationKey.INTEL_EXPLORATION_BOOL, Boolean.class)) {
 			ensureOnIntelScreen();
-            
+
             logInfo("Searching for explorations using grayscale matching.");
             EnumTemplates journeyTemplate = fcEra ? EnumTemplates.INTEL_JOURNEY_GRAYSCALE_FC : EnumTemplates.INTEL_JOURNEY_GRAYSCALE;
             if (searchAndProcessGrayscale(journeyTemplate, 5, 90, this::processJourney)) {
@@ -227,7 +227,7 @@ public class IntelligenceTask extends DelayedTask {
 		for (int attempt = 0; attempt < maxAttempts; attempt++) {
 			logDebug("Searching for grayscale template '" + template + "', attempt " + (attempt + 1) + ".");
 			DTOImageSearchResult result = emuManager.searchTemplateGrayscale(EMULATOR_NUMBER, template, confidence);
-			
+
 			if (result.isFound()) {
 				logInfo("Grayscale template found: " + template);
 				processMethod.accept(result);
@@ -236,7 +236,7 @@ public class IntelligenceTask extends DelayedTask {
 		}
 		return false;
 	}
-	
+
 	/**
 	 * Search for a template and process it with the provided method.
 	 * This method is used for non-grayscale templates like fire beasts.

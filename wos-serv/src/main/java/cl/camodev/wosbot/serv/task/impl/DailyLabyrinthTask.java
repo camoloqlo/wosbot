@@ -11,6 +11,7 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -126,7 +127,7 @@ public class DailyLabyrinthTask extends DelayedTask {
      * Executes labyrinth challenges based on the current day of the week
      */
     private void executeLabyrinthChallenges() {
-        DayOfWeek currentDay = LocalDateTime.now().getDayOfWeek();
+        DayOfWeek currentDay = LocalDateTime.now(ZoneOffset.UTC).getDayOfWeek();
         List<Integer> availableDungeons = getAvailableDungeons(currentDay);
 
         logInfo("Executing challenges for " + currentDay + ". Available dungeons: " + availableDungeons);

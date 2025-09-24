@@ -154,7 +154,10 @@ public enum EnumConfigurationKey {
 	
 	// Hero mission event
 	HERO_MISSION_EVENT_BOOL("false", Boolean.class),
-	
+
+    // Journey of Light event
+    JOURNEY_OF_LIGHT_BOOL("false", Boolean.class),
+
     // ========================================================================
     // EXPERT SETTINGS
     // ========================================================================

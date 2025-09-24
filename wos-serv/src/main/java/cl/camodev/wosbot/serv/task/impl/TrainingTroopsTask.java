@@ -111,7 +111,7 @@ public class TrainingTroopsTask extends DelayedTask {
         // Attempt multiple times to read troop status (OCR can be unreliable)
         for (int attempt = 1; attempt <= 5; attempt++) {
             try {
-                logDebug("Reading troop status (Attempt " + attempt + "/5)...");
+                logDebug("Reading troop status (Attempt " + attempt + "/3)...");
 
                 DTOPoint[] points = getTroopsPoints(troopType);
                 String rawText = emuManager.ocrRegionText(EMULATOR_NUMBER, points[0], points[1]);
@@ -143,7 +143,7 @@ public class TrainingTroopsTask extends DelayedTask {
 
             } catch (Exception e) {
                 logError("Error during training check attempt " + attempt, e);
-                if (attempt == 5) {
+                if (attempt == 2) {
                     logInfo("All attempts failed. Rescheduling check in 1 hour.");
                     reschedule(LocalDateTime.now().plusHours(1));
                 }

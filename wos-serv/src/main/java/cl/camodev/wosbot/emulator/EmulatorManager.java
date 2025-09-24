@@ -480,6 +480,7 @@ public class EmulatorManager {
             logger.info("Profile " + profile.getName() + " is getting queue slot.");
             if (MAX_RUNNING_EMULATORS > 0 && waitingQueue.isEmpty()) {
                 logger.info("Profile " + profile.getName() + " acquired slot immediately.");
+                profile.setQueuePosition(0);
                 MAX_RUNNING_EMULATORS--;
                 return;
             }
@@ -496,11 +497,13 @@ public class EmulatorManager {
 
                 // Query and notify the current position of the thread in the queue.
                 int position = getPosition(currentWaiting);
+                profile.setQueuePosition(position);
                 callback.onPositionUpdate(Thread.currentThread(), position);
             }
             logger.info("Profile {} acquired slot", profile.getName());
             // It's the turn and a slot is available.
             waitingQueue.poll(); // Remove the thread from the queue.
+            profile.setQueuePosition(0);
             MAX_RUNNING_EMULATORS--; // Acquire the slot.
 
             // Notify other threads to re-evaluate the condition.
@@ -514,6 +517,7 @@ public class EmulatorManager {
         lock.lock();
         try {
             logger.info("Profile {} is releasing queue slot.", profile.getName());
+            profile.setQueuePosition(Integer.MAX_VALUE);
             MAX_RUNNING_EMULATORS++;
             permitsAvailable.signalAll();
         } finally {
