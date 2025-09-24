@@ -3,6 +3,7 @@ package cl.camodev.wosbot.serv.task.impl;
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
+import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
@@ -71,6 +72,14 @@ public class TundraTrekAutoTask extends DelayedTask {
     @Override
     protected void execute() {
         logInfo("Starting TundraTrekAuto task for profile: " + profile.getName());
+
+        // Check if auto manage events is enabled
+        boolean autoManageEnabled = profile.getConfig(EnumConfigurationKey.TUNDRA_TREK_AUTOMATION_BOOL, Boolean.class);
+        if (!autoManageEnabled) {
+            logInfo("Tundra Trek automation is disabled for this profile. Skipping task.");
+            this.setRecurring(false);
+            return;
+        }
 
         try {
             if (!navigateToTundraMenu()) {
