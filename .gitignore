@@ -45,3 +45,4 @@ WosBot.manifest
 log/bot.log
 .vscode/settings.json
 /log
+TASK_CONFIGURATION_CHECK_ISSUE.md
