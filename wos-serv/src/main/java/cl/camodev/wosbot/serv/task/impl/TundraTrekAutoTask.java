@@ -161,11 +161,14 @@ public class TundraTrekAutoTask extends DelayedTask {
     }
 
     private boolean clickAutoThenBag() {
+        boolean autoButtonSuccess = false;
+
         // First try to click the Auto button
         DTOImageSearchResult autoBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
         if (autoBtn.isFound()) {
             tapPoint(autoBtn.getPoint());
             sleepTask(500);
+            autoButtonSuccess = true;
         } else {
             logWarning("Auto button not found (autoTrek.png). Trying upper screen click fallback...");
             
@@ -174,21 +177,23 @@ public class TundraTrekAutoTask extends DelayedTask {
             tapPoint(UPPER_SCREEN_CLICK);
             sleepTask(2000);
             
-            // Search for specific image section and click it
+            // Search for Auto button first, then Blue button as fallback
+            DTOImageSearchResult autoButtonCheck = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
             DTOImageSearchResult specialSection = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BLUE_BUTTON, 85);
-            if (specialSection.isFound()) {
+
+            if (autoButtonCheck.isFound()) {
+                logInfo("Auto button now visible after upper screen click - clicking it directly.");
+                tapPoint(autoButtonCheck.getPoint());
+                sleepTask(500);
+                autoButtonSuccess = true;
+            } else if (specialSection.isFound()) {
                 logInfo("Blue button found - clicking it.");
                 tapPoint(specialSection.getPoint());
                 sleepTask(3500);
             }
-            
-            // Check if Auto button is now visible after upper screen click
-            DTOImageSearchResult autoRetry = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
-            if (autoRetry.isFound()) {
-                logInfo("Auto button now visible after upper screen click - clicking it.");
-                tapPoint(autoRetry.getPoint());
-                sleepTask(500);
-            } else {
+
+            // If neither Auto nor Blue button found, try Skip button as alternative
+            if (!autoButtonCheck.isFound() && !specialSection.isFound()) {
                 logWarning("Auto button still not found after upper screen click. Searching for Skip button as alternative...");
 
                 // If Auto button not found, try Skip button as alternative
@@ -207,6 +212,7 @@ public class TundraTrekAutoTask extends DelayedTask {
                         logInfo("Auto button now visible after skip - clicking it.");
                         tapPoint(autoRetryAfterSkip.getPoint());
                         sleepTask(500);
+                        autoButtonSuccess = true;
                     }
                 } else {
                     logWarning("Neither Auto button nor Skip button found. Cannot start automation.");
@@ -217,65 +223,125 @@ public class TundraTrekAutoTask extends DelayedTask {
             }
         }
 
-        // Then click the Bag button
+        // Only proceed to Bag button if Auto button was successfully clicked
+        if (!autoButtonSuccess) {
+            logWarning("Auto button was not successfully activated. Skipping bag button sequence.");
+            return false;
+        }
+
+        logInfo("Auto button was successful. Proceeding to Bag button sequence.");
+
+        // Then click the Bag button - but first check and handle checkbox state
         DTOImageSearchResult bagBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BAG_BUTTON, 85);
         if (bagBtn.isFound()) {
-            tapPoint(bagBtn.getPoint());
-            sleepTask(500);
+            if (ensureCheckboxActive()) {
+                tapPoint(bagBtn.getPoint());
+                sleepTask(500);
+            } else {
+                logWarning("Could not ensure checkbox is active. Aborting bag button click.");
+                tapBackButton();
+                sleepTask(500);
+                return false;
+            }
         } else {
             logWarning("Bag button not found (bagTrek.png). Trying Blue Button fallback...");
             
-            // Try Blue Button fallback - click upper screen then search for blue button
-            logInfo("Clicking in upper screen half to potentially reveal Bag button.");
+            // Try Blue Button fallback - click upper screen then search for buttons
+            logInfo("Clicking in upper screen half to potentially reveal buttons.");
             tapPoint(UPPER_SCREEN_CLICK);
             sleepTask(2000);
-            
-            // Search for blue button and click it
-            DTOImageSearchResult blueBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BLUE_BUTTON, 85);
-            if (blueBtn.isFound()) {
-                logInfo("Blue button found - clicking it.");
-                tapPoint(blueBtn.getPoint());
-                sleepTask(2000);
 
-                // Nach Blue-Button: Upper Screen Click, 1s Pause, dann Auto-Button suchen
-                logInfo("After blue button: performing another upper screen click.");
-                tapPoint(UPPER_SCREEN_CLICK);
-                sleepTask(1000);
-                DTOImageSearchResult autoAfterBlue = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
-                if (autoAfterBlue.isFound()) {
-                    logInfo("Auto button found after blue button - clicking it.");
-                    tapPoint(autoAfterBlue.getPoint());
-                    sleepTask(500);
-                } else {
-                    logInfo("Auto button not found after blue button.");
+            // First check if Auto button appeared after upper screen click
+            DTOImageSearchResult autoCheckAfterClick = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
+            if (autoCheckAfterClick.isFound()) {
+                logInfo("Auto button appeared after upper screen click - clicking it.");
+                tapPoint(autoCheckAfterClick.getPoint());
+                sleepTask(500);
+                autoButtonSuccess = true;
+
+                // After Auto button click, check if Blue button is still available (Auto might be grayed out)
+                DTOImageSearchResult blueBtnCheck = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BLUE_BUTTON, 85);
+                if (blueBtnCheck.isFound()) {
+                    logInfo("Blue button still available after Auto click - clicking to activate Auto button.");
+                    tapPoint(blueBtnCheck.getPoint());
+                    sleepTask(2000);
+
+                    // After Blue button click, search for Auto button again
+                    DTOImageSearchResult autoAfterBlue = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
+                    if (autoAfterBlue.isFound()) {
+                        logInfo("Auto button now active after Blue button - clicking it.");
+                        tapPoint(autoAfterBlue.getPoint());
+                        sleepTask(500);
+                    } else {
+                        logWarning("Auto button not found after Blue button click.");
+                    }
                 }
 
-                // Check if Bag button is now visible after blue button click
-                DTOImageSearchResult bagRetry = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BAG_BUTTON, 85);
-                if (bagRetry.isFound()) {
-                    logInfo("Bag button now visible after blue button click - clicking it.");
-                    tapPoint(bagRetry.getPoint());
-                    sleepTask(500);
+                // Now try to find and click Bag button
+                DTOImageSearchResult bagAfterAuto = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BAG_BUTTON, 85);
+                if (bagAfterAuto.isFound()) {
+                    logInfo("Bag button found after Auto button - checking checkbox state.");
+                    if (ensureCheckboxActive()) {
+                        tapPoint(bagAfterAuto.getPoint());
+                        sleepTask(500);
+                    }
                 } else {
-                    logInfo("Bag button still not found after blue button. Proceeding anyway.");
+                    logWarning("Bag button not found after Auto button in fallback.");
                 }
             } else {
-                logWarning("Blue button not found. Searching for Skip button...");
+                // If Auto button not found, search for Blue button as fallback
+                DTOImageSearchResult blueBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BLUE_BUTTON, 85);
 
-                // If Blue button not found, try Skip button
-                DTOImageSearchResult skipBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_SKIP_BUTTON, 85);
-                if (skipBtn.isFound()) {
-                    logInfo("Skip button found - clicking to proceed.");
-                    tapPoint(skipBtn.getPoint());
-                    sleepTask(500);
-                    // Additional tab press after skip
-                    tapPoint(skipBtn.getPoint());
-                    sleepTask(500);
+                if (blueBtn.isFound()) {
+                    logInfo("Blue button found - clicking it.");
+                    tapPoint(blueBtn.getPoint());
+                    sleepTask(2000);
+
+                    // Nach Blue-Button: Upper Screen Click, 1s Pause, dann Auto-Button suchen
+                    logInfo("After blue button: performing another upper screen click.");
+                    tapPoint(UPPER_SCREEN_CLICK);
+                    sleepTask(1000);
+                    DTOImageSearchResult autoAfterBlue = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
+                    if (autoAfterBlue.isFound()) {
+                        logInfo("Auto button found after blue button - clicking it.");
+                        tapPoint(autoAfterBlue.getPoint());
+                        sleepTask(500);
+                        autoButtonSuccess = true;
+                    } else {
+                        logInfo("Auto button not found after blue button.");
+                    }
+
+                    // After blue button sequence, check if Bag button is now visible
+                    DTOImageSearchResult bagRetry = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BAG_BUTTON, 85);
+                    if (bagRetry.isFound()) {
+                        logInfo("Bag button now visible after blue button click - checking checkbox state.");
+                        if (ensureCheckboxActive()) {
+                            tapPoint(bagRetry.getPoint());
+                            sleepTask(500);
+                        } else {
+                            logInfo("Checkbox could not be activated. Proceeding anyway.");
+                        }
+                    } else {
+                        logInfo("Bag button still not found after blue button. Proceeding anyway.");
+                    }
                 } else {
-                    logWarning("Neither Blue button, Bag button nor Skip button found. Using back button to exit.");
-                    tapBackButton();
-                    sleepTask(500);
-                    return false;
+                    logWarning("Blue button not found. Searching for Skip button as final fallback...");
+
+                    // If neither button found, try Skip button
+                    DTOImageSearchResult skipBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_SKIP_BUTTON, 85);
+                    if (skipBtn.isFound()) {
+                        logInfo("Skip button found - clicking to proceed.");
+                        tapPoint(skipBtn.getPoint());
+                        sleepTask(500);
+                        // Additional tab press after skip
+                        tapPoint(skipBtn.getPoint());
+                        sleepTask(500);
+                    } else {
+                        logWarning("Skip button not found. Using back button to exit.");
+                        tapBackButton();
+                        sleepTask(500);
+                        return false;
+                    }
                 }
             }
         }
@@ -458,6 +524,44 @@ public class TundraTrekAutoTask extends DelayedTask {
             }
         }
         return best;
+    }
+
+    private boolean ensureCheckboxActive() {
+        logInfo("Checking checkbox state before proceeding with bag button.");
+
+        // First check if active checkbox is already visible
+        logDebug("Searching for active checkbox template");
+        DTOImageSearchResult activeCheck = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE, 85);
+        logDebug("Active checkbox search result: found=" + activeCheck.isFound());
+        if (activeCheck.isFound()) {
+            logInfo("Checkbox is already active. Proceeding.");
+            return true;
+        }
+
+        // Check if inactive checkbox is visible
+        logDebug("Searching for inactive checkbox template");
+        DTOImageSearchResult inactiveCheck = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_CHECK_INACTIVE, 85);
+        logDebug("Inactive checkbox search result: found=" + inactiveCheck.isFound());
+        if (inactiveCheck.isFound()) {
+            logInfo("Checkbox is inactive. Clicking to activate it at position: " + inactiveCheck.getPoint());
+            tapPoint(inactiveCheck.getPoint());
+            sleepTask(500);
+
+            // Verify that checkbox is now active
+            logDebug("Verifying checkbox activation...");
+            DTOImageSearchResult activeCheckRetry = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE, 85);
+            logDebug("Post-click active checkbox search: found=" + activeCheckRetry.isFound());
+            if (activeCheckRetry.isFound()) {
+                logInfo("Checkbox successfully activated.");
+                return true;
+            } else {
+                logWarning("Checkbox click did not activate it properly.");
+                return false;
+            }
+        }
+
+        logWarning("Neither active nor inactive checkbox found. Template files may be missing or checkbox not visible on screen.");
+        return false;
     }
 
     private void rescheduleOneHourLater(String reason) {

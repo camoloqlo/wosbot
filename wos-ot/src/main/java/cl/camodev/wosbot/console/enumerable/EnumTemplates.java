@@ -300,6 +300,8 @@ public enum EnumTemplates {
 	TUNDRA_TREK_BAG_BUTTON("/templates/tundratrek/bagTrek.png"),
 	TUNDRA_TREK_SKIP_BUTTON("/templates/tundratrek/skipTrek.png"),
 	TUNDRA_TREK_BLUE_BUTTON("/templates/tundratrek/bluebuttonTrek.png"),
+	TUNDRA_TREK_CHECK_ACTIVE("/templates/tundratrek/checkactiveTrek.png"),
+	TUNDRA_TREK_CHECK_INACTIVE("/templates/tundratrek/checkinactiveTrek.png"),
 
     // ========================================================================
     // TUNDRA TRUCK AND TREK EVENTS
