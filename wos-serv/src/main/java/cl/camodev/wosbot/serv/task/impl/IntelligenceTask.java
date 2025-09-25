@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import cl.camodev.utiles.UtilRally;
 import cl.camodev.wosbot.almac.repo.DailyTaskRepository;
 import cl.camodev.wosbot.almac.repo.IDailyTaskRepository;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -23,10 +24,10 @@ import net.sourceforge.tess4j.TesseractException;
 
 public class IntelligenceTask extends DelayedTask {
 
+    private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
 	private boolean marchQueueLimitReached = false;
 	private boolean beastMarchSent = false;
 	private boolean fcEra = false;
-    private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
 	public IntelligenceTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
 		super(profile, tpTask);
 	}
@@ -78,49 +79,20 @@ public class IntelligenceTask extends DelayedTask {
 		}
 
         // check is stamina enough to process any intel
-        try {
-            Integer staminaValue = null;
-            Pattern staminaPattern = Pattern.compile("(\\d{1,3}(?:[.,]\\d{3})*|\\d+)");
-            for (int attempt = 0; attempt < 5 && staminaValue == null; attempt++) {
-                try {
-                    String ocr = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(582, 23), new DTOPoint(672, 55));
-                    if (ocr != null && !ocr.trim().isEmpty()) {
-                        Matcher m = staminaPattern.matcher(ocr);
-                        if (m.find()) {
-                            String raw = m.group(1);
-                            // Remove separators (commas or dots)
-                            String normalized = raw.replaceAll("[.,]", "");
-                            try {
-                                staminaValue = Integer.valueOf(normalized);
-                            } catch (NumberFormatException nfe) {
-                                logDebug("Parsed stamina not a valid integer: '" + raw + "'");
-                            }
-                        }
-                    }
-                } catch (IOException | TesseractException ex) {
-                    logDebug("OCR attempt " + (attempt + 1) + " failed: " + ex.getMessage());
-                }
-                if (staminaValue == null) {
-                    sleepTask(100);
-                }
-            }
+        Integer staminaValue = readStaminaValue(new DTOPoint(582, 23), new DTOPoint(672, 55));
+        if (staminaValue == null) {
+            logWarning("No stamina value found after OCR attempts.");
+            this.reschedule(LocalDateTime.now().plusMinutes(5));
+            return;
+        }
 
-            if (staminaValue == null) {
-                logWarning("No stamina value found after OCR attempts.");
-                this.reschedule(LocalDateTime.now().plusMinutes(5));
-                return;
-            }
-
-            int minStaminaRequired = 30; // Minimum stamina required to process intel, make it configurable if needed?
-            if (staminaValue < minStaminaRequired) {
-                logWarning("Not enough stamina to process intel. Current stamina: " + staminaValue + ". Required: " + minStaminaRequired + ".");
-                long minutesToRegen = (long) (minStaminaRequired - staminaValue) * 5L; // 1 stamina every 5 minutes
-                LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(minutesToRegen);
-                this.reschedule(rescheduleTime);
-                return;
-            }
-        } catch (Exception e) {
-            logError("Unexpected error reading stamina: " + e.getMessage(), e);
+        int minStaminaRequired = 30; // Minimum stamina required to process intel, make it configurable if needed?
+        if (staminaValue < minStaminaRequired) {
+            logWarning("Not enough stamina to process intel. Current stamina: " + staminaValue + ". Required: " + minStaminaRequired + ".");
+            long minutesToRegen = (long) (minStaminaRequired - staminaValue) * 5L; // 1 stamina every 5 minutes
+            LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(minutesToRegen);
+            this.reschedule(rescheduleTime);
+            return;
         }
 
 		if (profile.getConfig(EnumConfigurationKey.INTEL_BEASTS_BOOL, Boolean.class)) {
@@ -336,7 +308,9 @@ public class IntelligenceTask extends DelayedTask {
 		if (useFlag) {
 			// Select the specified flag
 			int flagToSelect = profile.getConfig(EnumConfigurationKey.INTEL_BEASTS_FLAG_INT, Integer.class);
-			selectMarchFlag(flagToSelect);
+			DTOPoint flagPoint = UtilRally.getMarchFlagPoint(flagToSelect);
+            logInfo("Tapping flag " + flagToSelect );
+            emuManager.tapAtPoint(EMULATOR_NUMBER, flagPoint);
 			sleepTask(500);
 		}
 		
@@ -374,25 +348,7 @@ public class IntelligenceTask extends DelayedTask {
 		}
 	}
 	
-	private void selectMarchFlag(int flagNumber) {
-		logInfo("Selecting march flag " + flagNumber + ".");
-        DTOPoint flagPoint = null;
-        switch (flagNumber) {
-			case 1: flagPoint = new DTOPoint(70, 120); break;
-            case 2: flagPoint = new DTOPoint(140, 120); break;
-            case 3: flagPoint = new DTOPoint(210, 120); break;
-            case 4: flagPoint = new DTOPoint(280, 120); break;
-            case 5: flagPoint = new DTOPoint(350, 120); break;
-            case 6: flagPoint = new DTOPoint(420, 120); break;
-            case 7: flagPoint = new DTOPoint(490, 120); break;
-            case 8: flagPoint = new DTOPoint(560, 120); break;
-            default:
-			logError("Invalid flag number: " + flagNumber + ". Defaulting to flag 1.");
-			flagPoint = new DTOPoint(70, 120);
-			break;
-        }
-        emuManager.tapAtPoint(EMULATOR_NUMBER, flagPoint);
-    }
+
 	
 	private long parseTimeToSeconds(String timeString) {
 		if (timeString == null || timeString.trim().isEmpty()) {
@@ -494,6 +450,11 @@ public class IntelligenceTask extends DelayedTask {
         return new MarchesAvailable(false, LocalDateTime.now().plusMinutes(5));
     }
 
+    @Override
+	protected EnumStartLocation getRequiredStartLocation() {
+		return EnumStartLocation.WORLD;
+	}
+
     private enum GatherType {
         MEAT( "meat", EnumTemplates.GAME_HOME_SHORTCUTS_MEAT, TpDailyTaskEnum.GATHER_MEAT),
         WOOD( "wood", EnumTemplates.GAME_HOME_SHORTCUTS_WOOD, TpDailyTaskEnum.GATHER_WOOD),
@@ -515,9 +476,4 @@ public class IntelligenceTask extends DelayedTask {
     }
 
     public record MarchesAvailable(boolean available, LocalDateTime rescheduleTo) { }
-
-    @Override
-	protected EnumStartLocation getRequiredStartLocation() {
-		return EnumStartLocation.WORLD;
-	}
 }

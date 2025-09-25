@@ -22,10 +22,10 @@ import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class DelayedTask implements Runnable, Delayed {
-
-    private ProfileLogger logger; // Will be initialized in constructor
 
     protected volatile boolean recurring = true;
     protected LocalDateTime lastExecutionTime;
@@ -34,10 +34,10 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected DTOProfiles profile;
     protected String EMULATOR_NUMBER;
     protected TpDailyTaskEnum tpTask;
-
     protected EmulatorManager emuManager = EmulatorManager.getInstance();
     protected ServScheduler servScheduler = ServScheduler.getServices();
     protected ServLogs servLogs = ServLogs.getServices();
+    private ProfileLogger logger; // Will be initialized in constructor
 
     public DelayedTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         this.profile = profile;
@@ -221,6 +221,35 @@ public abstract class DelayedTask implements Runnable, Delayed {
         // After two attempts, we still couldn't find the intel screen
         logDebug("Intel screen not detected after two attempts");
         return false;
+    }
+
+    protected Integer readStaminaValue(DTOPoint topLeft, DTOPoint bottomRight) {
+        Integer staminaValue = null;
+        Pattern staminaPattern = Pattern.compile("(\\d{1,3}(?:[.,]\\d{3})*|\\d+)");
+        for (int attempt = 0; attempt < 5 && staminaValue == null; attempt++) {
+            try {
+                String ocr = emuManager.ocrRegionText(EMULATOR_NUMBER, topLeft, bottomRight);
+                if (ocr != null && !ocr.trim().isEmpty()) {
+                    Matcher m = staminaPattern.matcher(ocr);
+                    if (m.find()) {
+                        String raw = m.group(1);
+                        // Remove separators (commas or dots)
+                        String normalized = raw.replaceAll("[.,]", "");
+                        try {
+                            staminaValue = Integer.valueOf(normalized);
+                        } catch (NumberFormatException nfe) {
+                            logDebug("Parsed stamina not a valid integer: '" + raw + "'");
+                        }
+                    }
+                }
+            } catch (IOException | TesseractException ex) {
+                logDebug("OCR attempt " + (attempt + 1) + " failed: " + ex.getMessage());
+            }
+            if (staminaValue == null) {
+                sleepTask(100);
+            }
+        }
+        return staminaValue;
     }
 
     public boolean isRecurring() {
