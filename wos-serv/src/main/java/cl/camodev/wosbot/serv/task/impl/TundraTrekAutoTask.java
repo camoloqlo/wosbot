@@ -1,6 +1,5 @@
 package cl.camodev.wosbot.serv.task.impl;
 
-import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -12,15 +11,14 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
 
 import java.time.LocalDateTime;
 import java.time.Duration;
-import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TundraTrekAutoTask extends DelayedTask {
     private static class WaitOutcome {
-        boolean finished;   // reached 0/100
-        boolean anyParsed;  // at least one OCR parse succeeded (any value)
-        boolean stagnated;  // values did not decrease for OCR_MAX_WAIT
+        boolean finished;   // Reached 0/100
+        boolean anyParsed;  // At least one OCR parse succeeded (some numeric value detected)
+        boolean stagnated;  // A value was parsed but did not decrease within STAGNATION_TIMEOUT (1 min)
     }
 
     // =========================== CONSTANTS ===========================
@@ -30,30 +28,28 @@ public class TundraTrekAutoTask extends DelayedTask {
     private static final DTOPoint CITY_TAB_BUTTON = new DTOPoint(110, 270);
     private static final DTOPoint SCROLL_START_POINT = new DTOPoint(400, 800);
     private static final DTOPoint SCROLL_END_POINT = new DTOPoint(400, 100);
-    private static final DTOPoint SKIP_BUTTON = new DTOPoint(71, 827);
-    private static final DTOPoint RESULT_SKIP_BUTTON = new DTOPoint(640, 175);
     
     // Fallback click point in upper screen half when Auto button not visible
-    private static final DTOPoint UPPER_SCREEN_CLICK = new DTOPoint(400, 200);
+    private static final DTOPoint UPPER_SCREEN_CLICK = new DTOPoint(360, 200);
 
     // OCR region for the trek counter (top-right indicator like "14/100").
-    // NOTE: Calibrate via ADB/screenshot if needed.
-    private static final DTOPoint TREK_COUNTER_TOP_LEFT = new DTOPoint(520, 18);
-    private static final DTOPoint TREK_COUNTER_BOTTOM_RIGHT = new DTOPoint(655, 80);
+    // Optimized coordinates based on debug analysis: Average offset {12, -2}
+    private static final DTOPoint TREK_COUNTER_TOP_LEFT = new DTOPoint(516, 22);
+    private static final DTOPoint TREK_COUNTER_BOTTOM_RIGHT = new DTOPoint(610, 60);
 
-    // Offsets to try around the expected OCR region (favor left/up as requested)
+    // Minimal offsets - primary position should now work with {0, 0}
     private static final int[][] OCR_REGION_OFFSETS = new int[][]{
-        // Favor left + much more up, then vary gradually
-        {-200, -200}, {-160, -200}, {-120, -200},
-        {-160, -80}, {-160, -120}, {-160, -160},
-        {-120, -80}, {-80, -80}, {-40, -80}, {0, -80},
-        // Previous near region attempts
-        {0, 0}, {-40, -10}, {-80, -20}, {-120, -30}, {-160, -40}
+        // Primary position (should work perfectly now)
+        {0, 0},
+        // Minor fallbacks for edge cases
+        {-2, 1}, {2, -1}, {3, 0}, {-2, -3}
     };
 
     // Polling parameters
-    private static final long OCR_POLL_INTERVAL_MS = 2500;
-    private static final Duration OCR_MAX_WAIT = Duration.ofMinutes(2);
+    private static final long OCR_POLL_INTERVAL_MS = 2500; // Interval between OCR polling attempts
+    // NOTE: Timeouts handled inside waitUntilTrekCounterZero():
+    //  - STAGNATION_TIMEOUT (1 minute) when values are parsed but not decreasing
+    //  - NO_PARSE_TIMEOUT (3 minutes) when no valid OCR value is parsed at all
 
     public TundraTrekAutoTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
@@ -115,10 +111,10 @@ public class TundraTrekAutoTask extends DelayedTask {
                 reschedule(LocalDateTime.now().plusHours(12));
             } else {
                 if (!outcome.anyParsed) {
-                    logWarning("Timeout (2 min) with no valid OCR. Exiting with double back and rescheduling in 10 minutes.");
+                    logWarning("Timeout (3 min) with no valid OCR. Exiting with double back and rescheduling in 10 minutes.");
                     exitEventDoubleBack();
                 } else if (outcome.stagnated) {
-                    logWarning("Timeout (2 min) without decrease (values same or higher). Exiting with single back and rescheduling in 10 minutes.");
+                    logWarning("Timeout (1 min) without decrease (values same or higher). Exiting with single back and rescheduling in 10 minutes.");
                     tapBackButton();
                 } else {
                     logInfo("Exiting with single back and rescheduling in 10 minutes.");
@@ -297,7 +293,7 @@ public class TundraTrekAutoTask extends DelayedTask {
                     tapPoint(blueBtn.getPoint());
                     sleepTask(2000);
 
-                    // Nach Blue-Button: Upper Screen Click, 1s Pause, dann Auto-Button suchen
+                    // After blue button: upper screen click, short pause, then search Auto button again
                     logInfo("After blue button: performing another upper screen click.");
                     tapPoint(UPPER_SCREEN_CLICK);
                     sleepTask(1000);
@@ -349,13 +345,15 @@ public class TundraTrekAutoTask extends DelayedTask {
     }
 
     private WaitOutcome waitUntilTrekCounterZero() {
-    LocalDateTime noParseStart = LocalDateTime.now();
         Pattern fraction = Pattern.compile("(\\d+)\\s*/\\s*(\\d+)");
         Pattern twoNumbersLoose = Pattern.compile("(\\d{1,3})\\D+(\\d{2,3})");
         int attempts = 0;
         WaitOutcome outcome = new WaitOutcome();
         Integer lastValue = null;
         LocalDateTime lastDecreaseAt = null;
+    final Duration STAGNATION_TIMEOUT = Duration.ofMinutes(1); // 1 minute when valid values are parsed but not decreasing
+    final Duration NO_PARSE_TIMEOUT = Duration.ofMinutes(3);   // 3 minutes when no valid value can be parsed at all
+        LocalDateTime noParseStart = LocalDateTime.now();
 
         while (true) {
             try {
@@ -373,45 +371,47 @@ public class TundraTrekAutoTask extends DelayedTask {
                         raw = emuManager.ocrRegionText(EMULATOR_NUMBER, p1, p2);
                         norm = normalizeOcrText(raw);
                         remaining = parseRemaining(raw, norm, fraction, twoNumbersLoose);
+                        if (attempts < 5 || attempts % 10 == 0) {
+                            logDebug("OCR attempt " + attempts + ", offset " + i + " (dx=" + dx + ", dy=" + dy + "): region[" + p1.getX() + "," + p1.getY() + " to " + p2.getX() + "," + p2.getY() + "] raw='" + (raw != null ? raw.replace('\n', '\\') : "null") + "' norm='" + (norm != null ? norm : "null") + "' parsed=" + remaining);
+                        }
                         if (remaining != null) {
                             outcome.anyParsed = true;
                             usedDx = dx; usedDy = dy;
                             break;
                         }
                     } catch (Exception inner) {
-                        // Try next offset
+                        if (attempts < 5) {
+                            logDebug("OCR exception at offset " + i + " (dx=" + dx + ", dy=" + dy + "): " + inner.getMessage());
+                        }
                     }
                 }
 
+                LocalDateTime now = LocalDateTime.now();
                 if (remaining != null) {
-                    logDebug("Trek counter OCR (dx=" + usedDx + ", dy=" + usedDy + "): '" + raw + "' => '" + norm + "' -> remaining=" + remaining + (lastValue != null ? (", lastValue=" + lastValue) : "") + (lastDecreaseAt != null ? (", sinceDecrease=" + Duration.between(lastDecreaseAt, LocalDateTime.now()).toSeconds() + "s") : ""));
+                    logDebug("Trek counter OCR (dx=" + usedDx + ", dy=" + usedDy + "): '" + raw + "' => '" + norm + "' -> remaining=" + remaining + (lastValue != null ? (", lastValue=" + lastValue) : "") + (lastDecreaseAt != null ? (", sinceDecrease=" + Duration.between(lastDecreaseAt, now).toSeconds() + "s") : ""));
                     if (remaining <= 0) {
                         outcome.finished = true;
                         return outcome;
                     }
-                    LocalDateTime now = LocalDateTime.now();
                     if (lastValue == null) {
                         lastValue = remaining;
                         lastDecreaseAt = now;
                     } else {
                         if (remaining < lastValue) {
-                            // Progress detected: update lastValue and reset stagnation timer
                             lastValue = remaining;
                             lastDecreaseAt = now;
                         } else {
-                            // Same or higher: check stagnation window
-                            if (lastDecreaseAt != null && Duration.between(lastDecreaseAt, now).compareTo(OCR_MAX_WAIT) >= 0) {
+                            if (lastDecreaseAt != null && Duration.between(lastDecreaseAt, now).compareTo(STAGNATION_TIMEOUT) >= 0) {
                                 outcome.stagnated = true;
                                 return outcome;
                             }
                         }
                     }
                 } else {
-                    logDebug("Trek counter OCR could not parse any offset on attempt " + attempts + ". Last raw='" + (raw == null ? "" : raw) + "'");
-                    if (!outcome.anyParsed) {
-                        if (Duration.between(noParseStart, LocalDateTime.now()).compareTo(OCR_MAX_WAIT) >= 0) {
-                            return outcome;
-                        }
+                    logDebug("Trek counter OCR could not parse any number on attempt " + attempts + ". Last raw='" + (raw == null ? "" : raw) + "'");
+                    if (Duration.between(noParseStart, now).compareTo(NO_PARSE_TIMEOUT) >= 0) {
+                        logWarning("OCR timeout: 3 minutes without any number parsed. Aborting.");
+                        return outcome;
                     }
                 }
             } catch (Exception e) {
