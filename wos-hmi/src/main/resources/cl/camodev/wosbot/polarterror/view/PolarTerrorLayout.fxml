@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<GridPane xmlns:fx="http://javafx.com/fxml/1" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="580.0" xmlns="http://javafx.com/javafx/17.0.12">
+  <columnConstraints>
+      <ColumnConstraints hgrow="SOMETIMES" percentWidth="40.0" />
+      <ColumnConstraints hgrow="SOMETIMES" percentWidth="60.0" />
+  </columnConstraints>
+  <rowConstraints>
+    <RowConstraints fillHeight="false" maxHeight="1.7976931348623157E308" minHeight="10.0" prefHeight="277.0" vgrow="SOMETIMES" />
+  </rowConstraints>
+   <children>
+      <!-- Lado izquierdo con el checkbox principal -->
+      <CheckBox fx:id="checkBoxEnablePolarTerror" graphicTextGap="3.0" mnemonicParsing="false" text="Enable Polar Terror Hunting">
+         <GridPane.margin>
+            <Insets left="10.0" />
+         </GridPane.margin>
+      </CheckBox>
+
+      <!-- Contenido del lado derecho -->
+      <VBox spacing="10.0" GridPane.columnIndex="1">
+
+         <!-- Sección de comboboxes -->
+         <GridPane hgap="10.0" vgap="10.0">
+            <columnConstraints>
+               <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+               <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="200.0" />
+            </columnConstraints>
+            <rowConstraints>
+               <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+               <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+               <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            </rowConstraints>
+            <children>
+               <Label alignment="CENTER_RIGHT" text="Level">
+                  <GridPane.margin>
+                     <Insets left="10.0" right="10.0" />
+                  </GridPane.margin>
+               </Label>
+               <ComboBox fx:id="comboBoxPolarTerrorLevel" prefWidth="150.0" GridPane.columnIndex="1" />
+
+               <Label alignment="CENTER_RIGHT" text="Flag" GridPane.rowIndex="1">
+                  <GridPane.margin>
+                     <Insets left="10.0" right="10.0" />
+                  </GridPane.margin>
+               </Label>
+               <ComboBox fx:id="comboBoxPolarTerrorFlag" prefWidth="150.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+               <Label alignment="CENTER_RIGHT" text="Operation Mode" GridPane.rowIndex="2">
+                  <GridPane.margin>
+                     <Insets left="10.0" right="10.0" />
+                  </GridPane.margin>
+               </Label>
+               <ComboBox fx:id="comboBoxPolarTerrorMode" prefWidth="150.0" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            </children>
+         </GridPane>
+      </VBox>
+   </children>
+</GridPane>

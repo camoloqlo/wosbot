@@ -322,6 +322,18 @@ public enum EnumTemplates {
 	MERCENARY_DEPLOY_BUTTON("/templates/mercenary/mercenaryEventDeploy.png"),
 
     // ========================================================================
+    // POLAR TERROR HUNTING
+    // ========================================================================
+    POLAR_TERROR_SEARCH_ICON("/templates/polarterror/polarTerror.png"),
+    POLAR_TERROR_TAB_MAGNIFYING_GLASS_ICON("/templates/polarterror/polarTerrorTabMagnifyingGlass.png"),
+    POLAR_TERROR_TAB_SPECIAL_REWARDS("/templates/polarterror/polarTerrorTabSpecialRewards.png"),
+    POLAR_TERROR_LEVEL_SELECTOR("/templates/polarterror/polarTerrorLevelSelector.png"),
+    POLAR_TERROR_FLAG_SELECTOR("/templates/polarterror/polarTerrorFlagSelector.png"),
+    POLAR_TERROR_MODE_SELECTOR("/templates/polarterror/polarTerrorModeSelector.png"),
+    POLAR_TERROR_DEPLOY_BUTTON("/templates/polarterror/polarTerrorDeploy.png"),
+
+
+    // ========================================================================
     // CHIEF ORDER
     // ========================================================================
 	CHIEF_ORDER_MENU_BUTTON("/templates/chieforder/chiefOrderMenuButton.png"),

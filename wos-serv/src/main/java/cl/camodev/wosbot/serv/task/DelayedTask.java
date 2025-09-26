@@ -75,6 +75,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
 
         ensureCorrectScreenLocation(getRequiredStartLocation());
         execute();
+        ensureCorrectScreenLocation(getRequiredStartLocation());
     }
 
 

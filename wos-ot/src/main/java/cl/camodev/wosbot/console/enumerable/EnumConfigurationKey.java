@@ -147,6 +147,12 @@ public enum EnumConfigurationKey {
 	TUNDRA_TREK_SUPPLIES_BOOL("false", Boolean.class),
 	TUNDRA_TREK_AUTOMATION_BOOL("false", Boolean.class),
 	
+	// Polar Terror Hunting
+	POLAR_TERROR_ENABLED_BOOL("false", Boolean.class),
+	POLAR_TERROR_LEVEL_INT("1", Integer.class),
+	POLAR_TERROR_FLAG_STRING("No Flag", String.class),
+	POLAR_TERROR_MODE_STRING("Limited", String.class),
+
 	// Mercenary event
 	MERCENARY_EVENT_BOOL("false", Boolean.class),
 	MERCENARY_USE_FLAG_BOOL("false", Boolean.class),

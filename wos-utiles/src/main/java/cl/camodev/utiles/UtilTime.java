@@ -114,4 +114,31 @@ public class UtilTime {
         
         return proposedSchedule;
     }
+
+    /**
+     * Parses a time string in the format "HH:mm:ss" or "H:mm:ss" and converts it to total seconds.
+     * If the input is invalid or null, returns -1.
+     *
+     * @param timeStr The time string to parse
+     * @return The total time in seconds
+     */
+    public static long parseTimeToSeconds(String timeStr) {
+        if (timeStr == null || timeStr.trim().isEmpty()) {
+            return -1;
+        }
+        Pattern pattern = Pattern.compile("(\\d{1,2}):(\\d{2}):(\\d{2})");
+        Matcher matcher = pattern.matcher(timeStr.trim());
+        if (matcher.find()) {
+            try {
+                int hours = Integer.parseInt(matcher.group(1));
+                int minutes = Integer.parseInt(matcher.group(2));
+                int seconds = Integer.parseInt(matcher.group(3));
+                return (long) hours * 3600 + (long) minutes * 60 + seconds;
+            } catch (NumberFormatException e) {
+
+            }
+        }
+
+        return -1;
+    }
 }
