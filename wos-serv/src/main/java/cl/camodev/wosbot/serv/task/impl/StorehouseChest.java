@@ -17,56 +17,56 @@ public class StorehouseChest extends DelayedTask {
     private LocalDateTime nextStaminaClaim = LocalDateTime.now();
 
     public StorehouseChest(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
-		super(profile, tpDailyTask);
-	}
+                super(profile, tpDailyTask);
+        }
 
-	@Override
-	public EnumStartLocation getRequiredStartLocation() {
-		return EnumStartLocation.HOME;
-	}
+        @Override
+        public EnumStartLocation getRequiredStartLocation() {
+                return EnumStartLocation.HOME;
+        }
 
-	@Override
-	protected void execute() {
-		logInfo("Navigating to the Storehouse.");
+        @Override
+        protected void execute() {
+                logInfo("Navigating to the Storehouse.");
 
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(3, 513), new DTOPoint(26, 588));
-		sleepTask(500);
+                emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(3, 513), new DTOPoint(26, 588));
+                sleepTask(500);
 
-		emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(110, 270));
-		sleepTask(700);
+                emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(110, 270));
+                sleepTask(700);
 
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(20, 250), new DTOPoint(200, 280));
-		sleepTask(700);
+                emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(20, 250), new DTOPoint(200, 280));
+                sleepTask(700);
 
-		DTOImageSearchResult researchCenter = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER,  90);
+                DTOImageSearchResult researchCenter = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER,  90);
 
-		if (researchCenter.isFound()) {
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, researchCenter.getPoint(), researchCenter.getPoint());
-			sleepTask(1000);
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(30, 430), new DTOPoint(50, 470));
-			sleepTask(1000);
+                if (researchCenter.isFound()) {
+                        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, researchCenter.getPoint(), researchCenter.getPoint());
+                        sleepTask(1000);
+                        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(30, 430), new DTOPoint(50, 470));
+                        sleepTask(1000);
             emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(1,636), new DTOPoint(2,636),2,300);
-			logInfo("Searching for the storehouse chest.");
-			for (int i = 0; i < 5; i++) {
-				DTOImageSearchResult chest = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_CHEST,  90);
-				DTOImageSearchResult chest2 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_CHEST_2,  90);
+                        logInfo("Searching for the storehouse chest.");
+                        for (int i = 0; i < 5; i++) {
+                                DTOImageSearchResult chest = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_CHEST,  90);
+                                DTOImageSearchResult chest2 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_CHEST_2,  90);
 
-				logDebug("Searching for storehouse chest (Attempt " + (i + 1) + "/5).");
-				if (chest.isFound() || chest2.isFound()) {
+                                logDebug("Searching for storehouse chest (Attempt " + (i + 1) + "/5).");
+                                if (chest.isFound() || chest2.isFound()) {
                     if(!chest.isFound()){
                         chest = chest2;
                     }
-					// Claim reward, check for stamina and reschedule
-					logInfo("Storehouse chest found. Tapping to claim.");
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, chest.getPoint(), chest.getPoint());
-					sleepTask(500);
+                                        // Claim reward, check for stamina and reschedule
+                                        logInfo("Storehouse chest found. Tapping to claim.");
+                                        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, chest.getPoint(), chest.getPoint());
+                                        sleepTask(500);
                     emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(1,636), new DTOPoint(2,636),5,300);
                     break;
-				} else {
+                                } else {
                     emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(1,636), new DTOPoint(2,636),2,300);
                 }
-				sleepTask(300);
-			}
+                                sleepTask(300);
+                        }
 
             // Only search for stamina if current time is >= nextStaminaClaim
             if (!LocalDateTime.now().isBefore(nextStaminaClaim)) {
@@ -74,7 +74,7 @@ public class StorehouseChest extends DelayedTask {
                 for (int j = 0; j < 5; j++) {
                     DTOImageSearchResult stamina = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.STOREHOUSE_STAMINA, 90);
 
-				    logDebug("Searching for storehouse stamina (Attempt " + (j + 1) + "/5).");
+                                    logDebug("Searching for storehouse stamina (Attempt " + (j + 1) + "/5).");
                     if (stamina.isFound()) {
                         logInfo("Stamina reward found. Claiming it.");
                         emuManager.tapAtRandomPoint(EMULATOR_NUMBER, stamina.getPoint(), stamina.getPoint());
@@ -135,13 +135,13 @@ public class StorehouseChest extends DelayedTask {
             }
 
 
-		} else {
-			logWarning("Research Center shortcut not found. Rescheduling for 5 minutes.");
-			this.reschedule(LocalDateTime.now().plusMinutes(5));
-			tapBackButton();
-		}
-	}
+                } else {
+                        logWarning("Research Center shortcut not found. Rescheduling for 5 minutes.");
+                        this.reschedule(LocalDateTime.now().plusMinutes(5));
+                        tapBackButton();
+                }
+        }
 
-	@Override
-	public boolean provideDailyMissionProgress() {return true;}
+        @Override
+        public boolean provideDailyMissionProgress() {return true;}
 }
