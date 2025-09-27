@@ -116,8 +116,8 @@ public class TundraTruckEventTask extends DelayedTask {
 
 		// If menu is not found after 2 attempts, cancel the task
 		if (attempt >= 2) {
-			logWarning("Could not find the Tundra Truck event tab. Assuming event is unavailable. Task will be removed.");
-			this.setRecurring(false);
+			logWarning("Could not find the Tundra Truck event tab. Assuming event is unavailable. Rescheduling for next reset.");
+            reschedule(UtilTime.getGameReset());
 		}
 
 	}

@@ -1,5 +1,6 @@
 package cl.camodev.wosbot.serv.task.impl;
 
+import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -175,8 +176,8 @@ public class MercenaryEventTask extends DelayedTask {
 			attempts++;
 		}
 
-		logWarning("Mercenary event not found after multiple attempts. Aborting the task.");
-		this.setRecurring(false);
+		logWarning("Mercenary event not found after multiple attempts. Resheduling task to next reset.");
+		reschedule(UtilTime.getGameReset());
 		return false;
 	}
 

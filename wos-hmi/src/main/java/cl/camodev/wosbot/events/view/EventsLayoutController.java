@@ -31,8 +31,10 @@ public class EventsLayoutController extends AbstractProfileController {
         // Bind use flag visibility to checkbox
         checkBoxMercenaryUseFlag.visibleProperty().bind(checkBoxMercenaryEvent.selectedProperty());
 
-        // Bind flag selection visibility to checkbox
-        hboxMercenaryFlagSelection.visibleProperty().bind(checkBoxMercenaryUseFlag.selectedProperty());
+        // Bind flag selection visibility to both checkboxes
+        hboxMercenaryFlagSelection.visibleProperty().bind(
+            checkBoxMercenaryEvent.selectedProperty().and(checkBoxMercenaryUseFlag.selectedProperty())
+        );
         
         // Set up flag combobox with integer values
         comboBoxMercenaryFlag.getItems().addAll(1, 2, 3, 4, 5, 6, 7, 8);

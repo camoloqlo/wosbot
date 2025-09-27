@@ -91,20 +91,29 @@ public class JourneyofLightTask extends DelayedTask {
                 logWarning("Failed to fetch next queue time for queue " + queue[0]);
                 continue;
             }
+            nextQueueTime = nextQueueTime.toLowerCase()
+                    .replace("t", "1");
+
             LocalDateTime nextQueueDateTime = LocalDateTime.now().plusHours(1000);
             try {
                 nextQueueDateTime = UtilTime.parseTime(nextQueueTime);
             } catch (Exception e) {
-                logWarning("Failed to parse next queue time for queue: " + e.getMessage());
+                logWarning("Failed to parse next queue time for queue: " + e.getMessage().strip());
             }
             if (nextQueueDateTime.isBefore(nextScheduleTime)) {
                 nextScheduleTime = nextQueueDateTime;
             }
-            logInfo("Next queue time for queue " + profile.getName() + ": " + nextQueueTime.toLowerCase());
         }
         // set for when the next one is ready
         logInfo("Next schedule: " + UtilTime.localDateTimeToDDHHMMSS(nextScheduleTime));
         this.reschedule(nextScheduleTime);
+
+        sleepTask(200);
+        checkAndClaimFreeWatches();
+        for (int i = 0; i < 3; i++) {
+            sleepTask(500);
+            tapBackButton();
+        }
 	}
 
     private boolean eventHasEnded() {
@@ -112,6 +121,27 @@ public class JourneyofLightTask extends DelayedTask {
         if (result == null) return false;
         if (!result.isEmpty()) return true;
         return false;
+    }
+
+    private void checkAndClaimFreeWatches() {
+        DTOImageSearchResult result = emuManager.searchTemplate(EMULATOR_NUMBER,
+                EnumTemplates.JOURNEY_OF_LIGHT_FREE_WATCHES, 90);
+
+        if (!result.isFound()) {
+            logInfo("No free watches found, skipping claim.");
+            return;
+        }
+        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, result.getPoint(), result.getPoint());
+        sleepTask(500);
+
+        DTOImageSearchResult freeWatch = emuManager.searchTemplate(EMULATOR_NUMBER,
+                EnumTemplates.JOURNEY_OF_LIGHT_CLAIM_WATCHES, 90);
+
+        if (!freeWatch.isFound()) {
+            logInfo("No free watches found, skipping claim.");
+            return;
+        }
+        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, freeWatch.getPoint(), freeWatch.getPoint());
     }
 
     private String OCRWithRetries(String searchString, DTOPoint p1, DTOPoint p2, int maxRetries) {

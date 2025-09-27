@@ -207,8 +207,9 @@ public class AllianceChestTask extends DelayedTask {
 	 * Reschedules the task and logs a message before exiting
 	 */
 	private void rescheduleAndExit(String reason) {
-		logWarning(reason + ". Rescheduling task.");
-		scheduleNextRun();
+		logWarning(reason + ". Rescheduling task to run in 5 minutes.");
+		LocalDateTime nextExecutionTime = LocalDateTime.now().plusMinutes(5);
+		this.reschedule(nextExecutionTime);
 	}
 	
 	/**

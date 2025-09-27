@@ -1,6 +1,11 @@
 package cl.camodev.wosbot.serv.task.impl;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -21,9 +26,12 @@ public class LifeEssenceTask extends DelayedTask {
 	private static final int MENU_WAIT_DELAY = 3000;
 	
 	private int attempts = 0;
+    private LocalDateTime nextScrollTime = null;
 
 	public LifeEssenceTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
+        nextScrollTime = LocalDateTime.now();
+
 	}
 
 	@Override
@@ -46,11 +54,52 @@ public class LifeEssenceTask extends DelayedTask {
 		
 		// Claim available Life Essence
 		int claimedCount = claimLifeEssence();
+
+		// Buy the weekly free scroll if available
+        if (nextScrollTime == null || LocalDateTime.now().isAfter(nextScrollTime)) {
+            buyWeeklyFreeScroll();
+        } else {
+            logInfo("Skipping weekly free scroll; next allowed at " + nextScrollTime.toLocalTime() + ".");
+        }
 		
 		// Exit menu and reschedule
 		exitAndReschedule(claimedCount);
 	}
 	
+	private void buyWeeklyFreeScroll() {
+		logInfo("Attempting to buy weekly free scroll.");
+
+		// Navigate to the shop tab
+		logDebug("Navigating to the shop tab.");
+		tapPoint(new DTOPoint(670, 195));
+		sleepTask(300);
+
+		// Search for the weekly free scroll
+		DTOImageSearchResult scroll = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ISLAND_WEEKLY_FREE_SCROLL, 90);
+		if (scroll.isFound()) {
+			logInfo("Weekly free scroll found. Attempting to purchase.");
+			tapPoint(scroll.getPoint());
+			sleepTask(300);
+
+			// Tap the buy button
+			DTOImageSearchResult buyButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ISLAND_WEEKLY_FREE_SCROLL_BUY_BUTTON, 90);
+			if (buyButton.isFound()) {
+				tapPoint(buyButton.getPoint());
+				sleepTask(500);
+				logInfo("Weekly free scroll purchased successfully.");
+                // Set next scroll time to next monday at reset (00:00 UTC)
+                nextScrollTime = ZonedDateTime.now(ZoneOffset.UTC)
+                        .with(TemporalAdjusters.next(DayOfWeek.MONDAY))
+                        .truncatedTo(ChronoUnit.DAYS)
+                        .toLocalDateTime();
+			} else {
+				logWarning("Buy button for weekly free scroll not found.");
+			}
+		} else {
+			logInfo("No weekly free scroll available to purchase.");
+		}
+	}
+
 	/**
 	 * Navigate to the Life Essence menu
 	 * @return true if navigation was successful, false otherwise
@@ -102,7 +151,7 @@ public class LifeEssenceTask extends DelayedTask {
 		logInfo("Searching for Life Essence to claim.");
 		int claimCount = 0;
 		
-		// First, go back to ensure we're at the map view (not in the menu)
+		// First, tap back twice to stop any interfering animations
 		tapBackButton();
 		sleepTask(500);
 		tapBackButton();

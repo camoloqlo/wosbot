@@ -122,8 +122,8 @@ public enum EnumConfigurationKey {
 	BOOL_VIP_POINTS("false", Boolean.class),
 	VIP_BUY_MONTHLY("false", Boolean.class),
 	BOOL_MYSTERY_SHOP("false", Boolean.class),
-	BOOL_MYSTERY_SHOP_50D_GEAR("false", Boolean.class),
-	
+	BOOL_MYSTERY_SHOP_250_HERO_WIDGET("false", Boolean.class),
+
     // ========================================================================
     // BANK FEATURES
     // ========================================================================

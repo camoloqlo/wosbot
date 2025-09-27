@@ -102,7 +102,7 @@ public class MysteryShopTask extends DelayedTask {
 		boolean foundConfiguredPurchases = true;
 		int dailyRefreshUsedCount = 0;
 		final int maxDailyRefreshes = 10; // configurable limit to avoid abusing refresh
-		int maxIterations = 15; // Prevent infinite loops
+		int maxIterations = 5; // Prevent infinite loops
 		int iteration = 0;
 		boolean totalClaimedAny = false;
 		boolean totalPurchasedAny = false;
@@ -249,9 +249,9 @@ public class MysteryShopTask extends DelayedTask {
 	private boolean makeConfiguredPurchases() {
 		boolean foundAnyPurchase = false;
 
-		// Handle 50D Hero Gear purchases
-		if (profile.getConfig(EnumConfigurationKey.BOOL_MYSTERY_SHOP_50D_GEAR, Boolean.class)) {
-			foundAnyPurchase = buyItems(EnumTemplates.MYSTERY_SHOP_50D_GEAR_BUTTON, "50D Hero Gear") || foundAnyPurchase;
+		// Handle 250 Hero Widget purchases
+		if (profile.getConfig(EnumConfigurationKey.BOOL_MYSTERY_SHOP_250_HERO_WIDGET, Boolean.class)) {
+			foundAnyPurchase = buyHeroWidget() || foundAnyPurchase;
 		}
 
 		// Add more purchase types here as needed
@@ -261,6 +261,77 @@ public class MysteryShopTask extends DelayedTask {
 		// }
 
 		return foundAnyPurchase;
+	}
+
+	private boolean buyHeroWidget() {
+		boolean foundAnyWidget = false;
+		boolean foundWidgetInThisIteration = true;
+		int maxPurchaseAttempts = 5;
+		int purchaseAttempt = 0;
+		
+		// List to store coordinates of found mythic shards to avoid checking them repeatedly
+		java.util.List<DTOPoint> blacklistedCoordinates = new java.util.ArrayList<>();
+
+		// Keep looking for Hero Widgets to buy until none are found
+		while (foundWidgetInThisIteration && purchaseAttempt < maxPurchaseAttempts) {
+			logDebug("Searching for 250 badges Hero Widget to purchase. Attempt " + (purchaseAttempt + 1));
+
+			purchaseAttempt++;
+			foundWidgetInThisIteration = false;
+
+			// Search for the 250 Hero Widget buy button
+			DTOImageSearchResult heroWidgetResult = emuManager.searchTemplate(
+				EMULATOR_NUMBER,
+				EnumTemplates.MYSTERY_SHOP_250_BADGES_BUTTON,
+				95
+			);
+
+			if (heroWidgetResult.isFound()) {
+				// Check if this position is already blacklisted
+				boolean isBlacklisted = blacklistedCoordinates.stream()
+					.anyMatch(point -> Math.abs(point.getX() - heroWidgetResult.getPoint().getX()) < 40 &&
+								   Math.abs(point.getY() - heroWidgetResult.getPoint().getY()) < 40);
+
+				if (isBlacklisted) {
+					logDebug("Skipping already identified mythic shard location.");
+					continue;
+				}
+
+				// Check if it is not mythic shards to avoid wrong purchase
+				// Search in a specific area based on heroWidgetResult position
+                DTOImageSearchResult mythicShardResult = emuManager.searchTemplate(
+					EMULATOR_NUMBER,
+					EnumTemplates.MYSTERY_SHOP_MYTHIC_SHARDS_BUTTON,
+					new DTOPoint(heroWidgetResult.getPoint().getX() - 51, heroWidgetResult.getPoint().getY() - 177),
+					new DTOPoint(heroWidgetResult.getPoint().getX() + 45, heroWidgetResult.getPoint().getY() - 82),
+					95
+				);
+
+				if (mythicShardResult.isFound()) {
+					// Add this location to the blacklist
+					blacklistedCoordinates.add(heroWidgetResult.getPoint());
+					logInfo("Mythic shards found instead of 250 Hero Widget. Skipping purchase.");
+					continue;
+				}
+
+				// Tap on the hero widget buy button
+				emuManager.tapAtPoint(EMULATOR_NUMBER, heroWidgetResult.getPoint());
+				sleepTask(600);
+
+				// Confirm the purchase (tap on confirm button or area)
+				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(360, 830));
+				sleepTask(600);
+
+				logInfo("250 Hero Widget found and purchased on attempt " + purchaseAttempt + ".");
+				foundAnyWidget = true;
+				foundWidgetInThisIteration = true;
+
+				// Wait a bit before searching for the next widget
+				sleepTask(2000);
+			}
+		}
+
+		return foundAnyWidget;
 	}
 
 	/**

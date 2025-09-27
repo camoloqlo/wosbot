@@ -40,7 +40,7 @@ public class StorehouseChest extends DelayedTask {
 
             DTOImageSearchResult researchCenter = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER,  90);
 
-            boolean chestTimeFound = false; // Deklaration nach oben gezogen
+            boolean chestTimeFound = false; // declaration moved up
 
             if (researchCenter.isFound()) {
                 emuManager.tapAtRandomPoint(EMULATOR_NUMBER, researchCenter.getPoint(), researchCenter.getPoint());
@@ -62,7 +62,7 @@ public class StorehouseChest extends DelayedTask {
                         logInfo("Storehouse chest found. Tapping to claim.");
                         emuManager.tapAtRandomPoint(EMULATOR_NUMBER, chest.getPoint(), chest.getPoint());
                         sleepTask(500);
-                        // OCR for next chest time (counter at bottom) - jetzt mit Variable von oben
+                        // OCR for next chest time (counter at bottom) - now with variable from above
                         for (int ocrAttempt = 0; ocrAttempt < 5 && !chestTimeFound; ocrAttempt++) {
                             try {
                                 String chestWaitText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(266, 1100), new DTOPoint(450, 1145));
@@ -125,7 +125,7 @@ public class StorehouseChest extends DelayedTask {
                     logInfo("Skipping stamina search until " + nextStaminaClaim);
                 }
 
-                // Zweite OCR nur, wenn Chest-OCR nicht erfolgreich war
+                // Second OCR only if Chest-OCR was not successful
                 if (!chestTimeFound) {
                     // Reschedule based on OCR
                     try {

@@ -214,13 +214,15 @@ public enum EnumTemplates {
 	PETS_CHEST_BLUE("/templates/pets/chestBlue.png"),
 
     // ========================================================================
-    // LIFE ESSENCE
+    // ISLAND
     // ========================================================================
-	LIFE_ESSENCE_MENU("/templates/essence/threeMenu.png"),
-	LIFE_ESSENCE_CLAIM("/templates/essence/claim.png"),
-	LIFE_ESSENCE_DAILY_CARING_AVAILABLE("/templates/essence/dailyCaringAvailable.png"),
-	LIFE_ESSENCE_DAILY_CARING_GOTO_ISLAND("/templates/essence/dailyCaringGotoIsland.png"),
-	LIFE_ESSENCE_DAILY_CARING_BUTTON("/templates/essence/dailyCaringButton.png"),
+	LIFE_ESSENCE_MENU("/templates/island/threeMenu.png"),
+	LIFE_ESSENCE_CLAIM("/templates/island/claim.png"),
+	LIFE_ESSENCE_DAILY_CARING_AVAILABLE("/templates/island/dailyCaringAvailable.png"),
+	LIFE_ESSENCE_DAILY_CARING_GOTO_ISLAND("/templates/island/dailyCaringGotoIsland.png"),
+	LIFE_ESSENCE_DAILY_CARING_BUTTON("/templates/island/dailyCaringButton.png"),
+	ISLAND_WEEKLY_FREE_SCROLL("/templates/island/weeklyFreeScroll.png"),
+	ISLAND_WEEKLY_FREE_SCROLL_BUY_BUTTON("/templates/island/weeklyFreeScrollBuyButton.png"),
 
     // ========================================================================
     // MERCHANTS AND SHOPS
@@ -235,7 +237,8 @@ public enum EnumTemplates {
 	SHOP_MYSTERY_BUTTON("/templates/shop/mysteryShopButton.png"),
 	MYSTERY_SHOP_FREE_REWARD("/templates/shop/mysteryshop/freeReward.png"),
 	MYSTERY_SHOP_DAILY_REFRESH("/templates/shop/mysteryshop/dailyRefresh.png"),
-	MYSTERY_SHOP_50D_GEAR_BUTTON("/templates/shop/mysteryshop/50dGearButton.png"),
+	MYSTERY_SHOP_250_BADGES_BUTTON("/templates/shop/mysteryshop/250BadgesButton.png"),
+	MYSTERY_SHOP_MYTHIC_SHARDS_BUTTON("/templates/shop/mysteryshop/mysteryShopMythicShard.png"),
 
     // ========================================================================
     // BANK AND EVENTS
@@ -306,8 +309,10 @@ public enum EnumTemplates {
     // ========================================================================
     // TUNDRA TRUCK AND TREK EVENTS
     // ========================================================================
-  JOURNEY_OF_LIGHT_TAB("/templates/events/journeyoflight/journeyOfLightTab.png"),
-  JOURNEY_OF_LIGHT_UNSELECTED_TAB("/templates/events/journeyoflight/journeyOfLightUnselected.png"),
+    JOURNEY_OF_LIGHT_TAB("/templates/events/journeyoflight/journeyOfLightTab.png"),
+    JOURNEY_OF_LIGHT_UNSELECTED_TAB("/templates/events/journeyoflight/journeyOfLightUnselected.png"),
+    JOURNEY_OF_LIGHT_FREE_WATCHES("/templates/events/journeyoflight/freeWatch.png"),
+    JOURNEY_OF_LIGHT_CLAIM_WATCHES("/templates/events/journeyoflight/freeWatchAvailable.png"),
 
     // ========================================================================
     // EXPERTS AND MERCENARY EVENT

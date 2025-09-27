@@ -26,7 +26,7 @@ public class ShopLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxNomadicMerchantVip, EnumConfigurationKey.BOOL_NOMADIC_MERCHANT_VIP_POINTS);
 		checkBoxMappings.put(checkBoxBank, EnumConfigurationKey.BOOL_BANK);
 		checkBoxMappings.put(checkBoxMysteryShop, EnumConfigurationKey.BOOL_MYSTERY_SHOP);
-        checkBoxMappings.put(checkBoxMysteryShop50DiscountGear, EnumConfigurationKey.BOOL_MYSTERY_SHOP_50D_GEAR);
+        checkBoxMappings.put(checkBoxMysteryShop50DiscountGear, EnumConfigurationKey.BOOL_MYSTERY_SHOP_250_HERO_WIDGET);
 
 		// Initialize ComboBox with bank delay values
 		comboBoxBankDelay.getItems().addAll(1, 7, 15, 30);

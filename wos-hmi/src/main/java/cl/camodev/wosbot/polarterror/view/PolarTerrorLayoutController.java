@@ -26,15 +26,16 @@ public class PolarTerrorLayoutController extends AbstractProfileController {
         checkBoxMappings.put(checkBoxEnablePolarTerror, EnumConfigurationKey.POLAR_TERROR_ENABLED_BOOL);
 
         // Initialize ComboBox values
-        comboBoxPolarTerrorLevel.getItems().addAll(1, 2, 3, 4, 5, 6, 7, 8);
+
 
         // Inicializa el combobox de Flag con "No Flag" (0) y las opciones numéricas
         comboBoxPolarTerrorFlag.getItems().add("No Flag");
         for (int i = 1; i <= 8; i++) {
             comboBoxPolarTerrorFlag.getItems().add(String.valueOf(i));
+            comboBoxPolarTerrorLevel.getItems().addAll(i);
         }
 
-        comboBoxPolarTerrorMode.getItems().addAll("Limited", "Unlimited");
+        comboBoxPolarTerrorMode.getItems().addAll("Limited (10)", "Unlimited");
 
         // Set up ComboBox mappings
         comboBoxMappings.put(comboBoxPolarTerrorLevel, EnumConfigurationKey.POLAR_TERROR_LEVEL_INT);
