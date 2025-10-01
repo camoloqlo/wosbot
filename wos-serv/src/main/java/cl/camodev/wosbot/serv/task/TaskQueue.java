@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 public class TaskQueue {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskQueue.class);
-    private static final long IDLE_WAIT_TIME = 999; // milliseconds to wait between task checking cycles
+    private static final long IDLE_WAIT_TIME = 1000; // milliseconds to wait between task checking cycles
 
     private final PriorityBlockingQueue<DelayedTask> taskQueue = new PriorityBlockingQueue<>();
     protected EmulatorManager emuManager = EmulatorManager.getInstance();
@@ -127,12 +127,9 @@ public class TaskQueue {
         acquireEmulatorSlot();
 
         while (running) {
-            if (paused != LocalDateTime.MIN && paused != LocalDateTime.MAX) {
+            if (paused != LocalDateTime.MIN) {
                 handlePausedState();
                 continue;
-            } else if (paused == LocalDateTime.MAX && !emuManager.isRunning(profile.getEmulatorNumber())) {
-                logInfo("Emulator is not running, acquiring emulator slot now");
-                acquireEmulatorSlot();
             }
 
             boolean executedTask = false;
@@ -155,10 +152,8 @@ public class TaskQueue {
             // Handle idle time logic
             idlingTimeExceeded = handleIdleTime(delayUntil, idlingTimeExceeded);
 
-            // If no task was executed, wait before checking again
-            if (!executedTask && paused == LocalDateTime.MIN) {
-                waitForNextTask(delayUntil);
-            }
+            // Always wait before checking again to ensure consistent timing
+            waitForNextTask(delayUntil);
         }
     }
 
@@ -296,6 +291,7 @@ public class TaskQueue {
         updateProfileStatus("RESUMING AFTER PAUSE");
         logInfo("TaskQueue resuming after " + Duration.between(paused, LocalDateTime.now()).toMinutes() + " minutes pause");
         paused = LocalDateTime.MIN;
+        delayUntil = LocalDateTime.MAX;
 
         if (!emuManager.isRunning(profile.getEmulatorNumber())) {
             logInfo("While resuming, found instance closed. Acquiring a slot now.");
@@ -395,18 +391,26 @@ public class TaskQueue {
      * Handles the paused state of the task queue
      */
     private void handlePausedState() {
-        if (delayUntil.isBefore(LocalDateTime.now())) {
-            if (needsReconnect) {resumeAfterReconnectionDelay();}
-            else {
+        // Check if this is a timed pause (delayUntil is set to a specific time in the future)
+        if (delayUntil != LocalDateTime.MAX && delayUntil.isBefore(LocalDateTime.now())) {
+            if (needsReconnect) {
+                resumeAfterReconnectionDelay();
+            } else {
                 paused = LocalDateTime.MIN;
+                delayUntil = LocalDateTime.MAX;
                 updateProfileStatus("RESUMING");
             }
             return;
         }
+        
         try {
-            String timeFormatted = formatTimeUntil(delayUntil);
-            updateProfileStatus("Paused for " + timeFormatted);
-            logInfo("Profile is paused");
+            // If delayUntil is MAX, this is an indefinite pause (user-initiated)
+            if (delayUntil == LocalDateTime.MAX) {
+                updateProfileStatus("Paused (indefinite)");
+            } else {
+                String timeFormatted = formatTimeUntil(delayUntil);
+                updateProfileStatus("Paused for " + timeFormatted);
+            }
             Thread.sleep(1000); // Wait while paused
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -431,7 +435,9 @@ public class TaskQueue {
      * Formats the duration until the target time as HH:mm:ss
      */
     private String formatTimeUntil(LocalDateTime targetTime) {
-        Duration timeUntilNext = Duration.between(LocalDateTime.now(), targetTime);
+        LocalDateTime now = LocalDateTime.now().withNano(0);
+        LocalDateTime truncatedTarget = targetTime.withNano(0);
+        Duration timeUntilNext = Duration.between(now, truncatedTarget);
 
         long hours = timeUntilNext.toHours();
         long minutes = timeUntilNext.toMinutesPart();
@@ -471,15 +477,17 @@ public class TaskQueue {
     * Checks if the bear hunt is running
     */
     private void isBearRunning() {
-        DTOImageSearchResult result = emuManager.searchTemplate(
-                profile.getEmulatorNumber(),
-                EnumTemplates.BEAR_HUNT_IS_RUNNING,
-                90);
-        if (result.isFound()) {
-            logInfo("Bear is running, pausing task running for 30 minutes");
-            pause();
-            delayUntil = LocalDateTime.now().plusMinutes(30); // 30 minutes
-        }
+        new Thread(() -> {
+            DTOImageSearchResult result = emuManager.searchTemplate(
+                    profile.getEmulatorNumber(),
+                    EnumTemplates.BEAR_HUNT_IS_RUNNING,
+                    90);
+            if (result.isFound()) {
+                logInfo("Bear is running, pausing task running for 30 minutes");
+                pause();
+                delayUntil = LocalDateTime.now().plusMinutes(30); // 30 minutes
+            }
+        }, "BearCheckThread-" + profile.getName()).start();
     }
 
     private void runBackgroundChecks() {
@@ -487,18 +495,22 @@ public class TaskQueue {
             return; // emulator isn't running or the queue should be paused, just leave.
         }
         // help allies checks
-        boolean runHelpAllies = true;
+        boolean runBackgroundTasks = false;
         helpAlliesCount++;
-        if (helpAlliesCount % 10 != 0 || !profile.getConfig(EnumConfigurationKey.ALLIANCE_HELP_BOOL, Boolean.class) ) {
-            runHelpAllies = false; // Only check every 10 cycles, or if help is enabled
-        } else {
+        if (helpAlliesCount % 10 == 0) {
+            runBackgroundTasks = true;
             helpAlliesCount = 0;
         }
 
+        if (!runBackgroundTasks) {
+            return; // Only check every 10 cycles
+        }
+
         try {
-            boolean finalRunHelpAllies = runHelpAllies; // Idk, my editor told me to do this. What's the point?
                 isBearRunning();
-                if (finalRunHelpAllies) checkHelpAllies();
+                if (profile.getConfig(EnumConfigurationKey.ALLIANCE_HELP_BOOL, Boolean.class)) {
+                    checkHelpAllies();
+                }
         } catch (Exception e) {
             logError("Error running background tasks: " + e.getMessage());
         }
@@ -506,15 +518,17 @@ public class TaskQueue {
     }
 
     private void checkHelpAllies() {
-        DTOImageSearchResult helpRequest = emuManager.searchTemplate(
-                profile.getEmulatorNumber(),
-                EnumTemplates.GAME_HOME_SHORTCUTS_HELP_REQUEST2,
-                90
-        );
-        if (helpRequest.isFound()) {
-            emuManager.tapAtPoint(profile.getEmulatorNumber(), helpRequest.getPoint());
-            logInfo("Help request found and tapped");
-        }
+        new Thread(() -> {
+            DTOImageSearchResult helpRequest = emuManager.searchTemplate(
+                    profile.getEmulatorNumber(),
+                    EnumTemplates.GAME_HOME_SHORTCUTS_HELP_REQUEST2,
+                    90
+            );
+            if (helpRequest.isFound()) {
+                emuManager.tapAtPoint(profile.getEmulatorNumber(), helpRequest.getPoint());
+                logInfo("Help request found and tapped");
+            }
+        }, "HelpRequestThread-" + profile.getName()).start();
     }
 
     /**
@@ -604,19 +618,22 @@ public class TaskQueue {
     }
 
     /**
-     * Pauses queue processing, keeping tasks in the queue.
+     * Pauses queue processing indefinitely, keeping tasks in the queue.
+     * User must call resume() to continue.
      */
     public void pause() {
         paused = LocalDateTime.now();
+        delayUntil = LocalDateTime.MAX; // Indefinite pause
         updateProfileStatus("PAUSE REQUESTED");
-        logInfo("TaskQueue paused");
+        logInfo("TaskQueue paused (indefinite)");
     }
 
     /**
-     * Resumes queue processing.
+     * Resumes queue processing from paused state.
      */
     public void resume() {
         paused = LocalDateTime.MIN;
+        delayUntil = LocalDateTime.MAX;
         updateProfileStatus("RESUMING");
         logInfo("TaskQueue resumed");
     }
@@ -627,7 +644,6 @@ public class TaskQueue {
     public void executeTaskNow(TpDailyTaskEnum taskEnum, boolean recurring) {
         // Obtain the task prototype from the registry
         DelayedTask prototype = DelayedTaskRegistry.create(taskEnum, profile);
-        paused = LocalDateTime.MAX;
         if (prototype == null) {
             logWarning("Task not found: " + taskEnum);
             return;

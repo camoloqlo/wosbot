@@ -58,13 +58,25 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 		</dependency>
-		<!-- Logback implementation (replaces slf4j-log4j12) -->
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<scope>runtime</scope>
-		</dependency>
+ 	<!-- Logback implementation (replaces slf4j-log4j12) -->
+ 	<dependency>
+ 		<groupId>ch.qos.logback</groupId>
+ 		<artifactId>logback-classic</artifactId>
+ 		<scope>runtime</scope>
+ 	</dependency>
+ 	<!-- Javalin web framework for log server -->
+ 	<dependency>
+ 		<groupId>io.javalin</groupId>
+ 		<artifactId>javalin</artifactId>
+ 		<version>6.3.0</version>
+ 	</dependency>
+ 	<!-- Gson for JSON serialization -->
+ 	<dependency>
+ 		<groupId>com.google.code.gson</groupId>
+ 		<artifactId>gson</artifactId>
+ 		<version>2.11.0</version>
+ 	</dependency>
 
 
-    </dependencies>
+     </dependencies>
 </project>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WosBot - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Hamburger Menu -->
+    <div class="hamburger-menu" id="hamburgerMenu">
+        <div class="hamburger-icon" id="hamburgerIcon">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <!-- Side Navigation -->
+    <nav class="sidenav" id="sideNav">
+        <div class="sidenav-header">
+            <h2>🤖 WosBot</h2>
+        </div>
+        <ul class="sidenav-menu">
+            <li class="nav-item active" data-view="logs">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Logs</span>
+            </li>
+            <li class="nav-item" data-view="profiles">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profiles</span>
+            </li>
+            <li class="nav-item" data-view="tasks">
+                <span class="nav-icon">✓</span>
+                <span class="nav-text">Task Manager</span>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <!-- Logs View -->
+        <div class="view active" id="logsView">
+            <div class="logs-header">
+                <div class="logs-search-bar">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchLogs" placeholder="Search logs..." class="search-input">
+                </div>
+                <div class="logs-controls">
+                    <select class="filter-dropdown" id="filterProfile">
+                        <option value="">All profiles</option>
+                    </select>
+                    <select class="filter-dropdown" id="filterSeverity">
+                        <option value="">All levels</option>
+                        <option value="INFO">INFO</option>
+                        <option value="WARNING">WARNING</option>
+                        <option value="ERROR">ERROR</option>
+                        <option value="DEBUG">DEBUG</option>
+                    </select>
+                    <button class="refresh-btn" id="refreshLogs" title="Refresh">🔄</button>
+                </div>
+            </div>
+            
+            <div class="logs-table-container" id="logContainer">
+                <table class="logs-table">
+                    <thead>
+                        <tr>
+                            <th>TIMESTAMP</th>
+                            <th>LEVEL</th>
+                            <th>PROFILE</th>
+                            <th>TASK</th>
+                            <th>MESSAGE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr class="no-logs-row">
+                            <td colspan="5">Waiting for logs...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="logs-footer">
+                <div class="logs-info">
+                    <label class="debug-mode">
+                        <input type="checkbox" id="debugMode">
+                        <span>Debug Mode</span>
+                    </label>
+                    <span id="logCount">Showing 0 of 0 logs</span>
+                </div>
+                <div class="logs-pagination">
+                    <div class="pagination-size">
+                        <label>Logs per page:</label>
+                        <select class="pagination-dropdown" id="pageSize">
+                            <option value="10">10</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="250">250</option>
+                        </select>
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="pagination-btn" id="prevPage" disabled>◀ Prev</button>
+                        <span class="pagination-info" id="pageInfo">Page 1 of 1</span>
+                        <button class="pagination-btn" id="nextPage" disabled>Next ▶</button>
+                    </div>
+                </div>
+                <div class="logs-footer-controls">
+                    <div class="status-connection">
+                        <div class="status-indicator" id="statusIndicator"></div>
+                        <span id="statusText">Connected</span>
+                    </div>
+                    <button class="btn btn-danger" id="clearLogs">Clear Logs</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profiles View -->
+        <div class="view" id="profilesView">
+            <div class="header">
+                <h1>👤 Profiles</h1>
+            </div>
+            <div class="content-container">
+                <div class="profiles-grid" id="profilesGrid">
+                    <div class="loading">Loading profiles...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Manager View -->
+        <div class="view" id="tasksView">
+            <div class="header">
+                <h1>✓ Task Manager</h1>
+                <div class="controls">
+                    <div class="filter-group">
+                        <label>Profile:</label>
+                        <select class="filter-input" id="taskProfileFilter">
+                            <option value="">All Profiles</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="content-container">
+                <div class="tasks-container" id="tasksContainer">
+                    <div class="loading">Loading tasks...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bottom Status Bar -->
+    <div class="bottom-bar" id="bottomBar">
+        <div class="bottom-bar-left">
+            <div class="bot-status">
+                <span class="bot-status-indicator" id="botStatusIndicator"></span>
+                <span class="bot-status-text" id="botStatusText">Bot Status: Stopped</span>
+            </div>
+        </div>
+        <div class="bottom-bar-center">
+            <span class="app-version">Whiteout Survival Bot v2.1.0</span>
+        </div>
+        <div class="bottom-bar-right">
+            <button class="bottom-btn bottom-btn-pause" id="btnPause">
+                <span class="btn-icon">⏸</span>
+                <span class="btn-text">Pause</span>
+            </button>
+            <button class="bottom-btn bottom-btn-resume" id="btnResume" style="display: none;">
+                <span class="btn-icon">▶</span>
+                <span class="btn-text">Resume</span>
+            </button>
+            <button class="bottom-btn bottom-btn-start" id="btnStart">
+                <span class="btn-icon">▶</span>
+                <span class="btn-text">Start Bot</span>
+            </button>
+            <button class="bottom-btn bottom-btn-stop" id="btnStop" style="display: none;">
+                <span class="btn-icon">⏹</span>
+                <span class="btn-text">Stop Bot</span>
+            </button>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

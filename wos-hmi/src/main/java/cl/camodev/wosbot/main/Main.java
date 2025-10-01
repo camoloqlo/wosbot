@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cl.camodev.wosbot.logging.ProfileLogger;
+import cl.camodev.wosbot.web.server.WebDashboardServer;
 
 public class Main {
 	private static final Logger logger = LoggerFactory.getLogger(Main.class);
@@ -20,11 +21,15 @@ public class Main {
 			logger.info("Logging configured. Check target/log/bot.log for detailed logs.");
 			logger.info("Profile-specific logs will be created in target/log/profile_*.log files");
 			
-			// Add shutdown hook to close log files
-			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-				logger.info("Application shutting down, closing log files...");
-				ProfileLogger.closeAllLogWriters();
-			}));
+			// Start the log web server
+			startLogWebServer();
+			
+ 		// Add shutdown hook to close log files and web server
+ 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+ 			logger.info("Application shutting down, closing log files...");
+ 			ProfileLogger.closeAllLogWriters();
+ 			WebDashboardServer.getInstance().stop();
+ 		}));
 
 			// Launch JavaFX application
 			FXApp.main(args);
@@ -54,6 +59,20 @@ public class Main {
 		} catch (Exception e) {
 			System.err.println("Failed to configure Log4j: " + e.getMessage());
 			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Starts the web dashboard server for real-time log viewing and bot control
+	 */
+	private static void startLogWebServer() {
+		try {
+			WebDashboardServer webDashboardServer = WebDashboardServer.getInstance();
+			webDashboardServer.start(); // Starts on default port 8080
+			logger.info("Web dashboard server started successfully");
+		} catch (Exception e) {
+			logger.error("Failed to start web dashboard server: " + e.getMessage(), e);
+			// Don't fail the application if web server can't start
 		}
 	}
 }

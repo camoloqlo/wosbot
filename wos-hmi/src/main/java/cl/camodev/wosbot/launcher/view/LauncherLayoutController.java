@@ -396,38 +396,40 @@ public class LauncherLayoutController implements IProfileLoadListener {
     public void onProfileLoad(ProfileAux profile) {
         String version = getVersion();
         stage.setTitle("Whiteout Survival Bot v" + version + " - " + profile.getName());
-        buttonStartStop.setDisable(false);
-        buttonPauseResume.setDisable(true);
         selectProfileInComboBox(profile);
     }
 
     public void onBotStateChange(DTOBotState botState) {
-        if (botState != null) {
-            if (botState.getRunning()) {
-                if (botState.getPaused() != null && botState.getPaused()) {
-                    // Bot is running but paused
-                    buttonStartStop.setText("Stop");
-                    buttonStartStop.setDisable(false);
-                    buttonPauseResume.setText("Resume Bot");
-                    buttonPauseResume.setDisable(false);
-                    estado = true;
+        Platform.runLater(()->{
+            if (botState != null) {
+                if (botState.getRunning()) {
+                    if (botState.getPaused() != null && botState.getPaused()) {
+                        // Bot is running but paused
+                        buttonStartStop.setText("Stop");
+                        buttonStartStop.setDisable(false);
+                        buttonPauseResume.setText("Resume Bot");
+                        buttonPauseResume.setDisable(false);
+                        estado = true;
+                    } else {
+                        // Bot is running and active
+                        buttonStartStop.setText("Stop");
+                        buttonStartStop.setDisable(false);
+                        buttonPauseResume.setText("Pause Bot");
+                        buttonPauseResume.setDisable(false);
+                        estado = true;
+                    }
                 } else {
-                    // Bot is running and active
-                    buttonStartStop.setText("Stop");
+                    // Bot is stopped
+                    buttonStartStop.setText("Start Bot");
                     buttonStartStop.setDisable(false);
                     buttonPauseResume.setText("Pause Bot");
-                    buttonPauseResume.setDisable(false);
-                    estado = true;
+                    buttonPauseResume.setDisable(true);
+                    estado = false;
                 }
-            } else {
-                // Bot is stopped
-                buttonStartStop.setText("Start Bot");
-                buttonStartStop.setDisable(false);
-                buttonPauseResume.setText("Pause Bot");
-                buttonPauseResume.setDisable(true);
-                estado = false;
             }
-        }
+        });
+
+
     }
 
     @FXML
