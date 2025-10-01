@@ -64,19 +64,42 @@
  		<artifactId>logback-classic</artifactId>
  		<scope>runtime</scope>
  	</dependency>
- 	<!-- Javalin web framework for log server -->
+ 	<!-- Janino for Logback conditional processing (JaninoEventEvaluator) -->
  	<dependency>
- 		<groupId>io.javalin</groupId>
- 		<artifactId>javalin</artifactId>
- 		<version>6.3.0</version>
+ 		<groupId>org.codehaus.janino</groupId>
+ 		<artifactId>janino</artifactId>
+ 		<scope>runtime</scope>
  	</dependency>
- 	<!-- Gson for JSON serialization -->
- 	<dependency>
- 		<groupId>com.google.code.gson</groupId>
- 		<artifactId>gson</artifactId>
- 		<version>2.11.0</version>
- 	</dependency>
+	
+ 	<!-- Spring Boot Web (includes Tomcat embedded server) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+			<version>3.2.0</version>
+		</dependency>
+		
+		<!-- Spring Boot WebFlux for SSE (Server-Sent Events) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+			<version>3.2.0</version>
+		</dependency>
+		
+		<!-- Gson for JSON serialization -->
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.11.0</version>
+		</dependency>
 
-
-     </dependencies>
+    </dependencies>
+    
+    <build>
+    	<resources>
+    		<resource>
+    			<directory>src/main/resources</directory>
+    			<filtering>true</filtering>
+    		</resource>
+    	</resources>
+    </build>
 </project>

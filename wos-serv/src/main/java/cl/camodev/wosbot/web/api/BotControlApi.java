@@ -1,107 +1,82 @@
 package cl.camodev.wosbot.web.api;
 
 import cl.camodev.wosbot.serv.impl.ServScheduler;
-import io.javalin.http.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 /**
  * REST API controller for bot control operations.
- * Provides endpoints to start, stop, pause, resume, and check status of the bot.
  */
+@RestController
+@RequestMapping("/api/bot")
 public class BotControlApi {
 
     private static final Logger logger = LoggerFactory.getLogger(BotControlApi.class);
 
-    /**
-     * Starts the bot.
-     * POST /api/bot/start
-     * 
-     * @param ctx Javalin context
-     */
-    public void startBot(Context ctx) {
+    @PostMapping("/start")
+    public ResponseEntity<Map<String, Object>> startBot() {
         try {
             logger.info("Received request to start bot");
             ServScheduler.getServices().startBot();
-            ctx.json(Map.of("success", true, "message", "Bot started successfully"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Bot started successfully"));
         } catch (Exception e) {
             logger.error("Error starting bot: {}", e.getMessage(), e);
-            ctx.status(500).json(Map.of("success", false, "error", e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", e.getMessage()));
         }
     }
 
-    /**
-     * Stops the bot.
-     * POST /api/bot/stop
-     * 
-     * @param ctx Javalin context
-     */
-    public void stopBot(Context ctx) {
+    @PostMapping("/stop")
+    public ResponseEntity<Map<String, Object>> stopBot() {
         try {
             logger.info("Received request to stop bot");
             ServScheduler.getServices().stopBot();
-            ctx.json(Map.of("success", true, "message", "Bot stopped successfully"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Bot stopped successfully"));
         } catch (Exception e) {
             logger.error("Error stopping bot: {}", e.getMessage(), e);
-            ctx.status(500).json(Map.of("success", false, "error", e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", e.getMessage()));
         }
     }
 
-    /**
-     * Pauses the bot.
-     * POST /api/bot/pause
-     * 
-     * @param ctx Javalin context
-     */
-    public void pauseBot(Context ctx) {
+    @PostMapping("/pause")
+    public ResponseEntity<Map<String, Object>> pauseBot() {
         try {
             logger.info("Received request to pause bot");
             ServScheduler.getServices().pauseBot();
-            ctx.json(Map.of("success", true, "message", "Bot paused successfully"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Bot paused successfully"));
         } catch (Exception e) {
             logger.error("Error pausing bot: {}", e.getMessage(), e);
-            ctx.status(500).json(Map.of("success", false, "error", e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", e.getMessage()));
         }
     }
 
-    /**
-     * Resumes the bot.
-     * POST /api/bot/resume
-     * 
-     * @param ctx Javalin context
-     */
-    public void resumeBot(Context ctx) {
+    @PostMapping("/resume")
+    public ResponseEntity<Map<String, Object>> resumeBot() {
         try {
             logger.info("Received request to resume bot");
             ServScheduler.getServices().resumeBot();
-            ctx.json(Map.of("success", true, "message", "Bot resumed successfully"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Bot resumed successfully"));
         } catch (Exception e) {
             logger.error("Error resuming bot: {}", e.getMessage(), e);
-            ctx.status(500).json(Map.of("success", false, "error", e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", e.getMessage()));
         }
     }
 
-    /**
-     * Gets the current bot status.
-     * GET /api/bot/status
-     * 
-     * @param ctx Javalin context
-     */
-    public void getBotStatus(Context ctx) {
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, String>> getBotStatus() {
         try {
-            cl.camodev.wosbot.serv.task.TaskQueueManager queueManager = ServScheduler.getServices().getQueueManager();
+            cl.camodev.wosbot.serv.task.TaskQueueManager queueManager = 
+                ServScheduler.getServices().getQueueManager();
             boolean hasRunningQueues = queueManager.hasRunningQueues();
             
-            // Simple status check - just return running or stopped
-            // The frontend will track paused state based on the pause/resume button clicks
             String status = hasRunningQueues ? "running" : "stopped";
-            
-            ctx.json(Map.of("status", status));
+            return ResponseEntity.ok(Map.of("status", status));
         } catch (Exception e) {
             logger.error("Error getting bot status: {}", e.getMessage(), e);
-            ctx.status(500).json(Map.of("error", "Failed to get bot status"));
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to get bot status"));
         }
     }
 }

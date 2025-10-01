@@ -79,14 +79,23 @@ public class ServScheduler {
 			return;
 		}
 
-		if (profiles.stream().filter(DTOProfiles::getEnabled).findAny().isEmpty()) {
-			ServLogs.getServices().appendLog(EnumTpMessageSeverity.WARNING, "ServScheduler", "-", "No Enabled profiles");
-			return;
-		} else {
-			TaskQueueManager queueManager = ServScheduler.getServices().getQueueManager();
-			DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+ 	if (profiles.stream().filter(DTOProfiles::getEnabled).findAny().isEmpty()) {
+ 		ServLogs.getServices().appendLog(EnumTpMessageSeverity.WARNING, "ServScheduler", "-", "No Enabled profiles");
+ 		return;
+ 	} else {
+ 		// Notify listeners immediately that bot is starting
+ 		listeners.forEach(e -> {
+ 			DTOBotState state = new DTOBotState();
+ 			state.setRunning(true);
+ 			state.setPaused(false);
+ 			state.setActionTime(LocalDateTime.now());
+ 			e.onBotStateChange(state);
+ 		});
 
-			profiles.stream().filter(DTOProfiles::getEnabled).sorted(Comparator.comparing(DTOProfiles::getPriority).reversed()).forEach(profile -> {
+ 		TaskQueueManager queueManager = ServScheduler.getServices().getQueueManager();
+ 		DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+
+ 		profiles.stream().filter(DTOProfiles::getEnabled).sorted(Comparator.comparing(DTOProfiles::getPriority).reversed()).forEach(profile -> {
 				profile.setGlobalSettings(globalsettings);
 				ServLogs.getServices().appendLog(EnumTpMessageSeverity.DEBUG, "ServScheduler", "-", "starting queue");
 
@@ -141,19 +150,10 @@ public class ServScheduler {
 						}
 					}
 				});
-			});
+ 		});
 
-			queueManager.startQueues();
-
-			listeners.forEach(e -> {
-				DTOBotState state = new DTOBotState();
-				state.setRunning(true);
-				state.setPaused(false);
-				state.setActionTime(LocalDateTime.now());
-				e.onBotStateChange(state);
-			});
-
-		}
+ 		queueManager.startQueues();
+ 	}
 
 	}
 

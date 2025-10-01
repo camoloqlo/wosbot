@@ -52,14 +52,21 @@
 				<artifactId>slf4j-api</artifactId>
 				<version>${slf4j.version}</version>
 			</dependency>
-			<!-- Logback implementation (binding) -->
-			<dependency>
-				<groupId>ch.qos.logback</groupId>
-				<artifactId>logback-classic</artifactId>
-				<version>${logback.version}</version>
-				<scope>runtime</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
+ 		<!-- Logback implementation (binding) -->
+ 		<dependency>
+ 			<groupId>ch.qos.logback</groupId>
+ 			<artifactId>logback-classic</artifactId>
+ 			<version>${logback.version}</version>
+ 			<scope>runtime</scope>
+ 		</dependency>
+ 		<!-- Janino for Logback conditional processing (JaninoEventEvaluator) -->
+ 		<dependency>
+ 			<groupId>org.codehaus.janino</groupId>
+ 			<artifactId>janino</artifactId>
+ 			<version>3.1.12</version>
+ 			<scope>runtime</scope>
+ 		</dependency>
+ 	</dependencies>
+ </dependencyManagement>
 
 </project>
