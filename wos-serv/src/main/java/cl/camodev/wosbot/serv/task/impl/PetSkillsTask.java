@@ -1,4 +1,7 @@
+
 package cl.camodev.wosbot.serv.task.impl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 
@@ -7,11 +10,13 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 
 public class PetSkillsTask extends DelayedTask {
 
+	private static final Logger log = LoggerFactory.getLogger(PetSkillsTask.class);
 	private final PetSkill petSkill;
 
 	//@formatter:on
@@ -73,9 +78,20 @@ public class PetSkillsTask extends DelayedTask {
 			try {
 				logInfo("Skill used. Parsing cooldown to determine next schedule for " + petSkill.name() + ".");
 				String nextSchedulteText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(210, 1080), new DTOPoint(520, 1105));
-				LocalDateTime nextSchedule = parseCooldown(nextSchedulteText);
-				this.reschedule(parseCooldown(nextSchedulteText));
-                logInfo("Rescheduled " + petSkill.name() + " task for " + nextSchedule);
+				if (nextSchedulteText != null && nextSchedulteText.toLowerCase().contains("active")) {
+					LocalDateTime nextSchedule = LocalDateTime.now().plusHours(1);
+					logInfo("Skill is active, no cooldown. Rescheduling task for 1 hour: " + nextSchedule);
+					this.reschedule(nextSchedule);
+					ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, nextSchedule);
+				} else if (nextSchedulteText != null && (nextSchedulteText.toLowerCase().contains("on cooldown:") || nextSchedulteText.matches(".*\\d+:\\d+:\\d+.*"))) {
+					LocalDateTime nextSchedule = parseCooldown(nextSchedulteText);
+					this.reschedule(nextSchedule);
+					ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, nextSchedule);
+					logInfo("Rescheduled " + petSkill.name() + " task for " + nextSchedule);
+				} else {
+					logWarning("Unexpected cooldown text: '" + nextSchedulteText + "'. Rescheduling in 5 minutes.");
+					this.reschedule(LocalDateTime.now().plusMinutes(5));
+				}
 			} catch (Exception e) {
 				logError("Error parsing cooldown for " + petSkill.name() + ". Rescheduling for 5 minutes.", e);
 				this.reschedule(LocalDateTime.now().plusMinutes(5));
@@ -93,19 +109,16 @@ public class PetSkillsTask extends DelayedTask {
 		}
 
 		try {
-
-			String timePart = input.substring(input.toLowerCase().indexOf("on cooldown:") + 12).trim();
-
+			String lower = input.toLowerCase();
+			String timePart = input.substring(lower.indexOf("on cooldown:") + 12).trim();
 			timePart = timePart.replaceAll("\\s+", "").replaceAll("[Oo]", "0").replaceAll("[lI]", "1").replaceAll("[S]", "5").replaceAll("[B]", "8").replaceAll("[Z]", "2").replaceAll("[^0-9d:]", "");
 
 			int days = 0, hours = 0, minutes = 0, seconds = 0;
-
 			if (timePart.contains("d")) {
 				String[] daySplit = timePart.split("d", 2);
 				days = parseNumber(daySplit[0]); // Extract days
 				timePart = daySplit[1]; // Rest of the string without days
 			}
-
 			String[] parts = timePart.split(":");
 			if (parts.length == 3) { // Standard case hh:mm:ss
 				hours = parseNumber(parts[0]);
@@ -114,7 +127,6 @@ public class PetSkillsTask extends DelayedTask {
 			} else {
 				throw new IllegalArgumentException("Incorrect time format: " + timePart);
 			}
-
 			return LocalDateTime.now().plusDays(days).plusHours(hours).plusMinutes(minutes).plusSeconds(seconds);
 		} catch (Exception e) {
 			throw new RuntimeException("Error processing cooldown: " + input, e);

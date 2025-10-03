@@ -13,6 +13,9 @@ wos-ot/.classpath
 wos-ot/.project
 wos-persitence/.classpath
 wos-persitence/.project
+
+# Distribution folder (keep local, but not in Git)
+dist/
 wos-serv/.classpath
 wos-serv/.project
 wos-utiles/.classpath
@@ -24,6 +27,22 @@ wos-hmi/.project
 /.idea
 /wos-hmi/log
 database.db
+
+# Log files - exclude all log files and compressed logs
+log/
+*.log
+*.log.*
+*.gz
+*.zip.log
+dist/WosBot/app
+dist/WosBot/lib
+dist/WosBot/log
+dist/WosBot/runtime
+dist/WosBot_Optimized
+dist/WosBot.zip
+MANIFEST.MF
+WosBot.manifest
 log/bot.log
 .vscode/settings.json
 /log
+TASK_CONFIGURATION_CHECK_ISSUE.md

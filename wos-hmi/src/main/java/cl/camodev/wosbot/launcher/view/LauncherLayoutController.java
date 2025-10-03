@@ -394,14 +394,14 @@ public class LauncherLayoutController implements IProfileLoadListener {
     }
 
 
-    @Override
-    public void onProfileLoad(ProfileAux profile) {
-        String version = getVersion();
-        stage.setTitle("Whiteout Survival Bot v" + version + " - " + profile.getName());
-        buttonStartStop.setDisable(false);
-        buttonPauseResume.setDisable(true);
-        selectProfileInComboBox(profile);
-    }
+	@Override
+	public void onProfileLoad(ProfileAux profile) {
+		String version = getVersion();
+		stage.setTitle("WosBot v" + version + " - EXE by Stargaterunner - " + profile.getName());
+		buttonStartStop.setDisable(false);
+		buttonPauseResume.setDisable(true);
+		selectProfileInComboBox(profile);
+	}
 
     public void onBotStateChange(DTOBotState botState) {
         if (botState != null) {

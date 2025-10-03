@@ -72,6 +72,7 @@ public class EventsLayoutController extends AbstractProfileController {
         });
 
         initializeChangeEvents();
-        checkBoxHeroMission.setDisable(true);
+    checkBoxHeroMission.setDisable(true);
+    // checkBoxMercenaryPrestige.setDisable(false); // Mercenary deferred
     }
 }
