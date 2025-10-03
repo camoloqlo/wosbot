@@ -352,6 +352,13 @@ public enum EnumTemplates {
 	MERCENARY_ATTACK_BUTTON("/templates/mercenary/mercenaryEventAttack.png"),
 	MERCENARY_DEPLOY_BUTTON("/templates/mercenary/mercenaryEventDeploy.png"),
 	MERCENARY_DIFFICULTY_CHALLENGE("/templates/mercenary/mercenaryEventDifficultyChallenge.png"),
+
+	MERCENARY_MERC("/templates/mercenary/Merc.png"),
+	MERCENARY_MERC1("/templates/mercenary/Merc1.png"),
+	MERCENARY_MERC2("/templates/mercenary/Merc2.png"),
+	MERCENARY_2("/templates/mercenary/2.png"),
+	MERCENARY_3("/templates/mercenary/3.png"),
+	MERCENARY_5("/templates/mercenary/5.png"),
 	
     // ========================================================================
     // POLAR TERROR HUNTING
