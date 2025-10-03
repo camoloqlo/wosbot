@@ -1,5 +1,6 @@
 package cl.camodev.wosbot.serv.task;
 
+import cl.camodev.utiles.ocr.TextRecognitionRetrier;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -44,6 +45,9 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected ServScheduler servScheduler = ServScheduler.getServices();
     protected ServLogs servLogs = ServLogs.getServices();
     private ProfileLogger logger; // Will be initialized in the constructor
+    private BotTextRecognitionProvider provider = new BotTextRecognitionProvider(emuManager, EMULATOR_NUMBER);
+    protected TextRecognitionRetrier<Integer> integerHelper = new TextRecognitionRetrier<>(provider);
+    protected FixedScheduleConfig fixedScheduleConfig; // Configuration for fixed schedule tasks
 
     public DelayedTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         this.profile = profile;
