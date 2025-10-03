@@ -47,7 +47,6 @@ public abstract class DelayedTask implements Runnable, Delayed {
     private ProfileLogger logger; // Will be initialized in the constructor
     private BotTextRecognitionProvider provider = new BotTextRecognitionProvider(emuManager, EMULATOR_NUMBER);
     protected TextRecognitionRetrier<Integer> integerHelper = new TextRecognitionRetrier<>(provider);
-    protected FixedScheduleConfig fixedScheduleConfig; // Configuration for fixed schedule tasks
 
     public DelayedTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         this.profile = profile;
