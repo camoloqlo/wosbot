@@ -524,6 +524,11 @@ public class EmulatorManager {
         emulator.launchApp(emulatorNumber, packageName);
     }
 
+    public void sendGameToBackground(String emulatorNumber) {
+        checkEmulatorInitialized();
+        emulator.sendGameToBackground(emulatorNumber);
+    }
+    
     public boolean isRunning(String emulatorNumber) {
         checkEmulatorInitialized();
         return emulator.isRunning(emulatorNumber);

@@ -18,6 +18,7 @@
       <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
       <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
         <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
+        <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
     </rowConstraints>
    <TableView fx:id="tableviewEmulators" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS">
      <columns>
@@ -30,7 +31,7 @@
          <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
       </columnResizePolicy>
    </TableView>
-   <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="3">
+   <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="4">
       <children>
          <Label text="Max Concurrent Instances" />
          <TextField fx:id="textfieldMaxConcurrentInstances" maxWidth="50.0" minWidth="50.0" prefWidth="50.0">
@@ -50,7 +51,17 @@
          </TextField>
       </children>
    </HBox>
-   <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="4">
+   <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="3">
+      <children>
+         <Label text="Idle Behavior" />
+         <ComboBox fx:id="comboboxIdleBehavior" prefWidth="150.0">
+            <HBox.margin>
+               <Insets right="5.0" />
+            </HBox.margin>
+         </ComboBox>
+      </children>
+   </HBox>
+   <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="5">
       <children>
          <Button onAction="#handleSaveConfiguration" text="Save Configuration" />
       </children>

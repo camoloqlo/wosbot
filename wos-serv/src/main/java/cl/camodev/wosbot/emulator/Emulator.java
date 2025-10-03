@@ -587,6 +587,23 @@ public abstract class Emulator {
 	}
 
 	/**
+	 * Sends the game to background by pressing the home button.
+	 * This keeps the game running but returns to the home screen.
+	 * @param emulatorNumber Emulator identifier
+	 */
+	public void sendGameToBackground(String emulatorNumber) {
+		withRetries(emulatorNumber, device -> {
+			try {
+				device.executeShellCommand("input keyevent KEYCODE_HOME", new NullOutputReceiver());
+                logger.info("Game sent to background on emulator {}", emulatorNumber);
+				return null;
+			} catch (Exception e) {
+				throw new RuntimeException("Error sending game to background", e);
+			}
+		}, "sendGameToBackground");
+	}
+
+	/**
 	 * Simulates a random tap at a point within the given area.
 	 * @param emulatorNumber Emulator identifier
 	 * @param point1 First corner

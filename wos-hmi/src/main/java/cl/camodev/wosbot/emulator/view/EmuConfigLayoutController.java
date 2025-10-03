@@ -6,6 +6,7 @@ import java.util.HashMap;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.emulator.EmulatorType;
 import cl.camodev.wosbot.console.enumerable.GameVersion;
+import cl.camodev.wosbot.console.enumerable.IdleBehavior;
 import cl.camodev.wosbot.emulator.model.EmulatorAux;
 import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
@@ -49,6 +50,9 @@ public class EmuConfigLayoutController {
 
 	@FXML
 	private ComboBox<GameVersion> comboboxGameVersion;
+
+	@FXML
+	private ComboBox<IdleBehavior> comboboxIdleBehavior;
 
 	private final FileChooser fileChooser = new FileChooser();
 
@@ -141,6 +145,20 @@ public class EmuConfigLayoutController {
 		comboboxGameVersion.setItems(FXCollections.observableArrayList(GameVersion.values()));
 		String gameVersionName = globalConfig.getOrDefault(EnumConfigurationKey.GAME_VERSION_STRING.name(), GameVersion.GLOBAL.name());
 		comboboxGameVersion.setValue(GameVersion.valueOf(gameVersionName));
+
+		// Initialize the idle behavior combobox
+		comboboxIdleBehavior.setItems(FXCollections.observableArrayList(IdleBehavior.values()));
+		boolean idleBehaviorSendToBackground = Boolean.parseBoolean(globalConfig.getOrDefault(EnumConfigurationKey.IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL.name(), "false"));
+		comboboxIdleBehavior.setValue(IdleBehavior.fromBoolean(idleBehaviorSendToBackground));
+		
+		// Add listener to show warning when "Close Game" is selected
+		comboboxIdleBehavior.setOnAction(event -> {
+			IdleBehavior selectedBehavior = comboboxIdleBehavior.getValue();
+			ServScheduler.getServices().saveEmulatorPath(EnumConfigurationKey.IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL.name(), selectedBehavior.shouldSendToBackground() ? "true" : "false");
+			if (selectedBehavior != null && selectedBehavior.shouldSendToBackground()) {
+				showConcurrentInstanceWarning();
+			}
+		});
 	}
 
 	// Saves the configuration, iterating through the list to extract the path and determine the active emulator
@@ -184,7 +202,7 @@ public class EmuConfigLayoutController {
 		ServScheduler.getServices().saveEmulatorPath(EnumConfigurationKey.MAX_IDLE_TIME_INT.name(), maxIdleTime);
 		ServScheduler.getServices().saveEmulatorPath(EnumConfigurationKey.MAX_RUNNING_EMULATORS_INT.name(), maxInstances);
 		ServScheduler.getServices().saveEmulatorPath(EnumConfigurationKey.CURRENT_EMULATOR_STRING.name(), activeEmulatorName);
-		showInfo("Config saved successfully");
+			showInfo("Config saved successfully");
 	}
 
 	private File openFileChooser(String title) {
@@ -192,6 +210,31 @@ public class EmuConfigLayoutController {
 		fileChooser.getExtensionFilters().clear();
 		fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Executable Files", "*.exe"));
 		return fileChooser.showOpenDialog(null);
+	}
+
+	private void showConcurrentInstanceWarning() {
+		// Get current max concurrent instances value
+		String maxInstancesText = textfieldMaxConcurrentInstances.getText();
+		int maxInstances = 1;
+		try {
+			maxInstances = Integer.parseInt(maxInstancesText);
+		} catch (NumberFormatException e) {
+			// Use default value if parsing fails
+		}
+		
+		Alert alert = new Alert(Alert.AlertType.WARNING);
+		alert.setTitle("Important: Concurrent Instance Requirement");
+		alert.setHeaderText("Close Game Option Selected");
+		alert.setContentText(
+			"You have selected 'Close Game' behavior which keeps emulators running during idle periods.\n\n" +
+			"IMPORTANT: Make sure you have enough concurrent emulator instances (" + maxInstances + ") " +
+			"to handle all your active profiles simultaneously. If you have more profiles than concurrent " +
+			"instances, some profiles won't be able to run.\n\n" +
+			"Consider:\n" +
+			"• Increasing 'Max Concurrent Instances' if needed\n" +
+			"• Using 'Close Emulator' if you have limited system resources"
+		);
+		alert.showAndWait();
 	}
 
 	private void showError(String message) {
