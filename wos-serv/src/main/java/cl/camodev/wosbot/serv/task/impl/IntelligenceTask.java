@@ -1,5 +1,6 @@
 package cl.camodev.wosbot.serv.task.impl;
 
+import java.awt.*;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -9,6 +10,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import cl.camodev.utiles.UtilRally;
+import cl.camodev.utiles.number.NumberConverters;
+import cl.camodev.utiles.number.NumberValidators;
 import cl.camodev.wosbot.almac.repo.DailyTaskRepository;
 import cl.camodev.wosbot.almac.repo.IDailyTaskRepository;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -17,6 +20,8 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.ot.DTOTesseractSettings;
+import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import net.sourceforge.tess4j.TesseractException;
@@ -80,12 +85,7 @@ public class IntelligenceTask extends DelayedTask {
 		}
 
 		// check is stamina enough to process any intel
-		Integer staminaValue = readNumberValue(new DTOPoint(582, 23), new DTOPoint(672, 55));
-		if (staminaValue == null) {
-			logWarning("No stamina value found after OCR attempts.");
-			this.reschedule(LocalDateTime.now().plusMinutes(5));
-			return;
-		}
+		int staminaValue = StaminaService.getServices().getCurrentStamina(profile.getId());
 
 		int minStaminaRequired = 30; // Minimum stamina required to process intel, make it configurable if needed?
 		if (staminaValue < minStaminaRequired) {
@@ -253,6 +253,7 @@ public class IntelligenceTask extends DelayedTask {
 				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(520, 1200));
 				sleepTask(1000);
 				tapBackButton();
+                StaminaService.getServices().subtractStamina(profile.getId(),10);
 			} else {
 				logWarning("Could not find the 'Explore' button for the journey. Going back.");
 				tapBackButton(); // Back from journey screen
@@ -272,6 +273,7 @@ public class IntelligenceTask extends DelayedTask {
 			DTOImageSearchResult rescue = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_RESCUE, 90);
 			if (rescue.isFound()) {
 				emuManager.tapAtPoint(EMULATOR_NUMBER, rescue.getPoint());
+                StaminaService.getServices().subtractStamina(profile.getId(),12);
 			} else {
 				logWarning("Could not find the 'Rescue' button for the survivor. Going back.");
 				tapBackButton(); // Back from survivor screen
@@ -336,8 +338,17 @@ public class IntelligenceTask extends DelayedTask {
 			String timeStr = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(521, 1141),
 					new DTOPoint(608, 1162));
 			long travelTimeSeconds = parseTimeToSeconds(timeStr);
+            Integer spendedStamina = integerHelper.execute(
+                    new DTOPoint(540, 1215),
+                    new DTOPoint(590, 1245),
+                    5,
+                    200L,
+                    DTOTesseractSettings.builder().setRemoveBackground(true).setTextColor(new Color(255,255,255)).setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_WORD).build(),
+                    text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
+                    text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*"))
+            );
 
-			if (travelTimeSeconds > 0) {
+            if (travelTimeSeconds > 0) {
 				emuManager.tapAtPoint(EMULATOR_NUMBER, deployButton.getPoint());
 				sleepTask(1000); // Wait for march to start
 				long returnTimeSeconds = (travelTimeSeconds * 2) + 2;
@@ -345,6 +356,13 @@ public class IntelligenceTask extends DelayedTask {
 				this.reschedule(rescheduleTime);
 				logInfo("Beast march sent. Task will run again at " + rescheduleTime + ".");
 				beastMarchSent = true;
+                if (spendedStamina!=null){
+                    StaminaService.getServices().subtractStamina(profile.getId(),spendedStamina);
+                }else {
+                    // if OCR fails, default to 10 stamina
+                    StaminaService.getServices().subtractStamina(profile.getId(),10);
+                }
+
 			} else {
 				logError("Failed to parse march time. Aborting attack.");
 				tapBackButton(); // Go back from march screen
@@ -481,6 +499,11 @@ public class IntelligenceTask extends DelayedTask {
 	protected EnumStartLocation getRequiredStartLocation() {
 		return EnumStartLocation.WORLD;
 	}
+
+    @Override
+    protected boolean consumesStamina() {
+        return true;
+    }
 
 	private enum GatherType {
 		MEAT("meat", EnumTemplates.GAME_HOME_SHORTCUTS_MEAT, TpDailyTaskEnum.GATHER_MEAT),

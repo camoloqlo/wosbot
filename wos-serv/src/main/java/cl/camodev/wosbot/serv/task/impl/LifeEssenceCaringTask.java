@@ -50,7 +50,7 @@ public class LifeEssenceCaringTask extends DelayedTask {
 
 				// I should search and scroll about 7-8 times, if I don't find anything, reschedule for an hour
 
-				for (int i = 0; i < 8; i++) {
+				for (int i = 0; i < 10; i++) {
 					DTOImageSearchResult caringAvailable = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LIFE_ESSENCE_DAILY_CARING_GOTO_ISLAND, 90);
 					if (caringAvailable.isFound()) {
 						emuManager.tapAtRandomPoint(EMULATOR_NUMBER, caringAvailable.getPoint(), caringAvailable.getPoint());
@@ -81,17 +81,12 @@ public class LifeEssenceCaringTask extends DelayedTask {
 
 				this.reschedule(LocalDateTime.now().plusMinutes(profile.getConfig(EnumConfigurationKey.ALLIANCE_LIFE_ESSENCE_OFFSET_INT, Integer.class)));
 				logInfo("No island needing care found after multiple scrolls. Rescheduling.");
-
-				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(42, 28));
-				sleepTask(3000);
-				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(42, 28));
+                emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(42, 28),new DTOPoint(42, 28) ,3,1500);
 
 			} else {
 				logInfo("No daily caring attempts available. Rescheduling for the next game day.");
 				this.reschedule(UtilTime.getGameReset());
-				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(42, 28));
-				sleepTask(3000);
-				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(42, 28));
+                emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(42, 28),new DTOPoint(42, 28) ,3,1500);
 			}
 		}
 

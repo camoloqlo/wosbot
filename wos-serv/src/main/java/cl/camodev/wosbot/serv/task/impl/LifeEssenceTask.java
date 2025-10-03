@@ -97,6 +97,8 @@ public class LifeEssenceTask extends DelayedTask {
 		} else {
 			logInfo("No weekly free scroll available to purchase.");
 		}
+
+        tapRandomPoint(new DTOPoint(40, 30),new DTOPoint(40, 30),1, 1000); // Exit shop
 	}
 
 	/**

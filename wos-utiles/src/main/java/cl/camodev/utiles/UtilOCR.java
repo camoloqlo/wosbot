@@ -148,9 +148,9 @@ public class UtilOCR {
                 // Generate unique filename with timestamp
                 String timestamp = String.valueOf(System.currentTimeMillis());
                 
-                // Save stage 0: raw
+                // Save stage 0: raw (complete original image without cropping)
                 ByteArrayOutputStream baos0 = new java.io.ByteArrayOutputStream();
-                ImageIO.write(rawImage, "png", baos0);
+                ImageIO.write(image, "png", baos0);
                 Path outputPath0 = tempDir.resolve(timestamp + "_0_raw.png");
                 Files.write(outputPath0, baos0.toByteArray());
                 
@@ -217,7 +217,7 @@ public class UtilOCR {
             Mat result = new Mat(src.rows(), src.cols(), CvType.CV_8UC3);
             
             // Threshold for color similarity (adjust as needed)
-            int threshold = 50;
+            int threshold = 45;
             
             // Process each pixel
             for (int y = 0; y < src.rows(); y++) {

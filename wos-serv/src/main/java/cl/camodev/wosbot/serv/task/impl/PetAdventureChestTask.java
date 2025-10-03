@@ -6,6 +6,7 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 
 import java.time.LocalDateTime;
@@ -96,6 +97,7 @@ public class PetAdventureChestTask extends DelayedTask {
 
 										tapBackButton();
 										sleepTask(500);
+                                        StaminaService.getServices().subtractStamina(profile.getId(),10);
 										break; // Exits the attempt, but not the main loop
 									} else {
 										DTOImageSearchResult attemptsResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_CHEST_ATTEMPT,  90);
@@ -160,5 +162,11 @@ public class PetAdventureChestTask extends DelayedTask {
 
 	@Override
 	public boolean provideDailyMissionProgress() {return true;}
+
+
+    @Override
+    protected boolean consumesStamina() {
+        return true;
+    }
 
 }

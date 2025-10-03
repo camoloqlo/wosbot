@@ -75,7 +75,10 @@ public class InitializeTask extends DelayedTask {
 				emuManager.closeEmulator(EMULATOR_NUMBER);
 				isStarted = false;
 				this.setRecurring(true);
-			}
+			}else {
+                // Successfully reached home screen, reading stamina
+                updateStaminaFromProfile();
+            }
 
 		}
 	}
