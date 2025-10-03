@@ -84,6 +84,27 @@ public enum EnumConfigurationKey {
 	ALLIANCE_TRIUMPH_OFFSET_INT("60", Integer.class),
 	ALLIANCE_LIFE_ESSENCE_BOOL("false", Boolean.class),
 	ALLIANCE_LIFE_ESSENCE_OFFSET_INT("60", Integer.class),
+	ALLIANCE_MOBILIZATION_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_REWARDS_PERCENTAGE_STRING("Any", String.class),
+	ALLIANCE_MOBILIZATION_BUILD_SPEEDUPS_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_BUY_PACKAGE_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_CHIEF_GEAR_CHARM_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_CHIEF_GEAR_SCORE_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_DEFEAT_BEASTS_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_FIRE_CRYSTAL_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_GATHER_RESOURCES_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_HERO_GEAR_STONE_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_MYTHIC_SHARD_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_RALLY_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_TRAIN_TROOPS_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_TRAINING_SPEEDUPS_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_USE_GEMS_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_USE_SPEEDUPS_BOOL("false", Boolean.class),
+	ALLIANCE_MOBILIZATION_MINIMUM_POINTS_200_INT("800", Integer.class),
+	ALLIANCE_MOBILIZATION_MINIMUM_POINTS_120_INT("520", Integer.class),
+	ALLIANCE_MOBILIZATION_MINIMUM_POINTS_INT("520", Integer.class),
+	ALLIANCE_MOBILIZATION_AUTO_ACCEPT_BOOL("true", Boolean.class),
+	ALLIANCE_MOBILIZATION_USE_GEMS_FOR_ACCEPT_BOOL("false", Boolean.class),
 	
     // ========================================================================
     // LIFE ESSENCE AND PETS
@@ -106,6 +127,10 @@ public enum EnumConfigurationKey {
 	DAILY_MISSION_AUTO_SCHEDULE_BOOL("false", Boolean.class),
 	STOREHOUSE_CHEST_BOOL("false", Boolean.class),
 	DAILY_LABYRINTH_BOOL("false", Boolean.class),
+	ARENA_TASK_ACTIVATION_HOUR_STRING("0", String.class),
+	ARENA_TASK_BOOL("false", Boolean.class),
+	ARENA_TASK_EXTRA_ATTEMPTS_INT("0", Integer.class),
+	ARENA_TASK_REFRESH_WITH_GEMS_BOOL("false", Boolean.class),
 	
     // ========================================================================
     // SHOPS AND MERCHANTS
@@ -151,7 +176,7 @@ public enum EnumConfigurationKey {
 	POLAR_TERROR_ENABLED_BOOL("false", Boolean.class),
 	POLAR_TERROR_LEVEL_INT("1", Integer.class),
 	POLAR_TERROR_FLAG_STRING("No Flag", String.class),
-	POLAR_TERROR_MODE_STRING("Limited", String.class),
+	POLAR_TERROR_MODE_STRING("Limited (10)", String.class),
 
 	// Mercenary event
 	MERCENARY_EVENT_BOOL("false", Boolean.class),
@@ -163,6 +188,9 @@ public enum EnumConfigurationKey {
 
     // Journey of Light event
     JOURNEY_OF_LIGHT_BOOL("false", Boolean.class),
+
+    // Myriad Bazaar event
+    MYRIAD_BAZAAR_EVENT_BOOL("false", Boolean.class),
 
     // ========================================================================
     // EXPERT SETTINGS

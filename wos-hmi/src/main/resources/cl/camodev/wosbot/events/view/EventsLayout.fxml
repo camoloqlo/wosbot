@@ -12,17 +12,17 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="468.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<GridPane xmlns:fx="http://javafx.com/fxml/1" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="468.0" xmlns="http://javafx.com/javafx/24.0.1">
   <columnConstraints>
     <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
       <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
   </columnConstraints>
   <rowConstraints>
-    <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
+    <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="20.0" prefHeight="61.2" vgrow="SOMETIMES" />
+      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="20.0" prefHeight="61.2" vgrow="SOMETIMES" />
+      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="20.0" prefHeight="61.2" vgrow="SOMETIMES" />
+      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="20.0" prefHeight="61.2" vgrow="SOMETIMES" />
+      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="20.0" prefHeight="61.2" vgrow="SOMETIMES" />
   </rowConstraints>
    <children>
       <CheckBox fx:id="checkBoxTundraEvent" mnemonicParsing="false" text="Tundra Event">
@@ -33,6 +33,7 @@
        <CheckBox fx:id="checkBoxHeroMission" mnemonicParsing="false" text="Hero's Mission" GridPane.rowIndex="1" />
        <CheckBox fx:id="checkBoxMercenaryEvent" mnemonicParsing="false" text="Mercenary Event" GridPane.rowIndex="2" />
        <CheckBox fx:id="checkBoxJourneyofLight" mnemonicParsing="false" text="Journey of Light" GridPane.rowIndex="3" />
+       <CheckBox fx:id="checkBoxMyriadBazaar" mnemonicParsing="false" text="Claim free rewards on Myriad bazaar" GridPane.rowIndex="4" />
 
        <VBox prefHeight="200.0" prefWidth="100.0" GridPane.columnIndex="1">
          <children>
@@ -53,10 +54,10 @@
             <Insets />
          </GridPane.margin>
       </VBox>
-      <VBox prefHeight="200.0" prefWidth="100.0" spacing="10.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+      <VBox alignment="CENTER_LEFT" prefHeight="200.0" prefWidth="100.0" spacing="10.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
          <children>
             <CheckBox fx:id="checkBoxMercenaryUseFlag" mnemonicParsing="false" text="Use flag" />
-            <HBox fx:id="hboxMercenaryFlagSelection" prefHeight="100.0" prefWidth="200.0" spacing="5.0">
+            <HBox fx:id="hboxMercenaryFlagSelection" alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="5.0">
                <children>
                   <Label text="Flag selection" />
                   <ComboBox fx:id="comboBoxMercenaryFlag" />

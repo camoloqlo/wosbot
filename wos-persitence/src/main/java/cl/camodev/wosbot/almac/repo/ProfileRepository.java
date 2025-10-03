@@ -72,6 +72,32 @@ public class ProfileRepository implements IProfileRepository {
 		return profiles;
 	}
 
+	/**
+	 * Gets a profile with its configurations by ID.
+	 */
+	@Override
+	public DTOProfiles getProfileWithConfigsById(Long id) {
+		if (id == null) {
+			return null;
+		}
+
+		String queryProfile = "SELECT new cl.camodev.wosbot.ot.DTOProfiles(p.id, p.name, p.emulatorNumber, p.enabled, p.priority, p.reconnectionTime) FROM Profile p WHERE p.id = :id";
+		Map<String, Object> params = new HashMap<>();
+		params.put("id", id);
+		List<DTOProfiles> result = persistence.getQueryResults(queryProfile, DTOProfiles.class, params);
+		if (result == null || result.isEmpty()) {
+			return null;
+		}
+		DTOProfiles dto = result.get(0);
+
+		String queryConfigs = "SELECT new cl.camodev.wosbot.ot.DTOConfig(c.profile.id, c.key, c.value) FROM Config c WHERE c.profile.id = :profileId";
+		Map<String, Object> paramsCfg = new HashMap<>();
+		paramsCfg.put("profileId", id);
+		List<DTOConfig> cfgs = persistence.getQueryResults(queryConfigs, DTOConfig.class, paramsCfg);
+		dto.setConfigs(cfgs != null ? cfgs : new ArrayList<>());
+		return dto;
+	}
+
 	@Override
 	public boolean addProfile(Profile profile) {
 		return persistence.createEntity(profile);

@@ -56,24 +56,34 @@ public class DailyMissionTask extends DelayedTask {
 			logInfo("No more claim buttons found. All available missions claimed.");
 		}
 		tapBackButton();
-		sleepTask(50);
+		sleepTask(500);
 
 		this.setRecurring(!profile.getConfig(EnumConfigurationKey.DAILY_MISSION_AUTO_SCHEDULE_BOOL,Boolean.class));
 
-		if (recurring){
+		if (recurring) {
 			Integer minutes = profile.getConfig(EnumConfigurationKey.DAILY_MISSION_OFFSET_INT, Integer.class);
-			LocalDateTime proposedSchedule = LocalDateTime.now().plusMinutes(minutes);
+			LocalDateTime now = LocalDateTime.now();
+			LocalDateTime proposedSchedule = now.plusMinutes(minutes);
+			LocalDateTime resetTime = UtilTime.getGameReset();
+			LocalDateTime fiveMinutesBeforeReset = resetTime.minusMinutes(5);
+			LocalDateTime nextSchedule;
 			
-			// Check if the proposed schedule would be after game reset and adjust if needed
-			LocalDateTime nextSchedule = UtilTime.ensureBeforeGameReset(proposedSchedule);
-			
-			if (!nextSchedule.equals(proposedSchedule)) {
-				logInfo("Next scheduled time would be after game reset. Adjusting to 5 minutes before reset.");
+			// If we're too close to reset (less than 6 minutes away), schedule for configured offset
+			if (now.plusMinutes(6).isAfter(resetTime)) {
+				nextSchedule = proposedSchedule;
+			} else {
+				// Normal scheduling logic
+				nextSchedule = UtilTime.ensureBeforeGameReset(proposedSchedule);
+				
+				if (nextSchedule.isBefore(now) || nextSchedule.isAfter(resetTime)) {
+					// If the time is in the past or after reset, schedule for this reset
+					nextSchedule = fiveMinutesBeforeReset;
+				}
 			}
 			
 			this.reschedule(nextSchedule);
 			logInfo("Daily mission task completed. Next execution scheduled for " + nextSchedule);
-		}else{
+		} else {
 			this.reschedule(LocalDateTime.now().plusMinutes(30));
 			logInfo("Daily mission task completed. Auto-scheduling is disabled. A safety reschedule is set for 30 minutes from now.");
 		}

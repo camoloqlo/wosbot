@@ -6,7 +6,6 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
-import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 
@@ -53,7 +52,6 @@ public class PetAllianceTreasuresTask extends DelayedTask {
 				if (claimButton.isFound()) {
 					logInfo("Claim button found. Tapping to claim the treasure.");
 					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, claimButton.getPoint(), claimButton.getPoint());
-					ServScheduler.getServices().updateDailyTaskStatus(profile, TpDailyTaskEnum.ALLIANCE_PET_TREASURE, UtilTime.getGameReset());
 					this.reschedule(UtilTime.getGameReset());
 					logInfo("Alliance treasure claimed. Rescheduling for the next game reset.");
 					tapBackButton();
@@ -61,7 +59,6 @@ public class PetAllianceTreasuresTask extends DelayedTask {
 					tapBackButton();
 				} else {
 					logWarning("Claimable reward not found. Rescheduling for the next game reset.");
-					ServScheduler.getServices().updateDailyTaskStatus(profile, TpDailyTaskEnum.ALLIANCE_PET_TREASURE, UtilTime.getGameReset());
 					this.reschedule(UtilTime.getGameReset());
 					tapBackButton();
 					tapBackButton();

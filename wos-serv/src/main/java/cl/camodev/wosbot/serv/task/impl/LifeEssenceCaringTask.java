@@ -89,7 +89,6 @@ public class LifeEssenceCaringTask extends DelayedTask {
 			} else {
 				logInfo("No daily caring attempts available. Rescheduling for the next game day.");
 				this.reschedule(UtilTime.getGameReset());
-				servScheduler.updateDailyTaskStatus(profile, tpTask, UtilTime.getGameReset());
 				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(42, 28));
 				sleepTask(3000);
 				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(42, 28));

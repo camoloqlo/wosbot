@@ -6,7 +6,6 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
-import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 
 import java.time.LocalDateTime;
@@ -103,7 +102,6 @@ public class PetAdventureChestTask extends DelayedTask {
 										if (attemptsResult.isFound()) {
 											logInfo("No more adventure attempts available. Rescheduling for the next game reset.");
 											this.reschedule(UtilTime.getGameReset());
-											ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, UtilTime.getGameReset());
 											tapBackButton();
 											tapBackButton();
 											tapBackButton();
@@ -124,7 +122,6 @@ public class PetAdventureChestTask extends DelayedTask {
 				} while (foundAnyChest); // The loop repeats until no more chests are found
 
 				logInfo("No more available chests found to start. Rescheduling for 2 hours.");
-				ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, LocalDateTime.now().plusHours(2));
 				this.reschedule(LocalDateTime.now().plusHours(2));
 				tapBackButton();
 				tapBackButton();

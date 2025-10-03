@@ -1,7 +1,7 @@
 package cl.camodev.wosbot.serv.task;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -44,13 +44,14 @@ public class TaskQueue {
 
     // State flags
     private volatile boolean running = false;
-    private volatile boolean paused = false;
+    private volatile LocalDateTime paused = LocalDateTime.MIN;
+    private volatile boolean needsReconnect = false;
 
     // Thread that will evaluate and execute tasks
     private Thread schedulerThread;
-    private DTOProfiles profile;
+    private final DTOProfiles profile;
     private int helpAlliesCount = 0;
-    private long minDelay = Long.MAX_VALUE;
+    private LocalDateTime delayUntil = LocalDateTime.MAX;
 
     public TaskQueue(DTOProfiles profile) {
         this.profile = profile;
@@ -88,8 +89,8 @@ public class TaskQueue {
         return removed;
     }
 
-    public long getDelay() {
-        return minDelay;
+    public LocalDateTime getDelay() {
+        return delayUntil;
     }
     /**
      * Checks if a specific task type is currently scheduled in the queue
@@ -126,13 +127,16 @@ public class TaskQueue {
         acquireEmulatorSlot();
 
         while (running) {
-            if (paused) {
+            if (paused != LocalDateTime.MIN && paused != LocalDateTime.MAX) {
                 handlePausedState();
                 continue;
+            } else if (paused == LocalDateTime.MAX && !emuManager.isRunning(profile.getEmulatorNumber())) {
+                logInfo("Emulator is not running, acquiring emulator slot now");
+                acquireEmulatorSlot();
             }
 
             boolean executedTask = false;
-            minDelay = Long.MAX_VALUE;
+            delayUntil = LocalDateTime.MAX;
 
             // Process tasks that are ready to run
             DelayedTask task = taskQueue.peek();
@@ -140,20 +144,20 @@ public class TaskQueue {
             if (task != null && task.getDelay(TimeUnit.SECONDS) <= 0) {
                 taskQueue.poll(); // Remove the task from the queue
                 executedTask = executeTask(task);
-                minDelay = 0;
+                if (paused == LocalDateTime.MIN) delayUntil = LocalDateTime.MIN;
             } else if (task != null) {
-                minDelay = task.getDelay(TimeUnit.SECONDS);
+                delayUntil = LocalDateTime.now().plusSeconds(task.getDelay(TimeUnit.SECONDS));
             }
 
             // Handle background help actions
-            checkAndHelpAllies();
+            runBackgroundChecks();
 
             // Handle idle time logic
-            idlingTimeExceeded = handleIdleTime(minDelay, idlingTimeExceeded);
+            idlingTimeExceeded = handleIdleTime(delayUntil, idlingTimeExceeded);
 
             // If no task was executed, wait before checking again
-            if (!executedTask) {
-                waitForNextTask(minDelay);
+            if (!executedTask && paused == LocalDateTime.MIN) {
+                waitForNextTask(delayUntil);
             }
         }
     }
@@ -193,6 +197,7 @@ public class TaskQueue {
 
         } catch (Exception e) {
             handleTaskExecutionException(task, e);
+            executionSuccessful = false;
         } finally {
             // Always handle task rescheduling, regardless of success or failure
             handleTaskRescheduling(task, scheduledBefore);
@@ -277,28 +282,25 @@ public class TaskQueue {
         Long reconnectionTime = profile.getReconnectionTime();
         if (reconnectionTime != null && reconnectionTime > 0) {
             logInfo("Profile in reconnect state, pausing queue for " + reconnectionTime + " minutes");
-            paused = true;
-
-            new Thread(() -> {
-                try {
-                    Thread.sleep(TimeUnit.MINUTES.toMillis(reconnectionTime));
-                } catch (InterruptedException ignored) { }
-
-                if (paused) {
-                    resumeAfterReconnectionDelay(reconnectionTime);
-                }
-            }).start();
+            paused = LocalDateTime.now();
+            delayUntil = paused.plusMinutes(reconnectionTime);
+            needsReconnect = true;
         } else {
             logError("Profile in reconnect state, but no reconnection time set");
             attemptReconnectAndInitialize();
         }
     }
 
-    private void resumeAfterReconnectionDelay(Long reconnectionTime) {
-        paused = false;
+    private void resumeAfterReconnectionDelay() {
+        needsReconnect = false;
         updateProfileStatus("RESUMING AFTER PAUSE");
-        logInfo("TaskQueue resumed after " + reconnectionTime + " minutes pause");
+        logInfo("TaskQueue resuming after " + Duration.between(paused, LocalDateTime.now()).toMinutes() + " minutes pause");
+        paused = LocalDateTime.MIN;
 
+        if (!emuManager.isRunning(profile.getEmulatorNumber())) {
+            logInfo("While resuming, found instance closed. Acquiring a slot now.");
+            acquireEmulatorSlot();
+        }
         attemptReconnectAndInitialize();
     }
 
@@ -358,13 +360,12 @@ public class TaskQueue {
     }
 
     // Idle time management methods
-    private void idlingEmulator(long minDelay) {
+    private void idlingEmulator(LocalDateTime delayUntil) {
         emuManager.closeEmulator(profile.getEmulatorNumber());
-        logInfo("Closing game due to large inactivity");
+        logInfo("Closing game due to large inactivity. Next task: " + delayUntil);
 
-        LocalDateTime scheduledTime = LocalDateTime.now().plusSeconds(minDelay);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        updateProfileStatus("Idling till " + formatter.format(scheduledTime));
+        updateProfileStatus("Idling till " + formatter.format(delayUntil));
 
         emuManager.releaseEmulatorSlot(profile);
     }
@@ -394,8 +395,17 @@ public class TaskQueue {
      * Handles the paused state of the task queue
      */
     private void handlePausedState() {
+        if (delayUntil.isBefore(LocalDateTime.now())) {
+            if (needsReconnect) {resumeAfterReconnectionDelay();}
+            else {
+                paused = LocalDateTime.MIN;
+                updateProfileStatus("RESUMING");
+            }
+            return;
+        }
         try {
-            updateProfileStatus("PAUSED");
+            String timeFormatted = formatTimeUntil(delayUntil);
+            updateProfileStatus("Paused for " + timeFormatted);
             logInfo("Profile is paused");
             Thread.sleep(1000); // Wait while paused
         } catch (InterruptedException e) {
@@ -406,12 +416,11 @@ public class TaskQueue {
     /**
      * Waits for the next task to be ready, displaying status information
      */
-    private void waitForNextTask(long minDelay) {
+    private void waitForNextTask(LocalDateTime delayUntil) {
         try {
-            String formattedTime = formatWaitTime(minDelay);
             String nextTaskName = taskQueue.isEmpty() ? "None" : taskQueue.peek().getTaskName();
-
-            updateProfileStatus("Idling for " + formattedTime + "\nNext task: " + nextTaskName);
+            String timeFormatted = formatTimeUntil(delayUntil);
+            updateProfileStatus("Idling for " + timeFormatted + "\nNext task: " + nextTaskName);
             Thread.sleep(IDLE_WAIT_TIME);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -419,24 +428,23 @@ public class TaskQueue {
     }
 
     /**
-     * Formats delay time for display
+     * Formats the duration until the target time as HH:mm:ss
      */
-    private String formatWaitTime(long delayInSeconds) {
-        if (delayInSeconds == Long.MAX_VALUE || delayInSeconds > 86399) {
-            return "No tasks";
-        }
+    private String formatTimeUntil(LocalDateTime targetTime) {
+        Duration timeUntilNext = Duration.between(LocalDateTime.now(), targetTime);
 
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-        long safeDelay = Math.max(0, delayInSeconds);
-        return LocalTime.ofSecondOfDay(safeDelay).format(timeFormatter);
+        long hours = timeUntilNext.toHours();
+        long minutes = timeUntilNext.toMinutesPart();
+        long seconds = timeUntilNext.toSecondsPart();
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
     /**
      * Handles idle time logic
      * @return updated idling state
      */
-    private boolean handleIdleTime(long minDelay, boolean idlingTimeExceeded) {
-        if (minDelay == Long.MAX_VALUE) {
+    private boolean handleIdleTime(LocalDateTime delayUntil, boolean idlingTimeExceeded) {
+        if (delayUntil == LocalDateTime.MAX || delayUntil.isBefore(LocalDateTime.now())) {
             return idlingTimeExceeded; // No change if no tasks in queue
         }
 
@@ -445,13 +453,13 @@ public class TaskQueue {
             .orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue()));
 
         // If delay exceeds max idle time and we haven't already handled it
-        if (!idlingTimeExceeded && minDelay > TimeUnit.MINUTES.toSeconds(maxIdleMinutes)) {
-            idlingEmulator(minDelay);
+        if (!idlingTimeExceeded && LocalDateTime.now().plusMinutes(maxIdleMinutes).isBefore(delayUntil)) {
+            idlingEmulator(delayUntil);
             return true;
         }
 
         // If we're idling but the next task is coming soon, re-acquire the emulator
-        if (idlingTimeExceeded && minDelay < TimeUnit.MINUTES.toSeconds(1)) {
+        if (idlingTimeExceeded && LocalDateTime.now().plusMinutes(1).isAfter(delayUntil)) {
             enqueueNewTask();
             return false;
         }
@@ -460,37 +468,52 @@ public class TaskQueue {
     }
 
     /**
-     * Periodically checks for and helps allies if enabled
-     */
-    private void checkAndHelpAllies() {
-        helpAlliesCount++;
-        if (helpAlliesCount % 10 != 0) {
-            return; // Only check every 10 cycles
+    * Checks if the bear hunt is running
+    */
+    private void isBearRunning() {
+        DTOImageSearchResult result = emuManager.searchTemplate(
+                profile.getEmulatorNumber(),
+                EnumTemplates.BEAR_HUNT_IS_RUNNING,
+                90);
+        if (result.isFound()) {
+            logInfo("Bear is running, pausing task running for 30 minutes");
+            pause();
+            delayUntil = LocalDateTime.now().plusMinutes(30); // 30 minutes
         }
+    }
 
-        helpAlliesCount = 0;
-
-        if (!profile.getConfig(EnumConfigurationKey.ALLIANCE_HELP_BOOL, Boolean.class)) {
-            return; // Help is disabled
+    private void runBackgroundChecks() {
+        if (!emuManager.isRunning(profile.getEmulatorNumber()) || paused != LocalDateTime.MIN) {
+            return; // emulator isn't running or the queue should be paused, just leave.
+        }
+        // help allies checks
+        boolean runHelpAllies = true;
+        helpAlliesCount++;
+        if (helpAlliesCount % 10 != 0 || !profile.getConfig(EnumConfigurationKey.ALLIANCE_HELP_BOOL, Boolean.class) ) {
+            runHelpAllies = false; // Only check every 10 cycles, or if help is enabled
+        } else {
+            helpAlliesCount = 0;
         }
 
         try {
-            new Thread(() -> {
-                if (emuManager.isRunning(profile.getEmulatorNumber())) {
-                    DTOImageSearchResult helpRequest = emuManager.searchTemplate(
-                        profile.getEmulatorNumber(),
-                        EnumTemplates.GAME_HOME_SHORTCUTS_HELP_REQUEST2,
-                        90
-                    );
-
-                    if (helpRequest.isFound()) {
-                        emuManager.tapAtPoint(profile.getEmulatorNumber(), helpRequest.getPoint());
-                        logInfo("Help request found and tapped");
-                    }
-                }
-            }).start();
+            boolean finalRunHelpAllies = runHelpAllies; // Idk, my editor told me to do this. What's the point?
+                isBearRunning();
+                if (finalRunHelpAllies) checkHelpAllies();
         } catch (Exception e) {
-            logError("Error checking help request: " + e.getMessage());
+            logError("Error running background tasks: " + e.getMessage());
+        }
+
+    }
+
+    private void checkHelpAllies() {
+        DTOImageSearchResult helpRequest = emuManager.searchTemplate(
+                profile.getEmulatorNumber(),
+                EnumTemplates.GAME_HOME_SHORTCUTS_HELP_REQUEST2,
+                90
+        );
+        if (helpRequest.isFound()) {
+            emuManager.tapAtPoint(profile.getEmulatorNumber(), helpRequest.getPoint());
+            logInfo("Help request found and tapped");
         }
     }
 
@@ -584,7 +607,7 @@ public class TaskQueue {
      * Pauses queue processing, keeping tasks in the queue.
      */
     public void pause() {
-        paused = true;
+        paused = LocalDateTime.now();
         updateProfileStatus("PAUSE REQUESTED");
         logInfo("TaskQueue paused");
     }
@@ -593,7 +616,7 @@ public class TaskQueue {
      * Resumes queue processing.
      */
     public void resume() {
-        paused = false;
+        paused = LocalDateTime.MIN;
         updateProfileStatus("RESUMING");
         logInfo("TaskQueue resumed");
     }
@@ -604,7 +627,7 @@ public class TaskQueue {
     public void executeTaskNow(TpDailyTaskEnum taskEnum, boolean recurring) {
         // Obtain the task prototype from the registry
         DelayedTask prototype = DelayedTaskRegistry.create(taskEnum, profile);
-        resume();
+        paused = LocalDateTime.MAX;
         if (prototype == null) {
             logWarning("Task not found: " + taskEnum);
             return;

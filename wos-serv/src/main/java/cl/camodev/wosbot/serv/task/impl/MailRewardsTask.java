@@ -8,7 +8,6 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
-import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 
 public class MailRewardsTask extends DelayedTask {
@@ -69,7 +68,6 @@ public class MailRewardsTask extends DelayedTask {
 		LocalDateTime nextSchedule = LocalDateTime.now()
 				.plusMinutes(profile.getConfig(EnumConfigurationKey.MAIL_REWARDS_OFFSET_INT, Integer.class));
 		this.reschedule(nextSchedule);
-		ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, nextSchedule);
 		logInfo("Mail rewards claimed. Rescheduling task for " + nextSchedule);
 		tapBackButton();
 	}

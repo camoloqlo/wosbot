@@ -116,21 +116,27 @@ public class ServScheduler {
 							taskState.setScheduled(true);
 
 							DTODailyTaskStatus status = taskSchedules.get(task.getTpDailyTaskId());
-							if (status != null) {
-								LocalDateTime next = status.getNextSchedule();
-								task.reschedule(next);
-								task.setLastExecutionTime(status.getLastExecution());
-								taskState.setLastExecutionTime(status.getLastExecution());
-								taskState.setNextExecutionTime(next);
-								ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, task.getTaskName(), profile.getName(), "Next Execution: " + next.format(fmt));
-							} else {
-								task.reschedule(LocalDateTime.now());
-								taskState.setLastExecutionTime(null);
-								taskState.setNextExecutionTime(task.getScheduled());
-								ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, task.getTaskName(), profile.getName(), "Task not completed, scheduling for today");
-							}
-
-							ServTaskManager.getInstance().setTaskState(profile.getId(), taskState);
+                			if (status != null) {
+                                LocalDateTime next = status.getNextSchedule();
+                                task.reschedule(next);
+                                task.setLastExecutionTime(status.getLastExecution());
+                                taskState.setLastExecutionTime(status.getLastExecution());
+                                taskState.setNextExecutionTime(next);
+                                ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, task.getTaskName(), profile.getName(), "Next Execution: " + next.format(fmt));
+                            } else {
+                                // Don't reschedule if task already has a schedule (from constructor)
+                                LocalDateTime scheduledTime = task.getScheduled();
+                                if (scheduledTime == null) {
+                                    task.reschedule(LocalDateTime.now());
+                                    ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, task.getTaskName(), profile.getName(), 
+                                        "Task not completed and no schedule set, scheduling for now");
+                                } else {
+                                    ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, task.getTaskName(), profile.getName(), 
+                                        "Using initial schedule: " + scheduledTime.format(fmt));
+                                }
+                                taskState.setLastExecutionTime(null);
+                                taskState.setNextExecutionTime(task.getScheduled());
+                            }							ServTaskManager.getInstance().setTaskState(profile.getId(), taskState);
 							queue.addTask(task);
 						}
 					}

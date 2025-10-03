@@ -13,12 +13,14 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.impl.ServLogs;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.impl.InitializeTask;
+import cl.camodev.wosbot.almac.repo.ProfileRepository;
 import net.sourceforge.tess4j.TesseractException;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
@@ -37,7 +39,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected EmulatorManager emuManager = EmulatorManager.getInstance();
     protected ServScheduler servScheduler = ServScheduler.getServices();
     protected ServLogs servLogs = ServLogs.getServices();
-    private ProfileLogger logger; // Will be initialized in constructor
+    private ProfileLogger logger; // Will be initialized in the constructor
 
     public DelayedTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         this.profile = profile;
@@ -53,9 +55,9 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     /**
-     * Override this method to specify where the task should start execution.
+     * Override this method to indicate from which screen the task should start.
      *
-     * @return EnumStartLocation indicating the required starting location
+     * @return EnumStartLocation that indicates the required initial location
      */
     protected EnumStartLocation getRequiredStartLocation() {
         return EnumStartLocation.ANY;
@@ -63,6 +65,18 @@ public abstract class DelayedTask implements Runnable, Delayed {
 
     @Override
     public void run() {
+        // Before executing, refresh the profile from the database to ensure current configurations
+        try {
+            if (profile != null && profile.getId() != null) {
+                DTOProfiles updated = ProfileRepository.getRepository().getProfileWithConfigsById(profile.getId());
+                if (updated != null) {
+                    this.profile = updated;
+                }
+            }
+        } catch (Exception e) {
+            // If profile refresh fails, continue with the existing instance
+            logWarning("Could not refresh profile before execution: " + e.getMessage());
+        }
 
         if (this instanceof InitializeTask) {
             execute();
@@ -75,16 +89,16 @@ public abstract class DelayedTask implements Runnable, Delayed {
 
         ensureCorrectScreenLocation(getRequiredStartLocation());
         execute();
-        ensureCorrectScreenLocation(getRequiredStartLocation());
+        ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
-
 
     protected abstract void execute();
 
     /**
-     * Ensures the emulator is on the correct screen (Home or World) before proceeding.
-     * It will attempt to navigate if it's on the wrong screen or press back if lost.
-     * @param requiredLocation The desired screen location (HOME, WORLD, or ANY).
+     * Ensures the emulator is on the correct screen (Home or World) before continuing.
+     * It will attempt to navigate if it's on the wrong screen or press back if it's lost.
+     * 
+     * @param requiredLocation The desired screen (HOME, WORLD or ANY).
      */
     protected void ensureCorrectScreenLocation(EnumStartLocation requiredLocation) {
         logDebug("Verifying screen location. Required: " + requiredLocation);
@@ -92,41 +106,45 @@ public abstract class DelayedTask implements Runnable, Delayed {
         for (int attempt = 1; attempt <= 10; attempt++) {
             DTOImageSearchResult home = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_FURNACE, 90);
             DTOImageSearchResult world = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_WORLD, 90);
-            DTOImageSearchResult reconnect = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_RECONNECT, 90);
+            DTOImageSearchResult reconnect = emuManager.searchTemplate(EMULATOR_NUMBER,
+                    EnumTemplates.GAME_HOME_RECONNECT, 90);
 
             if (reconnect.isFound()) {
-                throw new ProfileInReconnectStateException("Profile " + profile.getName() + " is in reconnect state, cannot execute task: " + taskName);
+                throw new ProfileInReconnectStateException(
+                        "Profile " + profile.getName() + " is in reconnect state, cannot execute task: " + taskName);
             }
 
             if (home.isFound() || world.isFound()) {
-                // Found either home or world, now check if we need to navigate to the correct location
+                // Found Home or World; check if we need to navigate to the correct location
                 if (requiredLocation == EnumStartLocation.HOME && !home.isFound()) {
-                    // We need HOME but we're in WORLD, navigate to HOME
-                    logInfo("Navigating from WORLD to HOME screen...");
+                    // We need HOME but we are in WORLD, navigate to HOME
+                    logInfo("Navigating from WORLD to HOME...");
                     emuManager.tapAtPoint(EMULATOR_NUMBER, world.getPoint());
                     sleepTask(2000); // Wait for navigation
 
                     // Validate that we actually moved to HOME
-                    DTOImageSearchResult homeAfterNav = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_FURNACE, 90);
+                    DTOImageSearchResult homeAfterNav = emuManager.searchTemplate(EMULATOR_NUMBER,
+                            EnumTemplates.GAME_HOME_FURNACE, 90);
                     if (!homeAfterNav.isFound()) {
                         logWarning("Failed to navigate to HOME, retrying...");
                         continue; // Try again
                     }
-                    logInfo("Successfully navigated to HOME screen.");
+                    logInfo("Successfully navigated to HOME.");
 
                 } else if (requiredLocation == EnumStartLocation.WORLD && !world.isFound()) {
-                    // We need WORLD but we're in HOME, navigate to WORLD
-                    logInfo("Navigating from HOME to WORLD screen...");
+                    // We need WORLD but we are in HOME, navigate to WORLD
+                    logInfo("Navigating from HOME to WORLD...");
                     emuManager.tapAtPoint(EMULATOR_NUMBER, home.getPoint());
                     sleepTask(2000); // Wait for navigation
 
                     // Validate that we actually moved to WORLD
-                    DTOImageSearchResult worldAfterNav = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_WORLD, 90);
+                    DTOImageSearchResult worldAfterNav = emuManager.searchTemplate(EMULATOR_NUMBER,
+                            EnumTemplates.GAME_HOME_WORLD, 90);
                     if (!worldAfterNav.isFound()) {
                         logWarning("Failed to navigate to WORLD, retrying...");
                         continue; // Try again
                     }
-                    logInfo("Successfully navigated to WORLD screen.");
+                    logInfo("Successfully navigated to WORLD.");
                 }
                 // If requiredLocation is ANY, we can execute from either location
                 return; // Success, correct screen is found
@@ -152,7 +170,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
         }
         logWarning("Not on intel screen. Attempting to navigate.");
 
-        // If not on the intel screen, make sure we are on the world screen to find the intel button.
+        // If not on the intel screen, make sure we are on the world screen to find the
+        // intel button.
         ensureCorrectScreenLocation(EnumStartLocation.WORLD);
 
         // Now, find and click the intel button.
@@ -194,8 +213,10 @@ public abstract class DelayedTask implements Runnable, Delayed {
         // Make two attempts at detection
         for (int attempt = 0; attempt < 2; attempt++) {
             // Try image recognition first (faster)
-            DTOImageSearchResult intelScreen1 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_1, 90);
-            DTOImageSearchResult intelScreen2 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_2, 90);
+            DTOImageSearchResult intelScreen1 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_1,
+                    90);
+            DTOImageSearchResult intelScreen2 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.INTEL_SCREEN_2,
+                    90);
 
             if (intelScreen1.isFound() || intelScreen2.isFound()) {
                 logDebug("Intel screen confirmed via image template (attempt " + (attempt + 1) + ")");
@@ -204,7 +225,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
 
             // Fallback to OCR check
             try {
-                String intelText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(85, 15), new DTOPoint(171, 62));
+                String intelText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(85, 15),
+                        new DTOPoint(171, 62));
                 if (intelText != null && intelText.toLowerCase().contains("intel")) {
                     logDebug("Intel screen confirmed via OCR (attempt " + (attempt + 1) + ")");
                     return true;
@@ -213,7 +235,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
                 logWarning("Could not perform OCR to check for intel screen. Error: " + e.getMessage());
             }
 
-            // If this is the first attempt and we didn't find the intel screen, wait briefly before trying again
+            // If this is the first attempt and we didn't find the intel screen, wait
+            // briefly before trying again
             if (attempt == 0) {
                 sleepTask(300);
             }
@@ -224,33 +247,182 @@ public abstract class DelayedTask implements Runnable, Delayed {
         return false;
     }
 
-    protected Integer readStaminaValue(DTOPoint topLeft, DTOPoint bottomRight) {
-        Integer staminaValue = null;
-        Pattern staminaPattern = Pattern.compile("(\\d{1,3}(?:[.,]\\d{3})*|\\d+)");
-        for (int attempt = 0; attempt < 5 && staminaValue == null; attempt++) {
+    protected int staminaRegenerationTime(int currentStamina, int targetStamina) {
+        if (currentStamina >= targetStamina) {
+            return 0;
+        }
+        int staminaNeeded = targetStamina - currentStamina;
+        return staminaNeeded * 5; // 1 stamina every 5 minutes
+    }
+
+    protected Integer getStaminaValueFromIntelScreen() {
+        ensureOnIntelScreen();
+        Integer currentStamina = readNumberValue(new DTOPoint(582, 23), new DTOPoint(672, 55));
+        ensureCorrectScreenLocation(getRequiredStartLocation());
+        logInfo("Current stamina: " + currentStamina);
+        return currentStamina;
+    }
+
+    protected Integer readNumberValue(DTOPoint topLeft, DTOPoint bottomRight) {
+        Integer numberValue = null;
+        Pattern numberPattern = Pattern.compile("(\\d{1,3}(?:[.,]\\d{3})*|\\d+)");
+
+        // Map for truly special OCR quirks (not fixable by normalization)
+        Map<String, Integer> specialCases = Map.of(
+                "(°)", 0,
+                "il}", 1,
+                "7400)", 400,
+                "SEM)", 800,
+                "1800)", 800,
+                "2n", 211,
+                "1/300", 1300,
+                "Ti", 111,
+                "|", 121);
+
+        for (int attempt = 0; attempt < 5 && numberValue == null; attempt++) {
             try {
                 String ocr = emuManager.ocrRegionText(EMULATOR_NUMBER, topLeft, bottomRight);
+                logDebug(ocr != null ? "OCR Result: '" + ocr + "'" : "OCR Result: null");
+
                 if (ocr != null && !ocr.trim().isEmpty()) {
-                    Matcher m = staminaPattern.matcher(ocr);
-                    if (m.find()) {
-                        String raw = m.group(1);
-                        // Remove separators (commas or dots)
-                        String normalized = raw.replaceAll("[.,]", "");
-                        try {
-                            staminaValue = Integer.valueOf(normalized);
-                        } catch (NumberFormatException nfe) {
-                            logDebug("Parsed stamina not a valid integer: '" + raw + "'");
+                    // 1) Handle hard-coded weird cases
+                    for (Map.Entry<String, Integer> entry : specialCases.entrySet()) {
+                        if (ocr.contains(entry.getKey())) {
+                            numberValue = entry.getValue();
+                            logDebug("Detected special pattern '" + entry.getKey() + "', setting value to "
+                                    + numberValue);
+                            break;
+                        }
+                    }
+
+                    // 2) If not matched, normalize OCR text
+                    if (numberValue == null) {
+                        String cleaned = ocr
+                                .replace(';', ',') // interpret ; as comma
+                                .replaceAll("[){}\\s]", "") // remove junk like ) or }
+                                .trim();
+
+                        Matcher m = numberPattern.matcher(cleaned);
+                        if (m.find()) {
+                            String raw = m.group(1);
+                            // Remove valid separators before parsing
+                            String normalized = raw.replaceAll("[.,]", "");
+                            try {
+                                numberValue = Integer.valueOf(normalized);
+                                logDebug("Parsed number value: " + numberValue);
+                            } catch (NumberFormatException nfe) {
+                                logDebug("Parsed number not a valid integer: '" + raw + "'");
+                            }
                         }
                     }
                 }
             } catch (IOException | TesseractException ex) {
                 logDebug("OCR attempt " + (attempt + 1) + " failed: " + ex.getMessage());
             }
-            if (staminaValue == null) {
+            if (numberValue == null) {
                 sleepTask(100);
             }
         }
-        return staminaValue;
+        return numberValue;
+    }
+
+    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template) {
+        return searchTemplateWithRetries(template, 90, 5);
+    }
+
+    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int threshold, int maxRetries) {
+        DTOImageSearchResult result = null;
+        for (int i = 0; i < maxRetries && (result == null || !result.isFound()); i++) {
+            logDebug("Searching template " + template + ", (attempt " + (i + 1) + "/" + maxRetries + ")");
+            result = emuManager.searchTemplate(EMULATOR_NUMBER, template, threshold);
+            sleepTask(200);
+        }
+        logDebug(result.isFound() ? "Template " + template + " found." : "Template " + template + " not found.");
+        return result;
+    }
+
+    protected String OCRWithRetries(String searchString, DTOPoint p1, DTOPoint p2, int maxRetries) {
+        String result = null;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            logDebug(
+                    "Performing OCR to find '" + searchString + "' (attempt " + (attempt + 1) + "/" + maxRetries + ")");
+            try {
+                result = emuManager.ocrRegionText(EMULATOR_NUMBER, p1, p2);
+                if (result != null && result.toLowerCase().contains(searchString.toLowerCase())) {
+                    return result;
+                }
+            } catch (IOException | TesseractException e) {
+                logWarning("OCR attempt " + (attempt + 1) + " threw an exception: " + e.getMessage());
+            }
+            sleepTask(200);
+        }
+        return null;
+    }
+
+    protected String OCRWithRetries(DTOPoint p1, DTOPoint p2, int maxRetries) {
+        String result = null;
+        for (int attempt = 0; attempt < maxRetries && (result == null || result.isEmpty()); attempt++) {
+            try {
+                result = emuManager.ocrRegionText(EMULATOR_NUMBER, p1, p2);
+            } catch (IOException | TesseractException e) {
+                logWarning("OCR attempt " + attempt + " threw an exception: " + e.getMessage());
+            }
+            sleepTask(200);
+        }
+        return result;
+    }
+
+    protected boolean checkMarchesAvailable() {
+        // Open active marches panel
+        emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(2, 550));
+        sleepTask(500);
+        emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(340, 265));
+        sleepTask(500);
+
+        // Define march slot coordinates
+        DTOPoint[] marchTopLeft = {
+                new DTOPoint(189, 375), // March 1
+                new DTOPoint(189, 448), // March 2
+                new DTOPoint(189, 521), // March 3
+                new DTOPoint(189, 594), // March 4
+                new DTOPoint(189, 667), // March 5
+                new DTOPoint(189, 740), // March 6
+        };
+        DTOPoint[] marchBottomRight = {
+                new DTOPoint(258, 403), // March 1
+                new DTOPoint(258, 476), // March 2
+                new DTOPoint(258, 549), // March 3
+                new DTOPoint(258, 622), // March 4
+                new DTOPoint(258, 695), // March 5
+                new DTOPoint(258, 768), // March 6
+        };
+
+        // Check each march slot for "idle" status
+        try {
+            for (int marchSlot = 0; marchSlot < 6; marchSlot++) {
+                for (int attempt = 0; attempt < 3; attempt++) {
+                    String ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER,
+                            marchTopLeft[marchSlot],
+                            marchBottomRight[marchSlot]);
+
+                    if (ocrResult.toLowerCase().contains("idle")) {
+                        logInfo("Idle march detected in slot " + (marchSlot + 1));
+                        return true;
+                    }
+
+                    if (attempt < 2) {
+                        sleepTask(100);
+                    }
+                }
+                logDebug("March slot " + (marchSlot + 1) + " is not idle");
+            }
+        } catch (IOException | TesseractException e) {
+            logError("OCR attempt failed while checking marches: " + e.getMessage());
+            return false;
+        }
+
+        logInfo("No idle marches detected in any of the 6 slots.");
+        return false;
     }
 
     public boolean isRecurring() {
@@ -284,7 +456,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
 
     protected void sleepTask(long millis) {
         try {
-            //long speedFactor = (long) (millis*1.3);
+            // long speedFactor = (long) (millis*1.3);
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -304,13 +476,15 @@ public abstract class DelayedTask implements Runnable, Delayed {
 
     @Override
     public int compareTo(Delayed o) {
-        if (this == o) return 0;
+        if (this == o)
+            return 0;
 
         boolean thisInit = this instanceof InitializeTask;
         boolean otherInit = o instanceof InitializeTask;
-        if (thisInit && !otherInit) return -1;
-        if (!thisInit && otherInit) return 1;
-
+        if (thisInit && !otherInit)
+            return -1;
+        if (!thisInit && otherInit)
+            return 1;
 
         long diff = this.getDelay(TimeUnit.NANOSECONDS)
                 - o.getDelay(TimeUnit.NANOSECONDS);
@@ -355,7 +529,6 @@ public abstract class DelayedTask implements Runnable, Delayed {
             return Objects.hash(getClass(), tpTask, profile.getId());
         }
     }
-
 
     public boolean provideDailyMissionProgress() {
         return false;
@@ -405,7 +578,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     /**
-     * Taps at a random point within the rectangle defined by two points on the emulator screen.
+     * Taps at a random point within the rectangle defined by two points on the
+     * emulator screen.
      *
      * @param p1 The first corner of the rectangle.
      * @param p2 The opposite corner of the rectangle.
@@ -415,7 +589,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     /**
-     * Taps at random points within the rectangle defined by two points on the emulator screen,
+     * Taps at random points within the rectangle defined by two points on the
+     * emulator screen,
      * repeating the action a specified number of times with a delay between taps.
      *
      * @param p1    The first corner of the rectangle.
@@ -427,9 +602,9 @@ public abstract class DelayedTask implements Runnable, Delayed {
         emuManager.tapAtRandomPoint(EMULATOR_NUMBER, p1, p2, count, delay);
     }
 
-
     /**
-     * Performs a swipe action from a start point to an end point on the emulator screen.
+     * Performs a swipe action from a start point to an end point on the emulator
+     * screen.
      *
      * @param start The starting point of the swipe.
      * @param end   The ending point of the swipe.

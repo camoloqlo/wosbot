@@ -8,7 +8,6 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
-import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 
 public class ExplorationTask extends DelayedTask {
@@ -42,7 +41,6 @@ public class ExplorationTask extends DelayedTask {
 			Integer minutes = profile.getConfig(EnumConfigurationKey.INT_EXPLORATION_CHEST_OFFSET, Integer.class);
 			LocalDateTime nextSchedule = LocalDateTime.now().plusMinutes(minutes);
 			this.reschedule(nextSchedule);
-			ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, nextSchedule);
 			logInfo("Exploration task completed. Next execution scheduled in " + minutes + " minutes.");
 
 		} else {

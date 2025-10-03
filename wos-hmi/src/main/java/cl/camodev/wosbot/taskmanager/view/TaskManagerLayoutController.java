@@ -582,7 +582,7 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
                     if (b1 && b2) {
                         int queuePos1 = q1.getProfile().getQueuePosition();
                         int queuePos2 = q2.getProfile().getQueuePosition();
-                        if (queuePos1 == Integer.MAX_VALUE && queuePos2 == Integer.MAX_VALUE) return q1.getDelay() > q2.getDelay() ? 1 : -1;
+                        if (queuePos1 == Integer.MAX_VALUE && queuePos2 == Integer.MAX_VALUE) return q1.getDelay().isAfter(q2.getDelay()) ? 1 : -1;
                         return queuePos1 > queuePos2 ? 1 : -1;
                     }
                     return b1 ? -1 : 1; // true first

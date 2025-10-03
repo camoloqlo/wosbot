@@ -81,10 +81,15 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 
 	private void updateProfile(TextField textField, EnumConfigurationKey configKey) {
 		String newVal = textField.getText();
-		if (isValidPositiveInteger(newVal)) {
-			profileObserver.notifyProfileChange(configKey, Integer.valueOf(newVal));
+		if (configKey.getType() == Integer.class) {
+			if (isValidPositiveInteger(newVal)) {
+				profileObserver.notifyProfileChange(configKey, Integer.valueOf(newVal));
+			} else {
+				textField.setText(configKey.getDefaultValue());
+			}
 		} else {
-			textField.setText(configKey.getDefaultValue());
+			// For String values, just pass them through
+			profileObserver.notifyProfileChange(configKey, newVal);
 		}
 	}
 
@@ -94,7 +99,7 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 		}
 		try {
 			int number = Integer.parseInt(value);
-			return number >= 0 && number <= 999;
+			return number >= 0 && number <= 1999;
 		} catch (NumberFormatException e) {
 			return false;
 		}
@@ -110,8 +115,12 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 			});
 
 			textFieldMappings.forEach((textField, key) -> {
-				Integer value = profile.getConfiguration(key);
-				textField.setText(String.valueOf(value));
+				Object value = profile.getConfiguration(key);
+				if (value != null) {
+					textField.setText(value.toString());
+				} else {
+					textField.setText(key.getDefaultValue());
+				}
 			});
 
 			radioButtonMappings.forEach((radioButton, key) -> {

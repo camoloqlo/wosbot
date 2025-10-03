@@ -1,5 +1,7 @@
 package cl.camodev.wosbot.emulator;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -8,6 +10,8 @@ import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+
+import javax.imageio.ImageIO;
 
 import cl.camodev.utiles.ImageSearchUtil;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -19,6 +23,7 @@ import cl.camodev.wosbot.emulator.impl.MuMuEmulator;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.task.WaitingThread;
@@ -203,6 +208,21 @@ public class EmulatorManager {
     public String ocrRegionText(String emulatorNumber, DTOPoint p1, DTOPoint p2) throws IOException, TesseractException {
         checkEmulatorInitialized();
         return emulator.ocrRegionText(emulatorNumber, p1, p2);
+    }
+
+    /**
+     * Executes OCR on a screen region and extracts text with custom Tesseract settings.
+     * @param emulatorNumber Emulator identifier
+     * @param p1 First corner of the region
+     * @param p2 Second corner of the region
+     * @param settings Tesseract OCR configuration settings
+     * @return Recognized text
+     * @throws IOException if image capture fails
+     * @throws TesseractException if OCR fails
+     */
+    public String ocrRegionText(String emulatorNumber, DTOPoint p1, DTOPoint p2, DTOTesseractSettings settings) throws IOException, TesseractException {
+        checkEmulatorInitialized();
+        return emulator.ocrRegionText(emulatorNumber, p1, p2, settings);
     }
 
     /**
@@ -437,6 +457,52 @@ public class EmulatorManager {
         } finally {
             // Clear profile name after the search is done
             ImageSearchUtil.clearProfileName();
+        }
+    }
+
+    /**
+     * Analyzes the colors in a region of the screen, counting pixels that match certain criteria
+     * @param emulatorNumber Emulator identifier
+     * @param topLeft Top-left point of the region to analyze
+     * @param bottomRight Bottom-right point of the region to analyze
+     * @param stepSize Step size for scanning (e.g., 2 to check every other pixel)
+     * @return Array with counts for [background, green, red] pixels
+     */
+    public int[] analyzeRegionColors(String emulatorNumber, DTOPoint topLeft, DTOPoint bottomRight, int stepSize) {
+        try {
+            // Take a single screenshot
+            byte[] screenshot = emulator.captureScreenshot(emulatorNumber);
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(screenshot));
+            
+            int[] counts = new int[3]; // [background, green, red]
+            
+            // Scan the region
+            for (int y = topLeft.getY(); y <= bottomRight.getY(); y += stepSize) {
+                for (int x = topLeft.getX(); x <= bottomRight.getX(); x += stepSize) {
+                    int rgb = image.getRGB(x, y);
+                    int r = (rgb >> 16) & 0xFF;
+                    int g = (rgb >> 8) & 0xFF;
+                    int b = rgb & 0xFF;
+                    
+                    // Check if it's background color (127, 173, 205)
+                    if (Math.abs(r - 127) < 20 && Math.abs(g - 173) < 20 && Math.abs(b - 205) < 20) {
+                        counts[0]++; // background
+                    }
+                    // Check if it's green text
+                    else if (g > Math.max(r, b) * 1.2 && g > 100) {
+                        counts[1]++; // green
+                    }
+                    // Check if it's red text
+                    else if (r > Math.max(g, b) * 1.2 && r > 100) {
+                        counts[2]++; // red
+                    }
+                }
+            }
+            
+            return counts;
+        } catch (Exception e) {
+            logger.error("Error analyzing region colors", e);
+            return new int[]{0, 0, 0};
         }
     }
 

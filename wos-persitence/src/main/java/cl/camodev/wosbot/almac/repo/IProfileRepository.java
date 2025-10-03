@@ -10,6 +10,13 @@ public interface IProfileRepository {
 
 	List<DTOProfiles> getProfiles();
 
+	/**
+	 * Gets a profile by its ID including its associated configuration.
+	 * @param id profile identifier
+	 * @return DTOProfiles with its list of configurations, or null if it does not exist
+	 */
+	DTOProfiles getProfileWithConfigsById(Long id);
+
 	boolean addProfile(Profile profile);
 
 	boolean saveProfile(Profile profile);

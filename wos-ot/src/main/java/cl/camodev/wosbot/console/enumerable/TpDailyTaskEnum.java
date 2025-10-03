@@ -16,6 +16,7 @@ public enum TpDailyTaskEnum {
 	LABYRINTH(11, "Labyrinth",                   	EnumConfigurationKey.DAILY_LABYRINTH_BOOL),
 	TREK_AUTOMATION(12, "Tundra Trek Automation",  EnumConfigurationKey.TUNDRA_TREK_AUTOMATION_BOOL),
 	BANK(14, "Bank",                              EnumConfigurationKey.BOOL_BANK),
+	ARENA(15, "Arena",                             EnumConfigurationKey.ARENA_TASK_BOOL),
 
 	MAIL_REWARDS(30, "Mail Rewards",               	EnumConfigurationKey.MAIL_REWARDS_BOOL),
 	DAILY_MISSIONS(31, "Daily Missions",           	EnumConfigurationKey.DAILY_MISSION_BOOL),
@@ -30,6 +31,7 @@ public enum TpDailyTaskEnum {
 	ALLIANCE_PET_TREASURE(43, "Alliance Pet Treasure", EnumConfigurationKey.ALLIANCE_PET_TREASURE_BOOL),
 	ALLIANCE_CHESTS(44, "Alliance Chests",         EnumConfigurationKey.ALLIANCE_CHESTS_BOOL),
 	ALLIANCE_TRIUMPH(45, "Alliance Triumph",       EnumConfigurationKey.ALLIANCE_TRIUMPH_BOOL),
+	ALLIANCE_MOBILIZATION(46, "Alliance Mobilization", EnumConfigurationKey.ALLIANCE_MOBILIZATION_BOOL),
 
 	PET_SKILL_STAMINA(51, "Pet Skill Stamina",     EnumConfigurationKey.PET_SKILL_STAMINA_BOOL),
 	PET_SKILL_FOOD(52, "Pet Skill Food",           EnumConfigurationKey.PET_SKILL_FOOD_BOOL),
@@ -61,7 +63,8 @@ public enum TpDailyTaskEnum {
 	EVENT_HERO_MISSION(201, "Hero Mission Event",    EnumConfigurationKey.HERO_MISSION_EVENT_BOOL),
 	MERCENARY_EVENT(202, "Mercenary Event",    EnumConfigurationKey.MERCENARY_EVENT_BOOL),
     EVENT_JOURNEY_OF_LIGHT(203, "Journey of Light Event",    EnumConfigurationKey.JOURNEY_OF_LIGHT_BOOL),
-    EVENT_POLAR_TERROR(204, "Polar Terror Hunting",    EnumConfigurationKey.POLAR_TERROR_ENABLED_BOOL);;
+    EVENT_POLAR_TERROR(204, "Polar Terror Hunting",    EnumConfigurationKey.POLAR_TERROR_ENABLED_BOOL),
+    EVENT_MYRIAD_BAZAAR(205, "Myriad Bazaar Event",    EnumConfigurationKey.MYRIAD_BAZAAR_EVENT_BOOL);;
 
 
     private final int id;

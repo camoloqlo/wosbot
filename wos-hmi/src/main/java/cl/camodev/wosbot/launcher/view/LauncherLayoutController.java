@@ -14,7 +14,9 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import cl.camodev.utiles.ImageSearchUtil;
 import cl.camodev.wosbot.alliance.view.AllianceLayoutController;
+import cl.camodev.wosbot.mobilization.view.MobilizationLayoutController;
 import cl.camodev.wosbot.chieforder.view.ChiefOrderLayoutController;
+import cl.camodev.wosbot.city.view.CityEventsExtraLayoutController;
 import cl.camodev.wosbot.city.view.CityEventsLayoutController;
 import cl.camodev.wosbot.city.view.CityUpgradesLayoutController;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -360,6 +362,7 @@ public class LauncherLayoutController implements IProfileLoadListener {
 				new ModuleDefinition("TaskManagerLayout", "Task Manager", TaskManagerLayoutController::new),
 				new ModuleDefinition("CityUpgradesLayout", "City Upgrades", CityUpgradesLayoutController::new),
 				new ModuleDefinition("CityEventsLayout", "City Events", CityEventsLayoutController::new),
+				new ModuleDefinition("CityEventsExtraLayout", "Extra City Events", CityEventsExtraLayoutController::new),
 				new ModuleDefinition("PolarTerrorLayout", "Polar Terror", PolarTerrorLayoutController::new),
 				new ModuleDefinition("ShopLayout", "Shop", ShopLayoutController::new),
 				new ModuleDefinition("GatherLayout", "Gather", GatherLayoutController::new),
@@ -368,6 +371,7 @@ public class LauncherLayoutController implements IProfileLoadListener {
 				new ModuleDefinition("TrainingLayout", "Training", TrainingLayoutController::new),
 				new ModuleDefinition("PetsLayout", "Pets", PetsLayoutController::new),
 				new ModuleDefinition("EventsLayout", "Events", EventsLayoutController::new),
+				new ModuleDefinition("AllianceMobilizationLayout", "Alliance Mobilization", MobilizationLayoutController::new),
 				new ModuleDefinition("ExpertsLayout", "Experts", ExpertsLayoutController::new),
 				new ModuleDefinition("ChiefOrderLayout", "Chief Order", ChiefOrderLayoutController::new),
 				new ModuleDefinition("EmuConfigLayout", "Config", EmuConfigLayoutController::new)

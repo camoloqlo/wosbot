@@ -51,6 +51,7 @@ public class DelayedTaskRegistry {
         registry.put(TpDailyTaskEnum.ALLIANCE_PET_TREASURE, profile -> new PetAllianceTreasuresTask(profile, TpDailyTaskEnum.ALLIANCE_PET_TREASURE));
         registry.put(TpDailyTaskEnum.ALLIANCE_CHESTS, profile -> new AllianceChestTask(profile, TpDailyTaskEnum.ALLIANCE_CHESTS));
         registry.put(TpDailyTaskEnum.ALLIANCE_TRIUMPH, profile -> new TriumphTask(profile, TpDailyTaskEnum.ALLIANCE_TRIUMPH));
+        registry.put(TpDailyTaskEnum.ALLIANCE_MOBILIZATION, profile -> new AllianceMobilizationTask(profile, TpDailyTaskEnum.ALLIANCE_MOBILIZATION));
 
         // Pet skills tasks
         registry.put(TpDailyTaskEnum.PET_SKILL_STAMINA, profile -> new PetSkillsTask(profile, TpDailyTaskEnum.PET_SKILL_STAMINA, PetSkillsTask.PetSkill.STAMINA));
@@ -72,7 +73,7 @@ public class DelayedTaskRegistry {
 
         // City upgrade
         registry.put(TpDailyTaskEnum.CITY_UPGRADE_FURNACE, profile -> new UpgradeFurnaceTask(profile, TpDailyTaskEnum.CITY_UPGRADE_FURNACE));
-//		registry.put(TpDailyTaskEnum.CITY_UPGRADE_OTHERS, profile -> new ArenaTask(profile, TpDailyTaskEnum.CITY_UPGRADE_OTHERS));
+		registry.put(TpDailyTaskEnum.ARENA, profile -> new ArenaTask(profile, TpDailyTaskEnum.ARENA));
         registry.put(TpDailyTaskEnum.CITY_SURVIVORS, profile -> new NewSurvivorsTask(profile, TpDailyTaskEnum.CITY_SURVIVORS));
         
         // Events
@@ -81,6 +82,7 @@ public class DelayedTaskRegistry {
         registry.put(TpDailyTaskEnum.MERCENARY_EVENT, profile -> new MercenaryEventTask(profile, TpDailyTaskEnum.MERCENARY_EVENT));
         registry.put(TpDailyTaskEnum.EVENT_JOURNEY_OF_LIGHT, profile -> new JourneyofLightTask(profile, TpDailyTaskEnum.EVENT_JOURNEY_OF_LIGHT));
         registry.put(TpDailyTaskEnum.EVENT_POLAR_TERROR, profile -> new PolarTerrorHuntingTask(profile, TpDailyTaskEnum.EVENT_POLAR_TERROR));
+        registry.put(TpDailyTaskEnum.EVENT_MYRIAD_BAZAAR, profile -> new MyriadBazaarEventTask(profile, TpDailyTaskEnum.EVENT_MYRIAD_BAZAAR));
 
     // Initialize
     registry.put(TpDailyTaskEnum.INITIALIZE, profile -> new InitializeTask(profile, TpDailyTaskEnum.INITIALIZE));

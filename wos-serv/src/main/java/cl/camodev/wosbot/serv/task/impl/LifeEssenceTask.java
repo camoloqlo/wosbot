@@ -14,7 +14,6 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
-import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
@@ -203,7 +202,6 @@ public class LifeEssenceTask extends DelayedTask {
 		// Reschedule the task
 		LocalDateTime nextSchedule = LocalDateTime.now().plusMinutes(offsetMinutes);
 		this.reschedule(nextSchedule);
-		ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, nextSchedule);
 		
 		// Reset attempts if we had a successful run
 		if (claimCount > 0) {
@@ -223,7 +221,6 @@ public class LifeEssenceTask extends DelayedTask {
 		LocalDateTime nextSchedule = LocalDateTime.now().plusMinutes(backoffMinutes);
 		
 		this.reschedule(nextSchedule);
-		ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, nextSchedule);
 		
 		logInfo("Rescheduling after failure with " + backoffMinutes + 
 			" minute backoff. Next attempt at " + nextSchedule.toLocalTime());

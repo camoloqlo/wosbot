@@ -364,7 +364,7 @@
 	-fx-translate-x: 25px;
 }
 
-.thumb {
+.toggle-button .thumb {
 	-fx-background-color: white;
 	-fx-background-radius: 50%;
 	-fx-min-width: 20px;
@@ -465,4 +465,52 @@
 .next-execution-days {
     -fx-text-fill: #ff5722 !important;
     -fx-font-size: 14px;
+}
+
+
+/* ScrollPane dark theme */
+.scroll-pane {
+    -fx-background-color: #2a2a3d; /* Match app dark background */
+    -fx-background: #2a2a3d;
+    -fx-border-color: transparent;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: transparent; /* Let content inherit dark backgrounds */
+}
+
+.scroll-pane .corner {
+    -fx-background-color: #2a2a3d; /* Hide light corner */
+}
+
+/* Scroll bars inside ScrollPane */
+.scroll-pane .scroll-bar {
+    -fx-background-color: transparent; /* Transparent track background */
+}
+
+.scroll-pane .scroll-bar .track {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-insets: 0;
+    -fx-background-radius: 2;
+}
+
+.scroll-pane .scroll-bar .thumb {
+    -fx-background-color: #ffa500; /* Orange thumb to match theme */
+    -fx-background-insets: 1; /* Make thumb visually slimmer to reveal track */
+    -fx-background-radius: 4;
+}
+
+.scroll-pane .increment-button,
+.scroll-pane .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0; /* Make buttons compact for thinner bar */
+}
+
+/* Make ScrollPane scroll bars thinner */
+.scroll-pane .scroll-bar:vertical {
+    -fx-pref-width: 8px;
+}
+
+.scroll-pane .scroll-bar:horizontal {
+    -fx-pref-height: 8px;
 }

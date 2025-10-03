@@ -12,8 +12,8 @@ import javafx.scene.layout.HBox;
 public class EventsLayoutController extends AbstractProfileController {
     @FXML
     private CheckBox checkBoxTundraEvent, checkBoxTundraUseGems, checkBoxTundraSSR, checkBoxHeroMission, 
-                     checkBoxMercenaryEvent, checkBoxMercenaryUseFlag, checkBoxJourneyofLight;
-    
+                     checkBoxMercenaryEvent, checkBoxMercenaryUseFlag, checkBoxJourneyofLight, checkBoxMyriadBazaar;
+
     @FXML
     private TextField textfieldTundraActivationHour;
     
@@ -48,6 +48,7 @@ public class EventsLayoutController extends AbstractProfileController {
         checkBoxMappings.put(checkBoxMercenaryEvent, EnumConfigurationKey.MERCENARY_EVENT_BOOL);
         checkBoxMappings.put(checkBoxMercenaryUseFlag, EnumConfigurationKey.MERCENARY_USE_FLAG_BOOL);
         checkBoxMappings.put(checkBoxJourneyofLight, EnumConfigurationKey.JOURNEY_OF_LIGHT_BOOL);
+        checkBoxMappings.put(checkBoxMyriadBazaar, EnumConfigurationKey.MYRIAD_BAZAAR_EVENT_BOOL);
 
         // Map the activation hour text field
         textFieldMappings.put(textfieldTundraActivationHour, EnumConfigurationKey.TUNDRA_TRUCK_ACTIVATION_HOUR_INT);

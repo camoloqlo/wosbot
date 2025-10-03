@@ -14,7 +14,6 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
-import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import net.sourceforge.tess4j.TesseractException;
@@ -63,7 +62,6 @@ public class BeastSlayTask extends DelayedTask {
 				LocalDateTime fullStaminaTime = calculateFullStaminaTime(stamina, 100, 5);
 				logInfo("Stamina (" + stamina + ") is below the threshold (10). Rescheduling task to " + fullStaminaTime);
 				this.reschedule(fullStaminaTime);
-				ServScheduler.getServices().updateDailyTaskStatus(profile, tpTask, fullStaminaTime);
 				return;
 			}
 
