@@ -2,8 +2,6 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import cl.camodev.utiles.UtilRally;
 import cl.camodev.utiles.UtilTime;
-import cl.camodev.utiles.number.NumberConverters;
-import cl.camodev.utiles.number.NumberValidators;
 import cl.camodev.wosbot.almac.entity.DailyTask;
 import cl.camodev.wosbot.almac.repo.DailyTaskRepository;
 import cl.camodev.wosbot.almac.repo.IDailyTaskRepository;
@@ -13,16 +11,12 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
-import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
-import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
-import java.awt.Color;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.regex.Pattern;
 
 public class PolarTerrorHuntingTask extends DelayedTask {
     private final int refreshStaminaLevel = 180;
@@ -81,19 +75,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
                 useFlag ? "#" + flagString : "None"));
 
         // Verify if there's enough stamina to hunt, if not, reschedule the task
-        currentStamina = StaminaService.getServices().getCurrentStamina(profile.getId());
-        logInfo("Current stamina: " + currentStamina);
-
-        if (currentStamina < minStaminaLevel) {
-            LocalDateTime rescheduleTime = LocalDateTime.now()
-                    .plusMinutes(staminaRegenerationTime(currentStamina, refreshStaminaLevel));
-            reschedule(rescheduleTime);
-            logWarning("Not enough stamina to do polar (Current: " + currentStamina + "/" + minStaminaLevel
-                    + "). Rescheduling task to run in "
-                    + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
-            return;
-        }
-
+        if (!hasEnoughStaminaAndMarches(minStaminaLevel, refreshStaminaLevel)) return;
         if (!checkMarchesAvailable()) {
             logWarning("No marches available, rescheduling for in 5 minutes.");
             reschedule(LocalDateTime.now().plusMinutes(5));
@@ -104,7 +86,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         if (useFlag) {
             logInfo("Launching rally with flag #" + flagNumber);
             int result = launchSingleRally(polarTerrorLevel, useFlag, flagNumber);
-            handleRallyResult(result, useFlag, limitedHunting, polarTerrorLevel);
+            handleRallyResult(result, useFlag);
             return;
         }
 
@@ -191,43 +173,9 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         }
 
         // Parse travel time
-        long travelTimeSeconds = 0;
-        DTOTesseractSettings timeSettings = new DTOTesseractSettings.Builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(false)
-                .setDebug(true)
-                .setAllowedChars("0123456789:") // Only allow digits and ':'
-                .build();
+        long travelTimeSeconds = parseTravelTime();
 
-        try {
-            String timeStr = OCRWithRetries(new DTOPoint(521, 1141), new DTOPoint(608, 1162), 5, timeSettings);
-            if (timeStr != null && !timeStr.isEmpty()) {
-                travelTimeSeconds = UtilTime.parseTimeToSeconds(timeStr);
-                logInfo("Successfully parsed travel time: " + timeStr + " (" + travelTimeSeconds + "s)");
-            } else {
-                logWarning("OCR returned null or empty string for travel time");
-            }
-        } catch (Exception e) {
-            logError("Error parsing travel time: " + e.getMessage());
-        }
-
-        Integer spentStamina = integerHelper.execute(
-                new DTOPoint(540, 1215),
-                new DTOPoint(590, 1245),
-                5,
-                200L,
-                DTOTesseractSettings.builder()
-                        .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                        .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                        .setRemoveBackground(true)
-                        .setTextColor(new Color(254, 254, 254)) // White text
-                        .setDebug(true)
-                        .setAllowedChars("0123456789") // Only allow digits
-                        .build(),
-                text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
-                text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
-        logDebug("Spent stamina read: " + spentStamina);
+        Integer spentStamina = getSpentStamina();
 
         // Deploy march
         DTOImageSearchResult deploy = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 3);
@@ -250,15 +198,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         logInfo("March deployed successfully.");
 
         // Update stamina
-        if (spentStamina != null) {
-            logInfo("Stamina decreased by " + (spentStamina) + ". Current stamina: "
-                    + (currentStamina - spentStamina));
-            StaminaService.getServices().subtractStamina(profile.getId(), spentStamina);
-        } else {
-            // If OCR fails, default to 25 stamina
-            logWarning("No stamina value found on deployment. Default spending to 25 stamina.");
-            StaminaService.getServices().subtractStamina(profile.getId(), 25);
-        }
+        subtractStamina(spentStamina, true);
 
         // Flag mode: reschedule for march return
         if (useFlag) {
@@ -283,7 +223,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         return 1;
     }
 
-    private void handleRallyResult(int result, boolean useFlag, boolean limitedHunting, int polarLevel) {
+    private void handleRallyResult(int result, boolean useFlag) {
         if (result == -1) {
             if (useFlag) {
                 logWarning("March deployed with flag but travel time unknown. Using fallback reschedule.");
@@ -299,7 +239,6 @@ public class PolarTerrorHuntingTask extends DelayedTask {
                 logError("Failed to deploy march. Trying again in 5 minutes.");
                 reschedule(LocalDateTime.now().plusMinutes(5));
             }
-            return;
         }
 
         // Results 2 and 3 already handle their own rescheduling

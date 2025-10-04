@@ -1,8 +1,6 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import cl.camodev.utiles.UtilTime;
-import cl.camodev.utiles.number.NumberConverters;
-import cl.camodev.utiles.number.NumberValidators;
 import cl.camodev.wosbot.almac.entity.DailyTask;
 import cl.camodev.wosbot.almac.repo.DailyTaskRepository;
 import cl.camodev.wosbot.almac.repo.IDailyTaskRepository;
@@ -18,13 +16,10 @@ import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import java.awt.Color;
-import net.sourceforge.tess4j.TesseractException;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.regex.Pattern;
 
 public class MercenaryEventTask extends DelayedTask {
     private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
@@ -35,7 +30,6 @@ public class MercenaryEventTask extends DelayedTask {
     private boolean useFlag = false;
     private final int refreshStaminaLevel = 100;
     private final int minStaminaLevel = 40;
-    private int currentStamina;
     private boolean scout = false;
 
     public MercenaryEventTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
@@ -50,6 +44,7 @@ public class MercenaryEventTask extends DelayedTask {
     @Override
     protected void execute() {
         logInfo("=== Starting Mercenary Event ===");
+
 
         flagNumber = profile.getConfig(EnumConfigurationKey.MERCENARY_FLAG_INT, Integer.class);
         useFlag = flagNumber > 0;
@@ -68,24 +63,7 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // Verify if there's enough stamina to hunt, if not, reschedule the task
-        currentStamina = StaminaService.getServices().getCurrentStamina(profile.getId());
-        logInfo("Current stamina: " + currentStamina);
-
-        if (currentStamina < minStaminaLevel) {
-            LocalDateTime rescheduleTime = LocalDateTime.now()
-                    .plusMinutes(staminaRegenerationTime(currentStamina, refreshStaminaLevel));
-            reschedule(rescheduleTime);
-            logWarning("Not enough stamina to do mercenary event (Current: " + currentStamina + "/" + minStaminaLevel
-                    + "). Rescheduling task to run in "
-                    + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
-            return;
-        }
-
-        if (!checkMarchesAvailable()) {
-            logWarning("No marches available, rescheduling to run in 5 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
-            return;
-        }
+        if (!hasEnoughStaminaAndMarches(minStaminaLevel, refreshStaminaLevel)) return;
 
         int attempt = 0;
         while (attempt < 2) {
@@ -105,7 +83,7 @@ public class MercenaryEventTask extends DelayedTask {
 
     private void handleMercenaryEvent() {
         try {
-            // Select mercenary event level if needed
+            // Select a mercenary event level if needed
             if (!selectMercenaryEventLevel()) {
                 return; // If level selection failed, exit the task
             }
@@ -332,8 +310,7 @@ public class MercenaryEventTask extends DelayedTask {
         return null;
     }
 
-    private void scoutAndAttack(DTOImageSearchResult eventButton, boolean sameLevelAsLastTime)
-            throws IOException, TesseractException {
+    private void scoutAndAttack(DTOImageSearchResult eventButton, boolean sameLevelAsLastTime) {
         logInfo("Starting scout/attack process for mercenary event.");
 
         if (eventButton == null) {
@@ -396,44 +373,10 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // Parse travel time
-        long travelTimeSeconds = 0;
-        DTOTesseractSettings timeSettings = new DTOTesseractSettings.Builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(false)
-                .setDebug(true)
-                .setAllowedChars("0123456789:") // Only allow digits and ':'
-                .build();
-
-        try {
-            String timeStr = OCRWithRetries(new DTOPoint(521, 1141), new DTOPoint(608, 1162), 5, timeSettings);
-            if (timeStr != null && !timeStr.isEmpty()) {
-                travelTimeSeconds = UtilTime.parseTimeToSeconds(timeStr);
-                logInfo("Successfully parsed travel time: " + timeStr + " (" + travelTimeSeconds + "s)");
-            } else {
-                logWarning("OCR returned null or empty string for travel time");
-            }
-        } catch (Exception e) {
-            logError("Error parsing travel time: " + e.getMessage());
-        }
+        long travelTimeSeconds = parseTravelTime();
 
         // Parse stamina cost
-        Integer spentStamina = integerHelper.execute(
-                new DTOPoint(540, 1215),
-                new DTOPoint(590, 1245),
-                5,
-                200L,
-                DTOTesseractSettings.builder()
-                        .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                        .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                        .setRemoveBackground(true)
-                        .setTextColor(new Color(254, 254, 254)) // White text
-                        .setDebug(true)
-                        .setAllowedChars("0123456789") // Only allow digits
-                        .build(),
-                text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
-                text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
-        logDebug("Spent stamina read: " + spentStamina);
+        Integer spentStamina = getSpentStamina();
 
         // Validate travel time before deploying
         if (travelTimeSeconds <= 0) {
@@ -442,19 +385,7 @@ public class MercenaryEventTask extends DelayedTask {
             sleepTask(2000);
 
             // Update stamina with fallback
-            if (spentStamina != null) {
-                logInfo("Stamina decreased by " + spentStamina + ". Current stamina: "
-                        + (currentStamina - spentStamina));
-                StaminaService.getServices().subtractStamina(profile.getId(), spentStamina);
-            } else {
-                if (rally) {
-                    logWarning("No stamina value found on deployment. Default spending to 25 stamina.");
-                    StaminaService.getServices().subtractStamina(profile.getId(), 25);
-                } else {
-                    logWarning("No stamina value found on deployment. Default spending to 10 stamina.");
-                    StaminaService.getServices().subtractStamina(profile.getId(), 25);
-                }
-            }
+            subtractStamina(spentStamina, rally);
 
             // Reschedule with conservative estimate
             LocalDateTime fallbackTime = LocalDateTime.now().plusMinutes(10);
@@ -488,18 +419,7 @@ public class MercenaryEventTask extends DelayedTask {
         reschedule(rescheduleTime);
 
         // Update stamina
-        if (spentStamina != null) {
-            logInfo("Stamina decreased by " + spentStamina + ". Current stamina: " + (currentStamina - spentStamina));
-            StaminaService.getServices().subtractStamina(profile.getId(), spentStamina);
-        } else {
-            if (rally) {
-                logWarning("No stamina value found on deployment. Default spending to 25 stamina.");
-                StaminaService.getServices().subtractStamina(profile.getId(), 25);
-            } else {
-                logWarning("No stamina value found on deployment. Default spending to 10 stamina.");
-                StaminaService.getServices().subtractStamina(profile.getId(), 25);
-            }
-        }
+        subtractStamina(spentStamina, rally);
 
         logInfo("Mercenary march sent. Task will run again at " +
                 rescheduleTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) +
@@ -513,37 +433,20 @@ public class MercenaryEventTask extends DelayedTask {
      */
     private void selectMarchFlag(int flagNumber) {
         logInfo("Selecting march flag " + flagNumber + ".");
-        DTOPoint flagPoint = null;
-        switch (flagNumber) {
-            case 1:
-                flagPoint = new DTOPoint(70, 120);
-                break;
-            case 2:
-                flagPoint = new DTOPoint(140, 120);
-                break;
-            case 3:
-                flagPoint = new DTOPoint(210, 120);
-                break;
-            case 4:
-                flagPoint = new DTOPoint(280, 120);
-                break;
-            case 5:
-                flagPoint = new DTOPoint(350, 120);
-                break;
-            case 6:
-                flagPoint = new DTOPoint(420, 120);
-                break;
-            case 7:
-                flagPoint = new DTOPoint(490, 120);
-                break;
-            case 8:
-                flagPoint = new DTOPoint(560, 120);
-                break;
-            default:
+        DTOPoint flagPoint = switch (flagNumber) {
+            case 1 -> new DTOPoint(70, 120);
+            case 2 -> new DTOPoint(140, 120);
+            case 3 -> new DTOPoint(210, 120);
+            case 4 -> new DTOPoint(280, 120);
+            case 5 -> new DTOPoint(350, 120);
+            case 6 -> new DTOPoint(420, 120);
+            case 7 -> new DTOPoint(490, 120);
+            case 8 -> new DTOPoint(560, 120);
+            default -> {
                 logError("Invalid flag number: " + flagNumber + ". Defaulting to flag 1.");
-                flagPoint = new DTOPoint(70, 120);
-                break;
-        }
+                yield new DTOPoint(70, 120);
+            }
+        };
         tapPoint(flagPoint);
     }
 

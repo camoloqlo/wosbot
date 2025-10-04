@@ -66,7 +66,7 @@ public class JourneyofLightTask extends DelayedTask {
         };
 
         for (DTOPoint[] queue : queues) {
-            String nextQueueTime = OCRWithRetries(queue[0], queue[1], 5);
+            String nextQueueTime = OCRWithRetries(queue[0], queue[1]);
             if (nextQueueTime == null) {
                 logWarning("Failed to fetch next queue time for queue " + queue[0]);
                 continue;
@@ -83,6 +83,7 @@ public class JourneyofLightTask extends DelayedTask {
             if (nextQueueDateTime.isBefore(nextScheduleTime)) {
                 nextScheduleTime = nextQueueDateTime;
             }
+            logInfo("Next queue time for queue " + profile.getName() + ": " + nextQueueTime.toLowerCase());
         }
         // set for when the next one is ready
         logInfo("Next schedule: " + UtilTime.localDateTimeToDDHHMMSS(nextScheduleTime));
@@ -123,10 +124,9 @@ public class JourneyofLightTask extends DelayedTask {
 	}
 
     private boolean eventHasEnded() {
-        String result = OCRWithRetries("collect", new DTOPoint(50, 300), new DTOPoint(400, 400), 5);
+        String result = OCRWithRetries("collect", new DTOPoint(50, 300), new DTOPoint(400, 400));
         if (result == null) return false;
-        if (!result.isEmpty()) return true;
-        return false;
+        return !result.isEmpty();
     }
 
     private void checkAndClaimFreeWatches() {

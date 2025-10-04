@@ -46,6 +46,7 @@ public class HeroMissionEventTask extends DelayedTask {
 
         flagNumber = profile.getConfig(EnumConfigurationKey.HERO_MISSION_FLAG_INT, Integer.class);
         String mode = profile.getConfig(EnumConfigurationKey.HERO_MISSION_MODE_STRING, String.class);
+        currentStamina = getCurrentStamina();
         limitedHunting = mode.equals("Limited (10)");
         useFlag = flagNumber > 0;
 
@@ -71,24 +72,7 @@ public class HeroMissionEventTask extends DelayedTask {
         }
 
         // Verify if there's enough stamina to hunt, if not, reschedule the task
-        currentStamina = StaminaService.getServices().getCurrentStamina(profile.getId());
-        logInfo("Current stamina: " + currentStamina);
-
-        if (currentStamina < minStaminaLevel) {
-            LocalDateTime rescheduleTime = LocalDateTime.now()
-                    .plusMinutes(staminaRegenerationTime(currentStamina, refreshStaminaLevel));
-            reschedule(rescheduleTime);
-            logWarning("Not enough stamina to do polar (Current: " + currentStamina + "/" + minStaminaLevel
-                    + "). Rescheduling task to run in "
-                    + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
-            return;
-        }
-
-        if (!checkMarchesAvailable()) {
-            logWarning("No marches available, rescheduling for in 5 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
-            return;
-        }
+        if (!hasEnoughStaminaAndMarches(minStaminaLevel, refreshStaminaLevel)) return;
 
         int attempt = 0;
         while (attempt < 2) {
@@ -237,22 +221,7 @@ public class HeroMissionEventTask extends DelayedTask {
             logError("Error parsing travel time: " + e.getMessage());
         }
 
-        Integer spentStamina = integerHelper.execute(
-                new DTOPoint(540, 1215),
-                new DTOPoint(590, 1245),
-                5,
-                200L,
-                DTOTesseractSettings.builder()
-                        .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                        .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                        .setRemoveBackground(true)
-                        .setTextColor(new Color(254, 254, 254)) // White text
-                        .setDebug(true)
-                        .setAllowedChars("0123456789") // Only allow digits
-                        .build(),
-                text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
-                text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
-        logDebug("Spent stamina read: " + spentStamina);
+        Integer spentStamina = getSpentStamina();
 
         // Deploy march
         DTOImageSearchResult deploy = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 3);
@@ -275,15 +244,7 @@ public class HeroMissionEventTask extends DelayedTask {
         logInfo("March deployed successfully.");
 
         // Update stamina
-        if (spentStamina != null) {
-            logInfo("Stamina decreased by " + (spentStamina) + ". Current stamina: "
-                    + (currentStamina - spentStamina));
-            StaminaService.getServices().subtractStamina(profile.getId(), spentStamina);
-        } else {
-            // If OCR fails, default to 25 stamina
-            logWarning("No stamina value found on deployment. Default spending to 25 stamina.");
-            StaminaService.getServices().subtractStamina(profile.getId(), 25);
-        }
+        subtractStamina(spentStamina, true);
 
         if (travelTimeSeconds <= 0) {
             logError("Failed to parse travel time via OCR. Rescheduling in 10 minutes as fallback.");

@@ -2,16 +2,13 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
-import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
@@ -36,7 +33,7 @@ public class BeastSlayTask extends DelayedTask {
 		int staminaNeeded = maxStamina - currentStamina;
 		int minutesToFull = staminaNeeded * regenRateMinutes;
 
-		return LocalDateTime.now().plus(minutesToFull, ChronoUnit.MINUTES);
+		return LocalDateTime.now().plusMinutes(minutesToFull);
 	}
 
 	@Override

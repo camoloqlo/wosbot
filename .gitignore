@@ -23,7 +23,7 @@ wos-hmi/.project
 .project
 /.idea
 /wos-hmi/log
-database.db
+database.db*
 log/bot.log
 .vscode/settings.json
 /log

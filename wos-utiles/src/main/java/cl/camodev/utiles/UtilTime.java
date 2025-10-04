@@ -135,7 +135,7 @@ public class UtilTime {
                 int seconds = Integer.parseInt(matcher.group(3));
                 return (long) hours * 3600 + (long) minutes * 60 + seconds;
             } catch (NumberFormatException e) {
-
+                System.out.println("Unable to parse time: " + timeStr);
             }
         }
 

@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.prefs.Preferences;
 
 public class FXApp extends Application {
@@ -35,7 +36,7 @@ public class FXApp extends Application {
 	@Override
 	public void start(Stage stage) throws IOException {
 		// Inicializar Preferences
-		Image appIcon = new Image(getClass().getResourceAsStream("/icons/appIcon.png"));
+		Image appIcon = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/icons/appIcon.png")));
 		prefs = Preferences.userRoot().node(FXApp.class.getName());
 
 		// Cargar FXML y controlador
@@ -53,6 +54,9 @@ public class FXApp extends Application {
 		stage.getIcons().add(appIcon);
 		stage.setTitle("Launcher");
 
+        // set minimum height and width so the "run" button is always visible
+        stage.setMinHeight(750);
+        stage.setMinWidth(1050);
 		// Mostrar la ventana primero para que JavaFX calcule los tamaños correctamente
 		stage.show();
 

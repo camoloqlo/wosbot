@@ -333,10 +333,8 @@ public class ImageSearchUtil {
 			byte[] image, String templateResourcePath, DTOPoint topLeftCorner,
 			DTOPoint bottomRightCorner, double thresholdPercentage, int maxResults) {
 
-		return CompletableFuture.supplyAsync(() -> {
-			return searchTemplateMultipleOptimized(image, templateResourcePath, topLeftCorner,
-				bottomRightCorner, thresholdPercentage, maxResults);
-		}, openCVThreadPool);
+		return CompletableFuture.supplyAsync(() -> searchTemplateMultipleOptimized(image, templateResourcePath,
+                topLeftCorner, bottomRightCorner, thresholdPercentage, maxResults), openCVThreadPool);
 	}
 
 	/**
@@ -526,8 +524,8 @@ public class ImageSearchUtil {
 			}
 
 			// Calculate center point of the match (taking ROI into account)
-			int centerX = (int) (mmr.maxLoc.x + template.cols() / 2 + roiX);
-			int centerY = (int) (mmr.maxLoc.y + template.rows() / 2 + roiY);
+			int centerX = (int) (mmr.maxLoc.x + (double) template.cols() / 2 + roiX);
+			int centerY = (int) (mmr.maxLoc.y + (double) template.rows() / 2 + roiY);
 
 			return new DTOImageSearchResult(true, new DTOPoint(centerX, centerY), matchPercentage);
 

@@ -17,7 +17,7 @@
 			<property name="jakarta.persistence.jdbc.driver"
 				value="org.sqlite.JDBC" />
 			<property name="jakarta.persistence.jdbc.url"
-				value="jdbc:sqlite:database.db" />
+				value="jdbc:sqlite:database.db?busy_timeout=1000&amp;journal_mode=WAL" />
 
 			<!-- Hibernate settings -->
 			<property name="hibernate.dialect"

@@ -99,7 +99,6 @@ public class LauncherLayoutController implements IProfileLoadListener, IStaminaC
         initializeProfileComboBox();
         initializeModules();
         initializeExternalLibraries();
-        initializeEmulatorManager();
         showVersion();
         buttonStartStop.setDisable(false);
         buttonPauseResume.setDisable(true);
@@ -467,11 +466,17 @@ public class LauncherLayoutController implements IProfileLoadListener, IStaminaC
 
     @FXML
     public void handleButtonStartStop(ActionEvent event) {
-        if (!estado) {
-            actionController.startBot();
-        } else {
-            actionController.stopBot();
-        }
+        Thread startStopThread = Thread.ofVirtual().unstarted(() -> {
+            if (!estado) {
+                Platform.runLater(() -> {buttonStartStop.setText("Starting..."); buttonStartStop.setDisable(true);});
+                actionController.startBot();
+            } else {
+                Platform.runLater(() -> {buttonStartStop.setText("Stopping..."); buttonStartStop.setDisable(true); buttonPauseResume.setDisable(true);});
+                actionController.stopBot();
+            }
+        });
+        startStopThread.setName( "Start-Stop-Thread");
+        startStopThread.start();
     }
 
     @FXML

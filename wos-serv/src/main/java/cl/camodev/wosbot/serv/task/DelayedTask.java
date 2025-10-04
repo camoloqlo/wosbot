@@ -1,5 +1,8 @@
 package cl.camodev.wosbot.serv.task;
 
+import cl.camodev.utiles.UtilTime;
+import cl.camodev.utiles.number.NumberConverters;
+import cl.camodev.utiles.number.NumberValidators;
 import cl.camodev.utiles.ocr.TextRecognitionRetrier;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
@@ -49,6 +52,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
     private ProfileLogger logger; // Will be initialized in the constructor
     protected BotTextRecognitionProvider provider;
     protected TextRecognitionRetrier<Integer> integerHelper;
+
+    private static final int DEFAULT_RETRIES = 5;
 
     public DelayedTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         this.profile = profile;
@@ -313,6 +318,91 @@ public abstract class DelayedTask implements Runnable, Delayed {
         ensureCorrectScreenLocation(getRequiredStartLocation());
     }
 
+    protected Integer getSpentStamina() {
+        Integer spentStamina = 0;
+        spentStamina = integerHelper.execute( new DTOPoint(540, 1215),
+            new DTOPoint(590, 1245),
+            5,
+            200L,
+            DTOTesseractSettings.builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setRemoveBackground(true)
+                .setTextColor(new Color(254, 254, 254)) // White text
+                .setDebug(true)
+                .setAllowedChars("0123456789") // Only allow digits
+                .build(),
+            text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
+            text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
+        logDebug("Spent stamina read: " + spentStamina);
+        return spentStamina;
+    }
+
+    protected void subtractStamina(Integer spentStamina, boolean rally) {
+        if (spentStamina != null) {
+            logInfo("Stamina decreased by " + spentStamina + ". Current stamina: "
+                    + (getCurrentStamina() - spentStamina));
+            StaminaService.getServices().subtractStamina(profile.getId(), spentStamina);
+            return;
+        }
+        // If we couldn't parse stamina, use defaults
+        if (rally) {
+            logWarning("No stamina value found on deployment. Default spending to 25 stamina.");
+            StaminaService.getServices().subtractStamina(profile.getId(), 25);
+        } else {
+            logWarning("No stamina value found on deployment. Default spending to 10 stamina.");
+            StaminaService.getServices().subtractStamina(profile.getId(), 25);
+        }
+    }
+    protected long parseTravelTime() {
+        long travelTimeSeconds = 0;
+        DTOTesseractSettings timeSettings = new DTOTesseractSettings.Builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setRemoveBackground(false)
+                .setDebug(true)
+                .setAllowedChars("0123456789:") // Only allow digits and ':'
+                .build();
+
+        try {
+            String timeStr = OCRWithRetries(new DTOPoint(521, 1141), new DTOPoint(608, 1162), 5, timeSettings);
+            if (timeStr != null && !timeStr.isEmpty()) {
+                travelTimeSeconds = UtilTime.parseTimeToSeconds(timeStr);
+                logInfo("Successfully parsed travel time: " + timeStr + " (" + travelTimeSeconds + "s)");
+            } else {
+                logWarning("OCR returned null or empty string for travel time");
+            }
+        } catch (Exception e) {
+            logError("Error parsing travel time: " + e.getMessage());
+        }
+        return travelTimeSeconds;
+    }
+
+    protected int getCurrentStamina() {
+        return StaminaService.getServices().getCurrentStamina(profile.getId());
+    }
+
+    protected boolean hasEnoughStaminaAndMarches(int minStaminaLevel, int refreshStaminaLevel) {
+        int currentStamina = getCurrentStamina();
+        logInfo("Current stamina: " + currentStamina);
+
+        if (currentStamina < minStaminaLevel) {
+            LocalDateTime rescheduleTime = LocalDateTime.now()
+                    .plusMinutes(staminaRegenerationTime(currentStamina, refreshStaminaLevel));
+            reschedule(rescheduleTime);
+            logWarning("Not enough stamina for expedition. (Current: " + currentStamina + "/" + minStaminaLevel
+                    + "). Rescheduling task to run in "
+                    + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
+            return false;
+        }
+        if (!checkMarchesAvailable()) {
+            logWarning("No marches available, rescheduling for in 5 minutes.");
+            reschedule(LocalDateTime.now().plusMinutes(5));
+            return false;
+        }
+        return true;
+    }
+
     protected Integer getStaminaValueFromIntelScreen() {
         ensureOnIntelScreen();
         DTOTesseractSettings settings = new DTOTesseractSettings.Builder()
@@ -387,7 +477,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template) {
-        return searchTemplateWithRetries(template, 90, 5);
+        return searchTemplateWithRetries(template, 90, DEFAULT_RETRIES);
     }
 
     protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int threshold, int maxRetries) {
@@ -399,6 +489,9 @@ public abstract class DelayedTask implements Runnable, Delayed {
         }
         logDebug(result.isFound() ? "Template " + template + " found." : "Template " + template + " not found.");
         return result;
+    }
+    protected String OCRWithRetries(String searchStringLower, DTOPoint p1, DTOPoint p2) {
+        return OCRWithRetries(searchStringLower, p1, p2, DEFAULT_RETRIES);
     }
 
     protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, DTOPoint topLeft, DTOPoint bottomRight, int threshold, int maxRetries) {
@@ -451,6 +544,10 @@ public abstract class DelayedTask implements Runnable, Delayed {
             sleepTask(200);
         }
         return null;
+    }
+
+    protected String OCRWithRetries(DTOPoint p1, DTOPoint p2) {
+        return OCRWithRetries(p1, p2, 5);
     }
 
     protected String OCRWithRetries(DTOPoint p1, DTOPoint p2, int maxRetries) {

@@ -114,7 +114,7 @@ public class TaskQueue {
         }
         running = true;
 
-        schedulerThread = new Thread(this::processTaskQueue);
+        schedulerThread = Thread.ofVirtual().unstarted(this::processTaskQueue);
         schedulerThread.setName("TaskQueue-" + profile.getName());
         schedulerThread.start();
     }
@@ -176,7 +176,7 @@ public class TaskQueue {
 
         LocalDateTime scheduledBefore = task.getScheduled();
         DTOTaskState taskState = createInitialTaskState(task);
-        boolean executionSuccessful = false;
+        boolean executionSuccessful;
 
         try {
             logInfoWithTask(task, "Starting task execution: " + task.getTaskName());
@@ -365,11 +365,11 @@ public class TaskQueue {
     private void idlingEmulator(LocalDateTime delayUntil) {
         boolean sendToBackground = Boolean.parseBoolean(
             profile.getGlobalsettings().getOrDefault(
-                EnumConfigurationKey.IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL.name(), 
+                EnumConfigurationKey.IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL.name(),
                 EnumConfigurationKey.IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL.getDefaultValue()
             )
         );
-        
+
         if (sendToBackground) {
             // Send game to background (home screen), keep emulator and game running
             emuManager.sendGameToBackground(profile.getEmulatorNumber());
@@ -387,13 +387,13 @@ public class TaskQueue {
 
     private void enqueueNewTask() {
         logInfo("Scheduled task will start soon");
-        
+
         // Only acquire a new emulator slot if the emulator is not running
         // (i.e., if we closed the entire emulator rather than just the game)
         if (!emuManager.isRunning(profile.getEmulatorNumber())) {
             acquireEmulatorSlot();
         }
-        
+
         addTask(new InitializeTask(profile, TpDailyTaskEnum.INITIALIZE));
     }
 
@@ -403,9 +403,8 @@ public class TaskQueue {
     private void acquireEmulatorSlot() {
         updateProfileStatus("Getting queue slot");
         try {
-            emuManager.adquireEmulatorSlot(profile, (thread, position) -> {
-                updateProfileStatus("Waiting for slot, position: " + position);
-            });
+            emuManager.adquireEmulatorSlot(profile, (thread, position) ->
+                    updateProfileStatus("Waiting for slot, position: " + position));
         } catch (InterruptedException e) {
             logError("Interrupted while acquiring emulator slot: " + e.getMessage());
             Thread.currentThread().interrupt();
@@ -421,13 +420,16 @@ public class TaskQueue {
             else {
                 paused = LocalDateTime.MIN;
                 updateProfileStatus("RESUMING");
+                if (!emuManager.isRunning(profile.getEmulatorNumber())) {
+                    logInfo("While resuming, found instance closed. Acquiring a slot now.");
+                    acquireEmulatorSlot();
+                }
             }
             return;
         }
         try {
-            String timeFormatted = formatTimeUntil(delayUntil);
-            updateProfileStatus("Paused for " + timeFormatted);
-            logInfo("Profile is paused");
+            updateProfileStatus("PAUSED");
+            if (LocalDateTime.now().getSecond() % 10 == 0) logInfo("Profile is paused");
             Thread.sleep(1000); // Wait while paused
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -504,22 +506,23 @@ public class TaskQueue {
     }
 
     private void runBackgroundChecks() {
-        if (!emuManager.isRunning(profile.getEmulatorNumber()) || paused != LocalDateTime.MIN) {
-            return; // emulator isn't running or the queue should be paused, just leave.
-        }
         // help allies checks
         boolean runHelpAllies = true;
         helpAlliesCount++;
-        if (helpAlliesCount % 10 != 0 || !profile.getConfig(EnumConfigurationKey.ALLIANCE_HELP_BOOL, Boolean.class) ) {
-            runHelpAllies = false; // Only check every 10 cycles, or if help is enabled
-        } else {
-            helpAlliesCount = 0;
+        if (helpAlliesCount % 60 != 0) return; // Only check every 60 cycles
+        helpAlliesCount = 0;
+        if (!profile.getConfig(EnumConfigurationKey.ALLIANCE_HELP_BOOL, Boolean.class) ) {
+            runHelpAllies = false;
+        }
+        if (!emuManager.isRunning(profile.getEmulatorNumber()) || paused != LocalDateTime.MIN) {
+            logInfo("Emulator not running or queue is paused, not running background checks.");
+            return; // emulator isn't running or the queue should be paused, just leave.
         }
 
+        logInfo("Running background checks...");
         try {
-            boolean finalRunHelpAllies = runHelpAllies; // Idk, my editor told me to do this. What's the point?
-                isBearRunning();
-                if (finalRunHelpAllies) checkHelpAllies();
+            isBearRunning();
+            if (runHelpAllies) checkHelpAllies();
         } catch (Exception e) {
             logError("Error running background tasks: " + e.getMessage());
         }
@@ -554,7 +557,7 @@ public class TaskQueue {
             .filter(task -> task.getTpTask() != TpDailyTaskEnum.INITIALIZE) // Exclude Initialize tasks
             .anyMatch(task -> {
                 long taskDelay = task.getDelay(TimeUnit.SECONDS);
-//                return taskDelay >= 0 && taskDelay < maxIdleSeconds;
+                // return taskDelay >= 0 && taskDelay < maxIdleSeconds;
                 return taskDelay < maxIdleSeconds;
 
             });

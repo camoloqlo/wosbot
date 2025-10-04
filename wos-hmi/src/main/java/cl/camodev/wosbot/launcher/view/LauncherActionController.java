@@ -120,7 +120,8 @@ public class LauncherActionController implements IBotStateListener {
 
 	@Override
 	public void onBotStateChange(DTOBotState botState) {
+        Platform.runLater(() -> {
 		layoutController.onBotStateChange(botState);
-	}
-
+	});
+    }
 }
