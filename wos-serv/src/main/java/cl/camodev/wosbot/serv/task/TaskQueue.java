@@ -402,8 +402,9 @@ public class TaskQueue {
             emuManager.releaseEmulatorSlot(profile);
         }
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        updateProfileStatus("Idling till " + formatter.format(delayUntil));
+        String nextTaskName = taskQueue.isEmpty() ? "None" : taskQueue.peek().getTaskName();
+        String timeFormatted = formatTimeUntil(delayUntil);
+        updateProfileStatus("Idling for " + timeFormatted + "\nNext task: " + nextTaskName);
     }
 
     private void enqueueNewTask() {
@@ -422,7 +423,6 @@ public class TaskQueue {
      * Acquires an emulator slot for this profile
      */
     private void acquireEmulatorSlot() {
-        updateProfileStatus("Getting queue slot");
         try {
             emuManager.adquireEmulatorSlot(profile,
                     (thread, position) -> updateProfileStatus("Waiting for slot, position: " + position));
@@ -523,8 +523,6 @@ public class TaskQueue {
             boolean notPaused = (paused == LocalDateTime.MIN);
 
             if (!emulatorRunning || !notPaused) {
-                logInfo(String.format("Skipping background checks - Emulator running: %s, Not paused: %s",
-                        emulatorRunning, notPaused));
                 return;
             }
         }
