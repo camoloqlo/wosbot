@@ -95,33 +95,26 @@ public class TundraTruckEventTask extends DelayedTask {
 
 	public TundraTruckEventTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
-
-		// Load initial configuration for scheduling
-		loadConfiguration();
-
-		// Schedule based on activation time if configured
-		if (taskEnabled && useActivationTime && isValidActivationTime()) {
-			scheduleActivationTime();
-		}
 	}
-
-	@Override
-	public EnumStartLocation getRequiredStartLocation() {
-		return EnumStartLocation.WORLD;
-	}
-
+	
 	@Override
 	protected void execute() {
 		logInfo("=== Starting Tundra Truck Event Task ===");
 
-		// Reload configuration after profile refresh
+		// Load configuration
 		loadConfiguration();
-
+	
 		// Check if task is still enabled
 		if (!taskEnabled) {
 			logInfo("Tundra Truck task is disabled. Rescheduling for next reset.");
 			reschedule(UtilTime.getGameReset());
 			return;
+		}
+
+		// Schedule based on activation time if configured
+		if (useActivationTime) {
+			validateActivationTime();
+			scheduleActivationTime();
 		}
 
 		// Attempt navigation
@@ -177,17 +170,19 @@ public class TundraTruckEventTask extends DelayedTask {
 	/**
 	 * Check if activation time is in valid HH:mm format
 	 */
-	private boolean isValidActivationTime() {
+	private void validateActivationTime() {
 		if (activationTime == null || activationTime.trim().isEmpty()) {
-			return false;
+			logWarning("Invalid activation time format: '" + activationTime
+					+ "'. Expected HH:mm (e.g., '14:30'). Changing to default time: 14:00");
+			activationTime = "14:00";
 		}
 
 		try {
 			LocalTime.parse(activationTime.trim(), TIME_FORMATTER);
-			return true;
 		} catch (DateTimeParseException e) {
-			logWarning("Invalid activation time format: '" + activationTime + "'. Expected HH:mm (e.g., '14:30')");
-			return false;
+			logWarning("Invalid activation time format: '" + activationTime
+					+ "'. Expected HH:mm (e.g., '14:30'). Changing to default time: 14:00");
+			activationTime = "14:00";
 		}
 	}
 
@@ -212,7 +207,6 @@ public class TundraTruckEventTask extends DelayedTask {
 			// If activation time has already passed today, run immediately
 			if (nowUtc.isAfter(activationTimeUtc)) {
 				logInfo("Activation time " + activationTime + " UTC has already passed today. Running immediately.");
-				reschedule(LocalDateTime.now());
 			} else {
 				logInfo("Scheduling Tundra Truck task for " + activationTime + " UTC (" +
 						localActivationTime.format(DATETIME_FORMATTER) + " local time)");
@@ -229,7 +223,8 @@ public class TundraTruckEventTask extends DelayedTask {
 	 * Reschedule with activation time or game reset
 	 */
 	private void rescheduleWithActivationTime() {
-		if (useActivationTime && isValidActivationTime()) {
+		if (useActivationTime) {
+			validateActivationTime();
 			try {
 				LocalTime targetTime = LocalTime.parse(activationTime.trim(), TIME_FORMATTER);
 				ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
@@ -678,6 +673,11 @@ public class TundraTruckEventTask extends DelayedTask {
 	private void closeWindow() {
 		sleepTask(300);
 		tapRandomPoint(CLOSE_WINDOW.topLeft(), CLOSE_WINDOW.bottomRight(), 2, 300);
+	}
+
+	@Override
+	public EnumStartLocation getRequiredStartLocation() {
+		return EnumStartLocation.WORLD;
 	}
 
 	// ===================== ENUMS =====================
