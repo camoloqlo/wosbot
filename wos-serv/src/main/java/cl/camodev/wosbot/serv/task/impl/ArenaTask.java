@@ -27,7 +27,7 @@ public class ArenaTask extends DelayedTask {
 	private static final DTOPoint CHALLENGES_LEFT_TOP_LEFT = new DTOPoint(405, 951);
 	private static final DTOPoint CHALLENGES_LEFT_BOTTOM_RIGHT = new DTOPoint(439, 986);
 	// Activation time in "HH:mm" format (24-hour clock)
-	private String activationHour = profile.getConfig(EnumConfigurationKey.ARENA_TASK_ACTIVATION_HOUR_STRING, String.class);
+	private String activationHour = profile.getConfig(EnumConfigurationKey.ARENA_TASK_ACTIVATION_TIME_STRING, String.class);
 	private int extraAttempts = profile.getConfig(EnumConfigurationKey.ARENA_TASK_EXTRA_ATTEMPTS_INT, Integer.class);
 	private boolean refreshWithGems = profile.getConfig(EnumConfigurationKey.ARENA_TASK_REFRESH_WITH_GEMS_BOOL, Boolean.class);
 	private int attempts = 0;
