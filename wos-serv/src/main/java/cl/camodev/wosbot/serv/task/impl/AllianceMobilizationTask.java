@@ -959,10 +959,5 @@ public class AllianceMobilizationTask extends DelayedTask {
         return EnumStartLocation.HOME;
     }
 
-    @Override
-    public boolean provideDailyMissionProgress() {
-        return false; // Or true, depending on whether this task contributes to daily missions
-    }
-
     private record AttemptStatus(int remaining, Integer total) {}
 }
