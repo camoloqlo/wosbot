@@ -133,7 +133,7 @@ public enum EnumConfigurationKey {
 	DAILY_MISSION_AUTO_SCHEDULE_BOOL("false", Boolean.class),
 	STOREHOUSE_CHEST_BOOL("false", Boolean.class),
 	DAILY_LABYRINTH_BOOL("false", Boolean.class),
-	ARENA_TASK_ACTIVATION_HOUR_STRING("0", String.class),
+	ARENA_TASK_ACTIVATION_TIME_STRING("23:50", String.class),
 	ARENA_TASK_BOOL("false", Boolean.class),
 	ARENA_TASK_EXTRA_ATTEMPTS_INT("0", Integer.class),
 	ARENA_TASK_REFRESH_WITH_GEMS_BOOL("false", Boolean.class),
@@ -172,10 +172,10 @@ public enum EnumConfigurationKey {
 	
 	// Tundra events
 	TUNDRA_TRUCK_EVENT_BOOL("false", Boolean.class),
-	TUNDRA_TRUCK_ACTIVATION_HOUR_BOOL("false", Boolean.class),
+	TUNDRA_TRUCK_ACTIVATION_TIME_BOOL("false", Boolean.class),
 	TUNDRA_TRUCK_USE_GEMS_BOOL("false", Boolean.class),
 	TUNDRA_TRUCK_SSR_BOOL("false", Boolean.class),
-	TUNDRA_TRUCK_ACTIVATION_HOUR_INT("0", Integer.class),
+	TUNDRA_TRUCK_ACTIVATION_TIME_STRING("14:00", String.class),
 	TUNDRA_TREK_SUPPLIES_BOOL("false", Boolean.class),
 	TUNDRA_TREK_AUTOMATION_BOOL("false", Boolean.class),
 	
