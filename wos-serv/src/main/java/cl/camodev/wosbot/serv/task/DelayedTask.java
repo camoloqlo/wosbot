@@ -541,14 +541,29 @@ public abstract class DelayedTask implements Runnable, Delayed {
         return OCRWithRetries(searchStringLower, p1, p2, DEFAULT_RETRIES);
     }
 
-    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, DTOPoint topLeft,
-            DTOPoint bottomRight, int threshold, int maxRetries) {
+    protected DTOImageSearchResult searchTemplateRegionWithRetries(
+            EnumTemplates template, DTOPoint topLeft, DTOPoint bottomRight) {
+        return searchTemplateRegionWithRetries(
+                template, topLeft, bottomRight,
+                90, DEFAULT_RETRIES, 200L);
+    }
+    protected DTOImageSearchResult searchTemplateRegionWithRetries(
+            EnumTemplates template, DTOPoint topLeft, DTOPoint bottomRight, int retries, long delayMs) {
+        return searchTemplateRegionWithRetries(
+                template, topLeft, bottomRight,
+                90, retries, delayMs);
+    }
+
+        protected DTOImageSearchResult searchTemplateRegionWithRetries(
+            EnumTemplates template, DTOPoint topLeft, DTOPoint bottomRight,
+            int threshold, int maxRetries, long delayMs) {
         DTOImageSearchResult result = null;
         for (int i = 0; i < maxRetries && (result == null || !result.isFound()); i++) {
             logDebug("Searching template " + template + ", (attempt " + (i + 1) + "/" + maxRetries + ")");
             result = emuManager.searchTemplate(EMULATOR_NUMBER, template, topLeft, bottomRight, threshold);
-            sleepTask(200);
+            sleepTask(delayMs);
         }
+        assert result != null;
         logDebug(result.isFound() ? "Template " + template + " found." : "Template " + template + " not found.");
         return result;
     }
