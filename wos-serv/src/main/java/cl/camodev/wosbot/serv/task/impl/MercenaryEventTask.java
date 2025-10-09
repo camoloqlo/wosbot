@@ -38,14 +38,8 @@ public class MercenaryEventTask extends DelayedTask {
     }
 
     @Override
-    public EnumStartLocation getRequiredStartLocation() {
-        return EnumStartLocation.WORLD;
-    }
-
-    @Override
     protected void execute() {
         logInfo("=== Starting Mercenary Event ===");
-
 
         flagNumber = profile.getConfig(EnumConfigurationKey.MERCENARY_FLAG_INT, Integer.class);
         useFlag = flagNumber > 0;
@@ -64,7 +58,8 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // Verify if there's enough stamina to hunt, if not, reschedule the task
-        if (!checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel)) return;
+        if (!checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel))
+            return;
 
         int attempt = 0;
         while (attempt < 2) {
@@ -425,6 +420,16 @@ public class MercenaryEventTask extends DelayedTask {
         logInfo("Mercenary march sent. Task will run again at " +
                 rescheduleTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) +
                 " (in " + (returnTimeSeconds / 60) + " minutes).");
+    }
+
+    @Override
+    public EnumStartLocation getRequiredStartLocation() {
+        return EnumStartLocation.WORLD;
+    }
+
+    @Override
+    protected boolean consumesStamina() {
+        return true;
     }
 
 }
