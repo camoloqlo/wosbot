@@ -62,7 +62,7 @@ public class TundraTrekAutoTask extends DelayedTask {
     private static final int TEMPLATE_SEARCH_RETRIES = 3;
 
     // Configuration (loaded fresh each execution)
-    private boolean autoManageEnabled;
+    private boolean taskEnabled;
 
     public TundraTrekAutoTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
@@ -70,12 +70,12 @@ public class TundraTrekAutoTask extends DelayedTask {
 
     @Override
     protected void execute() {
-        logInfo("Starting TundraTrekAuto task");
+        logInfo("=== Starting Tundra Trek Auto Task ===");
 
         // Load configuration
         loadConfiguration();
 
-        if (!autoManageEnabled) {
+        if (!taskEnabled) {
             logInfo("Tundra Trek automation is disabled. Task will not run again.");
             setRecurring(false);
             return;
@@ -112,10 +112,10 @@ public class TundraTrekAutoTask extends DelayedTask {
      * Load configuration from profile after refresh
      */
     private void loadConfiguration() {
-        this.autoManageEnabled = profile.getConfig(
+        this.taskEnabled = profile.getConfig(
                 EnumConfigurationKey.TUNDRA_TREK_AUTOMATION_BOOL,
                 Boolean.class);
-        logDebug("Configuration loaded: autoManageEnabled=" + autoManageEnabled);
+        logDebug("Configuration loaded: taskEnabled=" + taskEnabled);
     }
 
     /**
