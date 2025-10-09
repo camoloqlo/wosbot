@@ -228,6 +228,7 @@ public class AllianceMobilizationTask extends DelayedTask {
         }
 
         profile.setConfig(key, fallbackValue);
+        setShouldUpdateConfig(true);
         return fallbackValue;
     }
 

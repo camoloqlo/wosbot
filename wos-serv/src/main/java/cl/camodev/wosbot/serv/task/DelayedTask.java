@@ -17,6 +17,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.ServLogs;
+import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.ocr.BotTextRecognitionProvider;
@@ -54,6 +55,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected BotTextRecognitionProvider provider;
     protected TextRecognitionRetrier<Integer> integerHelper;
     protected TextRecognitionRetrier<Duration> durationHelper;
+    protected boolean shouldUpdateConfig;
 
     private static final int DEFAULT_RETRIES = 3;
 
@@ -116,6 +118,14 @@ public abstract class DelayedTask implements Runnable, Delayed {
 
         }
         execute();
+
+        // Update task configuration after running
+        if (shouldUpdateConfig) {
+            ServProfiles.getServices().saveProfile(profile);
+            shouldUpdateConfig = false;
+        }
+
+        sleepTask(2000);
         ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
 
@@ -652,6 +662,10 @@ public abstract class DelayedTask implements Runnable, Delayed {
         }
         logDebug("OCRWithRetries result: " + result);
         return result;
+    }
+
+    public void setShouldUpdateConfig(boolean shouldUpdateConfig) {
+        this.shouldUpdateConfig = shouldUpdateConfig;
     }
 
     public boolean isBearRunning() {
