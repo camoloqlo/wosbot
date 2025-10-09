@@ -25,7 +25,6 @@
       <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="10.0" prefHeight="61.2" vgrow="SOMETIMES" />
   </rowConstraints>
    <children>
-      <CheckBox fx:id="checkBoxTundraEvent" mnemonicParsing="false" text="Tundra Event" />
        <CheckBox fx:id="checkBoxHeroMission" mnemonicParsing="false" text="Hero's Mission" GridPane.rowIndex="1" />
        <CheckBox fx:id="checkBoxMercenaryEvent" mnemonicParsing="false" text="Mercenary Event" GridPane.rowIndex="2" />
        <CheckBox fx:id="checkBoxJourneyofLight" mnemonicParsing="false" text="Journey of Light" GridPane.rowIndex="3" />
@@ -89,5 +88,6 @@
             <Insets bottom="15.0" />
          </GridPane.margin>
       </VBox>
+      <CheckBox fx:id="checkBoxTundraEvent" mnemonicParsing="false" text="Tundra Event" />
    </children>
 </GridPane>
