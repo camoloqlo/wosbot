@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 
 import javax.imageio.ImageIO;
 
@@ -52,6 +53,7 @@ public class UtilOCR {
         BufferedImage processedImage = extractAndUpscaleRegion(rawImage, x, y, width, height, 2);
 
         Tesseract tesseract = new Tesseract();
+        tesseract.setConfigs(Collections.singletonList("quiet"));
         tesseract.setDatapath("lib/tesseract");
         tesseract.setLanguage(language);
         tesseract.setPageSegMode(7); // single line

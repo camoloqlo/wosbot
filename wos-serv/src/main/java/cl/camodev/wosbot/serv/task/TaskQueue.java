@@ -268,7 +268,7 @@ public class TaskQueue {
         }
 
         if (task.isRecurring()) {
-            logInfoWithTask(task, "Next schedule: " + UtilTime.localDateTimeToDDHHMMSS(task.getScheduled()));
+            logInfoWithTask(task, "Next task scheduled to run in: " + UtilTime.localDateTimeToDDHHMMSS(task.getScheduled()));
             addTask(task);
         } else {
             logInfoWithTask(task, "Task removed from schedule");

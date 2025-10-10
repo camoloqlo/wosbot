@@ -88,7 +88,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
             // Check marches before each rally
             if (!checkMarchesAvailable()) {
                 logInfo("No marches available after " + ralliesDeployed + " rallies. Waiting for marches to return.");
-                reschedule(LocalDateTime.now().plusMinutes(5));
+                reschedule(LocalDateTime.now().plusMinutes(1));
                 return;
             }
 
@@ -121,7 +121,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
 
             // result == 1: success
             ralliesDeployed++;
-            logInfo("Rally #" + ralliesDeployed + " deployed successfully. Current stamina: " + currentStamina);
+            logInfo("Rally #" + ralliesDeployed + " deployed successfully. Current stamina: " + getCurrentStamina());
             sleepTask(1500);
         }
 
@@ -237,7 +237,6 @@ public class PolarTerrorHuntingTask extends DelayedTask {
             reschedule(LocalDateTime.now().plusMinutes(staminaRegenerationTime(getCurrentStamina(), refreshStaminaLevel)));
             return 3;
         }
-
         return 1;
     }
 
@@ -326,7 +325,6 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         // tap on search button
         logDebug("Tapping on search button...");
         tapRandomPoint(new DTOPoint(301, 1200), new DTOPoint(412, 1229));
-        sleepTask(4000);
         return true;
     }
 
