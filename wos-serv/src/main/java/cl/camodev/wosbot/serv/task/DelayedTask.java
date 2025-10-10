@@ -563,7 +563,9 @@ public abstract class DelayedTask implements Runnable, Delayed {
             result = emuManager.searchTemplate(EMULATOR_NUMBER, template, topLeft, bottomRight, threshold);
             sleepTask(delayMs);
         }
-        assert result != null;
+        if (result == null) {
+            throw new IllegalStateException("Template search did not return a result for template: " + template);
+        }
         logDebug(result.isFound() ? "Template " + template + " found." : "Template " + template + " not found.");
         return result;
     }

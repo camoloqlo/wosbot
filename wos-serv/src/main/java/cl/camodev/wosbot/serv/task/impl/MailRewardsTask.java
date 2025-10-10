@@ -11,7 +11,7 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 
 public class MailRewardsTask extends DelayedTask {
-
+    private final int MAX_SEARCH_ATTEMPTS = 500;
 	private final DTOPoint[] buttons = { new DTOPoint(230, 120), new DTOPoint(360, 120), new DTOPoint(500, 120) };
 
 	public MailRewardsTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
@@ -76,7 +76,7 @@ public class MailRewardsTask extends DelayedTask {
                 sleepTask(500);
 
                 searchAttempts++;
-                if (searchAttempts > 500) {
+                if (searchAttempts > MAX_SEARCH_ATTEMPTS) {
                     logError("There is absolutely no way this condition should ever be hit in a normal scenario. " +
                             "Something is broken. Either you have not checked your mail in DAYS, " +
                             "or we are stuck somewhere you shouldn't be. " +
