@@ -162,6 +162,9 @@ public class BearTrapTask extends DelayedTask {
 
                 prepareForTrap();
 
+                now = LocalDateTime.now(ZoneId.of("UTC"));
+                secondsUntilActivation = ChronoUnit.SECONDS.between(now, trapActivationTime);
+
                 if (secondsUntilActivation > 0) {
                     logInfo("Waiting for trap auto-activation in " + secondsUntilActivation + " seconds...");
                     sleepTask(secondsUntilActivation * 1000);
