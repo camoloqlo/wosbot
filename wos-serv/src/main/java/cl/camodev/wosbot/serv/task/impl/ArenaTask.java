@@ -3,6 +3,7 @@ package cl.camodev.wosbot.serv.task.impl;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.awt.Color;
 
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -14,657 +15,940 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
-import java.awt.Color;
 
 /**
  * Task responsible for managing arena challenges.
- * It navigates to the arena, checks available attempts, and challenges opponents with lower power.
- * The task can be configured to buy extra attempts and refresh the opponent list using gems.
- * Activation hour can be set to control when the task runs daily.
+ * 
+ * <p>
+ * This task:
+ * <ul>
+ * <li>Navigates to the arena via the Marksman Camp</li>
+ * <li>Checks available challenge attempts</li>
+ * <li>Optionally purchases extra attempts with gems</li>
+ * <li>Challenges opponents with lower power (detected via text color)</li>
+ * <li>Refreshes opponent list (free or with gems)</li>
+ * <li>Runs at a configured activation time in UTC</li>
+ * </ul>
+ * 
+ * <p>
+ * <b>Power Comparison Strategy:</b>
+ * Uses color detection on opponent power text instead of OCR:
+ * <ul>
+ * <li>Green text = opponent has lower power (challenge them)</li>
+ * <li>Red text = opponent has higher power (skip them)</li>
+ * </ul>
  */
 public class ArenaTask extends DelayedTask {
-	// Points used for OCR and template matching
-	private static final DTOPoint CHALLENGES_LEFT_TOP_LEFT = new DTOPoint(405, 951);
-	private static final DTOPoint CHALLENGES_LEFT_BOTTOM_RIGHT = new DTOPoint(439, 986);
-	// Activation time in "HH:mm" format (24-hour clock)
-	private String activationHour = profile.getConfig(EnumConfigurationKey.ARENA_TASK_ACTIVATION_HOUR_STRING, String.class);
-	private int extraAttempts = profile.getConfig(EnumConfigurationKey.ARENA_TASK_EXTRA_ATTEMPTS_INT, Integer.class);
-	private boolean refreshWithGems = profile.getConfig(EnumConfigurationKey.ARENA_TASK_REFRESH_WITH_GEMS_BOOL, Boolean.class);
-	private int attempts = 0;
-    private boolean firstRun = false;
+
+    // ========== Configuration Keys ==========
+    private static final String DEFAULT_ACTIVATION_TIME = "23:55"; // UTC
+    private static final int DEFAULT_EXTRA_ATTEMPTS = 0;
+    private static final boolean DEFAULT_REFRESH_WITH_GEMS = false;
+
+    // ========== Arena Coordinates ==========
+    // Event list navigation
+    private static final DTOPoint EVENT_LIST_BUTTON_TOP_LEFT = new DTOPoint(3, 513);
+    private static final DTOPoint EVENT_LIST_BUTTON_BOTTOM_RIGHT = new DTOPoint(26, 588);
+    private static final DTOPoint EVENT_CATEGORY_TOP_LEFT = new DTOPoint(20, 250);
+    private static final DTOPoint EVENT_CATEGORY_BOTTOM_RIGHT = new DTOPoint(200, 280);
+
+    // Arena screen
+    private static final DTOPoint ARENA_ICON = new DTOPoint(702, 727);
+    private static final DTOPoint ARENA_SCORE_TOP_LEFT = new DTOPoint(567, 1065);
+    private static final DTOPoint ARENA_SCORE_BOTTOM_RIGHT = new DTOPoint(649, 1099);
+
+    // Challenge list
+    private static final DTOPoint CHALLENGES_LEFT_TOP_LEFT = new DTOPoint(405, 951);
+    private static final DTOPoint CHALLENGES_LEFT_BOTTOM_RIGHT = new DTOPoint(439, 986);
+    private static final DTOPoint EXTRA_ATTEMPTS_BUTTON = new DTOPoint(467, 965);
+
+    // Opponent list (Y coordinates for 5 opponents)
+    private static final int OPPONENT_BASE_Y_FIRST_RUN = 380;
+    private static final int OPPONENT_BASE_Y_NORMAL = 354;
+    private static final int OPPONENT_Y_SPACING = 128;
+    private static final int OPPONENT_CHALLENGE_BUTTON_X = 624;
+
+    // Power text color detection area (relative to opponent Y)
+    private static final int POWER_TEXT_RELATIVE_X = 185;
+    private static final int POWER_TEXT_WIDTH = 30; // 185 to 215
+    private static final int POWER_TEXT_HEIGHT = 14;
+
+    // Battle controls
+    private static final DTOPoint BATTLE_START_BUTTON = new DTOPoint(530, 1200);
+    private static final DTOPoint BATTLE_PAUSE_BUTTON = new DTOPoint(60, 962);
+    private static final DTOPoint BATTLE_RETREAT_BUTTON = new DTOPoint(252, 635);
+
+    // Battle result OCR regions
+    private static final DTOPoint VICTORY_TEXT_TOP_LEFT = new DTOPoint(186, 392);
+    private static final DTOPoint VICTORY_TEXT_BOTTOM_RIGHT = new DTOPoint(536, 494);
+    private static final DTOPoint DEFEAT_TEXT_TOP_LEFT = new DTOPoint(195, 290);
+    private static final DTOPoint DEFEAT_TEXT_BOTTOM_RIGHT = new DTOPoint(516, 384);
+
+    // Extra attempts purchase
+    private static final DTOPoint PURCHASE_PRICE_TOP_LEFT = new DTOPoint(328, 840);
+    private static final DTOPoint PURCHASE_PRICE_BOTTOM_RIGHT = new DTOPoint(433, 883);
+    private static final DTOPoint PURCHASE_COUNTER_SWIPE_START = new DTOPoint(420, 733);
+    private static final DTOPoint PURCHASE_COUNTER_SWIPE_END = new DTOPoint(40, 733);
+    private static final DTOPoint PURCHASE_CONFIRM_BUTTON = new DTOPoint(360, 860);
+    private static final DTOPoint PURCHASE_COUNTER_INCREMENT_TOP_LEFT = new DTOPoint(457, 713);
+    private static final DTOPoint PURCHASE_COUNTER_INCREMENT_BOTTOM_RIGHT = new DTOPoint(499, 752);
+    private static final DTOPoint REFRESH_CONFIRM_BUTTON = new DTOPoint(210, 712);
+
+    // ========== Arena Constants ==========
+    private static final int INITIAL_ARENA_SCORE = 1000;
     private static final int MAX_GEM_REFRESHES = 5;
-    private int gemRefreshCount = 0;
-    private static final int[] ATTEMPT_PRICES = {100, 200, 400, 600, 800};
+    private static final int[] ATTEMPT_PRICES = { 100, 200, 400, 600, 800 };
+    private static final int MIN_COLORED_PIXELS_THRESHOLD = 10;
+    private static final double GREEN_DOMINANCE_RATIO = 1.5;
+    private static final int COLOR_ANALYSIS_STEP_SIZE = 2;
+    private static final int MAX_OPPONENTS = 5;
+
+    // ========== Configuration (loaded in loadConfiguration()) ==========
+    private String activationTime;
+    private int extraAttempts;
+    private boolean refreshWithGems;
+
+    // ========== Execution State (reset each execution) ==========
+    private int attempts;
+    private boolean firstRun;
+    private int gemRefreshCount;
 
     public ArenaTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
-
-		// Only schedule if the task is enabled and activation hour is valid
-		boolean isTaskEnabled = profile.getConfig(EnumConfigurationKey.ARENA_TASK_BOOL, Boolean.class);
-		if (!isTaskEnabled) {
-			logInfo("Arena task is disabled in configuration.");
-			this.setRecurring(false);  // Prevent task from recurring
-			return;
-		}
-		
-		if (!isValidTimeFormat(activationHour)) {
-			logWarning("Invalid activation hour format: " + activationHour + ". Scheduling to 10min before reset.");
-			reschedule(UtilTime.getGameReset().minusMinutes(10));
-			return;
-		}
-		
-		// Try to schedule with activation time, fallback to 10min before game reset if it fails
-		if (!scheduleActivationTime()) {
-			logWarning("Failed to schedule with activation time. Scheduling to 10min before reset.");
-			reschedule(UtilTime.getGameReset().minusMinutes(10));
-		}
     }
 
     /**
-     * Validates if the given time string is in valid HH:mm format (24-hour clock)
+     * Loads task configuration from profile.
+     * Must be called at the start of execute() after profile refresh.
+     */
+    private void loadConfiguration() {
+        String configuredTime = profile.getConfig(
+                EnumConfigurationKey.ARENA_TASK_ACTIVATION_TIME_STRING, String.class);
+        this.activationTime = (configuredTime != null) ? configuredTime : DEFAULT_ACTIVATION_TIME;
+
+        Integer configuredAttempts = profile.getConfig(
+                EnumConfigurationKey.ARENA_TASK_EXTRA_ATTEMPTS_INT, Integer.class);
+        this.extraAttempts = (configuredAttempts != null) ? configuredAttempts : DEFAULT_EXTRA_ATTEMPTS;
+
+        Boolean configuredRefresh = profile.getConfig(
+                EnumConfigurationKey.ARENA_TASK_REFRESH_WITH_GEMS_BOOL, Boolean.class);
+        this.refreshWithGems = (configuredRefresh != null) ? configuredRefresh : DEFAULT_REFRESH_WITH_GEMS;
+
+        logDebug(String.format("Configuration loaded - Time: %s, Extra attempts: %d, Refresh with gems: %s",
+                activationTime, extraAttempts, refreshWithGems));
+    }
+
+    /**
+     * Resets execution-specific state variables.
+     * Must be called at the start of each execute() run.
+     */
+    private void resetExecutionState() {
+        this.attempts = 0;
+        this.firstRun = false;
+        this.gemRefreshCount = 0;
+        logDebug("Execution state reset");
+    }
+
+    @Override
+    protected void execute() {
+        loadConfiguration();
+        resetExecutionState();
+
+        // Check if task is enabled
+        Boolean isTaskEnabled = profile.getConfig(EnumConfigurationKey.ARENA_TASK_BOOL, Boolean.class);
+        if (isTaskEnabled == null || !isTaskEnabled) {
+            logInfo("Arena task is disabled in configuration.");
+            this.setRecurring(false);
+            return;
+        }
+
+        // Validate activation time format
+        if (!isValidTimeFormat(activationTime)) {
+            logWarning("Invalid activation time format: " + activationTime +
+                    ". Scheduling to 5 min before reset.");
+            reschedule(UtilTime.getGameReset().minusMinutes(5));
+            return;
+        }
+
+        // Validate timing window
+        if (!isWithinExecutionWindow()) {
+            return; // Reschedule handled inside validation
+        }
+
+        logInfo("Starting arena task.");
+
+        if (!navigateToArena()) {
+            logWarning("Failed to navigate to arena.");
+            rescheduleWithActivationHour();
+            return;
+        }
+
+        firstRun = detectFirstRun();
+
+        if (!openChallengeList()) {
+            logWarning("Failed to open challenge list.");
+            rescheduleWithActivationHour();
+            return;
+        }
+
+        if (!readInitialAttempts()) {
+            logWarning("Failed to read initial attempts.");
+            rescheduleWithActivationHour();
+            return;
+        }
+
+        purchaseExtraAttemptsIfConfigured();
+
+        processChallenges();
+
+        logInfo("Arena task completed successfully.");
+        rescheduleWithActivationHour();
+    }
+
+    /**
+     * Validates if the current time is within the configured execution window.
+     * Window runs from activation time until 23:55 UTC.
+     * 
+     * @return true if within window, false otherwise (task will be rescheduled)
+     */
+    private boolean isWithinExecutionWindow() {
+        if (!isValidTimeFormat(activationTime)) {
+            return true; // No timing restriction if format is invalid
+        }
+
+        ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
+        String[] timeParts = activationTime.split(":");
+        int hour = Integer.parseInt(timeParts[0]);
+        int minute = Integer.parseInt(timeParts[1]);
+
+        ZonedDateTime scheduledTimeUtc = nowUtc.toLocalDate()
+                .atTime(hour, minute)
+                .atZone(ZoneId.of("UTC"));
+        ZonedDateTime cutoffTimeUtc = nowUtc.toLocalDate()
+                .atTime(23, 55)
+                .atZone(ZoneId.of("UTC"));
+
+        if (nowUtc.isBefore(scheduledTimeUtc)) {
+            logDebug(String.format("Task triggered too early (current: %s UTC, scheduled: %s UTC). " +
+                    "Rescheduling for scheduled time.",
+                    nowUtc.format(DateTimeFormatter.ofPattern("HH:mm")), activationTime));
+            rescheduleForToday();
+            return false;
+        }
+
+        if (nowUtc.isAfter(cutoffTimeUtc)) {
+            logDebug(String.format("Task triggered too late (current: %s UTC, cutoff: 23:55 UTC). " +
+                    "Scheduling for tomorrow.",
+                    nowUtc.format(DateTimeFormatter.ofPattern("HH:mm"))));
+            rescheduleWithActivationHour();
+            return false;
+        }
+
+        logDebug(String.format("Task running within window (current: %s UTC, window: %s - 23:55 UTC)",
+                nowUtc.format(DateTimeFormatter.ofPattern("HH:mm")), activationTime));
+        return true;
+    }
+
+    /**
+     * Navigates to the arena screen via Marksman Camp.
+     * 
+     * <p>
+     * Navigation flow:
+     * <ol>
+     * <li>Opens event list from left sidebar</li>
+     * <li>Selects event category</li>
+     * <li>Finds and taps Marksman Camp shortcut</li>
+     * <li>Taps arena icon to enter</li>
+     * </ol>
+     * 
+     * @return true if navigation succeeded, false otherwise
+     */
+    private boolean navigateToArena() {
+        logDebug("Opening event list");
+        tapRandomPoint(EVENT_LIST_BUTTON_TOP_LEFT, EVENT_LIST_BUTTON_BOTTOM_RIGHT);
+        sleepTask(500); // Wait for sidebar animation
+
+        tapRandomPoint(EVENT_CATEGORY_TOP_LEFT, EVENT_CATEGORY_BOTTOM_RIGHT);
+        sleepTask(500); // Wait for category selection
+
+        logDebug("Searching for Marksman Camp shortcut");
+        DTOImageSearchResult marksmanResult = searchTemplateWithRetries(
+                EnumTemplates.GAME_HOME_SHORTCUTS_MARKSMAN);
+
+        if (!marksmanResult.isFound()) {
+            logError("Marksman camp shortcut not found.");
+            return false;
+        }
+
+        logDebug("Opening Marksman Camp");
+        tapPoint(marksmanResult.getPoint());
+        sleepTask(1000); // Wait for Marksman Camp to load
+
+        logDebug("Entering arena");
+        tapPoint(ARENA_ICON);
+        sleepTask(1000); // Wait for arena screen to load
+
+        return true;
+    }
+
+    /**
+     * Detects if this is the first arena run by checking if score is 1000.
+     * First runs have different opponent list positioning.
+     * 
+     * @return true if first run detected, false otherwise
+     */
+    private boolean detectFirstRun() {
+        logDebug("Checking if this is first arena run");
+
+        DTOTesseractSettings settings = DTOTesseractSettings.builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setRemoveBackground(true)
+                .setTextColor(new Color(255, 255, 255))
+                .setAllowedChars("0123456789")
+                .build();
+
+        Integer arenaScore = readNumberValue(
+                ARENA_SCORE_TOP_LEFT,
+                ARENA_SCORE_BOTTOM_RIGHT,
+                settings);
+
+        if (arenaScore == null) {
+            logWarning("Failed to read arena score, assuming not first run");
+            return false;
+        }
+
+        logInfo("Arena score: " + arenaScore);
+        boolean isFirstRun = (arenaScore == INITIAL_ARENA_SCORE);
+
+        if (isFirstRun) {
+            logInfo("First run detected (score = 1000)");
+        }
+
+        return isFirstRun;
+    }
+
+    /**
+     * Opens the challenge list by tapping the Challenge button.
+     * 
+     * @return true if challenge list opened successfully, false otherwise
+     */
+    private boolean openChallengeList() {
+        logDebug("Opening challenge list");
+
+        DTOImageSearchResult challengeResult = searchTemplateWithRetries(
+                EnumTemplates.ARENA_CHALLENGE_BUTTON);
+
+        if (!challengeResult.isFound()) {
+            logError("Challenge button not found.");
+            return false;
+        }
+
+        tapPoint(challengeResult.getPoint());
+        sleepTask(1000); // Wait for challenge list to load
+
+        return true;
+    }
+
+    /**
+     * Reads the initial number of available challenge attempts via OCR.
+     * 
+     * @return true if attempts were successfully read, false otherwise
+     */
+    private boolean readInitialAttempts() {
+        logDebug("Reading initial challenge attempts");
+
+        DTOTesseractSettings settings = DTOTesseractSettings.builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setRemoveBackground(true)
+                .setTextColor(new Color(91, 112, 147))
+                .setAllowedChars("0123456789")
+                .build();
+
+        Integer attemptsRead = readNumberValue(
+                CHALLENGES_LEFT_TOP_LEFT,
+                CHALLENGES_LEFT_BOTTOM_RIGHT,
+                settings);
+
+        if (attemptsRead == null) {
+            logError("Failed to read initial attempts via OCR");
+            return false;
+        }
+
+        this.attempts = attemptsRead;
+        logInfo("Initial attempts available: " + attempts);
+        return true;
+    }
+
+    /**
+     * Purchases extra attempts if configured to do so.
+     * Updates the attempts counter with the number of attempts bought.
+     */
+    private void purchaseExtraAttemptsIfConfigured() {
+        if (extraAttempts <= 0) {
+            logDebug("No extra attempts configured to purchase");
+            return;
+        }
+
+        logInfo("Extra attempts configured: " + extraAttempts);
+        int attemptsBought = buyExtraAttempts();
+
+        if (attemptsBought > 0) {
+            attempts += attemptsBought;
+            logInfo(String.format("Purchased %d extra attempts. Total attempts: %d",
+                    attemptsBought, attempts));
+        }
+    }
+
+    /**
+     * Purchases extra arena attempts using gems.
+     * 
+     * <p>
+     * Purchase flow:
+     * <ol>
+     * <li>Opens purchase dialog via "+" button</li>
+     * <li>Resets counter to zero via swipe</li>
+     * <li>Reads current price to determine position in sequence</li>
+     * <li>Calculates how many more attempts to buy</li>
+     * <li>Increments counter and confirms purchase</li>
+     * </ol>
+     * 
+     * @return number of attempts successfully purchased (0 if failed or none
+     *         available)
+     */
+    private int buyExtraAttempts() {
+        logDebug("Opening extra attempts purchase dialog");
+        tapPoint(EXTRA_ATTEMPTS_BUTTON);
+        sleepTask(1000); // Wait for purchase dialog to open
+
+        DTOImageSearchResult confirmResult = searchTemplateWithRetries(
+                EnumTemplates.ARENA_GEMS_EXTRA_ATTEMPTS_BUTTON);
+
+        if (!confirmResult.isFound()) {
+            logInfo("No more extra attempts available for purchase");
+            return 0;
+        }
+
+        // Reset counter to zero
+        logDebug("Resetting purchase counter to zero");
+        swipe(PURCHASE_COUNTER_SWIPE_START, PURCHASE_COUNTER_SWIPE_END);
+        sleepTask(300); // Wait for swipe animation
+
+        // Determine current position in price sequence
+        int previousAttempts = detectCurrentAttemptPosition();
+        if (previousAttempts < 0) {
+            tapBackButton();
+            return 0;
+        }
+
+        // Calculate how many more attempts we can/want to buy
+        int remainingAttempts = calculateRemainingAttemptsToBuy(previousAttempts);
+        if (remainingAttempts <= 0) {
+            tapBackButton();
+            return 0;
+        }
+
+        // Calculate expected total price
+        int expectedPrice = calculateTotalPrice(previousAttempts, remainingAttempts);
+        logInfo(String.format("Buying %d attempts for %d gems (already have %d)",
+                remainingAttempts, expectedPrice, previousAttempts));
+
+        // Increment counter to desired amount (counter starts at 1, so increment n-1
+        // times)
+        if (remainingAttempts > 1) {
+            tapRandomPoint(
+                    PURCHASE_COUNTER_INCREMENT_TOP_LEFT,
+                    PURCHASE_COUNTER_INCREMENT_BOTTOM_RIGHT,
+                    remainingAttempts - 1,
+                    400);
+            sleepTask(300); // Wait for counter animation
+        }
+
+        // Confirm purchase
+        tapPoint(PURCHASE_CONFIRM_BUTTON);
+        sleepTask(500); // Wait for purchase confirmation
+
+        return remainingAttempts;
+    }
+
+    /**
+     * Detects the current position in the attempt purchase sequence by reading
+     * the displayed price and matching it against known prices.
+     * 
+     * @return attempt position (0-4), or -1 if detection failed
+     */
+    private int detectCurrentAttemptPosition() {
+        logDebug("Detecting current attempt position via price");
+
+        DTOTesseractSettings settings = DTOTesseractSettings.builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setRemoveBackground(true)
+                .setTextColor(new Color(255, 255, 255))
+                .setAllowedChars("0123456789")
+                .build();
+
+        Integer singleAttemptPrice = readNumberValue(
+                PURCHASE_PRICE_TOP_LEFT,
+                PURCHASE_PRICE_BOTTOM_RIGHT,
+                settings);
+
+        if (singleAttemptPrice == null) {
+            logWarning("Failed to read single attempt price");
+            return -1;
+        }
+
+        // Find matching price in sequence
+        for (int i = 0; i < ATTEMPT_PRICES.length; i++) {
+            if (ATTEMPT_PRICES[i] == singleAttemptPrice) {
+                logDebug(String.format("Detected position %d (price: %d gems)", i, singleAttemptPrice));
+                return i;
+            }
+        }
+
+        logWarning(String.format("Unexpected attempt price: %d gems", singleAttemptPrice));
+        return -1;
+    }
+
+    /**
+     * Calculates how many more attempts should be purchased based on
+     * current position and configured limit.
+     * 
+     * @param previousAttempts how many attempts have already been bought
+     * @return number of attempts to buy (0 if none should be bought)
+     */
+    private int calculateRemainingAttemptsToBuy(int previousAttempts) {
+        if (previousAttempts >= extraAttempts) {
+            logInfo(String.format("Already have %d attempts (wanted %d), no need to buy more",
+                    previousAttempts, extraAttempts));
+            return 0;
+        }
+
+        int canBuy = ATTEMPT_PRICES.length - previousAttempts;
+        int wantToBuy = extraAttempts - previousAttempts;
+        int toBuy = Math.min(canBuy, wantToBuy);
+
+        if (toBuy <= 0) {
+            logWarning("Cannot purchase any more attempts (max limit reached)");
+            return 0;
+        }
+
+        return toBuy;
+    }
+
+    /**
+     * Calculates the total gem cost for purchasing a range of attempts.
+     * 
+     * @param startPosition starting position in price sequence
+     * @param count         how many attempts to buy
+     * @return total gem cost
+     */
+    private int calculateTotalPrice(int startPosition, int count) {
+        int totalPrice = 0;
+        for (int i = startPosition; i < startPosition + count; i++) {
+            totalPrice += ATTEMPT_PRICES[i];
+        }
+        return totalPrice;
+    }
+
+    /**
+     * Processes all available challenge attempts.
+     * 
+     * <p>
+     * For each attempt:
+     * <ol>
+     * <li>Scans opponents from top to bottom</li>
+     * <li>Analyzes power text color (green = weaker, red = stronger)</li>
+     * <li>Challenges first weaker opponent found</li>
+     * <li>If no weaker opponents, tries to refresh list</li>
+     * <li>If no refreshes available, challenges first opponent anyway</li>
+     * </ol>
+     */
+    private void processChallenges() {
+        logInfo(String.format("Processing %d challenge attempts", attempts));
+
+        while (attempts > 0) {
+            boolean foundWeakerOpponent = scanAndChallengeWeakerOpponent();
+
+            if (!foundWeakerOpponent) {
+                if (!tryRefreshOpponentList()) {
+                    // No refresh available, challenge first opponent to avoid wasting attempts
+                    challengeFirstOpponent();
+                }
+            }
+        }
+
+        logInfo("All challenge attempts used.");
+    }
+
+    /**
+     * Scans the opponent list from top to bottom and challenges the first
+     * opponent with predominantly green power text (indicating lower power).
+     * 
+     * @return true if a weaker opponent was found and challenged, false otherwise
+     */
+    private boolean scanAndChallengeWeakerOpponent() {
+        int baseY = firstRun ? OPPONENT_BASE_Y_FIRST_RUN : OPPONENT_BASE_Y_NORMAL;
+
+        for (int i = 0; i < MAX_OPPONENTS; i++) {
+            if (attempts <= 0) {
+                break;
+            }
+
+            int opponentY = baseY + (i * OPPONENT_Y_SPACING);
+
+            if (isOpponentWeaker(opponentY, i + 1)) {
+                challengeOpponent(opponentY, i + 1);
+                attempts--;
+
+                boolean victory = checkBattleResult();
+                if (victory) {
+                    firstRun = false; // After first victory, UI changes
+                }
+
+                sleepTask(1000); // Wait before scanning next opponent
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Analyzes the power text color for a specific opponent to determine
+     * if they are weaker (green text) or stronger (red text).
+     * 
+     * @param opponentY      Y-coordinate of the opponent row
+     * @param opponentNumber opponent number for logging (1-5)
+     * @return true if opponent is weaker (green text), false otherwise
+     */
+    private boolean isOpponentWeaker(int opponentY, int opponentNumber) {
+        logDebug(String.format("Analyzing opponent %d power (y=%d)", opponentNumber, opponentY));
+
+        DTOPoint topLeft = new DTOPoint(POWER_TEXT_RELATIVE_X, opponentY);
+        DTOPoint bottomRight = new DTOPoint(
+                POWER_TEXT_RELATIVE_X + POWER_TEXT_WIDTH,
+                opponentY + POWER_TEXT_HEIGHT);
+
+        int[] colorCounts = emuManager.analyzeRegionColors(
+                EMULATOR_NUMBER,
+                topLeft,
+                bottomRight,
+                COLOR_ANALYSIS_STEP_SIZE);
+
+        int backgroundPixels = colorCounts[0];
+        int greenPixels = colorCounts[1];
+        int redPixels = colorCounts[2];
+        int totalColoredPixels = greenPixels + redPixels;
+
+        logDebug(String.format("Color counts - Background: %d, Green: %d, Red: %d",
+                backgroundPixels, greenPixels, redPixels));
+
+        boolean isWeaker = (totalColoredPixels > MIN_COLORED_PIXELS_THRESHOLD) &&
+                (greenPixels > redPixels * GREEN_DOMINANCE_RATIO);
+
+        if (isWeaker) {
+            logInfo(String.format("Opponent %d has lower power (green text dominant)", opponentNumber));
+        } else {
+            logDebug(String.format("Opponent %d has higher power (red text), skipping", opponentNumber));
+        }
+
+        return isWeaker;
+    }
+
+    /**
+     * Challenges a specific opponent and handles the battle sequence.
+     * 
+     * @param opponentY      Y-coordinate of the opponent row
+     * @param opponentNumber opponent number for logging
+     */
+    private void challengeOpponent(int opponentY, int opponentNumber) {
+        logInfo(String.format("Challenging opponent %d", opponentNumber));
+
+        tapPoint(new DTOPoint(OPPONENT_CHALLENGE_BUTTON_X, opponentY));
+        sleepTask(2000); // Wait for challenge confirmation screen
+
+        executeBattleSequence();
+    }
+
+    /**
+     * Challenges the first opponent in the list regardless of power level.
+     * Used when no refreshes are available and we want to use remaining attempts.
+     */
+    private void challengeFirstOpponent() {
+        logInfo("No suitable opponents found. Challenging first opponent to use remaining attempts.");
+
+        int baseY = firstRun ? OPPONENT_BASE_Y_FIRST_RUN : OPPONENT_BASE_Y_NORMAL;
+
+        tapPoint(new DTOPoint(OPPONENT_CHALLENGE_BUTTON_X, baseY));
+        sleepTask(2000); // Wait for challenge confirmation screen
+
+        executeBattleSequence();
+        attempts--;
+        checkBattleResult(); // Don't care about result here
+        firstRun = false;
+        sleepTask(1000); // Wait before next action
+    }
+
+    /**
+     * Executes the battle sequence by starting the battle, then immediately
+     * pausing and retreating to skip the animation.
+     */
+    private void executeBattleSequence() {
+        logDebug("Executing battle sequence (with animation skip)");
+
+        tapPoint(BATTLE_START_BUTTON);
+        sleepTask(3000); // Wait for battle to start
+
+        tapPoint(BATTLE_PAUSE_BUTTON);
+        sleepTask(500); // Wait for pause menu
+
+        tapPoint(BATTLE_RETREAT_BUTTON);
+        sleepTask(1000); // Wait for battle result screen
+    }
+
+    /**
+     * Checks the battle result screen via OCR to determine victory or defeat.
+     * 
+     * @return true if victory, false if defeat or unknown
+     */
+    private boolean checkBattleResult() {
+        sleepTask(1000); // Wait for result screen to stabilize
+
+        try {
+            // Check victory region first
+            String victoryText = emuManager.ocrRegionText(
+                    EMULATOR_NUMBER,
+                    VICTORY_TEXT_TOP_LEFT,
+                    VICTORY_TEXT_BOTTOM_RIGHT);
+
+            String cleanVictory = cleanOcrText(victoryText);
+
+            if (cleanVictory.contains("victory")) {
+                logInfo("Battle result: Victory");
+                sleepTask(1000); // Wait before dismissing
+                tapBackButton();
+                return true;
+            }
+
+            // Check defeat region
+            String defeatText = emuManager.ocrRegionText(
+                    EMULATOR_NUMBER,
+                    DEFEAT_TEXT_TOP_LEFT,
+                    DEFEAT_TEXT_BOTTOM_RIGHT);
+
+            String cleanDefeat = cleanOcrText(defeatText);
+
+            if (cleanDefeat.contains("defeat")) {
+                logInfo("Battle result: Defeat");
+            } else {
+                logWarning(String.format("Unrecognized battle result. Victory OCR: '%s', Defeat OCR: '%s'",
+                        victoryText, defeatText));
+            }
+
+            sleepTask(1000); // Wait before dismissing
+            tapBackButton();
+            return false;
+
+        } catch (Exception e) {
+            logError("OCR error while checking battle result: " + e.getMessage());
+            tapBackButton(); // Try to dismiss anyway
+            return false;
+        }
+    }
+
+    /**
+     * Cleans OCR text by removing common artifacts and normalizing.
+     * 
+     * @param text raw OCR text
+     * @return cleaned lowercase text
+     */
+    private String cleanOcrText(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text.toLowerCase()
+                .replace("-", "")
+                .replace("gs", "")
+                .replace("fs", "")
+                .replace("es", "")
+                .replace("aa", "")
+                .trim();
+    }
+
+    /**
+     * Attempts to refresh the opponent list.
+     * 
+     * <p>
+     * Refresh priority:
+     * <ol>
+     * <li>Free refresh (if available)</li>
+     * <li>Gem refresh (if enabled and within limit)</li>
+     * </ol>
+     * 
+     * @return true if refresh succeeded, false if no refresh available
+     */
+    private boolean tryRefreshOpponentList() {
+        // Try free refresh first
+        DTOImageSearchResult freeRefreshResult = searchTemplateWithRetries(
+                EnumTemplates.ARENA_FREE_REFRESH_BUTTON);
+
+        if (freeRefreshResult.isFound()) {
+            logInfo("Using free refresh");
+            tapPoint(freeRefreshResult.getPoint());
+            sleepTask(1000); // Wait for list to refresh
+            return true;
+        }
+
+        // Try gem refresh if enabled and within limit
+        if (!refreshWithGems) {
+            logDebug("Gem refresh disabled in configuration");
+            return false;
+        }
+
+        if (gemRefreshCount >= MAX_GEM_REFRESHES) {
+            logInfo(String.format("Gem refresh limit reached (%d/%d)",
+                    gemRefreshCount, MAX_GEM_REFRESHES));
+            return false;
+        }
+
+        DTOImageSearchResult gemsRefreshResult = searchTemplateWithRetries(
+                EnumTemplates.ARENA_GEMS_REFRESH_BUTTON);
+
+        if (!gemsRefreshResult.isFound()) {
+            logDebug("Gem refresh button not found");
+            return false;
+        }
+
+        gemRefreshCount++;
+        logInfo(String.format("Using gem refresh (%d/%d)", gemRefreshCount, MAX_GEM_REFRESHES));
+
+        tapPoint(gemsRefreshResult.getPoint());
+        sleepTask(500); // Wait for confirmation popup
+
+        // Confirm gem refresh
+        DTOImageSearchResult confirmResult = searchTemplateWithRetries(
+                EnumTemplates.ARENA_GEMS_REFRESH_CONFIRM_BUTTON);
+
+        if (confirmResult.isFound()) {
+            tapPoint(REFRESH_CONFIRM_BUTTON); // Tap checkbox if needed
+            sleepTask(300); // Wait for checkbox animation
+            tapPoint(confirmResult.getPoint());
+            sleepTask(1000); // Wait for list to refresh
+            return true;
+        }
+
+        logWarning("Gem refresh confirmation button not found");
+        return false;
+    }
+
+    /**
+     * Validates if a time string is in valid HH:mm format (24-hour clock).
+     * 
+     * @param time time string to validate
+     * @return true if valid format, false otherwise
      */
     private boolean isValidTimeFormat(String time) {
         if (time == null || time.trim().isEmpty()) {
             return false;
         }
+
         try {
             String[] parts = time.split(":");
             if (parts.length != 2) {
                 return false;
             }
+
             int hours = Integer.parseInt(parts[0]);
             int minutes = Integer.parseInt(parts[1]);
-            return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+
+            return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 55;
         } catch (NumberFormatException e) {
             return false;
         }
     }
 
-    @Override
-    protected void execute() {
-        // If activation hour is set, verify it's actually time to run
-        if (isValidTimeFormat(activationHour)) {
-            ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
-            String[] timeParts = activationHour.split(":");
+    /**
+     * Reschedules the task based on configured activation time.
+     * If activation time is invalid, falls back to game reset time.
+     */
+    private void rescheduleWithActivationHour() {
+        if (!isValidTimeFormat(activationTime)) {
+            logInfo("Rescheduling Arena task for 5 min before game reset time (invalid activation time)");
+            reschedule(UtilTime.getGameReset().minusMinutes(5));
+            return;
+        }
+
+        try {
+            String[] timeParts = activationTime.split(":");
             int hour = Integer.parseInt(timeParts[0]);
             int minute = Integer.parseInt(timeParts[1]);
-            
-            // Calculate today's scheduled time
-            ZonedDateTime scheduledTimeUtc = nowUtc.toLocalDate().atTime(hour, minute).atZone(ZoneId.of("UTC"));
-            
-            // Define the cutoff time (23:55 UTC today)
-            ZonedDateTime cutoffTimeUtc = nowUtc.toLocalDate().atTime(23, 55).atZone(ZoneId.of("UTC"));
-            
-            // Check if we're before the scheduled time (too early)
-            if (nowUtc.isBefore(scheduledTimeUtc)) {
-                logDebug("Task triggered too early (current: " + nowUtc.format(DateTimeFormatter.ofPattern("HH:mm")) +
-                    " UTC, scheduled: " + activationHour + " UTC). Rescheduling for scheduled time.");
-                rescheduleForToday();
-                return;
-            }
-            
-            // Check if we're after the cutoff time (too late for today)
-            if (nowUtc.isAfter(cutoffTimeUtc)) {
-                logDebug("Task triggered too late (current: " + nowUtc.format(DateTimeFormatter.ofPattern("HH:mm")) +
-                    " UTC, cutoff: 23:55 UTC). Scheduling for tomorrow.");
-                rescheduleWithActivationHour();
-                return;
-            }
-            
-            logDebug("Task is running (current: " + nowUtc.format(DateTimeFormatter.ofPattern("HH:mm")) + " UTC, window: " + activationHour + " - 23:55 UTC)");
-        }
-    
-        logInfo("Starting arena task.");
-        
-        // Navigate to marksman camp
-        if (!navigateToArena()) {
-			logInfo("Failed to navigate to arena.");
-			rescheduleWithActivationHour();
-            return;
-        }
 
-        // Check for first run condition
-        firstRun = checkFirstRun();
+            ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
+            ZonedDateTime tomorrowActivationUtc = nowUtc.toLocalDate()
+                    .plusDays(1)
+                    .atTime(hour, minute)
+                    .atZone(ZoneId.of("UTC"));
 
-        // Click on Challenge button
-        if (!openChallengeList()) {
-			logInfo("Failed to open challenge list.");
-            rescheduleWithActivationHour();
-            return;
-        }
+            ZonedDateTime localActivationTime = tomorrowActivationUtc.withZoneSameInstant(
+                    ZoneId.systemDefault());
 
-		// Set initial attempts
-		if (!getAttempts()) {
-			logInfo("Failed to read initial attempts");
-			rescheduleWithActivationHour();
-			return;
-		}
+            logInfo(String.format("Rescheduling Arena task for %s UTC tomorrow (%s local)",
+                    activationTime,
+                    localActivationTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))));
 
-		// Buy extra attempts if configured
-		if (extraAttempts > 0) {
-			int attemptsBought = buyExtraAttempts();
-			attempts += attemptsBought;
-		}
+            reschedule(localActivationTime.toLocalDateTime());
 
-        // Process challenges
-        if (!processChallenges()) {
-			logInfo("Failed to process challenges.");
-            rescheduleWithActivationHour();
-            return;
-        }
-
-        rescheduleWithActivationHour();
-    }
-	
-	private boolean navigateToArena() {
-		// Navigate to marksman camp first
-        // This sequence of taps is intended to open the event list.
-        tapRandomPoint(new DTOPoint(3, 513), new DTOPoint(26, 588));
-        sleepTask(500);
-        tapRandomPoint(new DTOPoint(20, 250), new DTOPoint(200, 280));
-        sleepTask(500);
-		
-        // Click on marksman camp shortcut
-        DTOImageSearchResult marksmanResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_SHORTCUTS_MARKSMAN, 90);
-        if (!marksmanResult.isFound()) {
-			logWarning("Marksman camp shortcut not found.");
-            return false;
-        }
-		tapPoint(marksmanResult.getPoint());
-        sleepTask(1000);
-		
-        // Open arena
-		tapPoint(new DTOPoint(702, 727));
-        sleepTask(1000);
-        return true;
-    }
-
-    private boolean checkFirstRun() {
-        try {
-			// Get arena score
-            DTOTesseractSettings settings = new DTOTesseractSettings.Builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(true)
-                .setTextColor(new Color(255, 255, 255)) // White text
-                .setDebug(true)
-                .setAllowedChars("0123456789") // Only allow digits
-                .build();
-
-            Integer arenaScore = readNumberValue(new DTOPoint(567, 1065), new DTOPoint(649, 1099), settings);
-            logInfo("Arena score: " + arenaScore);
-            if(arenaScore != null && arenaScore == 1000) {
-                logInfo("First run detected based on arena score of 1000.");
-                return true;
-            } else {
-                return false;
-            }
-		} catch (Exception e) {
-			logError("Failed to read arena score value: " + e.getMessage());
-			return false;
-		}
-    }
-
-    private boolean openChallengeList() {
-		DTOImageSearchResult challengeResult = emuManager.searchTemplate(EMULATOR_NUMBER,EnumTemplates.ARENA_CHALLENGE_BUTTON, 90);
-        if (!challengeResult.isFound()) {
-			logWarning("Challenge button not found.");
-            return false;
-        }
-		
-        tapPoint(challengeResult.getPoint());
-        sleepTask(1000);
-        return true;
-    }
-	
-    private boolean processChallenges() {
-		// We don't need to read myPower anymore since we're using color detection
-        // We'll use color detection instead of OCR for power comparison
-
-		while (attempts > 0) {
-            try {
-                boolean foundOpponent = false;
-                // Process each opponent from top to bottom
-                for (int i = 0; i < 5; i++) {
-                    if (attempts <= 0) {
-                        break; // No more attempts left
-                    }
-                    // Calculate Y position for each opponent (starting from top)
-                    int y;
-                    if(firstRun) {
-                        y = 380 + (i * 128);
-                    } else {
-                        y = 354 + (i * 128);
-                    }
-                    
-                    // Check the color distribution in the power text area
-                    logInfo("Analyzing power text color for opponent " + (i + 1) + " (position y=" + y + ")");
-                    
-                    // Define the area to scan (power text region)
-                    DTOPoint topLeft = new DTOPoint(185, y);   // Left and top of power text
-                    DTOPoint bottomRight = new DTOPoint(215, y + 14); // Right and bottom of power text
-
-                    // Analyze the region colors (returns [background, green, red] counts)
-                    int[] colorCounts = emuManager.analyzeRegionColors(EMULATOR_NUMBER, topLeft, bottomRight, 2);
-
-                    int backgroundPixels = colorCounts[0];
-                    int greenPixels = colorCounts[1];
-                    int redPixels = colorCounts[2];
-                    int totalColoredPixels = greenPixels + redPixels;
-
-                    // Log detailed color distribution
-                    int totalPixels = ((bottomRight.getX() - topLeft.getX()) * (bottomRight.getY() - topLeft.getY())) / 4; // Accounting for step size of 2
-                    logDebug(String.format("Color analysis - Background: %d, Green: %d, Red: %d (Total sampled: %d)", 
-                            backgroundPixels, greenPixels, redPixels, totalPixels));
-                    
-                    // If we have a significant number of colored pixels and green is dominant
-                    if (totalColoredPixels > 10 && greenPixels > redPixels * 1.5) {
-                        logInfo("Found predominantly green text for opponent " + (i + 1) + " - power is lower than ours");
-                        sleepTask(1000);
-
-                        // Since the text is mostly green, the opponent's power is lower than ours
-						// Click the challenge button for this opponent
-                        tapPoint(new DTOPoint(624, y));
-                        sleepTask(2000);
-                        
-                        // Handle the battle and continue with remaining attempts
-                        handleBattle();
-                        attempts--;
-                        if(!checkResult()) {
-                            sleepTask(500);
-                            continue; // If we lost, continue to next opponent
-                        }
-                        foundOpponent = true;
-                        firstRun = false;
-                        sleepTask(1000);
-                        break;
-                    } else {
-                        logInfo("Found predominantly red text for opponent" + (i + 1) + " - power is higher than ours, skipping opponent.");
-                    }
-                }
-				
-                if (!foundOpponent) {
-                    // Try to refresh the opponent list
-                    if (!refreshOpponentList()) {
-                        // If no refresh available and we still have attempts, challenge first opponent
-                        logInfo("No more refreshes available and no suitable opponents found. Challenging first opponent to use remaining attempts.");
-                        int y = firstRun ? 380 : 354;  // Y-coordinate for first opponent
-                        
-                        tapPoint(new DTOPoint(624, y));
-                        sleepTask(2000);
-                        
-                        handleBattle();
-                        attempts--;
-                        checkResult();  // We don't care about the result here
-                        firstRun = false;
-                        sleepTask(1000);
-                        continue;  // Continue to use remaining attempts
-                    }
-                    sleepTask(1000);
-                }
-				
-            } catch (Exception e) {
-				logError("Failed to read power values: " + e.getMessage());
-                return false;
-            }
-        }
-		
-        logInfo("All attempts used. Arena task completed.");
-        return true;
-    }
-	
-    private void handleBattle() {
-		tapPoint(new DTOPoint(530, 1200)); // Tap to start battle
-        sleepTask(3000);
-        tapPoint(new DTOPoint(60, 962)); // Tap pause button
-        sleepTask(500);
-        tapPoint(new DTOPoint(252, 635)); // Tap retreat button to skip arena animation
-        sleepTask(1000);
-    }
-	
-    private boolean refreshOpponentList() {
-		// Try free refresh first
-        DTOImageSearchResult freeRefreshResult = emuManager.searchTemplate(
-			EMULATOR_NUMBER, EnumTemplates.ARENA_FREE_REFRESH_BUTTON, 90);
-			
-        if (freeRefreshResult.isFound()) {
-			logInfo("Using free refresh");
-            tapPoint(freeRefreshResult.getPoint());
-            return true;
-        }
-
-        // Check if refresh with gems is available and enabled, and within limits
-        if (refreshWithGems && gemRefreshCount < MAX_GEM_REFRESHES) {
-			DTOImageSearchResult gemsRefreshResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER, EnumTemplates.ARENA_GEMS_REFRESH_BUTTON, 90);
-				
-            if (gemsRefreshResult.isFound()) {
-                gemRefreshCount++;
-				logInfo(String.format("Using gems refresh (%d/%d)", gemRefreshCount, MAX_GEM_REFRESHES));
-                tapPoint(gemsRefreshResult.getPoint());
-                sleepTask(500);
-				
-                // Check for confirmation popup
-                DTOImageSearchResult confirmResult = emuManager.searchTemplate(
-					EMULATOR_NUMBER, EnumTemplates.ARENA_GEMS_REFRESH_CONFIRM_BUTTON, 90);
-                
-					if (confirmResult.isFound()) {
-						tapPoint(new DTOPoint(210,712));
-						sleepTask(300);
-                    tapPoint(confirmResult.getPoint());
-                }
-                return true;
-            }
-        }
-
-        return false;
-    }
-	
-    private boolean checkResult() {
-        try {
-            // Wait a bit longer for the result screen to stabilize
-            sleepTask(1000);
-            
-            // Coordinates to find victory text
-            DTOPoint victoryTopLeft = new DTOPoint(186, 392);
-            DTOPoint victoryBottomRight = new DTOPoint(536, 494);
-            // Coordinates to find defeat text
-            DTOPoint defeatTopLeft = new DTOPoint(195, 290);
-            DTOPoint defeatBottomRight = new DTOPoint(516, 384);
-
-            // Check victory region first
-            String victoryText = emuManager.ocrRegionText(EMULATOR_NUMBER,
-                victoryTopLeft, victoryBottomRight);
-            
-            // Clean up the victory text
-            String cleanVictory = victoryText != null ? victoryText.toLowerCase()
-                .replace("—", "")
-                .replace("gs", "")
-                .replace("fs", "")
-                .replace("es", "")
-                .replace("aa", "")
-                .trim() : "";
-                
-            if (cleanVictory.contains("victory")) {
-                logInfo("Battle result: Victory");
-                sleepTask(1000);
-                tapBackButton();
-                return true;
-            }
-
-            // If no victory found, check defeat region
-            String defeatText = emuManager.ocrRegionText(EMULATOR_NUMBER,
-                defeatTopLeft, defeatBottomRight);
-            
-            // Clean up the defeat text
-            String cleanDefeat = defeatText != null ? defeatText.toLowerCase()
-                .replace("—", "")
-                .replace("gs", "")
-                .replace("fs", "")
-                .replace("es", "")
-                .replace("aa", "")
-                .trim() : "";
-
-            if (cleanDefeat.contains("defeat")) {
-                logInfo("Battle result: Defeat");
-            } else {
-                // If we can't read either result, log both attempts
-                logWarning("Unrecognized battle result. Victory region: '" + victoryText + 
-                          "', Defeat region: '" + defeatText + "'");
-            }
-            
-            sleepTask(1000); // Wait before tapping back
-            tapBackButton();
         } catch (Exception e) {
-            logError("OCR error while checking battle result: " + e.getMessage());
+            logError("Failed to reschedule with activation time: " + e.getMessage());
+            logInfo("Falling back to 5 min before game reset time");
+            reschedule(UtilTime.getGameReset().minusMinutes(5));
         }
-        return false;
     }
-	
-	private boolean getAttempts() {
-		try {
-            DTOTesseractSettings settings = new DTOTesseractSettings.Builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(true)
-                .setTextColor(new Color(91, 112, 147)) // Exact text color
-                .setDebug(true)
-                .setAllowedChars("0123456789") // Only allow digits
-                .build();
-
-			Integer attemptsText = readNumberValue(CHALLENGES_LEFT_TOP_LEFT, CHALLENGES_LEFT_BOTTOM_RIGHT, settings);
-			if (attemptsText != null) {
-				attempts = attemptsText;
-				logInfo("Initial attempts available: " + attempts);
-				return true;
-			}
-			logWarning("Failed to parse attempts text: " + attemptsText);
-			return false;
-		} catch (Exception e) {
-			logError("OCR error while reading attempts: " + e.getMessage());
-			return false;
-		}
-	}
-
-	private int buyExtraAttempts() {
-		// Tap the "+" attempts button
-		tapPoint(new DTOPoint(467, 965));
-		sleepTask(1000);
-
-        // Check if the purchase confirmation popup appears
-        DTOImageSearchResult confirmResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER, EnumTemplates.ARENA_GEMS_EXTRA_ATTEMPTS_BUTTON, 90);
-        if (!confirmResult.isFound()) {
-            logInfo("No more extra attempts available");
-            return 0;
-        }
-
-		// Reset the queue counter to zero first
-		logDebug("Resetting queue counter");
-		swipe(new DTOPoint(420, 733), new DTOPoint(40, 733));
-		sleepTask(300);
-		
-		logInfo("Attempting to buy " + extraAttempts + " extra attempts");
-
-        // Coordinates for price location
-        DTOPoint topLeft = new DTOPoint(328, 840);
-        DTOPoint bottomRight = new DTOPoint(433, 883);
-
-        // Find where we are in the price sequence
-        // for(int i = 0; i < 10; i++) {
-        //     Integer price = readNumberValue(topLeft, bottomRight);
-        // }
-
-        DTOTesseractSettings settings = new DTOTesseractSettings.Builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(true)
-                .setTextColor(new Color(255, 255, 255)) // White text
-                .setDebug(true)
-                .setAllowedChars("0123456789") // Only allow digits
-                .build();
-
-        Integer singleAttemptPrice = readNumberValue(topLeft, bottomRight, settings);
-        if (singleAttemptPrice == null) {
-            logWarning("Failed to read single attempt price");
-            tapBackButton();
-            return 0;
-        }
-
-        // Find which attempt number we're at based on current price
-        int previousAttempts = -1;
-        for (int i = 0; i < ATTEMPT_PRICES.length; i++) {
-            if (ATTEMPT_PRICES[i] == singleAttemptPrice) {
-                previousAttempts = i;
-                break;
-            }
-        }
-
-        if (previousAttempts == -1) {
-            logWarning(String.format("Unexpected single attempt price: %d gems", singleAttemptPrice));
-            tapBackButton();
-            return 0;
-        }
-
-        // If we already have more attempts than requested, no need to buy more
-        if (previousAttempts >= extraAttempts) {
-            logInfo(String.format("Already have %d attempts (wanted %d), no need to buy more", 
-                    previousAttempts, extraAttempts));
-            tapBackButton();
-            return 0;
-        }
-
-        // Calculate how many more attempts we can buy (limited by max attempts and how many we want)
-        int remainingAttempts = Math.min(
-            ATTEMPT_PRICES.length - previousAttempts,  // How many more we can buy
-            extraAttempts - previousAttempts           // How many more we want to buy
-        );
-        
-        if (remainingAttempts <= 0) {
-            logWarning("No more attempts can be purchased");
-            tapBackButton();
-            return 0;
-        }
-
-        // Calculate total price for the remaining attempts
-        int expectedPrice = 0;
-        for (int i = previousAttempts; i < previousAttempts + remainingAttempts; i++) {
-            expectedPrice += ATTEMPT_PRICES[i];
-        }
-
-        logDebug(String.format("Previous attempts: %d, Can buy %d more, Price will be: %d gems", 
-                  previousAttempts, remainingAttempts, expectedPrice));
-
-        if (remainingAttempts > 1) {
-            tapRandomPoint(new DTOPoint(457, 713), new DTOPoint(499, 752),
-                    remainingAttempts - 1, 400);
-            sleepTask(300);
-        }
-
-        // Verify final price matches our expectation
-        // Integer finalPrice = readNumberValue(topLeft, bottomRight);
-        // if (finalPrice == null || finalPrice != expectedPrice) {
-        //     logWarning(String.format("Final price mismatch! Expected: %d, Got: %s", 
-        //               expectedPrice, finalPrice != null ? finalPrice.toString() : "null"));
-        //     tapBackButton();
-        //     return 0;
-        // }
-
-        // Price matches, proceed with purchase
-        logInfo(String.format("Buying %d attempts for %d gems", remainingAttempts, expectedPrice));
-		tapPoint(new DTOPoint(360, 860)); // Tap buy button
-        return remainingAttempts;
-	}
-
-	/**
-	 * Schedules the task based on the configured activation time in UTC
-	 */
-	private boolean scheduleActivationTime() {
-		try {
-			// Parse the activation time
-			String[] timeParts = activationHour.split(":");
-			int hour = Integer.parseInt(timeParts[0]);
-			int minute = Integer.parseInt(timeParts[1]);
-			
-			// Get the current UTC time
-			ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
-			
-			// Create a UTC time for today at the activation time
-			ZonedDateTime activationTimeUtc = nowUtc.toLocalDate().atTime(hour, minute).atZone(ZoneId.of("UTC"));
-			
-			// If the activation time has already passed today, schedule for tomorrow
-			if (nowUtc.isAfter(activationTimeUtc)) {
-				activationTimeUtc = activationTimeUtc.plusDays(1);
-			}
-			
-			// Convert UTC time to system default time zone
-			ZonedDateTime localActivationTime = activationTimeUtc.withZoneSameInstant(ZoneId.systemDefault());
-			
-			// Schedule the task
-			logInfo("Scheduling Arena task for activation at " + activationHour + " UTC (" + 
-					localActivationTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + " local time)");
-			reschedule(localActivationTime.toLocalDateTime());
-			return true;
-		} catch (Exception e) {
-			logError("Failed to schedule activation time: " + e.getMessage());
-			return false;
-		}
-	}
-
-	/**
-	 * Special reschedule method that respects the configured activation time
-	 * If activation time is configured in valid HH:mm format, it uses that time for the next day
-	 * Otherwise, it uses the standard game reset time
-	 */
-	private void rescheduleWithActivationHour() {
-		// If activation hour is configured and valid
-		if (isValidTimeFormat(activationHour)) {
-			try {
-				// Parse the activation time
-				String[] timeParts = activationHour.split(":");
-				int hour = Integer.parseInt(timeParts[0]);
-				int minute = Integer.parseInt(timeParts[1]);
-				
-				// Schedule based on the configured activation time for the next day
-				ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
-				ZonedDateTime tomorrowActivationUtc = nowUtc.toLocalDate().plusDays(1)
-					.atTime(hour, minute).atZone(ZoneId.of("UTC"));
-				ZonedDateTime localActivationTime = tomorrowActivationUtc.withZoneSameInstant(ZoneId.systemDefault());
-				
-				logInfo("Rescheduling Arena task for next activation at " + activationHour + 
-					" UTC tomorrow (" + localActivationTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + 
-					" local time)");
-				
-				reschedule(localActivationTime.toLocalDateTime());
-				return;
-			} catch (Exception e) {
-				logError("Failed to reschedule with activation time: " + e.getMessage());
-			}
-		}
-		
-		// Use standard game reset time if activation time is invalid or an error occurred
-		logInfo("Rescheduling Arena task for game reset time");
-		reschedule(UtilTime.getGameReset());
-	}
 
     /**
-	 * Reschedules the task for today's activation time (used when task is triggered too early)
-	 */
-	private void rescheduleForToday() {
-		// If activation hour is configured and valid
-		if (isValidTimeFormat(activationHour)) {
-			try {
-				// Parse the activation time
-				String[] timeParts = activationHour.split(":");
-				int hour = Integer.parseInt(timeParts[0]);
-				int minute = Integer.parseInt(timeParts[1]);
-				
-				// Schedule based on the configured activation time for today
-				ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
-				ZonedDateTime todayActivationUtc = nowUtc.toLocalDate()
-					.atTime(hour, minute).atZone(ZoneId.of("UTC"));
-				ZonedDateTime localActivationTime = todayActivationUtc.withZoneSameInstant(ZoneId.systemDefault());
-				
-				logInfo("Rescheduling Arena task for activation at " + activationHour + 
-					" UTC today (" + localActivationTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + 
-					" local time)");
-				
-				reschedule(localActivationTime.toLocalDateTime());
-				return;
-			} catch (Exception e) {
-				logError("Failed to reschedule for today's activation time: " + e.getMessage());
-			}
-		}
-		
-		// Use standard game reset time if activation time is invalid or an error occurred
-		logInfo("Rescheduling Arena task for game reset time");
-		reschedule(UtilTime.getGameReset());
-	}
+     * Reschedules the task for today's activation time.
+     * Used when task is triggered too early.
+     */
+    private void rescheduleForToday() {
+        if (!isValidTimeFormat(activationTime)) {
+            logInfo("Rescheduling Arena task for 5 min before game reset time (invalid activation time)");
+            reschedule(UtilTime.getGameReset().minusMinutes(5));
+            return;
+        }
 
-	@Override
-	public EnumStartLocation getRequiredStartLocation() {
-		return EnumStartLocation.HOME;
-	}
+        try {
+            String[] timeParts = activationTime.split(":");
+            int hour = Integer.parseInt(timeParts[0]);
+            int minute = Integer.parseInt(timeParts[1]);
+
+            ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
+            ZonedDateTime todayActivationUtc = nowUtc.toLocalDate()
+                    .atTime(hour, minute)
+                    .atZone(ZoneId.of("UTC"));
+
+            ZonedDateTime localActivationTime = todayActivationUtc.withZoneSameInstant(
+                    ZoneId.systemDefault());
+
+            logInfo(String.format("Rescheduling Arena task for %s UTC today (%s local)",
+                    activationTime,
+                    localActivationTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))));
+
+            reschedule(localActivationTime.toLocalDateTime());
+
+        } catch (Exception e) {
+            logError("Failed to reschedule for today's activation time: " + e.getMessage());
+            logInfo("Falling back to 5 min before game reset time");
+            reschedule(UtilTime.getGameReset().minusMinutes(5));
+        }
+    }
+
+    @Override
+    protected EnumStartLocation getRequiredStartLocation() {
+        return EnumStartLocation.HOME;
+    }
 
     @Override
     public boolean provideDailyMissionProgress() {

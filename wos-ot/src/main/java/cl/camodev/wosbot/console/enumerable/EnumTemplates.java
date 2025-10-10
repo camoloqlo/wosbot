@@ -214,7 +214,8 @@ public enum EnumTemplates {
     CRYSTAL_LAB_DAILY_DISCOUNTED_RFC("/templates/crystallab/dailyDiscountedRFC.png"),
     CRYSTAL_LAB_RFC_REFINE_BUTTON("/templates/crystallab/rfcRefineButton.png"),
 	
-	VIP_UNLOCK_BUTTON("/templates/vip/unlockButton.png"),
+	VIP_UNLOCK_BUTTON("/templates/vip/vipUnlockButton.png"),
+	VIP_MENU("/templates/vip/vipMenu.png"),
 
     // ========================================================================
     // INTELLIGENCE AND MISSIONS

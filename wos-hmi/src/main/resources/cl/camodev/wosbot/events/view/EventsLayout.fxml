@@ -5,12 +5,12 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
 <GridPane alignment="CENTER_LEFT" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="468.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1">
   <columnConstraints>
@@ -25,7 +25,6 @@
       <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="10.0" prefHeight="61.2" vgrow="SOMETIMES" />
   </rowConstraints>
    <children>
-      <CheckBox fx:id="checkBoxTundraEvent" mnemonicParsing="false" text="Tundra Event" />
        <CheckBox fx:id="checkBoxHeroMission" mnemonicParsing="false" text="Hero's Mission" GridPane.rowIndex="1" />
        <CheckBox fx:id="checkBoxMercenaryEvent" mnemonicParsing="false" text="Mercenary Event" GridPane.rowIndex="2" />
        <CheckBox fx:id="checkBoxJourneyofLight" mnemonicParsing="false" text="Journey of Light" GridPane.rowIndex="3" />
@@ -35,19 +34,11 @@
          <children>
             <CheckBox fx:id="checkBoxTundraUseGems" mnemonicParsing="false" text="Use gems for refresh" />
             <CheckBox fx:id="checkBoxTundraSSR" mnemonicParsing="false" text="Go only for SSR trucks" />
-            <CheckBox fx:id="checkBoxTundraEventActivationHour" mnemonicParsing="false" text="Use activation hour" />
+            <CheckBox fx:id="checkBoxTundraEventActivationHour" mnemonicParsing="false" text="Use activation time" />
             <HBox alignment="CENTER_LEFT">
                <children>
-                  <Label fx:id="labelTundraActivationHour" text="Activation hour (UTC): ">
-                     <tooltip>
-                        <Tooltip text="Enter hour in HH format (0-23)" />
-                     </tooltip>
-                  </Label>
-                  <TextField fx:id="textfieldTundraActivationHour" prefWidth="60.0">
-                     <tooltip>
-                        <Tooltip text="Enter hour in HH format (0-23)" />
-                     </tooltip>
-                  </TextField>
+                  <Label fx:id="labelTundraActivationHour" text="Activation time (UTC): " />
+                  <TextField fx:id="textfieldTundraActivationHour" prefWidth="60.0" promptText="HH:mm" />
                </children>
             </HBox>
          </children>
@@ -85,5 +76,18 @@
             </HBox>
          </children>
       </VBox>
+      <VBox alignment="BOTTOM_RIGHT" prefHeight="200.0" prefWidth="234.0">
+         <children>
+            <Label fx:id="labelDateTimeError" alignment="BOTTOM_LEFT" textFill="RED">
+               <font>
+                  <Font size="11.0" />
+               </font>
+            </Label>
+         </children>
+         <GridPane.margin>
+            <Insets bottom="15.0" />
+         </GridPane.margin>
+      </VBox>
+      <CheckBox fx:id="checkBoxTundraEvent" mnemonicParsing="false" text="Tundra Event" />
    </children>
 </GridPane>

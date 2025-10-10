@@ -228,6 +228,7 @@ public class AllianceMobilizationTask extends DelayedTask {
         }
 
         profile.setConfig(key, fallbackValue);
+        setShouldUpdateConfig(true);
         return fallbackValue;
     }
 
@@ -957,11 +958,6 @@ public class AllianceMobilizationTask extends DelayedTask {
     @Override
     public EnumStartLocation getRequiredStartLocation() {
         return EnumStartLocation.HOME;
-    }
-
-    @Override
-    public boolean provideDailyMissionProgress() {
-        return false; // Or true, depending on whether this task contributes to daily missions
     }
 
     private record AttemptStatus(int remaining, Integer total) {}

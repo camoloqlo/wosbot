@@ -200,8 +200,6 @@ public class HeroMissionEventTask extends DelayedTask {
         DTOTesseractSettings settings = new DTOTesseractSettings.Builder()
                 .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(false)
-                .setDebug(true)
                 .setAllowedChars("0123456789:") // Only allow digits and ':'
                 .build();
 
@@ -281,7 +279,6 @@ public class HeroMissionEventTask extends DelayedTask {
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(254, 254, 254)) // White text
-                .setDebug(true)
                 .setAllowedChars("0123456789") // Only allow digits
                 .build();
 
@@ -290,7 +287,6 @@ public class HeroMissionEventTask extends DelayedTask {
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(255, 255, 255)) // White text
-                .setDebug(true)
                 .setAllowedChars("0123456789/") // Only allow digits and '/'
                 .build();
 

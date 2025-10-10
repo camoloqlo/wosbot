@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jetbrains.annotations.NotNull;
+
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.PrioritizableItem;
 import cl.camodev.wosbot.ot.DTOPriorityItem;
@@ -19,6 +21,7 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.control.ToggleGroup;
 
 public abstract class AbstractProfileController implements IProfileLoadListener, IProfileObserverInjectable {
@@ -51,7 +54,7 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 		radioButtonMappings.forEach(this::setupRadioButtonListener);
 		comboBoxMappings.forEach(this::setupComboBoxListener);
 		priorityListMappings.forEach(this::setupPriorityListListener);
-        priorityListEnumClasses.forEach(this::initializePriorityListFromEnum);
+		priorityListEnumClasses.forEach(this::initializePriorityListFromEnum);
 	}
 
 	protected void createToggleGroup(RadioButton... radioButtons) {
@@ -126,7 +129,8 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 				try {
 					DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 					LocalDateTime.parse(newVal, formatter);
-					// Valid format, save as string (will be converted to LocalDateTime by config system)
+					// Valid format, save as string (will be converted to LocalDateTime by config
+					// system)
 					profileObserver.notifyProfileChange(configKey, newVal);
 				} catch (DateTimeParseException e) {
 					// Invalid format, reset to default
@@ -194,7 +198,7 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 				if (value != null && !value.trim().isEmpty()) {
 					priorityListView.fromConfigString(value);
 				} else {
-                    Class<? extends Enum<?>> enumClass = priorityListEnumClasses.get(priorityListView);
+					Class<? extends Enum<?>> enumClass = priorityListEnumClasses.get(priorityListView);
 					if (enumClass != null) {
 						reinitializePriorityListWithDefaults(priorityListView, enumClass);
 					}
@@ -211,15 +215,15 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 			Class<? extends Enum<?>> enumClass) {
 
 		List<DTOPriorityItem> items = new ArrayList<>();
+		@SuppressWarnings("unchecked")
 		T[] enumConstants = ((Class<T>) enumClass).getEnumConstants();
 
 		for (int i = 0; i < enumConstants.length; i++) {
 			items.add(new DTOPriorityItem(
-				enumConstants[i].getIdentifier(),
-				enumConstants[i].getDisplayName(),
-				i + 1,
-				false
-			));
+					enumConstants[i].getIdentifier(),
+					enumConstants[i].getDisplayName(),
+					i + 1,
+					false));
 		}
 
 		priorityListView.setItems(items);
@@ -230,14 +234,15 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 			Class<? extends Enum<?>> enumClass) {
 
 		List<DTOPriorityItem> items = new ArrayList<>();
+		@SuppressWarnings("unchecked")
 		T[] enumConstants = ((Class<T>) enumClass).getEnumConstants();
 
 		for (int i = 0; i < enumConstants.length; i++) {
 			items.add(new DTOPriorityItem(
-				enumConstants[i].getIdentifier(),
-				enumConstants[i].getDisplayName(),
-				i + 1,
-				false // All disabled
+					enumConstants[i].getIdentifier(),
+					enumConstants[i].getDisplayName(),
+					i + 1,
+					false // All disabled
 			));
 		}
 
@@ -269,11 +274,10 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 			if (savedItemsMap.containsKey(identifier)) {
 				DTOPriorityItem savedItem = savedItemsMap.get(identifier);
 				mergedItems.add(new DTOPriorityItem(
-					identifier,
-					enumItem.getDisplayName(),
-					savedItem.getPriority(),
-					savedItem.isEnabled()
-				));
+						identifier,
+						enumItem.getDisplayName(),
+						savedItem.getPriority(),
+						savedItem.isEnabled()));
 			}
 		}
 
@@ -285,11 +289,10 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 
 			if (!savedItemsMap.containsKey(identifier)) {
 				newItems.add(new DTOPriorityItem(
-					identifier,
-					enumItem.getDisplayName(),
-					0,
-					false
-				));
+						identifier,
+						enumItem.getDisplayName(),
+						0,
+						false));
 			}
 		}
 
@@ -300,7 +303,7 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 		}
 
 		if (mergedItems.size() != currentItems.size() ||
-			!haveSameIdentifiers(mergedItems, currentItems)) {
+				!haveSameIdentifiers(mergedItems, currentItems)) {
 
 			priorityListView.setItems(mergedItems);
 
@@ -325,5 +328,51 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 		}
 
 		return true;
+	}
+
+	/**
+	 * Builds a TextFormatter that automatically adds ":" and limits to HH:mm
+	 * format.
+	 */
+	protected static @NotNull TextFormatter<String> getTimeTextFormatter() {
+		final int maxDigits = 4; // HHmm
+		final int maxLenMasked = 5; // HH:mm
+
+		return new TextFormatter<>(change -> {
+			if (change.isContentChange()) {
+				// Extract digits
+				StringBuilder digits = new StringBuilder();
+				String newText = change.getControlNewText();
+				for (int i = 0; i < newText.length(); i++) {
+					char c = newText.charAt(i);
+					if (Character.isDigit(c))
+						digits.append(c);
+				}
+
+				// Limit to maxDigits
+				if (digits.length() > maxDigits) {
+					digits.setLength(maxDigits);
+				}
+
+				// Rebuild with colon after HH
+				StringBuilder masked = new StringBuilder();
+				for (int d = 0; d < digits.length(); d++) {
+					if (d == 2)
+						masked.append(':');
+					masked.append(digits.charAt(d));
+				}
+
+				// Limit total length
+				if (masked.length() > maxLenMasked)
+					masked.setLength(maxLenMasked);
+
+				// Replace entire text
+				change.setRange(0, change.getControlText().length());
+				change.setText(masked.toString());
+				change.setCaretPosition(masked.length());
+				change.setAnchor(masked.length());
+			}
+			return change;
+		});
 	}
 }
