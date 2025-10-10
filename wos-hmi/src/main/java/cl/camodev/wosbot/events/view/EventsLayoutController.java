@@ -5,8 +5,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
 
-import org.jetbrains.annotations.NotNull;
-
 import cl.camodev.wosbot.common.view.AbstractProfileController;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import javafx.fxml.FXML;
@@ -14,7 +12,6 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Tooltip;
 
 public class EventsLayoutController extends AbstractProfileController {
@@ -112,51 +109,6 @@ public class EventsLayoutController extends AbstractProfileController {
 			// Example: "1530" → "15:30"
 			textfieldTundraActivationHour.setText(digits.substring(0, 2) + ":" + digits.substring(2, 4));
 		}
-	}
-
-	/**
-	 * Builds a TextFormatter that automatically adds ":" and limits to HH:mm
-	 * format.
-	 */
-	private static @NotNull TextFormatter<String> getTimeTextFormatter() {
-		final int maxDigits = 4; // HHmm
-		final int maxLenMasked = 5; // HH:mm
-
-		return new TextFormatter<>(change -> {
-			if (change.isContentChange()) {
-				// Extract digits
-				StringBuilder digits = new StringBuilder();
-				String newText = change.getControlNewText();
-				for (int i = 0; i < newText.length(); i++) {
-					char c = newText.charAt(i);
-					if (Character.isDigit(c))
-						digits.append(c);
-				}
-
-				// Limit to maxDigits
-				if (digits.length() > maxDigits)
-					digits.setLength(maxDigits);
-
-				// Rebuild with colon after HH
-				StringBuilder masked = new StringBuilder();
-				for (int d = 0; d < digits.length(); d++) {
-					if (d == 2)
-						masked.append(':');
-					masked.append(digits.charAt(d));
-				}
-
-				// Limit total length
-				if (masked.length() > maxLenMasked)
-					masked.setLength(maxLenMasked);
-
-				// Replace entire text
-				change.setRange(0, change.getControlText().length());
-				change.setText(masked.toString());
-				change.setCaretPosition(masked.length());
-				change.setAnchor(masked.length());
-			}
-			return change;
-		});
 	}
 
 	/**
