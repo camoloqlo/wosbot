@@ -154,7 +154,8 @@ public enum EnumConfigurationKey {
 	INT_EXPLORATION_CHEST_OFFSET("60", Integer.class),
 	BOOL_HERO_RECRUITMENT("false", Boolean.class),
 	BOOL_VIP_POINTS("false", Boolean.class),
-	VIP_BUY_MONTHLY("false", Boolean.class),
+	VIP_MONTHLY_BUY_BOOL("false", Boolean.class),
+	VIP_NEXT_MONTHLY_BUY_TIME_STRING("false", String.class),
 	BOOL_MYSTERY_SHOP("false", Boolean.class),
 	BOOL_MYSTERY_SHOP_250_HERO_WIDGET("false", Boolean.class),
 

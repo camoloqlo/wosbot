@@ -329,7 +329,6 @@ public abstract class DelayedTask implements Runnable, Delayed {
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(254, 254, 254))
-                .setDebug(true)
                 .setAllowedChars("0123456789")
                 .build();
 
@@ -356,8 +355,6 @@ public abstract class DelayedTask implements Runnable, Delayed {
         DTOTesseractSettings timeSettings = new DTOTesseractSettings.Builder()
                 .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(false)
-                .setDebug(true)
                 .setAllowedChars("0123456789:")
                 .build();
 

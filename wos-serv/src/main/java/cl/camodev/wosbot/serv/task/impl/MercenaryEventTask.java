@@ -124,7 +124,6 @@ public class MercenaryEventTask extends DelayedTask {
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(255, 255, 255)) // White text
-                .setDebug(true)
                 .setAllowedChars("0123456789") // Only allow digits and '/'
                 .build();
 
