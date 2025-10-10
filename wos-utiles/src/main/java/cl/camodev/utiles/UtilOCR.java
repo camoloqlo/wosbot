@@ -241,7 +241,7 @@ public class UtilOCR {
      * @param rawImage Raw image data
      * @return BufferedImage
      */
-    private static BufferedImage convertRawImageToBufferedImage(DTORawImage rawImage) {
+    public static BufferedImage convertRawImageToBufferedImage(DTORawImage rawImage) {
         BufferedImage image = new BufferedImage(rawImage.getWidth(), rawImage.getHeight(), BufferedImage.TYPE_INT_RGB);
         int[] pixels = new int[rawImage.getWidth() * rawImage.getHeight()];
 

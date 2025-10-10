@@ -16,6 +16,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.imageio.ImageIO;
 
 import cl.camodev.utiles.ImageSearchUtil;
+import cl.camodev.utiles.UtilOCR;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.GameVersion;
@@ -476,7 +477,7 @@ public class EmulatorManager {
         try {
             // Take a single screenshot as DTORawImage, then convert only when needed
             DTORawImage rawImage = emulator.captureScreenshot(emulatorNumber);
-            BufferedImage image = ImageIO.read(new ByteArrayInputStream(rawImage.getData()));
+            BufferedImage image = UtilOCR.convertRawImageToBufferedImage(rawImage);
 
             int[] counts = new int[3]; // [background, green, red]
             

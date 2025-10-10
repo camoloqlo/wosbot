@@ -16,10 +16,12 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.ot.DTOTaskState;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.TaskQueue;
 import net.sourceforge.tess4j.TesseractException;
 
 public class IntelligenceTask extends DelayedTask {
@@ -36,7 +38,7 @@ public class IntelligenceTask extends DelayedTask {
 	private boolean beastMarchSent;
 
 	// Specific configurations
-	private boolean isAutoJoinDisabled;
+	private boolean autoJoinDisabledForIntel;
 
 	// Configuration (loaded fresh each execution after profile refresh)
 	private boolean fcEra;
@@ -47,6 +49,8 @@ public class IntelligenceTask extends DelayedTask {
 	private boolean fireBeastsEnabled;
 	private boolean survivorCampsEnabled;
 	private boolean explorationsEnabled;
+	private boolean isAutoJoinTaskEnabled;
+	private DTOTaskState autoJoinTask;
 
 	public IntelligenceTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
 		super(profile, tpTask);
@@ -68,10 +72,14 @@ public class IntelligenceTask extends DelayedTask {
 		MarchesAvailable marchesAvailable = checkMarchAvailability();
 		marchQueueLimitReached = !marchesAvailable.available();
 
-		isAutoJoinDisabled = disableAutoJoin();
+		autoJoinTask = ServTaskManager.getInstance().getTaskState(profile.getId(), TpDailyTaskEnum.ALLIANCE_AUTOJOIN.getId());
+		isAutoJoinTaskEnabled = (autoJoinTask != null) ? true : false;
 
-		if (!isAutoJoinDisabled) {
-			logDebug("Failed to disable auto-join, proceeding anyway.");
+		if (!autoJoinDisabledForIntel && isAutoJoinTaskEnabled && autoJoinTask.isScheduled()) {
+			logInfo("Auto-join is enabled and scheduled, proceeding to disable it.");
+			autoJoinDisabledForIntel = disableAutoJoin();
+			if (!autoJoinDisabledForIntel)
+				logDebug("Failed to disable auto-join, proceeding anyway.");
 		}
 
 		// Claim completed missions
@@ -291,9 +299,11 @@ public class IntelligenceTask extends DelayedTask {
 			LocalDateTime rescheduleTime = UtilTime.parseTime(rescheduleTimeStr);
 			reschedule(rescheduleTime);
 			tapBackButton();
-			isAutoJoinDisabled = false;
-			ServTaskManager.getInstance().getTaskState(profile.getId(), TpDailyTaskEnum.ALLIANCE_AUTOJOIN.getId())
-					.setNextExecutionTime(LocalDateTime.now().plusMinutes(5));
+			autoJoinDisabledForIntel = false;
+			TaskQueue queue = servScheduler.getQueueManager().getQueue(profile.getId());
+			if (isAutoJoinTaskEnabled && autoJoinTask.isScheduled()) {
+				queue.executeTaskNow(TpDailyTaskEnum.ALLIANCE_AUTOJOIN, true);
+			}
 			logInfo("No new intel found. Rescheduling task to run at: " + rescheduleTime);
 		} catch (Exception e) {
 			reschedule(LocalDateTime.now().plusMinutes(5));

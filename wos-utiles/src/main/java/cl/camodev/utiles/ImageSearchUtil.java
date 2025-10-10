@@ -373,8 +373,8 @@ public class ImageSearchUtil {
             long totalTime = System.currentTimeMillis() - startTime;
 
             if (matchPercentage < thresholdPercentage) {
-                logger.debug("=== Template Search Completed === Total: {} ms, Match: {:.2f}% (BELOW threshold)",
-                    totalTime, matchPercentage);
+                logger.debug("=== Template Search Completed === Total: {} ms, Match: {}% (BELOW threshold)",
+                    totalTime, String.format("%.2f", matchPercentage));
                 return new DTOImageSearchResult(false, null, matchPercentage);
             }
 
@@ -383,8 +383,8 @@ public class ImageSearchUtil {
             double centerX = matchLoc.x + roi.x + (template.cols() / 2.0);
             double centerY = matchLoc.y + roi.y + (template.rows() / 2.0);
 
-            logger.info("=== Template Search Completed === Total: {} ms, Match: {:.2f}%, Position: ({},{})",
-                totalTime, matchPercentage, (int)centerX, (int)centerY);
+            logger.info("=== Template Search Completed === Total: {} ms, Match: {}%, Position: ({},{})",
+                totalTime, String.format("%.2f", matchPercentage), (int)centerX, (int)centerY);
 
             return new DTOImageSearchResult(true, new DTOPoint((int) centerX, (int) centerY), matchPercentage);
 

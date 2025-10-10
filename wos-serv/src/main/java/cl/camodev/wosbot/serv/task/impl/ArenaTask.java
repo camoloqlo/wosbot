@@ -48,14 +48,14 @@ public class ArenaTask extends DelayedTask {
 		}
 		
 		if (!isValidTimeFormat(activationHour)) {
-			logWarning("Invalid activation hour format: " + activationHour + ". Task will use game reset time.");
+			logWarning("Invalid activation hour format: " + activationHour + ". Scheduling to 10min before reset.");
 			reschedule(UtilTime.getGameReset().minusMinutes(10));
 			return;
 		}
 		
-		// Try to schedule with activation time, fallback to game reset if it fails
+		// Try to schedule with activation time, fallback to 10min before game reset if it fails
 		if (!scheduleActivationTime()) {
-			logWarning("Failed to schedule with activation time. Using game reset time instead.");
+			logWarning("Failed to schedule with activation time. Scheduling to 10min before reset.");
 			reschedule(UtilTime.getGameReset().minusMinutes(10));
 		}
     }
@@ -479,7 +479,7 @@ public class ArenaTask extends DelayedTask {
                 .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
-                .setTextColor(new Color(91, 112, 147)) // White text
+                .setTextColor(new Color(255, 255, 255)) // White text
                 .setDebug(true)
                 .setAllowedChars("0123456789") // Only allow digits
                 .build();

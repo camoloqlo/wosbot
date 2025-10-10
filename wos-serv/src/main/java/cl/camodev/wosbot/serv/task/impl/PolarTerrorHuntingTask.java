@@ -23,6 +23,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
     private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
     private final ServTaskManager servTaskManager = ServTaskManager.getInstance();
     private Integer currentStamina = null;
+    private static final int MAX_POLAR_LEVEL = 8;
 
     // Configuration (loaded fresh each execution after profile refresh)
     private int polarTerrorLevel;
@@ -55,8 +56,8 @@ public class PolarTerrorHuntingTask extends DelayedTask {
             // Make sure intel isn't about to run
             DailyTask intel = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(), TpDailyTaskEnum.INTEL);
             if (ChronoUnit.MINUTES.between(LocalDateTime.now(), intel.getNextSchedule()) < 5) {
-                reschedule(LocalDateTime.now().plusMinutes(35)); // Reschedule in 35 minutes, after intel has run
-                logWarning("Intel task is scheduled to run soon. Rescheduling Polar Hunt to run 30min after intel.");
+                reschedule(LocalDateTime.now().plusMinutes(5)); // Reschedule in 5 minutes after intel has run
+                logWarning("Intel task is scheduled to run soon. Rescheduling Polar Hunt to run 5 min after intel.");
                 return;
             }
         }
@@ -231,9 +232,9 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         }
 
         // No-flag mode: check stamina for next rally
-        if (currentStamina <= minStaminaLevel) {
+        if (getCurrentStamina() <= minStaminaLevel) {
             logInfo("Stamina is at or below minimum. Stopping deployment and rescheduling.");
-            reschedule(LocalDateTime.now().plusMinutes(staminaRegenerationTime(currentStamina, refreshStaminaLevel)));
+            reschedule(LocalDateTime.now().plusMinutes(staminaRegenerationTime(getCurrentStamina(), refreshStaminaLevel)));
             return 3;
         }
 
@@ -301,18 +302,26 @@ public class PolarTerrorHuntingTask extends DelayedTask {
             return false;
         }
 
-        // Need to tap on the polar terror icon and check the current level selected
+        DTOPoint[] levelPoints = {
+                new DTOPoint(129, 1052), // Level 1
+                new DTOPoint(173, 1052), // Level 2
+                new DTOPoint(217, 1052), // Level 3
+                new DTOPoint(261, 1052), // Level 4
+                new DTOPoint(305, 1052), // Level 5
+                new DTOPoint(349, 1052), // Level 6
+                new DTOPoint(393, 1052), // Level 7
+                new DTOPoint(437, 1052) // Level 8
+        };
+        // Need to tap on the polar terror icon and set the level
         tapPoint(polarTerror.getPoint());
+        sleepTask(100);
         if (polarLevel != -1) {
             logInfo(String.format("Adjusting Polar Terror level to %d", polarLevel));
-            swipe(new DTOPoint(435, 1052), new DTOPoint(40, 1052)); // Swipe to level
-                                                                    // 1
-            sleepTask(300);
-            if (polarLevel > 1) {
-                tapRandomPoint(new DTOPoint(487, 1055), new DTOPoint(487, 1055),
-                        (polarLevel - 1), 200);
+            if (polarLevel < 1 || polarLevel > levelPoints.length) {
+                logError(String.format("Invalid Polar Terror level configured: %d. Must be between 1 and %d.", polarLevel, MAX_POLAR_LEVEL));
+                return false;
             }
-
+            tapRandomPoint(levelPoints[polarLevel - 1], levelPoints[polarLevel - 1], 3, 100);
         }
         // tap on search button
         logDebug("Tapping on search button...");

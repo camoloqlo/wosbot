@@ -385,6 +385,7 @@ public enum EnumTemplates {
     // POLAR TERROR HUNTING
     // ========================================================================
     POLAR_TERROR_SEARCH_ICON("/templates/polarterror/polarTerror.png"),
+    POLAR_TERROR_LEVEL_SLIDER("/templates/polarterror/slider.png"),
     POLAR_TERROR_TAB_MAGNIFYING_GLASS_ICON("/templates/polarterror/polarTerrorTabMagnifyingGlass.png"),
     POLAR_TERROR_TAB_SPECIAL_REWARDS("/templates/polarterror/polarTerrorTabSpecialRewards.png"),
     POLAR_TERROR_LEVEL_SELECTOR("/templates/polarterror/polarTerrorLevelSelector.png"),
