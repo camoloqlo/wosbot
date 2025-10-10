@@ -317,7 +317,6 @@ public class LifeEssenceTask extends DelayedTask {
 					nextScrollTime.toString());
 			setShouldUpdateConfig(true);
 			logInfo("Next scroll purchase check scheduled for: " + nextScrollTime);
-			logInfo("Next scroll purchase check scheduled for: " + UtilTime.localDateTimeToDDHHMMSS(nextScrollTime));
 
 			tapPoint(EXIT_BUTTON);
 			return;
