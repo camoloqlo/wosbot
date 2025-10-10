@@ -47,13 +47,13 @@ public class CityEventsExtraLayoutController extends AbstractProfileController {
 	@FXML
 	private ComboBox<Integer> comboBoxArenaExtraAttempts;
 	@FXML
-    private Label labelDateTimeError;
+	private Label labelDateTimeError;
 
 	@FXML
 	private void initialize() {
 		// Daily tasks bindings
 		checkBoxMappings.put(checkBoxDailyVipRewards, EnumConfigurationKey.BOOL_VIP_POINTS);
-		checkBoxMappings.put(checkBoxBuyMonthlyVip, EnumConfigurationKey.VIP_BUY_MONTHLY);
+		checkBoxMappings.put(checkBoxBuyMonthlyVip, EnumConfigurationKey.VIP_MONTHLY_BUY_BOOL);
 		checkBoxMappings.put(checkBoxStorehouseChest, EnumConfigurationKey.STOREHOUSE_CHEST_BOOL);
 		checkBoxMappings.put(checkBoxDailyLabyrinth, EnumConfigurationKey.DAILY_LABYRINTH_BOOL);
 		checkBoxMappings.put(checkBoxHeroRecruitment, EnumConfigurationKey.BOOL_HERO_RECRUITMENT);
@@ -66,11 +66,11 @@ public class CityEventsExtraLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxArena, EnumConfigurationKey.ARENA_TASK_BOOL);
 		checkBoxMappings.put(checkBoxArenaRefreshWithGems, EnumConfigurationKey.ARENA_TASK_REFRESH_WITH_GEMS_BOOL);
 		textFieldMappings.put(textFieldArenaActivationHour, EnumConfigurationKey.ARENA_TASK_ACTIVATION_TIME_STRING);
-		
+
 		// Set up date/time validation for textFieldScheduleDateTime
-        textFieldArenaActivationHour.textProperty().addListener((obs, oldVal, newVal) -> {
-            validateTime(newVal);
-        });
+		textFieldArenaActivationHour.textProperty().addListener((obs, oldVal, newVal) -> {
+			validateTime(newVal);
+		});
 
 		// Initialize combo box values (0 to 5 extra attempts)
 		comboBoxArenaExtraAttempts.getItems().addAll(0, 1, 2, 3, 4, 5);
@@ -180,7 +180,13 @@ public class CityEventsExtraLayoutController extends AbstractProfileController {
 					.appendPattern("HH:mm")
 					.toFormatter(Locale.ROOT);
 
-			LocalTime.parse(timeText, formatter);
+			LocalTime time = LocalTime.parse(timeText, formatter);
+
+			if (time.getHour() == 23 && time.getMinute() >= 56) {
+				labelDateTimeError.setText("Max Arena time for correct execution is 23:55 UTC");
+				textFieldArenaActivationHour.setStyle("-fx-border-color: red; -fx-border-width: 2px;");
+				return;
+			}
 
 			// Passed validation
 			labelDateTimeError.setText("");
