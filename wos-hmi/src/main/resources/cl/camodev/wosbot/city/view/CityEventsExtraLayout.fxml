@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
 <GridPane alignment="CENTER_LEFT" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="580.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1">
   <columnConstraints>
@@ -50,33 +58,35 @@
         </columnConstraints>
         <rowConstraints>
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
         </rowConstraints>
          <children>
-            <CheckBox fx:id="checkBoxArenaRefreshWithGems" mnemonicParsing="false" text="Refresh with gems" GridPane.columnIndex="1" />
-            <CheckBox fx:id="checkBoxArena" mnemonicParsing="false" text="Arena" GridPane.rowIndex="1" />
-            <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="2">
+            <CheckBox fx:id="checkBoxArena" mnemonicParsing="false" text="Arena" />
+            <VBox prefHeight="200.0" prefWidth="100.0" GridPane.columnIndex="1">
                <children>
-                  <Label text="Activation hour (UTC): ">
-                     <tooltip>
-                        <Tooltip text="Enter hour in HH:MM format (00:00-23:55)" />
-                     </tooltip>
-                  </Label>
-                  <TextField fx:id="textFieldArenaActivationHour" prefWidth="60.0">
-                     <tooltip>
-                        <Tooltip text="Enter hour in HH:MM format (00:00-23:55)" />
-                     </tooltip>
-                  </TextField>
+                  <CheckBox fx:id="checkBoxArenaRefreshWithGems" mnemonicParsing="false" text="Refresh with gems" />
+                  <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0">
+                     <children>
+                        <Label text="Extra attempts: " />
+                        <ComboBox fx:id="comboBoxArenaExtraAttempts" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_LEFT">
+                     <children>
+                        <Label text="Activation time (UTC): " />
+                        <TextField fx:id="textFieldArenaActivationHour" prefWidth="60.0" promptText="HH:mm" />
+                     </children>
+                  </HBox>
                </children>
-            </HBox>
-            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-               <children>
-                  <Label text="Extra attempts: " />
-                  <ComboBox fx:id="comboBoxArenaExtraAttempts" />
-               </children>
-            </HBox>
+            </VBox>
          </children>
       </GridPane>
+      <VBox alignment="BOTTOM_LEFT" prefHeight="200.0" prefWidth="100.0" GridPane.columnIndex="1">
+         <children>
+            <Label fx:id="labelDateTimeError" textFill="RED">
+               <font>
+                  <Font size="11.0" />
+               </font>
+            </Label>
+         </children></VBox>
    </children>
 </GridPane>

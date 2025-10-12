@@ -17,6 +17,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.ServLogs;
+import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.ocr.BotTextRecognitionProvider;
@@ -54,6 +55,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected BotTextRecognitionProvider provider;
     protected TextRecognitionRetrier<Integer> integerHelper;
     protected TextRecognitionRetrier<Duration> durationHelper;
+    protected boolean shouldUpdateConfig;
 
     private static final int DEFAULT_RETRIES = 3;
 
@@ -116,6 +118,14 @@ public abstract class DelayedTask implements Runnable, Delayed {
 
         }
         execute();
+
+        // Update task configuration after running
+        if (shouldUpdateConfig) {
+            ServProfiles.getServices().saveProfile(profile);
+            shouldUpdateConfig = false;
+        }
+
+        sleepTask(2000);
         ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
 
@@ -319,7 +329,6 @@ public abstract class DelayedTask implements Runnable, Delayed {
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(254, 254, 254))
-                .setDebug(true)
                 .setAllowedChars("0123456789")
                 .build();
 
@@ -346,8 +355,6 @@ public abstract class DelayedTask implements Runnable, Delayed {
         DTOTesseractSettings timeSettings = new DTOTesseractSettings.Builder()
                 .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(false)
-                .setDebug(true)
                 .setAllowedChars("0123456789:")
                 .build();
 
@@ -486,12 +493,16 @@ public abstract class DelayedTask implements Runnable, Delayed {
         // Open the Alliance War menu
         logDebug("Opening Alliance War menu");
         tapPoint(menuResult.getPoint());
-        sleepTask(1000);
+        sleepTask(500);
+
+        // Open rally section
+        tapRandomPoint(new DTOPoint(81, 114), new DTOPoint(195, 152));
+        sleepTask(500);
 
         // Open the auto-join menu
         logDebug("Opening auto-join settings");
         tapRandomPoint(new DTOPoint(260, 1200), new DTOPoint(450, 1240));
-        sleepTask(1500);
+        sleepTask(1000);
 
         // Disabling auto-join
         tapRandomPoint(new DTOPoint(120, 1069), new DTOPoint(249, 1122));
@@ -626,7 +637,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     protected String OCRWithRetries(DTOPoint p1, DTOPoint p2) {
-        return OCRWithRetries(p1, p2, 5);
+        return OCRWithRetries(p1, p2, DEFAULT_RETRIES);
     }
 
     protected String OCRWithRetries(DTOPoint p1, DTOPoint p2, int maxRetries) {
@@ -675,6 +686,10 @@ public abstract class DelayedTask implements Runnable, Delayed {
         }
         logDebug("OCRWithRetries result: " + result);
         return result;
+    }
+
+    public void setShouldUpdateConfig(boolean shouldUpdateConfig) {
+        this.shouldUpdateConfig = shouldUpdateConfig;
     }
 
     public boolean isBearRunning() {
