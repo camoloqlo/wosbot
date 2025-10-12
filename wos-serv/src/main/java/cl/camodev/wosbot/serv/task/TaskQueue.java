@@ -520,7 +520,6 @@ public class TaskQueue {
             }
         }
 
-
         boolean runHelpAllies = profile.getConfig(EnumConfigurationKey.ALLIANCE_HELP_BOOL, Boolean.class);
 
         // Now do the actual work with synchronization

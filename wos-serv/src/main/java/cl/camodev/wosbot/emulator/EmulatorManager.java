@@ -592,20 +592,29 @@ public class EmulatorManager {
         try {
             // Check if this thread already has an active slot
             if (activeSlots.contains(currentThread)) {
-                logger.info("Profile {} already has an active slot, continuing without acquiring a new one.", profile.getName());
-                logger.debug("Current slot holders: " + activeSlots);
-                profile.setQueuePosition(0);
-                return;
+                if (emulator.isRunning(profile.getEmulatorNumber())) {
+                    logger.info("Profile {} already has an active slot, continuing without acquiring a new one.", profile.getName());
+                    logSlotHolders();
+                    profile.setQueuePosition(0);
+                    return;
+                } else {
+                    activeSlots.remove(currentThread);
+//                    MAX_RUNNING_EMULATORS++;
+                    logger.info("Profile {} had a slot, but emulator was not running, removing from slot holders and placing in queue. ",
+                            profile.getName());
+                    logSlotHolders();
+                }
             }
 
             // If a slot is available and no one is waiting, it is acquired immediately.
             logger.info("Profile " + profile.getName() + " is requesting queue slot.");
-            if (MAX_RUNNING_EMULATORS > 0 && waitingQueue.isEmpty()) {
+            if (activeSlots.size() < MAX_RUNNING_EMULATORS && waitingQueue.isEmpty()) {
                 logger.info("Profile " + profile.getName() + " acquired slot immediately.");
                 logger.debug("Current slot holders: " + activeSlots);
                 profile.setQueuePosition(0);
-                MAX_RUNNING_EMULATORS--;
+//                MAX_RUNNING_EMULATORS--;
                 activeSlots.add(currentThread); // Track this thread as having a slot
+                logSlotHolders();
                 return;
             }
 
@@ -614,7 +623,7 @@ public class EmulatorManager {
             waitingQueue.add(currentWaiting);
 
             // Wait with a timeout to be able to notify the position periodically.
-            while (waitingQueue.peek() != currentWaiting || MAX_RUNNING_EMULATORS <= 0) {
+            while (waitingQueue.peek() != currentWaiting || activeSlots.size() >= MAX_RUNNING_EMULATORS) {
                 // Wait for up to 1 second.
                 permitsAvailable.await(1, TimeUnit.SECONDS);
 
@@ -628,9 +637,9 @@ public class EmulatorManager {
             // It's the turn and a slot is available.
             waitingQueue.poll(); // Remove the thread from the queue.
             profile.setQueuePosition(0);
-            MAX_RUNNING_EMULATORS--; // Acquire the slot.
+//            MAX_RUNNING_EMULATORS--; // Acquire the slot.
             activeSlots.add(currentThread); // Track this thread as having a slot
-
+            logSlotHolders();
             // Notify other threads to re-evaluate the condition.
             permitsAvailable.signalAll();
         } finally {
@@ -638,6 +647,14 @@ public class EmulatorManager {
         }
     }
 
+    private void logSlotHolders() {
+        String listOfProfiles = activeSlots.stream()
+                .map(Thread::getName)
+                .map(name -> name.contains("-") ? name.substring(name.indexOf('-') + 1) : name)
+                .toList().toString();
+        logger.info("Current slot holders: {}/{}. {}", activeSlots.size(), MAX_RUNNING_EMULATORS, listOfProfiles);
+
+    }
     public void releaseEmulatorSlot(DTOProfiles profile) {
         Thread currentThread = Thread.currentThread();
         lock.lock();
@@ -647,12 +664,12 @@ public class EmulatorManager {
 
             // Only increment MAX_RUNNING_EMULATORS if this thread actually had a slot
             if (activeSlots.remove(currentThread)) {
-                MAX_RUNNING_EMULATORS++;
-                logger.debug("Thread {} released its slot, slots available: {}", currentThread.getName(), MAX_RUNNING_EMULATORS);
+//                MAX_RUNNING_EMULATORS++;
+                logger.info("Thread {} released its slot, slots available: {}", currentThread.getName(), MAX_RUNNING_EMULATORS);
             } else {
                 logger.warn("Thread {} tried to release a slot it didn't have", currentThread.getName());
             }
-
+            logSlotHolders();
             permitsAvailable.signalAll();
         } finally {
             lock.unlock();
