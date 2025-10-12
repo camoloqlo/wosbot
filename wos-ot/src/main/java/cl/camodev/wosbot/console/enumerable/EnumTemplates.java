@@ -95,8 +95,10 @@ public enum EnumTemplates {
 	STOREHOUSE_CHEST("/templates/storehouse/chest.png"),
 	STOREHOUSE_CHEST_2("/templates/storehouse/chest2.png"),
 	STOREHOUSE_STAMINA("/templates/storehouse/stamina.png"),
-	
-	MAIL_UNCLAIMED_REWARDS("/templates/mail/unclaimedRewards.png"),
+
+    MAIL_UNCLAIMED_REWARDS("/templates/mail/unclaimedRewards.png"),
+    MAIL_MENU_OPEN("/templates/mail/inMailMenu.png"),
+    MAIL_MENU("/templates/mail/mailMenu.png"),
 
 	ARENA_CHALLENGE_BUTTON("/templates/arena/arenaChallengeButton.png"),
 	ARENA_FREE_REFRESH_BUTTON("/templates/arena/arenaFreeRefreshButton.png"),
