@@ -55,7 +55,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected TextRecognitionRetrier<Integer> integerHelper;
     protected TextRecognitionRetrier<Duration> durationHelper;
 
-    private static final int DEFAULT_RETRIES = 5;
+    private static final int DEFAULT_RETRIES = 3;
 
     public DelayedTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         this.profile = profile;
@@ -387,8 +387,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
         }
 
         if (!checkMarchesAvailable()) {
-            logWarning("No marches available. Rescheduling to try again in 5 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
+            logWarning("No marches available, rescheduling for in 1 minute.");
+            reschedule(LocalDateTime.now().plusMinutes(1));
             return false;
         }
         return true;
@@ -408,9 +408,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected boolean checkMarchesAvailable() {
         // Open active marches panel
         tapPoint(new DTOPoint(2, 550));
-        sleepTask(500);
-        tapPoint(new DTOPoint(340, 265));
-        sleepTask(500);
+        sleepTask(200);
+        tapRandomPoint(new DTOPoint(340, 265), new DTOPoint(340, 265), 3, 100);
 
         // Define march slot coordinates
         DTOPoint[] marchTopLeft = {
@@ -526,12 +525,23 @@ public abstract class DelayedTask implements Runnable, Delayed {
         return searchTemplateWithRetries(template, 90, DEFAULT_RETRIES);
     }
 
+    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int maxRetries) {
+        return searchTemplateWithRetries(template, 90, maxRetries, 200);
+    }
+
+    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int maxRetries, long delayMs) {
+        return searchTemplateWithRetries(template, 90, maxRetries, delayMs);
+    }
+
     protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int threshold, int maxRetries) {
+        return searchTemplateWithRetries(template, threshold, maxRetries, 200);
+    }
+    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int threshold, int maxRetries, long delayMs) {
         DTOImageSearchResult result = null;
         for (int i = 0; i < maxRetries && (result == null || !result.isFound()); i++) {
             logDebug("Searching template " + template + ", (attempt " + (i + 1) + "/" + maxRetries + ")");
             result = emuManager.searchTemplate(EMULATOR_NUMBER, template, threshold);
-            sleepTask(200);
+            sleepTask(delayMs);
         }
         logDebug(result.isFound() ? "Template " + template + " found." : "Template " + template + " not found.");
         return result;
@@ -668,7 +678,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     public boolean isBearRunning() {
-        DTOImageSearchResult result = searchTemplateWithRetries(EnumTemplates.BEAR_HUNT_IS_RUNNING);
+        DTOImageSearchResult result = searchTemplateWithRetries(EnumTemplates.BEAR_HUNT_IS_RUNNING,3,500L);
         return result.isFound();
     }
 
