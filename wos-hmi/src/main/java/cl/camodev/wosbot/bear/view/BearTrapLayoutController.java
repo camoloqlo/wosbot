@@ -117,12 +117,12 @@ public class BearTrapLayoutController extends AbstractProfileController {
 
     /**
      * Validates the date/time format and shows error messages if invalid.
-     * Expected format: yyyy-MM-dd HH:mm (24-hour format)
+     * Expected format: dd-MM-yyyy HH:mm (24-hour format)
      */
     private void setupDateTimeFieldHelpers() {
         // Visual hints
-        textFieldScheduleDateTime.setPromptText("MM-dd-yyyy HH:mm");
-        textFieldScheduleDateTime.setTooltip(new Tooltip("Use format: MM-dd-yyyy HH:mm (e.g., 10-06-2025 19:30)"));
+        textFieldScheduleDateTime.setPromptText("dd-MM-yyyy HH:mm");
+        textFieldScheduleDateTime.setTooltip(new Tooltip("Use format: dd-MM-yyyy HH:mm (e.g., 10-06-2025 19:30)"));
 
         // TextFormatter that auto-inserts separators and restricts to the mask "##-##-#### ##:##"
         // It tolerates edits/paste: strips non-digits, rebuilds with separators, trims to max length.
@@ -201,10 +201,10 @@ public class BearTrapLayoutController extends AbstractProfileController {
         // Allow empty (optional field)
         if (dateTimeText == null || dateTimeText.trim().isEmpty()) return;
 
-        // Expected mask: MM-dd-yyyy HH:mm
+        // Expected mask: dd-MM-yyyy HH:mm
         final String regex = "\\d{2}-\\d{2}-\\d{4} \\d{2}:\\d{2}";
         if (!dateTimeText.matches(regex)) {
-            labelDateTimeError.setText("Invalid format. Use: MM-dd-yyyy HH:mm (e.g., 10-06-2025 19:30)");
+            labelDateTimeError.setText("Invalid format. Use: dd-MM-yyyy HH:mm (e.g., 10-06-2025 19:30)");
             textFieldScheduleDateTime.setStyle("-fx-border-color: red; -fx-border-width: 2px;");
             return;
         }
@@ -214,7 +214,7 @@ public class BearTrapLayoutController extends AbstractProfileController {
             DateTimeFormatter formatter =
                     new DateTimeFormatterBuilder()
                             .parseStrict()
-                            .appendPattern("MM-dd-yyyy HH:mm")
+                            .appendPattern("dd-MM-yyyy HH:mm")
                             .toFormatter(Locale.ROOT);
 
             LocalDateTime.parse(dateTimeText, formatter);
