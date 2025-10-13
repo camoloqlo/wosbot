@@ -1,5 +1,6 @@
 package cl.camodev.wosbot.serv.task.impl;
 
+import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -15,122 +16,114 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TundraTrekAutoTask extends DelayedTask {
+
+    // ===================== IMMUTABLE RESULT CLASS =====================
     private static class WaitOutcome {
-        boolean finished;   // Reached 0/100
-        boolean anyParsed;  // At least one OCR parse succeeded (some numeric value detected)
-        boolean stagnated;  // A value was parsed but did not decrease within STAGNATION_TIMEOUT (1 min)
+        final boolean finished; // Reached 0/100
+        final boolean anyParsed; // At least one OCR parse succeeded
+        final boolean stagnated; // Value parsed but didn't decrease within timeout
+
+        WaitOutcome(boolean finished, boolean anyParsed, boolean stagnated) {
+            this.finished = finished;
+            this.anyParsed = anyParsed;
+            this.stagnated = stagnated;
+        }
     }
 
-    // =========================== CONSTANTS ===========================
-    // Navigation points (to be filled using ADB-captured coordinates)
+    // ===================== CONSTANTS =====================
+    // Navigation points
     private static final DTOPoint SIDE_MENU_AREA_START = new DTOPoint(3, 513);
     private static final DTOPoint SIDE_MENU_AREA_END = new DTOPoint(26, 588);
     private static final DTOPoint CITY_TAB_BUTTON = new DTOPoint(110, 270);
     private static final DTOPoint SCROLL_START_POINT = new DTOPoint(400, 800);
     private static final DTOPoint SCROLL_END_POINT = new DTOPoint(400, 100);
-    
-    // Fallback click point in upper screen half when Auto button not visible
     private static final DTOPoint UPPER_SCREEN_CLICK = new DTOPoint(360, 200);
 
-    // OCR region for the trek counter (top-right indicator like "14/100").
-    // Optimized coordinates based on debug analysis: Average offset {12, -2}
+    // OCR region for trek counter (e.g., "14/100")
     private static final DTOPoint TREK_COUNTER_TOP_LEFT = new DTOPoint(516, 22);
     private static final DTOPoint TREK_COUNTER_BOTTOM_RIGHT = new DTOPoint(610, 60);
 
-    // Minimal offsets - primary position should now work with {0, 0}
-    private static final int[][] OCR_REGION_OFFSETS = new int[][]{
-        // Primary position (should work perfectly now)
-        {0, 0},
-        // Minor fallbacks for edge cases
-        {-2, 1}, {2, -1}, {3, 0}, {-2, -3}
+    // OCR region offsets for fallback attempts
+    private static final int[][] OCR_REGION_OFFSETS = {
+            { 0, 0 }, // Primary position
+            { -2, 1 }, { 2, -1 }, // Minor adjustments
+            { 3, 0 }, { -2, -3 } // Edge case fallbacks
     };
 
-    // Polling parameters
-    private static final long OCR_POLL_INTERVAL_MS = 2500; // Interval between OCR polling attempts
-    // NOTE: Timeouts handled inside waitUntilTrekCounterZero():
-    //  - STAGNATION_TIMEOUT (1 minute) when values are parsed but not decreasing
-    //  - NO_PARSE_TIMEOUT (3 minutes) when no valid OCR value is parsed at all
+    // Timeout durations
+    private static final Duration STAGNATION_TIMEOUT = Duration.ofMinutes(1);
+    private static final Duration NO_PARSE_TIMEOUT = Duration.ofMinutes(3);
+
+    // Image matching thresholds
+    private static final int BUTTON_MATCH_THRESHOLD = 85;
+    private static final int MENU_MATCH_THRESHOLD = 90;
+
+    // Retry configuration
+    private static final int TEMPLATE_SEARCH_RETRIES = 3;
+
+    // Configuration (loaded fresh each execution)
+    private boolean taskEnabled;
 
     public TundraTrekAutoTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
     }
 
     @Override
-    public boolean provideDailyMissionProgress() {
-        return true;
-    }
-
-    @Override
-    public EnumStartLocation getRequiredStartLocation() {
-        return EnumStartLocation.HOME;
-    }
-
-    @Override
     protected void execute() {
-        logInfo("Starting TundraTrekAuto task for profile: " + profile.getName());
+        logInfo("=== Starting Tundra Trek Auto Task ===");
 
-        // Check if auto manage events is enabled
-        boolean autoManageEnabled = profile.getConfig(EnumConfigurationKey.TUNDRA_TREK_AUTOMATION_BOOL, Boolean.class);
-        if (!autoManageEnabled) {
-            logInfo("Tundra Trek automation is disabled for this profile. Skipping task.");
-            this.setRecurring(false);
+        // Load configuration
+        loadConfiguration();
+
+        if (!taskEnabled) {
+            logInfo("Tundra Trek automation is disabled. Task will not run again.");
+            setRecurring(false);
             return;
         }
 
         try {
+            // Navigate to tundra menu
             if (!navigateToTundraMenu()) {
-                rescheduleOneHourLater("Failed to navigate to the Tundra menu");
+                rescheduleWithDelay(Duration.ofHours(1), "Failed to navigate to Tundra menu");
                 return;
             }
 
-            // Pre-check: if counter is already 0/100, exit immediately without pressing Auto
-            Integer preRemaining = readTrekCounterOnce();
-            if (preRemaining != null) {
-                logInfo("Pre-check trek counter remaining=" + preRemaining);
-                if (preRemaining <= 0) {
-                    logInfo("Trek counter already 0/100 on entry. Exiting event.");
-                    tapBackButton();
-                    reschedule(LocalDateTime.now().plusHours(12));
-                    return;
-                }
-            } else {
-                logDebug("Pre-check OCR could not read counter. Proceeding with Auto.");
-            }
-
-            // Press Auto button then Bag button
-            if (!clickAutoThenBag()) {
-                rescheduleOneHourLater("Failed to press Auto or Bag");
+            // Pre-check: exit immediately if counter already at 0
+            if (checkIfAlreadyComplete()) {
                 return;
             }
 
-            // Wait until the trek counter reaches 0/100, then exit
-            WaitOutcome outcome = waitUntilTrekCounterZero();
-            if (outcome.finished) {
-                logInfo("Tundra trek counter reached 0/100. Exiting event.");
-                tapBackButton();
-                reschedule(LocalDateTime.now().plusHours(12));
-            } else {
-                if (!outcome.anyParsed) {
-                    logWarning("Timeout (3 min) with no valid OCR. Exiting with double back and rescheduling in 10 minutes.");
-                    exitEventDoubleBack();
-                } else if (outcome.stagnated) {
-                    logWarning("Timeout (1 min) without decrease (values same or higher). Exiting with single back and rescheduling in 10 minutes.");
-                    tapBackButton();
-                } else {
-                    logInfo("Exiting with single back and rescheduling in 10 minutes.");
-                    tapBackButton();
-                }
-                this.reschedule(LocalDateTime.now().plusMinutes(10));
+            // Start automation sequence
+            if (!startAutomationSequence()) {
+                rescheduleWithDelay(Duration.ofHours(1), "Failed to start automation sequence");
+                return;
             }
+
+            // Wait for completion
+            handleAutomationCompletion();
 
         } catch (Exception e) {
-            logError("An error occurred during the TundraTrekAuto task: " + e.getMessage());
-            rescheduleOneHourLater("Unexpected error during execution: " + e.getMessage());
+            logError("Unexpected error during TundraTrekAuto task: " + e.getMessage(), e);
+            rescheduleWithDelay(Duration.ofHours(1), "Unexpected error");
         }
     }
 
+    /**
+     * Load configuration from profile after refresh
+     */
+    private void loadConfiguration() {
+        this.taskEnabled = profile.getConfig(
+                EnumConfigurationKey.TUNDRA_TREK_AUTOMATION_BOOL,
+                Boolean.class);
+        logDebug("Configuration loaded: taskEnabled=" + taskEnabled);
+    }
+
+    /**
+     * Navigate to the Tundra Trek menu
+     */
     private boolean navigateToTundraMenu() {
-        logInfo("Navigating to the Tundra menu...");
+        logInfo("Navigating to Tundra menu");
+
         // Open side menu
         tapRandomPoint(SIDE_MENU_AREA_START, SIDE_MENU_AREA_END);
         sleepTask(1000);
@@ -139,316 +132,486 @@ public class TundraTrekAutoTask extends DelayedTask {
         tapPoint(CITY_TAB_BUTTON);
         sleepTask(500);
 
-        // Scroll down to bring Tundra menu item into view
+        // Scroll to bring Tundra menu into view
         swipe(SCROLL_START_POINT, SCROLL_END_POINT);
         sleepTask(1300);
 
-        // Use only the dedicated Tundra Trek icon (no fallback)
-        DTOImageSearchResult tundraIcon = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.LEFT_MENU_TUNDRA_TREK_BUTTON, 90);
-        if (tundraIcon.isFound()) {
-            tapPoint(tundraIcon.getPoint());
-            sleepTask(1500);
-            logInfo("Entered event section via tundra trek icon.");
-            return true;
-        }
+        // Search for Tundra Trek icon with retries
+        DTOImageSearchResult tundraIcon = searchTemplateWithRetries(
+                EnumTemplates.LEFT_MENU_TUNDRA_TREK_BUTTON,
+                MENU_MATCH_THRESHOLD,
+                TEMPLATE_SEARCH_RETRIES);
 
-        logWarning("Could not find Tundra Trek icon in left menu. Ensure templates/leftmenu/tundraTrek.png exists and matches.");
-        return false;
-    }
-
-    private boolean clickAutoThenBag() {
-        boolean autoButtonSuccess = false;
-
-        // First try to click the Auto button
-        DTOImageSearchResult autoBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
-        if (autoBtn.isFound()) {
-            tapPoint(autoBtn.getPoint());
-            sleepTask(500);
-            autoButtonSuccess = true;
-        } else {
-            logWarning("Auto button not found (autoTrek.png). Trying upper screen click fallback...");
-            
-            // Additional fallback: click in upper screen half before Skip button
-            logInfo("Clicking in upper screen half to potentially reveal Auto button.");
-            tapPoint(UPPER_SCREEN_CLICK);
-            sleepTask(2000);
-            
-            // Search for Auto button first, then Blue button as fallback
-            DTOImageSearchResult autoButtonCheck = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
-            DTOImageSearchResult specialSection = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BLUE_BUTTON, 85);
-
-            if (autoButtonCheck.isFound()) {
-                logInfo("Auto button now visible after upper screen click - clicking it directly.");
-                tapPoint(autoButtonCheck.getPoint());
-                sleepTask(500);
-                autoButtonSuccess = true;
-            } else if (specialSection.isFound()) {
-                logInfo("Blue button found - clicking it.");
-                tapPoint(specialSection.getPoint());
-                sleepTask(3500);
-            }
-
-            // If neither Auto nor Blue button found, try Skip button as alternative
-            if (!autoButtonCheck.isFound() && !specialSection.isFound()) {
-                logWarning("Auto button still not found after upper screen click. Searching for Skip button as alternative...");
-
-                // If Auto button not found, try Skip button as alternative
-                DTOImageSearchResult skipBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_SKIP_BUTTON, 85);
-                if (skipBtn.isFound()) {
-                    logInfo("Skip button found - clicking as Auto alternative.");
-                    tapPoint(skipBtn.getPoint());
-                    sleepTask(500);
-                    // Additional tab press after skip
-                    tapPoint(skipBtn.getPoint());
-                    sleepTask(3000); // Give UI time to rebuild after skip clicks
-
-                    // Check if Auto button is now visible after skip clicks
-                    DTOImageSearchResult autoRetryAfterSkip = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
-                    if (autoRetryAfterSkip.isFound()) {
-                        logInfo("Auto button now visible after skip - clicking it.");
-                        tapPoint(autoRetryAfterSkip.getPoint());
-                        sleepTask(500);
-                        autoButtonSuccess = true;
-                    }
-                } else {
-                    logWarning("Neither Auto button nor Skip button found. Cannot start automation.");
-                    tapBackButton();
-                    sleepTask(500);
-                    return false;
-                }
-            }
-        }
-
-        // Only proceed to Bag button if Auto button was successfully clicked
-        if (!autoButtonSuccess) {
-            logWarning("Auto button was not successfully activated. Skipping bag button sequence.");
+        if (!tundraIcon.isFound()) {
+            logWarning("Tundra Trek icon not found. Verify template exists: templates/leftmenu/tundraTrek.png");
             return false;
         }
 
-        logInfo("Auto button was successful. Proceeding to Bag button sequence.");
+        // Tap icon and verify navigation
+        tapPoint(tundraIcon.getPoint());
+        sleepTask(1500);
 
-        // Then click the Bag button - but first check and handle checkbox state
-        DTOImageSearchResult bagBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BAG_BUTTON, 85);
-        if (bagBtn.isFound()) {
-            if (ensureCheckboxActive()) {
-                tapPoint(bagBtn.getPoint());
-                sleepTask(500);
-            } else {
-                logWarning("Could not ensure checkbox is active. Aborting bag button click.");
-                tapBackButton();
-                sleepTask(500);
-                return false;
-            }
-        } else {
-            logWarning("Bag button not found (bagTrek.png). Trying Blue Button fallback...");
-            
-            // Try Blue Button fallback - click upper screen then search for buttons
-            logInfo("Clicking in upper screen half to potentially reveal buttons.");
-            tapPoint(UPPER_SCREEN_CLICK);
-            sleepTask(2000);
-
-            // First check if Auto button appeared after upper screen click
-            DTOImageSearchResult autoCheckAfterClick = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
-            if (autoCheckAfterClick.isFound()) {
-                logInfo("Auto button appeared after upper screen click - clicking it.");
-                tapPoint(autoCheckAfterClick.getPoint());
-                sleepTask(500);
-                autoButtonSuccess = true;
-
-                // After Auto button click, check if Blue button is still available (Auto might be grayed out)
-                DTOImageSearchResult blueBtnCheck = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BLUE_BUTTON, 85);
-                if (blueBtnCheck.isFound()) {
-                    logInfo("Blue button still available after Auto click - clicking to activate Auto button.");
-                    tapPoint(blueBtnCheck.getPoint());
-                    sleepTask(2000);
-
-                    // After Blue button click, search for Auto button again
-                    DTOImageSearchResult autoAfterBlue = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
-                    if (autoAfterBlue.isFound()) {
-                        logInfo("Auto button now active after Blue button - clicking it.");
-                        tapPoint(autoAfterBlue.getPoint());
-                        sleepTask(500);
-                    } else {
-                        logWarning("Auto button not found after Blue button click.");
-                    }
-                }
-
-                // Now try to find and click Bag button
-                DTOImageSearchResult bagAfterAuto = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BAG_BUTTON, 85);
-                if (bagAfterAuto.isFound()) {
-                    logInfo("Bag button found after Auto button - checking checkbox state.");
-                    if (ensureCheckboxActive()) {
-                        tapPoint(bagAfterAuto.getPoint());
-                        sleepTask(500);
-                    }
-                } else {
-                    logWarning("Bag button not found after Auto button in fallback.");
-                }
-            } else {
-                // If Auto button not found, search for Blue button as fallback
-                DTOImageSearchResult blueBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BLUE_BUTTON, 85);
-
-                if (blueBtn.isFound()) {
-                    logInfo("Blue button found - clicking it.");
-                    tapPoint(blueBtn.getPoint());
-                    sleepTask(2000);
-
-                    // After blue button: upper screen click, short pause, then search Auto button again
-                    logInfo("After blue button: performing another upper screen click.");
-                    tapPoint(UPPER_SCREEN_CLICK);
-                    sleepTask(1000);
-                    DTOImageSearchResult autoAfterBlue = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_AUTO_BUTTON, 85);
-                    if (autoAfterBlue.isFound()) {
-                        logInfo("Auto button found after blue button - clicking it.");
-                        tapPoint(autoAfterBlue.getPoint());
-                        sleepTask(500);
-                        autoButtonSuccess = true;
-                    } else {
-                        logInfo("Auto button not found after blue button.");
-                    }
-
-                    // After blue button sequence, check if Bag button is now visible
-                    DTOImageSearchResult bagRetry = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_BAG_BUTTON, 85);
-                    if (bagRetry.isFound()) {
-                        logInfo("Bag button now visible after blue button click - checking checkbox state.");
-                        if (ensureCheckboxActive()) {
-                            tapPoint(bagRetry.getPoint());
-                            sleepTask(500);
-                        } else {
-                            logInfo("Checkbox could not be activated. Proceeding anyway.");
-                        }
-                    } else {
-                        logInfo("Bag button still not found after blue button. Proceeding anyway.");
-                    }
-                } else {
-                    logWarning("Blue button not found. Searching for Skip button as final fallback...");
-
-                    // If neither button found, try Skip button
-                    DTOImageSearchResult skipBtn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_SKIP_BUTTON, 85);
-                    if (skipBtn.isFound()) {
-                        logInfo("Skip button found - clicking to proceed.");
-                        tapPoint(skipBtn.getPoint());
-                        sleepTask(500);
-                        // Additional tab press after skip
-                        tapPoint(skipBtn.getPoint());
-                        sleepTask(500);
-                    } else {
-                        logWarning("Skip button not found. Using back button to exit.");
-                        tapBackButton();
-                        sleepTask(500);
-                        return false;
-                    }
-                }
-            }
-        }
+        logInfo("Successfully entered Tundra Trek event");
         return true;
     }
 
+    /**
+     * Check if trek counter is already at 0/100
+     */
+    private boolean checkIfAlreadyComplete() {
+        Integer remaining = readTrekCounterOnce();
+
+        if (remaining != null) {
+            logInfo("Pre-check: Trek counter at " + remaining + "/100");
+
+            if (remaining <= 0) {
+                logInfo("Trek already complete (0/100). Exiting event.");
+                tapBackButton();
+                sleepTask(500);
+                reschedule(UtilTime.getGameReset());
+                return true;
+            }
+        } else {
+            logDebug("Pre-check: Could not read counter. Proceeding with automation.");
+        }
+
+        return false;
+    }
+
+    /**
+     * Start the automation sequence (Auto button + Bag button)
+     * 
+     * UI Behavior Notes:
+     * - Auto button may be visible but grayed out (not clickable)
+     * - Clicking a grayed Auto button doesn't open the checkbox UI
+     * - Blue button unlocks/activates the Auto button
+     * - Skip button can advance through UI states
+     * - Upper screen clicks can refresh/reveal hidden buttons
+     * - Checkbox visibility confirms Auto button successfully opened
+     */
+    private boolean startAutomationSequence() {
+        logInfo("Starting automation sequence");
+
+        // Try to activate Auto button
+        if (!activateAutoButton()) {
+            logWarning("Failed to activate Auto button");
+            return false;
+        }
+
+        // Try to click Bag button (optional - not critical for automation)
+        if (!clickBagButton()) {
+            logInfo("Bag button sequence skipped (proceeding without it)");
+        }
+
+        logInfo("Automation sequence started successfully");
+        return true;
+    }
+
+    /**
+     * Attempt to activate the Auto button through various methods.
+     * 
+     * Auto button is verified by checking if checkbox becomes visible after
+     * clicking.
+     * If checkbox doesn't appear, the Auto button is likely grayed out and needs
+     * to be unlocked via Blue button or Skip button.
+     */
+    private boolean activateAutoButton() {
+        // Attempt 1: Try direct Auto button click
+        if (tryDirectAutoButton()) {
+            return true;
+        }
+
+        // Attempt 2: Upper screen click to reveal buttons, then try Auto
+        logInfo("Auto button not visible. Trying upper screen click to reveal buttons");
+        tapPoint(UPPER_SCREEN_CLICK);
+        sleepTask(3500 / 2);
+
+        if (tryDirectAutoButton()) {
+            return true;
+        }
+
+        // Attempt 3: Try Blue button to unlock Auto
+        if (tryBlueButtonSequence()) {
+            return true;
+        }
+
+        // Attempt 4: Try Skip button as last resort
+        if (trySkipButtonSequence()) {
+            return true;
+        }
+
+        logWarning("All button activation methods failed. Cannot start automation.");
+        tapBackButton();
+        sleepTask(500);
+        return false;
+    }
+
+    /**
+     * Try to click Auto button directly and verify it opened via checkbox
+     */
+    private boolean tryDirectAutoButton() {
+        DTOImageSearchResult autoBtn = searchTemplateWithRetries(
+                EnumTemplates.TUNDRA_TREK_AUTO_BUTTON,
+                BUTTON_MATCH_THRESHOLD,
+                2);
+
+        if (!autoBtn.isFound()) {
+            return false;
+        }
+
+        logInfo("Auto button found - clicking it");
+        tapPoint(autoBtn.getPoint());
+        sleepTask(500);
+
+        // Verify Auto opened by checking for checkbox
+        if (isCheckboxVisible()) {
+            logInfo("Auto button successfully opened (checkbox visible)");
+            return true;
+        }
+
+        logDebug("Auto button clicked but checkbox not visible - Auto may be disabled/grayed out");
+        return false;
+    }
+
+    /**
+     * Try Blue button sequence: Click Blue → Upper screen click → Try Auto
+     */
+    private boolean tryBlueButtonSequence() {
+        DTOImageSearchResult blueBtn = searchTemplateWithRetries(
+                EnumTemplates.TUNDRA_TREK_BLUE_BUTTON,
+                BUTTON_MATCH_THRESHOLD,
+                2);
+
+        if (!blueBtn.isFound()) {
+            logDebug("Blue button not found");
+            return false;
+        }
+
+        logInfo("Blue button found - clicking to potentially unlock Auto");
+        tapPoint(blueBtn.getPoint());
+        sleepTask(3500);
+
+        // After Blue button, try upper screen click
+        logInfo("After Blue button: performing upper screen click");
+        tapPoint(UPPER_SCREEN_CLICK);
+        sleepTask(1000);
+
+        // Now try Auto button
+        if (tryDirectAutoButton()) {
+            logInfo("Auto button activated successfully after Blue button sequence");
+            return true;
+        }
+
+        logDebug("Blue button sequence did not result in active Auto button");
+        return false;
+    }
+
+    /**
+     * Try Skip button sequence: Double-tap Skip → Try Auto
+     */
+    private boolean trySkipButtonSequence() {
+        DTOImageSearchResult skipBtn = searchTemplateWithRetries(
+                EnumTemplates.TUNDRA_TREK_SKIP_BUTTON,
+                BUTTON_MATCH_THRESHOLD,
+                2);
+
+        if (!skipBtn.isFound()) {
+            logDebug("Skip button not found");
+            return false;
+        }
+
+        logInfo("Skip button found - using as Auto alternative");
+
+        // Double-tap skip for UI rebuild
+        tapPoint(skipBtn.getPoint());
+        sleepTask(500);
+        tapPoint(skipBtn.getPoint());
+        sleepTask(3500);
+
+        // After skip, try Auto button
+        if (tryDirectAutoButton()) {
+            logInfo("Auto button activated successfully after Skip button");
+            return true;
+        }
+
+        // Skip worked but Auto still not active - may still be valid state
+        logInfo("Skip button clicked but Auto not verified. Proceeding anyway.");
+        return true;
+    }
+
+    /**
+     * Check if checkbox is visible (either active or inactive)
+     * This confirms the Auto button menu actually opened
+     */
+    private boolean isCheckboxVisible() {
+        // Check for active checkbox
+        DTOImageSearchResult activeCheck = emuManager.searchTemplate(
+                EMULATOR_NUMBER,
+                EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE,
+                BUTTON_MATCH_THRESHOLD);
+
+        if (activeCheck.isFound()) {
+            logDebug("Active checkbox found");
+            return true;
+        }
+
+        // Check for inactive checkbox
+        DTOImageSearchResult inactiveCheck = emuManager.searchTemplate(
+                EMULATOR_NUMBER,
+                EnumTemplates.TUNDRA_TREK_CHECK_INACTIVE,
+                BUTTON_MATCH_THRESHOLD);
+
+        if (inactiveCheck.isFound()) {
+            logDebug("Inactive checkbox found");
+            return true;
+        }
+
+        logDebug("No checkbox found (neither active nor inactive)");
+        return false;
+    }
+
+    /**
+     * Attempt to click the Bag button
+     */
+    private boolean clickBagButton() {
+        DTOImageSearchResult bagBtn = searchTemplateWithRetries(
+                EnumTemplates.TUNDRA_TREK_BAG_BUTTON,
+                BUTTON_MATCH_THRESHOLD,
+                TEMPLATE_SEARCH_RETRIES);
+
+        if (!bagBtn.isFound()) {
+            logDebug("Bag button not found (optional button)");
+            return false;
+        }
+
+        // Ensure checkbox is active before clicking bag
+        if (!ensureCheckboxActive()) {
+            logWarning("Could not activate checkbox. Skipping bag button.");
+            return false;
+        }
+
+        logInfo("Clicking Bag button");
+        tapPoint(bagBtn.getPoint());
+        sleepTask(500);
+        return true;
+    }
+
+    /**
+     * Ensure the checkbox is in active state
+     */
+    private boolean ensureCheckboxActive() {
+        // Check if already active
+        DTOImageSearchResult activeCheck = searchTemplateWithRetries(
+                EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE,
+                BUTTON_MATCH_THRESHOLD,
+                2);
+
+        if (activeCheck.isFound()) {
+            logDebug("Checkbox already active");
+            return true;
+        }
+
+        // Find and click inactive checkbox
+        DTOImageSearchResult inactiveCheck = searchTemplateWithRetries(
+                EnumTemplates.TUNDRA_TREK_CHECK_INACTIVE,
+                BUTTON_MATCH_THRESHOLD,
+                2);
+
+        if (!inactiveCheck.isFound()) {
+            logWarning("Checkbox not found (neither active nor inactive)");
+            return false;
+        }
+
+        logInfo("Activating checkbox");
+        tapPoint(inactiveCheck.getPoint());
+        sleepTask(500);
+
+        // Verify activation
+        activeCheck = searchTemplateWithRetries(
+                EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE,
+                BUTTON_MATCH_THRESHOLD,
+                2);
+
+        if (activeCheck.isFound()) {
+            logDebug("Checkbox successfully activated");
+            return true;
+        }
+
+        logWarning("Checkbox activation failed");
+        return false;
+    }
+
+    /**
+     * Handle the completion of automation
+     */
+    private void handleAutomationCompletion() {
+        WaitOutcome outcome = waitUntilTrekCounterZero();
+
+        if (outcome.finished) {
+            logInfo("Trek completed successfully (0/100). Exiting event.");
+            sleepTask(2000);
+            tapBackButton();
+            sleepTask(500);
+            reschedule(UtilTime.getGameReset());
+            return;
+        }
+
+        // Handle timeout scenarios
+        if (!outcome.anyParsed) {
+            logWarning("Timeout: No valid OCR readings for " + NO_PARSE_TIMEOUT.toMinutes() + " minutes");
+            exitWithDoubleBack();
+        } else if (outcome.stagnated) {
+            logWarning("Timeout: Counter stagnated for " + STAGNATION_TIMEOUT.toMinutes() + " minute");
+            tapBackButton();
+        } else {
+            logInfo("Exiting normally after timeout");
+            tapBackButton();
+        }
+
+        sleepTask(500);
+        rescheduleWithDelay(Duration.ofMinutes(10), "Timeout during automation");
+    }
+
+    /**
+     * Wait until trek counter reaches 0/100
+     */
     private WaitOutcome waitUntilTrekCounterZero() {
-        Pattern fraction = Pattern.compile("(\\d+)\\s*/\\s*(\\d+)");
-        Pattern twoNumbersLoose = Pattern.compile("(\\d{1,3})\\D+(\\d{2,3})");
+        Pattern fractionPattern = Pattern.compile("(\\d+)\\s*/\\s*(\\d+)");
+        Pattern twoNumbersPattern = Pattern.compile("(\\d{1,3})\\D+(\\d{2,3})");
+
         int attempts = 0;
-        WaitOutcome outcome = new WaitOutcome();
         Integer lastValue = null;
         LocalDateTime lastDecreaseAt = null;
-    final Duration STAGNATION_TIMEOUT = Duration.ofMinutes(1); // 1 minute when valid values are parsed but not decreasing
-    final Duration NO_PARSE_TIMEOUT = Duration.ofMinutes(3);   // 3 minutes when no valid value can be parsed at all
         LocalDateTime noParseStart = LocalDateTime.now();
+        boolean anyParsed = false;
 
         while (true) {
-            try {
-                String raw = null;
-                String norm = null;
-                Integer remaining = null;
-                int usedDx = 0, usedDy = 0;
+            Integer remaining = tryReadTrekCounter(fractionPattern, twoNumbersPattern, attempts);
+            LocalDateTime now = LocalDateTime.now();
 
-                for (int i = 0; i < OCR_REGION_OFFSETS.length; i++) {
-                    int dx = OCR_REGION_OFFSETS[i][0];
-                    int dy = OCR_REGION_OFFSETS[i][1];
-                    DTOPoint p1 = new DTOPoint(TREK_COUNTER_TOP_LEFT.getX() + dx, TREK_COUNTER_TOP_LEFT.getY() + dy);
-                    DTOPoint p2 = new DTOPoint(TREK_COUNTER_BOTTOM_RIGHT.getX() + dx, TREK_COUNTER_BOTTOM_RIGHT.getY() + dy);
-                    try {
-                        raw = emuManager.ocrRegionText(EMULATOR_NUMBER, p1, p2);
-                        norm = normalizeOcrText(raw);
-                        remaining = parseRemaining(raw, norm, fraction, twoNumbersLoose);
-                        if (attempts < 5 || attempts % 10 == 0) {
-                            logDebug("OCR attempt " + attempts + ", offset " + i + " (dx=" + dx + ", dy=" + dy + "): region[" + p1.getX() + "," + p1.getY() + " to " + p2.getX() + "," + p2.getY() + "] raw='" + (raw != null ? raw.replace('\n', '\\') : "null") + "' norm='" + (norm != null ? norm : "null") + "' parsed=" + remaining);
-                        }
-                        if (remaining != null) {
-                            outcome.anyParsed = true;
-                            usedDx = dx; usedDy = dy;
-                            break;
-                        }
-                    } catch (Exception inner) {
-                        if (attempts < 5) {
-                            logDebug("OCR exception at offset " + i + " (dx=" + dx + ", dy=" + dy + "): " + inner.getMessage());
-                        }
+            if (remaining != null) {
+                // Successfully parsed a value
+                anyParsed = true;
+
+                if (remaining <= 0) {
+                    return new WaitOutcome(true, anyParsed, false);
+                }
+
+                // Track decreases
+                if (lastValue == null) {
+                    lastValue = remaining;
+                    lastDecreaseAt = now;
+                    logDebug("Initial trek counter: " + remaining);
+                } else if (remaining < lastValue) {
+                    lastValue = remaining;
+                    lastDecreaseAt = now;
+                    logDebug("Trek counter decreased to: " + remaining);
+                } else if (lastDecreaseAt != null) {
+                    // Value hasn't decreased - check for stagnation
+                    Duration sinceDecrease = Duration.between(lastDecreaseAt, now);
+                    if (sinceDecrease.compareTo(STAGNATION_TIMEOUT) >= 0) {
+                        logWarning("Trek counter stagnated at " + remaining + " for " +
+                                sinceDecrease.toSeconds() + "s");
+                        return new WaitOutcome(false, anyParsed, true);
                     }
                 }
 
-                LocalDateTime now = LocalDateTime.now();
-                if (remaining != null) {
-                    logDebug("Trek counter OCR (dx=" + usedDx + ", dy=" + usedDy + "): '" + raw + "' => '" + norm + "' -> remaining=" + remaining + (lastValue != null ? (", lastValue=" + lastValue) : "") + (lastDecreaseAt != null ? (", sinceDecrease=" + Duration.between(lastDecreaseAt, now).toSeconds() + "s") : ""));
-                    if (remaining <= 0) {
-                        outcome.finished = true;
-                        return outcome;
-                    }
-                    if (lastValue == null) {
-                        lastValue = remaining;
-                        lastDecreaseAt = now;
-                    } else {
-                        if (remaining < lastValue) {
-                            lastValue = remaining;
-                            lastDecreaseAt = now;
-                        } else {
-                            if (lastDecreaseAt != null && Duration.between(lastDecreaseAt, now).compareTo(STAGNATION_TIMEOUT) >= 0) {
-                                outcome.stagnated = true;
-                                return outcome;
-                            }
-                        }
-                    }
-                } else {
-                    logDebug("Trek counter OCR could not parse any number on attempt " + attempts + ". Last raw='" + (raw == null ? "" : raw) + "'");
-                    if (Duration.between(noParseStart, now).compareTo(NO_PARSE_TIMEOUT) >= 0) {
-                        logWarning("OCR timeout: 3 minutes without any number parsed. Aborting.");
-                        return outcome;
-                    }
+                // Reset no-parse timer since we got a value
+                noParseStart = now;
+
+            } else {
+                // Failed to parse - check no-parse timeout
+                logDebug("Trek counter OCR failed (attempt " + attempts + ")");
+
+                Duration sinceNoParse = Duration.between(noParseStart, now);
+                if (sinceNoParse.compareTo(NO_PARSE_TIMEOUT) >= 0) {
+                    logWarning("No valid OCR for " + sinceNoParse.toMinutes() + " minutes");
+                    return new WaitOutcome(false, anyParsed, false);
                 }
-            } catch (Exception e) {
-                logDebug("OCR error while reading trek counter: " + e.getMessage());
             }
 
             attempts++;
-            sleepTask(OCR_POLL_INTERVAL_MS);
+            sleepTask(2500);
         }
     }
 
-    private Integer readTrekCounterOnce() {
-        Pattern fraction = Pattern.compile("(\\d+)\\s*/\\s*(\\d+)");
-        Pattern twoNumbersLoose = Pattern.compile("(\\d{1,3})\\D+(\\d{2,3})");
-        String raw = null;
-        String norm = null;
-        for (int[] off : OCR_REGION_OFFSETS) {
-            int dx = off[0];
-            int dy = off[1];
-            DTOPoint p1 = new DTOPoint(TREK_COUNTER_TOP_LEFT.getX() + dx, TREK_COUNTER_TOP_LEFT.getY() + dy);
-            DTOPoint p2 = new DTOPoint(TREK_COUNTER_BOTTOM_RIGHT.getX() + dx, TREK_COUNTER_BOTTOM_RIGHT.getY() + dy);
+    /**
+     * Attempt to read trek counter using multiple OCR strategies
+     */
+    private Integer tryReadTrekCounter(Pattern fractionPattern, Pattern twoNumbersPattern, int attempt) {
+        for (int[] offset : OCR_REGION_OFFSETS) {
+            int dx = offset[0];
+            int dy = offset[1];
+
+            DTOPoint p1 = new DTOPoint(
+                    TREK_COUNTER_TOP_LEFT.getX() + dx,
+                    TREK_COUNTER_TOP_LEFT.getY() + dy);
+            DTOPoint p2 = new DTOPoint(
+                    TREK_COUNTER_BOTTOM_RIGHT.getX() + dx,
+                    TREK_COUNTER_BOTTOM_RIGHT.getY() + dy);
+
             try {
-                raw = emuManager.ocrRegionText(EMULATOR_NUMBER, p1, p2);
-                norm = normalizeOcrText(raw);
-                Integer remaining = parseRemaining(raw, norm, fraction, twoNumbersLoose);
+                String raw = emuManager.ocrRegionText(EMULATOR_NUMBER, p1, p2);
+                String normalized = normalizeOcrText(raw);
+                Integer remaining = parseRemaining(raw, normalized, fractionPattern, twoNumbersPattern);
+
                 if (remaining != null) {
-                    logDebug("Pre-check OCR (dx=" + dx + ", dy=" + dy + "): '" + raw + "' => '" + norm + "' -> remaining=" + remaining);
+                    if (attempt < 5 || attempt % 10 == 0) {
+                        logDebug("OCR success (dx=" + dx + ", dy=" + dy + "): '" + raw +
+                                "' => " + remaining);
+                    }
                     return remaining;
                 }
-            } catch (Exception ignore) {
+            } catch (Exception e) {
+                if (attempt < 3) {
+                    logDebug("OCR exception at offset (" + dx + "," + dy + "): " + e.getMessage());
+                }
             }
         }
+
         return null;
     }
 
+    /**
+     * Read trek counter once (for pre-check)
+     */
+    private Integer readTrekCounterOnce() {
+        Pattern fractionPattern = Pattern.compile("(\\d+)\\s*/\\s*(\\d+)");
+        Pattern twoNumbersPattern = Pattern.compile("(\\d{1,3})\\D+(\\d{2,3})");
+
+        for (int[] offset : OCR_REGION_OFFSETS) {
+            int dx = offset[0];
+            int dy = offset[1];
+
+            DTOPoint p1 = new DTOPoint(
+                    TREK_COUNTER_TOP_LEFT.getX() + dx,
+                    TREK_COUNTER_TOP_LEFT.getY() + dy);
+            DTOPoint p2 = new DTOPoint(
+                    TREK_COUNTER_BOTTOM_RIGHT.getX() + dx,
+                    TREK_COUNTER_BOTTOM_RIGHT.getY() + dy);
+
+            try {
+                String raw = emuManager.ocrRegionText(EMULATOR_NUMBER, p1, p2);
+                String normalized = normalizeOcrText(raw);
+                Integer remaining = parseRemaining(raw, normalized, fractionPattern, twoNumbersPattern);
+
+                if (remaining != null) {
+                    return remaining;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalize OCR text for better parsing
+     */
     private String normalizeOcrText(String text) {
-        if (text == null) return "";
+        if (text == null)
+            return "";
+
         return text
                 .replace('\n', ' ')
                 .replace('\r', ' ')
@@ -460,123 +623,126 @@ public class TundraTrekAutoTask extends DelayedTask {
                 .trim();
     }
 
+    /**
+     * Parse remaining count from OCR text
+     */
+    private Integer parseRemaining(String raw, String normalized,
+            Pattern fractionPattern, Pattern twoNumbersPattern) {
+        // Try fraction pattern on raw
+        Integer result = extractBestFraction(raw, fractionPattern);
+        if (result != null)
+            return result;
 
-
-    private Integer parseRemaining(String raw, String norm, Pattern fractionPattern, Pattern twoNumbersLoose) {
-        // Helper to select the smallest plausible numerator among matches
-        Integer best = extractBestFraction(raw, fractionPattern);
-        if (best != null) return best;
-
-        // Try alternate separators on raw
-        String altRaw = raw == null ? null : raw.replace(':', '/').replace(';', '/').replace('-', '/').replace('|', '/').replace('\\', '/');
-        best = extractBestFraction(altRaw, fractionPattern);
-        if (best != null) return best;
-
-        // Try normalized text
-        best = extractBestFraction(norm, fractionPattern);
-        if (best != null) return best;
-
-        // Loose two-number pattern on raw
+        // Try with alternate separators
         if (raw != null) {
-            Matcher m = twoNumbersLoose.matcher(raw);
-            if (m.find()) {
-                try {
-                    int num = Integer.parseInt(m.group(1));
-                    int den = Integer.parseInt(m.group(2));
-                    if (den >= 50 && den <= 150) return num;
-                } catch (NumberFormatException ignore) {}
-            }
+            String altRaw = raw
+                    .replace(':', '/')
+                    .replace(';', '/')
+                    .replace('-', '/')
+                    .replace('|', '/')
+                    .replace('\\', '/');
+            result = extractBestFraction(altRaw, fractionPattern);
+            if (result != null)
+                return result;
         }
 
-        // Loose two-number pattern on norm
-        if (norm != null) {
-            Matcher m = twoNumbersLoose.matcher(norm);
-            if (m.find()) {
-                try {
-                    int num = Integer.parseInt(m.group(1));
-                    int den = Integer.parseInt(m.group(2));
-                    if (den >= 50 && den <= 150) return num;
-                } catch (NumberFormatException ignore) {}
-            }
-        }
+        // Try fraction on normalized
+        result = extractBestFraction(normalized, fractionPattern);
+        if (result != null)
+            return result;
 
-        // Heuristic for 0100-like
-        if (norm != null && (norm.matches("^0+/?1?0?0+$") || norm.matches("^0+100$"))) {
+        // Try loose two-number pattern
+        result = tryTwoNumbersPattern(raw, twoNumbersPattern);
+        if (result != null)
+            return result;
+
+        result = tryTwoNumbersPattern(normalized, twoNumbersPattern);
+        if (result != null)
+            return result;
+
+        // Heuristic for "0100" variations
+        if (normalized != null &&
+                (normalized.matches("^0+/?1?0?0+$") || normalized.matches("^0+100$"))) {
             return 0;
         }
+
         return null;
     }
 
+    /**
+     * Extract best (smallest) numerator from fraction pattern matches
+     */
     private Integer extractBestFraction(String text, Pattern fractionPattern) {
-        if (text == null) return null;
-        Matcher m = fractionPattern.matcher(text);
+        if (text == null)
+            return null;
+
+        Matcher matcher = fractionPattern.matcher(text);
         Integer best = null;
-        while (m.find()) {
+
+        while (matcher.find()) {
             try {
-                int num = Integer.parseInt(m.group(1));
-                int den = Integer.parseInt(m.group(2));
-                boolean denOk = den >= 50 && den <= 150;
-                if (!denOk) continue;
-                if (best == null || num < best) {
-                    best = num;
+                int numerator = Integer.parseInt(matcher.group(1));
+                int denominator = Integer.parseInt(matcher.group(2));
+
+                // Denominator should be around 100 (50-150 range)
+                if (denominator < 50 || denominator > 150) {
+                    continue;
                 }
-            } catch (NumberFormatException ignore) {
+
+                if (best == null || numerator < best) {
+                    best = numerator;
+                }
+            } catch (NumberFormatException ignored) {
             }
         }
+
         return best;
     }
 
-    private boolean ensureCheckboxActive() {
-        logInfo("Checking checkbox state before proceeding with bag button.");
+    /**
+     * Try loose two-numbers pattern
+     */
+    private Integer tryTwoNumbersPattern(String text, Pattern pattern) {
+        if (text == null)
+            return null;
 
-        // First check if active checkbox is already visible
-        logDebug("Searching for active checkbox template");
-        DTOImageSearchResult activeCheck = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE, 85);
-        logDebug("Active checkbox search result: found=" + activeCheck.isFound());
-        if (activeCheck.isFound()) {
-            logInfo("Checkbox is already active. Proceeding.");
-            return true;
-        }
+        Matcher matcher = pattern.matcher(text);
+        if (matcher.find()) {
+            try {
+                int numerator = Integer.parseInt(matcher.group(1));
+                int denominator = Integer.parseInt(matcher.group(2));
 
-        // Check if inactive checkbox is visible
-        logDebug("Searching for inactive checkbox template");
-        DTOImageSearchResult inactiveCheck = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_CHECK_INACTIVE, 85);
-        logDebug("Inactive checkbox search result: found=" + inactiveCheck.isFound());
-        if (inactiveCheck.isFound()) {
-            logInfo("Checkbox is inactive. Clicking to activate it at position: " + inactiveCheck.getPoint());
-            tapPoint(inactiveCheck.getPoint());
-            sleepTask(500);
-
-            // Verify that checkbox is now active
-            logDebug("Verifying checkbox activation...");
-            DTOImageSearchResult activeCheckRetry = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE, 85);
-            logDebug("Post-click active checkbox search: found=" + activeCheckRetry.isFound());
-            if (activeCheckRetry.isFound()) {
-                logInfo("Checkbox successfully activated.");
-                return true;
-            } else {
-                logWarning("Checkbox click did not activate it properly.");
-                return false;
+                if (denominator >= 50 && denominator <= 150) {
+                    return numerator;
+                }
+            } catch (NumberFormatException ignored) {
             }
         }
 
-        logWarning("Neither active nor inactive checkbox found. Template files may be missing or checkbox not visible on screen.");
-        return false;
+        return null;
     }
 
-    private void rescheduleOneHourLater(String reason) {
-        LocalDateTime nextExecution = LocalDateTime.now().plusHours(1);
-        logWarning(reason + ". Rescheduling task for one hour later.");
-        this.reschedule(nextExecution);
+    /**
+     * Exit with double back button press
+     */
+    private void exitWithDoubleBack() {
+        tapBackButton();
+        sleepTask(300);
+        tapBackButton();
+        sleepTask(300);
     }
 
-    private void exitEventDoubleBack() {
-        try {
-            tapBackButton();
-            sleepTask(400);
-            tapBackButton();
-            sleepTask(400);
-        } catch (Exception ignore) {
-        }
+    /**
+     * Reschedule task with delay and reason
+     */
+    private void rescheduleWithDelay(Duration delay, String reason) {
+        LocalDateTime nextExecution = LocalDateTime.now().plus(delay);
+        logWarning(reason + ". Rescheduling for " + nextExecution);
+        reschedule(nextExecution);
+    }
+
+    @Override
+    protected EnumStartLocation getRequiredStartLocation() {
+        return EnumStartLocation.HOME;
     }
 }

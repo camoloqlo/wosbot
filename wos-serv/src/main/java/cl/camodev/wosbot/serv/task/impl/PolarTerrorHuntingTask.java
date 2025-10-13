@@ -22,7 +22,6 @@ public class PolarTerrorHuntingTask extends DelayedTask {
     private final int minStaminaLevel = 100;
     private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
     private final ServTaskManager servTaskManager = ServTaskManager.getInstance();
-    private Integer currentStamina = null;
     private static final int MAX_POLAR_LEVEL = 8;
 
     // Configuration (loaded fresh each execution after profile refresh)
@@ -62,8 +61,6 @@ public class PolarTerrorHuntingTask extends DelayedTask {
             }
         }
 
-        currentStamina = getCurrentStamina();
-
         logInfo(String.format("Configuration: Level %d | %s Mode | Flag: %s",
                 polarTerrorLevel,
                 limitedHunting ? "Limited (10 hunts)" : "Unlimited",
@@ -72,6 +69,11 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         // Verify if there's enough stamina to hunt, if not, reschedule the task
         if (!checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel))
             return;
+
+        // Check limited hunting limit
+        if (limitedHunting && !polarsRemaining(polarTerrorLevel)) {
+            return; // Already rescheduled in polarsRemaining
+        }
 
         // Flag mode: Send single rally
         if (useFlag) {
@@ -88,7 +90,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
             // Check marches before each rally
             if (!checkMarchesAvailable()) {
                 logInfo("No marches available after " + ralliesDeployed + " rallies. Waiting for marches to return.");
-                reschedule(LocalDateTime.now().plusMinutes(5));
+                reschedule(LocalDateTime.now().plusMinutes(1));
                 return;
             }
 
@@ -121,7 +123,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
 
             // result == 1: success
             ralliesDeployed++;
-            logInfo("Rally #" + ralliesDeployed + " deployed successfully. Current stamina: " + currentStamina);
+            logInfo("Rally #" + ralliesDeployed + " deployed successfully. Current stamina: " + getCurrentStamina());
             sleepTask(1500);
         }
 
@@ -216,7 +218,6 @@ public class PolarTerrorHuntingTask extends DelayedTask {
 
         // Update stamina
         subtractStamina(spentStamina, true);
-        currentStamina = getCurrentStamina();
 
         // Flag mode: reschedule for march return
         if (useFlag) {
@@ -234,10 +235,10 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         // No-flag mode: check stamina for next rally
         if (getCurrentStamina() <= minStaminaLevel) {
             logInfo("Stamina is at or below minimum. Stopping deployment and rescheduling.");
-            reschedule(LocalDateTime.now().plusMinutes(staminaRegenerationTime(getCurrentStamina(), refreshStaminaLevel)));
+            reschedule(
+                    LocalDateTime.now().plusMinutes(staminaRegenerationTime(getCurrentStamina(), refreshStaminaLevel)));
             return 3;
         }
-
         return 1;
     }
 
@@ -318,7 +319,8 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         if (polarLevel != -1) {
             logInfo(String.format("Adjusting Polar Terror level to %d", polarLevel));
             if (polarLevel < 1 || polarLevel > levelPoints.length) {
-                logError(String.format("Invalid Polar Terror level configured: %d. Must be between 1 and %d.", polarLevel, MAX_POLAR_LEVEL));
+                logError(String.format("Invalid Polar Terror level configured: %d. Must be between 1 and %d.",
+                        polarLevel, MAX_POLAR_LEVEL));
                 return false;
             }
             tapRandomPoint(levelPoints[polarLevel - 1], levelPoints[polarLevel - 1], 3, 100);
@@ -326,7 +328,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         // tap on search button
         logDebug("Tapping on search button...");
         tapRandomPoint(new DTOPoint(301, 1200), new DTOPoint(412, 1229));
-        sleepTask(4000);
+        sleepTask(1500);
         return true;
     }
 
@@ -378,6 +380,11 @@ public class PolarTerrorHuntingTask extends DelayedTask {
     @Override
     protected EnumStartLocation getRequiredStartLocation() {
         return EnumStartLocation.WORLD;
+    }
+
+    @Override
+    protected boolean consumesStamina() {
+        return true;
     }
 
 }

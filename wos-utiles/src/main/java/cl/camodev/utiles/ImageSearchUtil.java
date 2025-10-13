@@ -456,7 +456,7 @@ public class ImageSearchUtil {
             long totalTime = System.currentTimeMillis() - startTime;
 
             if (matchPercentage < thresholdPercentage) {
-                logger.debug("=== Template Search Completed === Total: {} ms, Match: {}% (BELOW threshold)",
+                logger.info("=== Template Search Completed === Total: {} ms, Match: {}% (BELOW threshold)",
                     totalTime, String.format("%.2f", matchPercentage));
                 return new DTOImageSearchResult(false, null, matchPercentage);
             }

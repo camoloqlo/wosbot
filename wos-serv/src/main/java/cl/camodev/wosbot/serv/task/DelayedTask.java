@@ -17,6 +17,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.ServLogs;
+import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.ocr.BotTextRecognitionProvider;
@@ -54,8 +55,9 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected BotTextRecognitionProvider provider;
     protected TextRecognitionRetrier<Integer> integerHelper;
     protected TextRecognitionRetrier<Duration> durationHelper;
+    protected boolean shouldUpdateConfig;
 
-    private static final int DEFAULT_RETRIES = 5;
+    private static final int DEFAULT_RETRIES = 3;
 
     public DelayedTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         this.profile = profile;
@@ -116,6 +118,14 @@ public abstract class DelayedTask implements Runnable, Delayed {
 
         }
         execute();
+
+        // Update task configuration after running
+        if (shouldUpdateConfig) {
+            ServProfiles.getServices().saveProfile(profile);
+            shouldUpdateConfig = false;
+        }
+
+        sleepTask(2000);
         ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
 
@@ -319,7 +329,6 @@ public abstract class DelayedTask implements Runnable, Delayed {
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(254, 254, 254))
-                .setDebug(true)
                 .setAllowedChars("0123456789")
                 .build();
 
@@ -342,12 +351,17 @@ public abstract class DelayedTask implements Runnable, Delayed {
         StaminaService.getServices().subtractStamina(profile.getId(), defaultStamina);
     }
 
+    protected void addStamina(Integer stamina) {
+        if (stamina == null) {
+            return;
+        }
+        StaminaService.getServices().addStamina(profile.getId(), stamina);
+    }
+
     protected long parseTravelTime() {
         DTOTesseractSettings timeSettings = new DTOTesseractSettings.Builder()
                 .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(false)
-                .setDebug(true)
                 .setAllowedChars("0123456789:")
                 .build();
 
@@ -387,8 +401,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
         }
 
         if (!checkMarchesAvailable()) {
-            logWarning("No marches available. Rescheduling to try again in 5 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
+            logWarning("No marches available, rescheduling for in 1 minute.");
+            reschedule(LocalDateTime.now().plusMinutes(1));
             return false;
         }
         return true;
@@ -408,9 +422,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected boolean checkMarchesAvailable() {
         // Open active marches panel
         tapPoint(new DTOPoint(2, 550));
-        sleepTask(500);
-        tapPoint(new DTOPoint(340, 265));
-        sleepTask(500);
+        sleepTask(200);
+        tapRandomPoint(new DTOPoint(340, 265), new DTOPoint(340, 265), 3, 100);
 
         // Define march slot coordinates
         DTOPoint[] marchTopLeft = {
@@ -487,12 +500,16 @@ public abstract class DelayedTask implements Runnable, Delayed {
         // Open the Alliance War menu
         logDebug("Opening Alliance War menu");
         tapPoint(menuResult.getPoint());
-        sleepTask(1000);
+        sleepTask(500);
+
+        // Open rally section
+        tapRandomPoint(new DTOPoint(81, 114), new DTOPoint(195, 152));
+        sleepTask(500);
 
         // Open the auto-join menu
         logDebug("Opening auto-join settings");
         tapRandomPoint(new DTOPoint(260, 1200), new DTOPoint(450, 1240));
-        sleepTask(1500);
+        sleepTask(1000);
 
         // Disabling auto-join
         tapRandomPoint(new DTOPoint(120, 1069), new DTOPoint(249, 1122));
@@ -526,12 +543,25 @@ public abstract class DelayedTask implements Runnable, Delayed {
         return searchTemplateWithRetries(template, 90, DEFAULT_RETRIES);
     }
 
+    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int maxRetries) {
+        return searchTemplateWithRetries(template, 90, maxRetries, 200);
+    }
+
+    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int maxRetries, long delayMs) {
+        return searchTemplateWithRetries(template, 90, maxRetries, delayMs);
+    }
+
     protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int threshold, int maxRetries) {
+        return searchTemplateWithRetries(template, threshold, maxRetries, 200);
+    }
+
+    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int threshold, int maxRetries,
+            long delayMs) {
         DTOImageSearchResult result = null;
         for (int i = 0; i < maxRetries && (result == null || !result.isFound()); i++) {
             logDebug("Searching template " + template + ", (attempt " + (i + 1) + "/" + maxRetries + ")");
             result = emuManager.searchTemplate(EMULATOR_NUMBER, template, threshold);
-            sleepTask(200);
+            sleepTask(delayMs);
         }
         logDebug(result.isFound() ? "Template " + template + " found." : "Template " + template + " not found.");
         return result;
@@ -541,13 +571,31 @@ public abstract class DelayedTask implements Runnable, Delayed {
         return OCRWithRetries(searchStringLower, p1, p2, DEFAULT_RETRIES);
     }
 
-    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, DTOPoint topLeft,
-            DTOPoint bottomRight, int threshold, int maxRetries) {
+    protected DTOImageSearchResult searchTemplateRegionWithRetries(
+            EnumTemplates template, DTOPoint topLeft, DTOPoint bottomRight) {
+        return searchTemplateRegionWithRetries(
+                template, topLeft, bottomRight,
+                90, DEFAULT_RETRIES, 200L);
+    }
+
+    protected DTOImageSearchResult searchTemplateRegionWithRetries(
+            EnumTemplates template, DTOPoint topLeft, DTOPoint bottomRight, int retries, long delayMs) {
+        return searchTemplateRegionWithRetries(
+                template, topLeft, bottomRight,
+                90, retries, delayMs);
+    }
+
+    protected DTOImageSearchResult searchTemplateRegionWithRetries(
+            EnumTemplates template, DTOPoint topLeft, DTOPoint bottomRight,
+            int threshold, int maxRetries, long delayMs) {
         DTOImageSearchResult result = null;
         for (int i = 0; i < maxRetries && (result == null || !result.isFound()); i++) {
             logDebug("Searching template " + template + ", (attempt " + (i + 1) + "/" + maxRetries + ")");
             result = emuManager.searchTemplate(EMULATOR_NUMBER, template, topLeft, bottomRight, threshold);
-            sleepTask(200);
+            sleepTask(delayMs);
+        }
+        if (result == null) {
+            throw new IllegalStateException("Template search did not return a result for template: " + template);
         }
         logDebug(result.isFound() ? "Template " + template + " found." : "Template " + template + " not found.");
         return result;
@@ -599,7 +647,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     protected String OCRWithRetries(DTOPoint p1, DTOPoint p2) {
-        return OCRWithRetries(p1, p2, 5);
+        return OCRWithRetries(p1, p2, DEFAULT_RETRIES);
     }
 
     protected String OCRWithRetries(DTOPoint p1, DTOPoint p2, int maxRetries) {
@@ -650,8 +698,12 @@ public abstract class DelayedTask implements Runnable, Delayed {
         return result;
     }
 
+    public void setShouldUpdateConfig(boolean shouldUpdateConfig) {
+        this.shouldUpdateConfig = shouldUpdateConfig;
+    }
+
     public boolean isBearRunning() {
-        DTOImageSearchResult result = searchTemplateWithRetries(EnumTemplates.BEAR_HUNT_IS_RUNNING);
+        DTOImageSearchResult result = searchTemplateWithRetries(EnumTemplates.BEAR_HUNT_IS_RUNNING, 3, 500L);
         return result.isFound();
     }
 

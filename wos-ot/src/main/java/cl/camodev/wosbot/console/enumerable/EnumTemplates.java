@@ -95,8 +95,10 @@ public enum EnumTemplates {
 	STOREHOUSE_CHEST("/templates/storehouse/chest.png"),
 	STOREHOUSE_CHEST_2("/templates/storehouse/chest2.png"),
 	STOREHOUSE_STAMINA("/templates/storehouse/stamina.png"),
-	
-	MAIL_UNCLAIMED_REWARDS("/templates/mail/unclaimedRewards.png"),
+
+    MAIL_UNCLAIMED_REWARDS("/templates/mail/unclaimedRewards.png"),
+    MAIL_MENU_OPEN("/templates/mail/inMailMenu.png"),
+    MAIL_MENU("/templates/mail/mailMenu.png"),
 
 	ARENA_CHALLENGE_BUTTON("/templates/arena/arenaChallengeButton.png"),
 	ARENA_FREE_REFRESH_BUTTON("/templates/arena/arenaFreeRefreshButton.png"),
@@ -214,7 +216,8 @@ public enum EnumTemplates {
     CRYSTAL_LAB_DAILY_DISCOUNTED_RFC("/templates/crystallab/dailyDiscountedRFC.png"),
     CRYSTAL_LAB_RFC_REFINE_BUTTON("/templates/crystallab/rfcRefineButton.png"),
 	
-	VIP_UNLOCK_BUTTON("/templates/vip/unlockButton.png"),
+	VIP_UNLOCK_BUTTON("/templates/vip/vipUnlockButton.png"),
+	VIP_MENU("/templates/vip/vipMenu.png"),
 
     // ========================================================================
     // INTELLIGENCE AND MISSIONS
@@ -330,6 +333,7 @@ public enum EnumTemplates {
 	TUNDRA_TRUCK_GREEN("/templates/tundratruck/tundraTruckNormal.png"),
 	TUNDRA_TRUCK_REFRESH("/templates/tundratruck/tundraTruckRefresh.png"),
 	TUNDRA_TRUCK_REFRESH_GEMS("/templates/tundratruck/tundraTruckRefreshGems.png"),
+	TUNDRA_TRUCK_TIPS_POPUP("/templates/tundratruck/tundraTruckTipsPopup.png"),
 	TUNDRA_TRUCK_YELLOW_RAID("/templates/tundratruck/tundraTruckLegendaryRaid.png"),
 	TUNDRA_TRUCK_ESCORT("/templates/tundratruck/tundraTruckEscort.png"),
 	TUNDRA_TRUCK_DEPARTED("/templates/tundratruck/tundraTruckDeparted.png"),
