@@ -351,6 +351,13 @@ public abstract class DelayedTask implements Runnable, Delayed {
         StaminaService.getServices().subtractStamina(profile.getId(), defaultStamina);
     }
 
+    protected void addStamina(Integer stamina) {
+        if (stamina == null) {
+            return;
+        }
+        StaminaService.getServices().addStamina(profile.getId(), stamina);
+    }
+
     protected long parseTravelTime() {
         DTOTesseractSettings timeSettings = new DTOTesseractSettings.Builder()
                 .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
@@ -547,7 +554,9 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int threshold, int maxRetries) {
         return searchTemplateWithRetries(template, threshold, maxRetries, 200);
     }
-    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int threshold, int maxRetries, long delayMs) {
+
+    protected DTOImageSearchResult searchTemplateWithRetries(EnumTemplates template, int threshold, int maxRetries,
+            long delayMs) {
         DTOImageSearchResult result = null;
         for (int i = 0; i < maxRetries && (result == null || !result.isFound()); i++) {
             logDebug("Searching template " + template + ", (attempt " + (i + 1) + "/" + maxRetries + ")");
@@ -568,6 +577,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
                 template, topLeft, bottomRight,
                 90, DEFAULT_RETRIES, 200L);
     }
+
     protected DTOImageSearchResult searchTemplateRegionWithRetries(
             EnumTemplates template, DTOPoint topLeft, DTOPoint bottomRight, int retries, long delayMs) {
         return searchTemplateRegionWithRetries(
@@ -575,7 +585,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
                 90, retries, delayMs);
     }
 
-        protected DTOImageSearchResult searchTemplateRegionWithRetries(
+    protected DTOImageSearchResult searchTemplateRegionWithRetries(
             EnumTemplates template, DTOPoint topLeft, DTOPoint bottomRight,
             int threshold, int maxRetries, long delayMs) {
         DTOImageSearchResult result = null;
@@ -693,7 +703,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     public boolean isBearRunning() {
-        DTOImageSearchResult result = searchTemplateWithRetries(EnumTemplates.BEAR_HUNT_IS_RUNNING,3,500L);
+        DTOImageSearchResult result = searchTemplateWithRetries(EnumTemplates.BEAR_HUNT_IS_RUNNING, 3, 500L);
         return result.isFound();
     }
 

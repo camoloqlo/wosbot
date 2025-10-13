@@ -26,6 +26,7 @@ public class MercenaryEventTask extends DelayedTask {
     private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
     private final ServTaskManager servTaskManager = ServTaskManager.getInstance();
     private Integer lastMercenaryLevel = null;
+    private Integer lastStaminaSpent = null;
     private int attackAttempts = 0;
     private int flagNumber = 0;
     private boolean useFlag = false;
@@ -105,6 +106,7 @@ public class MercenaryEventTask extends DelayedTask {
 
             if (sameLevelAsLastTime) {
                 attackAttempts++;
+                addStamina(lastStaminaSpent);
                 logInfo("Mercenary level is the same as last time, indicating a possible attack loss. Skipping flag selection to use strongest march.");
             } else {
                 attackAttempts = 0;
@@ -372,6 +374,7 @@ public class MercenaryEventTask extends DelayedTask {
 
         // Parse stamina cost
         Integer spentStamina = getSpentStamina();
+        lastStaminaSpent = spentStamina;
 
         // Validate travel time before deploying
         if (travelTimeSeconds <= 0) {
