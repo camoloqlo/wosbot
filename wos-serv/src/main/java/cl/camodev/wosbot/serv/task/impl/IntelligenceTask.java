@@ -72,7 +72,8 @@ public class IntelligenceTask extends DelayedTask {
 		MarchesAvailable marchesAvailable = checkMarchAvailability();
 		marchQueueLimitReached = !marchesAvailable.available();
 
-		autoJoinTask = ServTaskManager.getInstance().getTaskState(profile.getId(), TpDailyTaskEnum.ALLIANCE_AUTOJOIN.getId());
+		autoJoinTask = ServTaskManager.getInstance().getTaskState(profile.getId(),
+				TpDailyTaskEnum.ALLIANCE_AUTOJOIN.getId());
 		isAutoJoinTaskEnabled = (autoJoinTask != null) ? true : false;
 
 		if (!autoJoinDisabledForIntel && isAutoJoinTaskEnabled && autoJoinTask.isScheduled()) {
@@ -161,10 +162,8 @@ public class IntelligenceTask extends DelayedTask {
 	 * Determine if beasts should be processed based on current state
 	 */
 	private boolean shouldProcessBeasts() {
-		if (marchQueueLimitReached) {
-			logInfo("No marches available, skipping beast search.");
-			return false;
-		}
+		// Always search for beasts - we can find them even if marches are unavailable
+		// The processBeast() method will handle the case where marches are full
 
 		if (useFlag && beastMarchSent) {
 			logInfo("Beast march already sent (flag mode), skipping beast search.");
@@ -263,16 +262,25 @@ public class IntelligenceTask extends DelayedTask {
 			return;
 		}
 
+		// If intel WAS found but marches are full, we need different logic
+		if (marchQueueLimitReached && nonBeastIntelProcessed) {
+			// Non-beast intel (survivors/journeys) were processed
+			// Even if marches are full, we processed what we could
+			reschedule(LocalDateTime.now().plusMinutes(2));
+			logInfo("Non-beast intel processed but march queue full. " +
+					"Rescheduling in 2 minutes to check for more.");
+			return;
+		}
+
 		if (marchQueueLimitReached && !nonBeastIntelProcessed && !beastMarchSent) {
-			// Only beasts found but no marches available
+			// Only beasts found but no marches available and no beast deployed
 			if (useSmartProcessing && marchesAvailable.rescheduleTo() != null) {
 				reschedule(marchesAvailable.rescheduleTo());
 				logInfo("March queue is full, and only beasts remain. Rescheduling for when marches will be available at "
 						+ marchesAvailable.rescheduleTo());
 			} else {
-				LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(5);
-				reschedule(rescheduleTime);
-				logInfo("March queue is full, and only beasts remain. Rescheduling for 5 minutes at " + rescheduleTime);
+				reschedule(LocalDateTime.now().plusMinutes(2));
+				logInfo("March queue is full, and only beasts remain. Rescheduling in 2 minutes");
 			}
 			return;
 		}
@@ -406,7 +414,7 @@ public class IntelligenceTask extends DelayedTask {
 
 	private void processBeast(DTOImageSearchResult beast) {
 		if (marchQueueLimitReached) {
-			logInfo("March queue is full. Skipping beast hunt.");
+			logInfo("Beast found but march queue is full. Skipping deployment but marking as found.");
 			return;
 		}
 
