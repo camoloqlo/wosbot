@@ -117,6 +117,9 @@ public enum EnumConfigurationKey {
     // ========================================================================
 	LIFE_ESSENCE_BOOL("false", Boolean.class),
 	LIFE_ESSENCE_OFFSET_INT("60", Integer.class),
+	LIFE_ESSENCE_BUY_WEEKLY_SCROLL_BOOL("true", Boolean.class),
+	LIFE_ESSENCE_CONSECUTIVE_FAILURES_INT("0", Integer.class),
+	LIFE_ESSENCE_NEXT_SCROLL_TIME_STRING("", String.class),
 	PET_SKILL_STAMINA_BOOL("false", Boolean.class),
 	PET_SKILL_FOOD_BOOL("false", Boolean.class),
 	PET_SKILL_TRESURE_BOOL("false", Boolean.class),
@@ -133,7 +136,7 @@ public enum EnumConfigurationKey {
 	DAILY_MISSION_AUTO_SCHEDULE_BOOL("false", Boolean.class),
 	STOREHOUSE_CHEST_BOOL("false", Boolean.class),
 	DAILY_LABYRINTH_BOOL("false", Boolean.class),
-	ARENA_TASK_ACTIVATION_HOUR_STRING("0", String.class),
+	ARENA_TASK_ACTIVATION_TIME_STRING("23:50", String.class),
 	ARENA_TASK_BOOL("false", Boolean.class),
 	ARENA_TASK_EXTRA_ATTEMPTS_INT("0", Integer.class),
 	ARENA_TASK_REFRESH_WITH_GEMS_BOOL("false", Boolean.class),
@@ -151,7 +154,8 @@ public enum EnumConfigurationKey {
 	INT_EXPLORATION_CHEST_OFFSET("60", Integer.class),
 	BOOL_HERO_RECRUITMENT("false", Boolean.class),
 	BOOL_VIP_POINTS("false", Boolean.class),
-	VIP_BUY_MONTHLY("false", Boolean.class),
+	VIP_MONTHLY_BUY_BOOL("false", Boolean.class),
+	VIP_NEXT_MONTHLY_BUY_TIME_STRING("false", String.class),
 	BOOL_MYSTERY_SHOP("false", Boolean.class),
 	BOOL_MYSTERY_SHOP_250_HERO_WIDGET("false", Boolean.class),
 
@@ -172,10 +176,10 @@ public enum EnumConfigurationKey {
 	
 	// Tundra events
 	TUNDRA_TRUCK_EVENT_BOOL("false", Boolean.class),
-	TUNDRA_TRUCK_ACTIVATION_HOUR_BOOL("false", Boolean.class),
+	TUNDRA_TRUCK_ACTIVATION_TIME_BOOL("false", Boolean.class),
 	TUNDRA_TRUCK_USE_GEMS_BOOL("false", Boolean.class),
 	TUNDRA_TRUCK_SSR_BOOL("false", Boolean.class),
-	TUNDRA_TRUCK_ACTIVATION_HOUR_INT("0", Integer.class),
+	TUNDRA_TRUCK_ACTIVATION_TIME_STRING("14:00", String.class),
 	TUNDRA_TREK_SUPPLIES_BOOL("false", Boolean.class),
 	TUNDRA_TREK_AUTOMATION_BOOL("false", Boolean.class),
 	

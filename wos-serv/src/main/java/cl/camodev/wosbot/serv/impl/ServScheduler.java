@@ -91,7 +91,7 @@ public class ServScheduler {
 
 			profiles.stream().filter(DTOProfiles::getEnabled).sorted(Comparator.comparing(DTOProfiles::getPriority).reversed()).forEach(profile -> {
 				profile.setGlobalSettings(globalsettings);
-				ServLogs.getServices().appendLog(EnumTpMessageSeverity.DEBUG, "ServScheduler", "-", "starting queue");
+				ServLogs.getServices().appendLog(EnumTpMessageSeverity.DEBUG, "ServScheduler", "-", "Starting queue");
 
 				queueManager.createQueue(profile);
 				TaskQueue queue = queueManager.getQueue(profile.getId());

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 
 import javax.imageio.ImageIO;
 
@@ -49,9 +50,10 @@ public class UtilOCR {
         }
 
         // Extract the region directly from raw data and upscale
-        BufferedImage processedImage = extractAndUpscaleRegion(rawImage, x, y, width, height, 2);
+        BufferedImage processedImage = extractAndUpscaleRegion(rawImage, x, y, width, height, 4);
 
         Tesseract tesseract = new Tesseract();
+        tesseract.setConfigs(Collections.singletonList("quiet"));
         tesseract.setDatapath("lib/tesseract");
         tesseract.setLanguage(language);
         tesseract.setPageSegMode(7); // single line
@@ -95,7 +97,7 @@ public class UtilOCR {
         // Extract, upscale and process region directly from raw data in a single pass
         long extractStartTime = System.currentTimeMillis();
         BufferedImage processedImage = extractAndProcessRegion(
-            rawImage, x, y, width, height, 2,
+            rawImage, x, y, width, height, 4,
             settings.isRemoveBackground(), settings.getTextColor()
         );
         long extractEndTime = System.currentTimeMillis();
@@ -121,7 +123,7 @@ public class UtilOCR {
                 Files.write(outputPath0, baos0.toByteArray());
 
                 // Save stage 1: cutted (without background removal)
-                BufferedImage cuttedImage = extractAndProcessRegion(rawImage, x, y, width, height, 2, false, null);
+                BufferedImage cuttedImage = extractAndProcessRegion(rawImage, x, y, width, height, 4, false, null);
                 ByteArrayOutputStream baos1 = new ByteArrayOutputStream();
                 ImageIO.write(cuttedImage, "png", baos1);
                 Path outputPath1 = tempDir.resolve(timestamp + "_1_cut.png");

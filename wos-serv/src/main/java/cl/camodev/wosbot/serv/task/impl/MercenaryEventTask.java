@@ -26,6 +26,7 @@ public class MercenaryEventTask extends DelayedTask {
     private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
     private final ServTaskManager servTaskManager = ServTaskManager.getInstance();
     private Integer lastMercenaryLevel = null;
+    private Integer lastStaminaSpent = null;
     private int attackAttempts = 0;
     private int flagNumber = 0;
     private boolean useFlag = false;
@@ -38,14 +39,8 @@ public class MercenaryEventTask extends DelayedTask {
     }
 
     @Override
-    public EnumStartLocation getRequiredStartLocation() {
-        return EnumStartLocation.WORLD;
-    }
-
-    @Override
     protected void execute() {
         logInfo("=== Starting Mercenary Event ===");
-
 
         flagNumber = profile.getConfig(EnumConfigurationKey.MERCENARY_FLAG_INT, Integer.class);
         useFlag = flagNumber > 0;
@@ -64,7 +59,8 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // Verify if there's enough stamina to hunt, if not, reschedule the task
-        if (!checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel)) return;
+        if (!checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel))
+            return;
 
         int attempt = 0;
         while (attempt < 2) {
@@ -110,6 +106,7 @@ public class MercenaryEventTask extends DelayedTask {
 
             if (sameLevelAsLastTime) {
                 attackAttempts++;
+                addStamina(lastStaminaSpent);
                 logInfo("Mercenary level is the same as last time, indicating a possible attack loss. Skipping flag selection to use strongest march.");
             } else {
                 attackAttempts = 0;
@@ -129,7 +126,6 @@ public class MercenaryEventTask extends DelayedTask {
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(255, 255, 255)) // White text
-                .setDebug(true)
                 .setAllowedChars("0123456789") // Only allow digits and '/'
                 .build();
 
@@ -378,6 +374,7 @@ public class MercenaryEventTask extends DelayedTask {
 
         // Parse stamina cost
         Integer spentStamina = getSpentStamina();
+        lastStaminaSpent = spentStamina;
 
         // Validate travel time before deploying
         if (travelTimeSeconds <= 0) {
@@ -425,6 +422,16 @@ public class MercenaryEventTask extends DelayedTask {
         logInfo("Mercenary march sent. Task will run again at " +
                 rescheduleTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) +
                 " (in " + (returnTimeSeconds / 60) + " minutes).");
+    }
+
+    @Override
+    public EnumStartLocation getRequiredStartLocation() {
+        return EnumStartLocation.WORLD;
+    }
+
+    @Override
+    protected boolean consumesStamina() {
+        return true;
     }
 
 }

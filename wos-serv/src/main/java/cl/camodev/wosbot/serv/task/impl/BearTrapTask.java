@@ -14,11 +14,13 @@ import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
+import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.ocr.BotTextRecognitionProvider;
 import cl.camodev.wosbot.serv.task.*;
 
 import java.awt.*;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -65,7 +67,7 @@ public class BearTrapTask extends DelayedTask {
             .setAllowedChars("0123456789/")
             .setRemoveBackground(true)
             .setTextColor(new Color(253,253,253)) // White text
-            .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+            //.setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
             .setReuseLastImage(true)
             .setDebug(true)
             .build();
@@ -167,7 +169,7 @@ public class BearTrapTask extends DelayedTask {
 
                 if (secondsUntilActivation > 0) {
                     logInfo("Waiting for trap auto-activation in " + secondsUntilActivation + " seconds...");
-                    sleepTask(secondsUntilActivation * 1000);
+                    sleepTask((secondsUntilActivation * 1000) + 2000);
                 }
                 logInfo("Trap has been ACTIVATED automatically!");
             } else {
@@ -292,43 +294,47 @@ public class BearTrapTask extends DelayedTask {
             //handle join
             if (joinRally){
 
-                DTOPoint point1 = new DTOPoint(195, 200);
+                DTOPoint point1 = new DTOPoint(203, 200);
                 DTOPoint point2 = new DTOPoint(246,226);
 
                 //check the available spots
                 emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
                 Integer used = integerHelper.execute(
-                        point1, point2, 5, 200L,
+                            point1, point2, 5, 10L,
                         settings,
                         NumberValidators::isFractionFormat,
                         NumberConverters::fractionToFirstInt
                 );
 
                 Integer total = integerHelper.execute(
-                        point1, point2, 5, 200L,
+                        point1, point2, 5, 10L,
                         settings,
                         NumberValidators::isFractionFormat,
                         NumberConverters::fractionToSecondInt
                 );
 
+                int freeMarches;
+
                 if (used != null && total != null) {
-                    int freeMarches = total - used;
+                    freeMarches = total - used;
                     logInfo("Free marches: " + freeMarches);
-                    //handle join marches
-                    if (freeMarches > 0) {
-                        DTOImageSearchResult warButton = searchTemplateWithRetries(EnumTemplates.GAME_HOME_WAR, 90, 3);
-
-                        if (warButton.isFound()) {
-                            logInfo("Entering war section to check for rallies");
-                            tapPoint(warButton.getPoint());
-                            handleJoinRallies(freeMarches);
-                        }
-
-                    }
                 } else {
-                    logDebug("Could not read available/total marches");
+                    // Si no se puede leer, usar 1 como valor por defecto
+                    freeMarches = 1;
+                    logInfo("Could not read marches, using default value: " + freeMarches);
                 }
 
+                //handle join marches
+                if (freeMarches > 0) {
+                    DTOImageSearchResult warButton = searchTemplateWithRetries(EnumTemplates.GAME_HOME_WAR, 90, 3);
+
+                    if (warButton.isFound()) {
+                        logInfo("Entering war section to check for rallies");
+                        tapPoint(warButton.getPoint());
+                        handleJoinRallies(freeMarches);
+                    }
+
+                }
             }
 
             // Periodic status log
@@ -346,14 +352,18 @@ public class BearTrapTask extends DelayedTask {
 
 
         logInfo("=== TRAP ENDED - Strategy execution completed ===");
+
+        // Update configuration with next window start time
+        updateNextWindowDateTime();
     }
 
     private void handleJoinRallies(int freeMarches) {
         //search the green plus icon
-        DTOImageSearchResult plusIcon = searchTemplateWithRetries(EnumTemplates.BEAR_JOIN_PLUS_ICON, 90, 3);
+        DTOImageSearchResult plusIcon = searchTemplateWithRetries(EnumTemplates.BEAR_JOIN_PLUS_ICON, 90, 2);
         if (!plusIcon.isFound()) {
             logDebug("No joinable rallies found (plus icon not present)");
-
+            ensureCorrectScreenLocation(EnumStartLocation.ANY);
+            return;
         }
         //tap the plus icon
         tapRandomPoint(plusIcon.getPoint(), plusIcon.getPoint(), 1, 100);
@@ -420,7 +430,7 @@ public class BearTrapTask extends DelayedTask {
             logError("Territory button not found to go to bear trap");
             return false;
         }
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, territoryButton.getPoint(), territoryButton.getPoint(), 1, 3000);
+        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, territoryButton.getPoint(), territoryButton.getPoint(), 1, 2000);
         //go to special buildings
         emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(460, 110), new DTOPoint(560, 130), 1, 300);
         // click on go button based on trap number
@@ -491,7 +501,7 @@ public class BearTrapTask extends DelayedTask {
 
             // If 'view' or 'speedup' buttons are present, wait for UI to clear
             if (foundView || foundSpeedup) {
-                logInfo("March view or speedup detected - waiting for UI to clear");
+                logInfo("Troops are still marching - waiting for them to return");
                 sleepTask(1000);
             }
 
@@ -681,6 +691,35 @@ public class BearTrapTask extends DelayedTask {
         ownRallyFlag =          profile.getConfig(BEAR_TRAP_RALLY_FLAG_INT,       Integer.class);
         joinRallyFlag =            profile.getConfig(BEAR_TRAP_JOIN_FLAG_INT,       Integer.class);
         joinRally =             profile.getConfig(BEAR_TRAP_JOIN_RALLY_BOOL,       Boolean.class);
+    }
+
+    /**
+     * Updates the BEAR_TRAP_SCHEDULE_DATETIME_STRING configuration with the next trap activation time (anchor)
+     * This method is called after the trap ends to persist the next execution time in the database
+     * The saved time is the trap activation time (anchor), not the preparation window start time
+     */
+    private void updateNextWindowDateTime() {
+        // Get the next window information
+        BearTrapHelper.WindowResult result = getWindowState();
+
+        // Get the next window START time
+        LocalDateTime nextWindowStart = LocalDateTime.ofInstant(result.getNextWindowStart(), ZoneId.of("UTC"));
+
+        // The trap activation time (anchor) is preparation time minutes after the window start
+        LocalDateTime nextTrapActivation = nextWindowStart.plusMinutes(trapPreparationTime);
+
+        // Format in "dd-MM-yyyy HH:mm" format
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+        String formattedDateTime = nextTrapActivation.format(formatter);
+
+        logInfo("Updating next trap activation time to: " + formattedDateTime + " UTC");
+
+        // Delegate to service to update the specific configuration
+        ServConfig.getServices().updateProfileConfig(
+            profile,
+            BEAR_TRAP_SCHEDULE_DATETIME_STRING,
+            formattedDateTime
+        );
     }
 
     @Override
