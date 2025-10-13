@@ -333,6 +333,7 @@ public enum EnumTemplates {
 	TUNDRA_TRUCK_GREEN("/templates/tundratruck/tundraTruckNormal.png"),
 	TUNDRA_TRUCK_REFRESH("/templates/tundratruck/tundraTruckRefresh.png"),
 	TUNDRA_TRUCK_REFRESH_GEMS("/templates/tundratruck/tundraTruckRefreshGems.png"),
+	TUNDRA_TRUCK_TIPS_POPUP("/templates/tundratruck/tundraTruckTipsPopup.png"),
 	TUNDRA_TRUCK_YELLOW_RAID("/templates/tundratruck/tundraTruckLegendaryRaid.png"),
 	TUNDRA_TRUCK_ESCORT("/templates/tundratruck/tundraTruckEscort.png"),
 	TUNDRA_TRUCK_DEPARTED("/templates/tundratruck/tundraTruckDeparted.png"),
