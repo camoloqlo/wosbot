@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import cl.camodev.wosbot.intel.view.IntelLayoutController;
 import cl.camodev.wosbot.mobilization.view.MobilizationLayoutController;
 import cl.camodev.wosbot.ot.DTOBotState;
 import cl.camodev.wosbot.ot.DTOLogMessage;
+import cl.camodev.wosbot.ot.DTOQueueProfileState;
 import cl.camodev.wosbot.pets.view.PetsLayoutController;
 import cl.camodev.wosbot.polarterror.view.PolarTerrorLayoutController;
 import cl.camodev.wosbot.profile.model.IProfileChangeObserver;
@@ -38,6 +40,7 @@ import cl.camodev.wosbot.profile.model.IProfileLoadListener;
 import cl.camodev.wosbot.profile.model.IProfileObserverInjectable;
 import cl.camodev.wosbot.profile.model.ProfileAux;
 import cl.camodev.wosbot.profile.view.ProfileManagerLayoutController;
+import cl.camodev.wosbot.ot.DTOQueueState;
 import cl.camodev.wosbot.serv.IStaminaChangeListener;
 import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
@@ -52,6 +55,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -68,7 +72,9 @@ public class LauncherLayoutController implements IProfileLoadListener, IStaminaC
     @FXML
     private Button buttonStartStop;
     @FXML
-    private Button buttonPauseResume;
+    private SplitMenuButton buttonPauseResume;
+    @FXML
+    private MenuItem menuToggleAllQueues;
     @FXML
     private AnchorPane mainContentPane;
     @FXML
@@ -84,6 +90,8 @@ public class LauncherLayoutController implements IProfileLoadListener, IStaminaC
     private boolean estado = false;
     private boolean updatingComboBox = false;
     private ProfileAux currentProfile = null; // Perfil actualmente cargado
+    private boolean allQueuesPaused = false;
+    private final Map<Long, DTOQueueProfileState> activeQueueStates = new HashMap<>();
 
     public LauncherLayoutController(Stage stage) {
         this.stage = stage;
@@ -102,6 +110,7 @@ public class LauncherLayoutController implements IProfileLoadListener, IStaminaC
         showVersion();
         buttonStartStop.setDisable(false);
         buttonPauseResume.setDisable(true);
+        configurePauseMenu();
 
     }
 
@@ -408,6 +417,7 @@ public class LauncherLayoutController implements IProfileLoadListener, IStaminaC
         this.currentProfile = profile;
         updateWindowTitle();
         selectProfileInComboBox(profile);
+        refreshPauseMenuItems();
     }
 
     @Override
@@ -443,26 +453,58 @@ public class LauncherLayoutController implements IProfileLoadListener, IStaminaC
                     // Bot is running but paused
                     buttonStartStop.setText("Stop");
                     buttonStartStop.setDisable(false);
-                    buttonPauseResume.setText("Resume Bot");
+                    allQueuesPaused = true;
                     buttonPauseResume.setDisable(false);
                     estado = true;
+                    updatePauseButtonState();
+                    refreshPauseMenuItems();
                 } else {
                     // Bot is running and active
                     buttonStartStop.setText("Stop");
                     buttonStartStop.setDisable(false);
-                    buttonPauseResume.setText("Pause Bot");
+                    allQueuesPaused = false;
                     buttonPauseResume.setDisable(false);
                     estado = true;
+                    updatePauseButtonState();
+                    refreshPauseMenuItems();
                 }
             } else {
                 // Bot is stopped
                 buttonStartStop.setText("Start Bot");
                 buttonStartStop.setDisable(false);
-                buttonPauseResume.setText("Pause Bot");
                 buttonPauseResume.setDisable(true);
+                resetPauseStates();
                 estado = false;
             }
         }
+    }
+
+    public void onQueueStateChange(DTOQueueState queueState) {
+        if (queueState == null) {
+            return;
+        }
+
+        if (queueState.getActiveQueues() != null) {
+            updateActiveQueueStates(queueState.getActiveQueues());
+        }
+
+        if (queueState.getProfileId() == null) {
+            activeQueueStates.values().forEach(state -> state.setPaused(queueState.isPaused()));
+        } else {
+            DTOQueueProfileState profileState = activeQueueStates.get(queueState.getProfileId());
+            if (profileState != null) {
+                profileState.setPaused(queueState.isPaused());
+            }
+        }
+
+        updateAggregatedPauseStates();
+
+        if (estado && (!activeQueueStates.isEmpty() || queueState.getProfileId() != null)) {
+            buttonPauseResume.setDisable(false);
+        }
+
+        refreshPauseMenuItems();
+        updatePauseButtonState();
     }
 
     @FXML
@@ -482,11 +524,231 @@ public class LauncherLayoutController implements IProfileLoadListener, IStaminaC
 
     @FXML
     public void handleButtonPauseResume(ActionEvent event) {
-        if (buttonPauseResume.getText().equals("Pause Bot")) {
-            actionController.pauseBot();
-        } else {
-            actionController.resumeBot();
+        toggleAllQueues();
+    }
+
+    @FXML
+    private void handleToggleCurrentQueue(ActionEvent event) {
+        toggleCurrentQueue();
+    }
+
+    @FXML
+    private void handleToggleAllQueues(ActionEvent event) {
+        toggleAllQueues();
+    }
+
+    private void handleToggleSpecificQueue(Long profileId) {
+        toggleSpecificQueue(profileId, true);
+    }
+
+    private void toggleAllQueues() {
+        if (!estado) {
+            return;
         }
+
+        if (!allQueuesPaused) {
+            actionController.pauseAllQueues();
+            setAllQueuesPausedLocally(true);
+        } else {
+            actionController.resumeAllQueues();
+            setAllQueuesPausedLocally(false);
+        }
+    }
+
+    private void toggleCurrentQueue() {
+        if (!estado) {
+            return;
+        }
+
+        ProfileAux selectedProfile = currentProfile != null ? currentProfile : getSelectedProfile();
+        if (selectedProfile == null) {
+            showProfileSelectionWarning();
+            return;
+        }
+
+        toggleSpecificQueue(selectedProfile.getId(), true);
+    }
+
+    private void toggleSpecificQueue(Long profileId, boolean showWarnings) {
+        if (!estado) {
+            return;
+        }
+
+        if (profileId == null) {
+            if (showWarnings) {
+                showQueueUnavailableWarning();
+            }
+            return;
+        }
+
+        DTOQueueProfileState targetState = activeQueueStates.get(profileId);
+        if (targetState == null) {
+            if (showWarnings) {
+                showQueueUnavailableWarning();
+            }
+            return;
+        }
+
+        ProfileAux targetProfile = findProfileById(profileId);
+        if (targetProfile == null) {
+            if (showWarnings) {
+                showQueueUnavailableWarning();
+            }
+            return;
+        }
+
+        if (!targetState.isPaused()) {
+            actionController.pauseQueue(targetProfile);
+            setQueuePausedLocally(profileId, true);
+        } else {
+            actionController.resumeQueue(targetProfile);
+            setQueuePausedLocally(profileId, false);
+        }
+    }
+
+    private void configurePauseMenu() {
+        refreshPauseMenuItems();
+        updatePauseButtonState();
+    }
+
+    private void updateActiveQueueStates(List<DTOQueueProfileState> queueProfiles) {
+        activeQueueStates.clear();
+        if (queueProfiles == null) {
+            return;
+        }
+
+        queueProfiles.stream()
+            .filter(state -> state != null && state.getProfileId() != null)
+            .forEach(state -> activeQueueStates.put(state.getProfileId(),
+                    new DTOQueueProfileState(state.getProfileId(), state.getProfileName(), state.isPaused())));
+    }
+
+    private void updateAggregatedPauseStates() {
+        if (activeQueueStates.isEmpty()) {
+            allQueuesPaused = false;
+        } else {
+            allQueuesPaused = activeQueueStates.values().stream().allMatch(DTOQueueProfileState::isPaused);
+        }
+    }
+
+    private void refreshPauseMenuItems() {
+        if (buttonPauseResume == null) {
+            return;
+        }
+
+        List<MenuItem> items = new ArrayList<>();
+
+        if (menuToggleAllQueues != null) {
+            menuToggleAllQueues.setText(allQueuesPaused ? "Resume" : "Pause");
+            menuToggleAllQueues.setDisable(!estado);
+            items.add(menuToggleAllQueues);
+        }
+
+        List<DTOQueueProfileState> queueStates = new ArrayList<>(activeQueueStates.values());
+        queueStates.sort(Comparator.comparing(DTOQueueProfileState::getProfileName, String.CASE_INSENSITIVE_ORDER));
+
+        if (!queueStates.isEmpty()) {
+            items.add(new SeparatorMenuItem());
+            for (DTOQueueProfileState state : queueStates) {
+                MenuItem item = createQueueMenuItem(state);
+                items.add(item);
+            }
+        }
+
+        buttonPauseResume.getItems().setAll(items);
+    }
+
+    private MenuItem createQueueMenuItem(DTOQueueProfileState state) {
+        MenuItem item = new MenuItem(formatQueueMenuItemLabel(state));
+        item.setOnAction(evt -> handleToggleSpecificQueue(state.getProfileId()));
+        item.setDisable(!estado);
+        return item;
+    }
+
+    private String formatQueueMenuItemLabel(DTOQueueProfileState state) {
+        if (state == null) {
+            return "Toggle queue";
+        }
+
+        String profileName = state.getProfileName() != null ? state.getProfileName() : String.valueOf(state.getProfileId());
+        return (state.isPaused() ? "Resume " : "Pause ") + profileName;
+    }
+
+    private void updatePauseButtonState() {
+        if (buttonPauseResume == null) {
+            return;
+        }
+
+        String text = allQueuesPaused ? "Resume All Queues" : "Pause All Queues";
+        buttonPauseResume.setText(text);
+    }
+
+
+    private void resetPauseStates() {
+        allQueuesPaused = false;
+        activeQueueStates.clear();
+        refreshPauseMenuItems();
+        updatePauseButtonState();
+    }
+
+    private void showProfileSelectionWarning() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Profile selection required");
+        alert.setHeaderText(null);
+        alert.setContentText("Please select a profile to control its queue.");
+        alert.showAndWait();
+    }
+
+    private void showQueueUnavailableWarning() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Queue not available");
+        alert.setHeaderText(null);
+        alert.setContentText("The selected queue is not currently running.");
+        alert.showAndWait();
+    }
+
+    private ProfileAux findProfileById(Long profileId) {
+        if (profileId == null || profileComboBox == null) {
+            return null;
+        }
+
+        for (ProfileAux profile : profileComboBox.getItems()) {
+            if (profile != null && profileId.equals(profile.getId())) {
+                return profile;
+            }
+        }
+        return null;
+    }
+
+    private boolean isQueuePaused(Long profileId) {
+        if (profileId == null) {
+            return false;
+        }
+
+        DTOQueueProfileState state = activeQueueStates.get(profileId);
+        return state != null && state.isPaused();
+    }
+
+    private void setAllQueuesPausedLocally(boolean paused) {
+        activeQueueStates.values().forEach(state -> state.setPaused(paused));
+        updateAggregatedPauseStates();
+        refreshPauseMenuItems();
+        updatePauseButtonState();
+    }
+
+    private void setQueuePausedLocally(Long profileId, boolean paused) {
+        if (profileId == null) {
+            return;
+        }
+
+        DTOQueueProfileState state = activeQueueStates.get(profileId);
+        if (state != null) {
+            state.setPaused(paused);
+        }
+
+        updateAggregatedPauseStates();
+        refreshPauseMenuItems();
+        updatePauseButtonState();
     }
 
     private Button addButton(String fxmlName, String title, Object controller) {

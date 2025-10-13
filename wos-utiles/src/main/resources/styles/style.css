@@ -589,3 +589,142 @@
     -fx-text-fill: #888888;
     -fx-opacity: 0.5;
 }
+
+/*!* Global dark theme styling for the launcher *!*/
+/*.root {*/
+/*    -fx-base: #1f2333;*/
+/*    -fx-background-color: #1f2333;*/
+/*    -fx-text-fill: #f5f5f5;*/
+/*}*/
+
+/*.label {*/
+/*    -fx-text-fill: #ffb347;*/
+/*    -fx-font-weight: bold;*/
+/*}*/
+
+.button,
+.split-menu-button {
+    -fx-background-color: linear-gradient(#f87e00, #d96800);
+    -fx-background-insets: 0;
+    -fx-background-radius: 6px;
+    -fx-text-fill: black;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.35), 6, 0, 0, 2);
+}
+
+.button:hover,
+.split-menu-button:hover {
+    -fx-background-color: linear-gradient(#ff9800, #e57c00);
+}
+
+.button:pressed,
+.split-menu-button:pressed {
+    -fx-background-color: linear-gradient(#d96800, #b85600);
+}
+
+/*.button:disabled,*/
+/*.split-menu-button:disabled {*/
+/*    -fx-background-color: #555a6a;*/
+/*    -fx-text-fill: #b0b4c4;*/
+/*    -fx-effect: none;*/
+/*}*/
+
+.split-menu-button > .label,
+.split-menu-button > .arrow-button {
+    -fx-background-color: linear-gradient(#f87e00, #d96800);
+    -fx-background-insets: 0;
+    -fx-text-fill: white;
+}
+
+.split-menu-button > .label {
+    -fx-padding: 0 16px;
+    -fx-background-radius: 6px 0 0 6px;
+}
+
+.split-menu-button > .arrow-button {
+    -fx-border-color: rgba(0, 0, 0, 0.35);
+    -fx-border-width: 0 0 0 1;
+    -fx-padding: 0 12px;
+    -fx-background-radius: 0 6px 6px 0;
+}
+
+.split-menu-button > .arrow-button .arrow {
+    -fx-background-color: white;
+}
+
+.split-menu-button:hover > .label,
+.split-menu-button:hover > .arrow-button,
+.split-menu-button:showing > .label,
+.split-menu-button:showing > .arrow-button {
+    -fx-background-color: linear-gradient(#ff9800, #e57c00);
+}
+
+.split-menu-button:pressed > .label,
+.split-menu-button:pressed > .arrow-button {
+    -fx-background-color: linear-gradient(#d96800, #b85600);
+}
+
+.split-menu-button:disabled > .label,
+.split-menu-button:disabled > .arrow-button {
+    -fx-background-color: #555a6a;
+    -fx-text-fill: #b0b4c4;
+    -fx-border-color: transparent;
+}
+
+.context-menu {
+    -fx-background-color: #1f2333;
+    -fx-background-radius: 6px;
+    -fx-border-color: #3d425c;
+    -fx-border-radius: 6px;
+    -fx-border-width: 1px;
+    -fx-padding: 6px 0;
+}
+
+.menu-item {
+    -fx-padding: 8px 18px;
+    -fx-text-fill: #f5f5f5;
+    -fx-font-weight: normal;
+}
+
+.menu-item > .label {
+    -fx-text-fill: inherit;
+}
+
+.menu-item:focused,
+.menu-item:armed {
+    -fx-background-color: linear-gradient(#ff9800, #e57c00);
+    -fx-text-fill: white;
+}
+
+.menu-item:focused > .label,
+.menu-item:armed > .label {
+    -fx-text-fill: white;
+}
+
+.separator *.line {
+    -fx-background-color: #3d425c;
+}
+
+/*.combo-box {*/
+/*    -fx-background-color: #262a3b;*/
+/*    -fx-border-color: #3d425c;*/
+/*    -fx-border-radius: 4px;*/
+/*    -fx-background-radius: 4px;*/
+/*    -fx-text-fill: #f5f5f5;*/
+/*}*/
+
+/*.scroll-pane {*/
+/*    -fx-background-color: transparent;*/
+/*    -fx-border-color: #3d425c;*/
+/*}*/
+
+/*.table-view,*/
+/*.list-view {*/
+/*    -fx-background-color: #25293a;*/
+/*    -fx-table-cell-border-color: #3d425c;*/
+/*}*/
+
+/*.split-pane,*/
+/*.tab-pane {*/
+/*    -fx-background-color: #1f2333;*/
+/*}*/

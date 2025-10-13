@@ -1,12 +1,17 @@
 package cl.camodev.wosbot.serv.task;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.ot.DTOQueueProfileState;
 import cl.camodev.wosbot.ot.DTOTaskState;
 import cl.camodev.wosbot.serv.impl.ServLogs;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
@@ -14,14 +19,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TaskQueueManager {
-	private final static Logger logger = LoggerFactory.getLogger(TaskQueueManager.class);
-	private final Map<Long, TaskQueue> taskQueues = new HashMap<>();
+        private final static Logger logger = LoggerFactory.getLogger(TaskQueueManager.class);
+        private final Map<Long, TaskQueue> taskQueues = new HashMap<>();
+        private final Map<Long, Boolean> queuePausedStates = new ConcurrentHashMap<>();
 
-	public void createQueue(DTOProfiles profile) {
-		if (!taskQueues.containsKey(profile.getId())) {
-			taskQueues.put(profile.getId(), new TaskQueue(profile));
-		}
-	}
+        public void createQueue(DTOProfiles profile) {
+                if (!taskQueues.containsKey(profile.getId())) {
+                        taskQueues.put(profile.getId(), new TaskQueue(profile));
+                        queuePausedStates.put(profile.getId(), Boolean.FALSE);
+                }
+        }
 
 	public TaskQueue getQueue(Long queueName) {
 		return taskQueues.get(queueName);
@@ -67,10 +74,10 @@ public class TaskQueueManager {
 			});
 	}
 
-	public void stopQueues() {
-		ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueueManager", "-", "Stopping queues");
-		logger.info("Stopping queues");
-		taskQueues.forEach((k, v) -> {
+        public void stopQueues() {
+                ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueueManager", "-", "Stopping queues");
+                logger.info("Stopping queues");
+                taskQueues.forEach((k, v) -> {
 			for (TpDailyTaskEnum task : TpDailyTaskEnum.values()) {
 				DTOTaskState taskState = ServTaskManager.getInstance().getTaskState(k, task.getId());
 				if (taskState != null) {
@@ -79,25 +86,63 @@ public class TaskQueueManager {
 				}
 			}
 
-			v.stop();
-		});
-		taskQueues.clear();
-	}
+                        v.stop();
+                });
+                taskQueues.clear();
+                queuePausedStates.clear();
+        }
 
-	public void pauseQueues() {
-		ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueueManager", "-", "Pausing queues");
-		logger.info("Pausing queues");
-		taskQueues.forEach((k, v) -> {
-			v.pause();
-		});
-	}
+        public void pauseQueues() {
+                ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueueManager", "-", "Pausing queues");
+                logger.info("Pausing all queues");
+                taskQueues.forEach((k, v) -> {
+                        v.pause();
+                        queuePausedStates.put(k, Boolean.TRUE);
+                });
+        }
 
-	public void resumeQueues() {
-		ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueueManager", "-", "Resuming queues");
-		logger.info("Resuming queues");
-		taskQueues.forEach((k, v) -> {
-			v.resume();
-		});
-	}
+        public void resumeQueues() {
+                ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueueManager", "-", "Resuming queues");
+                logger.info("Resuming all queues");
+                taskQueues.forEach((k, v) -> {
+                        v.resume();
+                        queuePausedStates.put(k, Boolean.FALSE);
+                });
+        }
+
+        public void pauseQueue(Long profileId) {
+                TaskQueue queue = taskQueues.get(profileId);
+                if (queue != null) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueueManager",
+                                        String.valueOf(profileId), "Pausing queue");
+                        logger.info("Pausing queue for profile {}", profileId);
+                        queue.pause();
+                        queuePausedStates.put(profileId, Boolean.TRUE);
+                }
+        }
+
+        public void resumeQueue(Long profileId) {
+                TaskQueue queue = taskQueues.get(profileId);
+                if (queue != null) {
+                        ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskQueueManager",
+                                        String.valueOf(profileId), "Resuming queue");
+                        logger.info("Resuming queue for profile {}", profileId);
+                        queue.resume();
+                        queuePausedStates.put(profileId, Boolean.FALSE);
+                }
+        }
+
+        public List<DTOQueueProfileState> getActiveQueueStates() {
+                List<DTOQueueProfileState> states = new ArrayList<>();
+                taskQueues.forEach((profileId, queue) -> {
+                        DTOProfiles profile = queue.getProfile();
+                        String profileName = profile != null ? profile.getName() : String.valueOf(profileId);
+                        boolean paused = queuePausedStates.getOrDefault(profileId, Boolean.FALSE);
+                        states.add(new DTOQueueProfileState(profileId, profileName, paused));
+                });
+
+                states.sort(Comparator.comparing(DTOQueueProfileState::getProfileName, String.CASE_INSENSITIVE_ORDER));
+                return states;
+        }
 
 }

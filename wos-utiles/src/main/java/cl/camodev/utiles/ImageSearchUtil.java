@@ -283,6 +283,75 @@ public class ImageSearchUtil {
 	}
 
 	/**
+	 * Loads a mask for the given template if it exists.
+	 * Masks follow the naming convention: path/template_mask.png
+	 * 
+	 * @param templateResourcePath The template resource path
+	 * @return Mat containing the mask, or null if no mask exists
+	 */
+	private static Mat loadTemplateMask(String templateResourcePath) {
+		// Derive mask path from template path
+		// Examples:
+		// - /path/template.png -> /path/template_mask.png
+		// - /path/template_CH.png -> /path/template_mask.png (same mask for both)
+		
+		String maskPath;
+		if (templateResourcePath.contains("_CH.png")) {
+			// For region-specific templates, use base mask
+			maskPath = templateResourcePath.replace("_CH.png", "_mask.png");
+		} else if (templateResourcePath.endsWith(".png")) {
+			// For global templates
+			maskPath = templateResourcePath.replace(".png", "_mask.png");
+		} else {
+			return null; // Unsupported format
+		}
+		
+		// Try to get from cache first
+		Mat cachedMask = templateCache.get(maskPath);
+		if (cachedMask != null && !cachedMask.empty()) {
+			return cachedMask.clone(); // Return a copy for thread safety
+		}
+		
+		try {
+			// Load bytes from cache or resource
+			byte[] maskBytes = templateBytesCache.computeIfAbsent(maskPath, path -> {
+				try (InputStream is = ImageSearchUtil.class.getResourceAsStream(path)) {
+					if (is == null) {
+						// No mask file found - this is normal, not all templates have masks
+						logger.debug("No mask found for template: {}", templateResourcePath);
+						return null;
+					}
+					logger.debug("Mask found and loaded: {}", maskPath);
+					return is.readAllBytes();
+				} catch (IOException e) {
+					logger.debug("Error loading mask for: {}", path);
+					return null;
+				}
+			});
+			
+			if (maskBytes == null) {
+				return null; // No mask available
+			}
+			
+			// Decode mask (load as grayscale)
+			MatOfByte maskMatOfByte = new MatOfByte(maskBytes);
+			Mat mask = Imgcodecs.imdecode(maskMatOfByte, Imgcodecs.IMREAD_GRAYSCALE);
+			
+			if (!mask.empty()) {
+				// Save to cache (clone to avoid modifications)
+				templateCache.put(maskPath, mask.clone());
+				return mask;
+			}
+			
+			return null;
+			
+		} catch (Exception e) {
+			logger.debug("Exception loading mask for: {}", templateResourcePath);
+			return null;
+		}
+	}
+
+	/**
 	 * Optimized version of the searchTemplate method with cache and better memory management.
 	 */
     public static DTOImageSearchResult searchTemplateOptimized(byte[] rawImageData, int width, int height, int bpp,
@@ -296,6 +365,7 @@ public class ImageSearchUtil {
 
         Mat imagenPrincipal = null;
         Mat template = null;
+        Mat mask = null;
         Mat imagenROI = null;
         Mat resultado = null;
 
@@ -335,6 +405,12 @@ public class ImageSearchUtil {
                 return new DTOImageSearchResult(false, null, 0.0);
             }
 
+            // Load mask if available
+            mask = loadTemplateMask(templateResourcePath);
+            if (mask != null && !mask.empty()) {
+                logger.debug("Using mask for template: {}", templateResourcePath);
+            }
+
             logger.debug("Template size: {}x{}, Image size: {}x{}",
                 template.cols(), template.rows(), imagenPrincipal.cols(), imagenPrincipal.rows());
 
@@ -362,7 +438,14 @@ public class ImageSearchUtil {
             // Template matching
             long matchStartTime = System.currentTimeMillis();
             resultado = new Mat(resultRows, resultCols, CvType.CV_32FC1);
-            Imgproc.matchTemplate(imagenROI, template, resultado, Imgproc.TM_CCOEFF_NORMED);
+            
+            // Use mask if available, otherwise use standard matching
+            if (mask != null && !mask.empty()) {
+                Imgproc.matchTemplate(imagenROI, template, resultado, Imgproc.TM_CCOEFF_NORMED, mask);
+            } else {
+                Imgproc.matchTemplate(imagenROI, template, resultado, Imgproc.TM_CCOEFF_NORMED);
+            }
+            
             long matchEndTime = System.currentTimeMillis();
             logger.debug("Template matching execution: {} ms", (matchEndTime - matchStartTime));
 
@@ -395,6 +478,7 @@ public class ImageSearchUtil {
             // Explicit release of OpenCV memory
             if (imagenPrincipal != null) imagenPrincipal.release();
             if (template != null) template.release();
+            if (mask != null) mask.release();
             if (imagenROI != null) imagenROI.release();
             if (resultado != null) resultado.release();
         }

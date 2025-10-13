@@ -1,21 +1,24 @@
 package cl.camodev.wosbot.launcher.view;
 
 import cl.camodev.wosbot.ot.DTOBotState;
+import cl.camodev.wosbot.ot.DTOQueueState;
 import cl.camodev.wosbot.profile.model.ProfileAux;
 import cl.camodev.wosbot.profile.view.ProfileManagerLayoutController;
 import cl.camodev.wosbot.serv.IBotStateListener;
+import cl.camodev.wosbot.serv.IQueueStateListener;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import javafx.application.Platform;
 
-public class LauncherActionController implements IBotStateListener {
+public class LauncherActionController implements IBotStateListener, IQueueStateListener {
 
 	private final LauncherLayoutController layoutController;
 	private ProfileManagerLayoutController profileManagerLayoutController;
 
-	public LauncherActionController(LauncherLayoutController launcherLayoutController) {
-		this.layoutController = launcherLayoutController;
-		ServScheduler.getServices().registryBotStateListener(this);
-	}
+        public LauncherActionController(LauncherLayoutController launcherLayoutController) {
+                this.layoutController = launcherLayoutController;
+                ServScheduler.getServices().registryBotStateListener(this);
+                ServScheduler.getServices().registryQueueStateListener(this);
+        }
 
 	public void setProfileManagerController(ProfileManagerLayoutController profileManagerLayoutController) {
 		this.profileManagerLayoutController = profileManagerLayoutController;
@@ -29,13 +32,25 @@ public class LauncherActionController implements IBotStateListener {
 		ServScheduler.getServices().stopBot();
 	}
 
-	public void pauseBot() {
-		ServScheduler.getServices().pauseBot();
-	}
+        public void pauseAllQueues() {
+                ServScheduler.getServices().pauseBot();
+        }
 
-	public void resumeBot() {
-		ServScheduler.getServices().resumeBot();
-	}
+        public void resumeAllQueues() {
+                ServScheduler.getServices().resumeBot();
+        }
+
+        public void pauseQueue(ProfileAux profile) {
+                if (profile != null) {
+                        ServScheduler.getServices().pauseQueue(profile.getId());
+                }
+        }
+
+        public void resumeQueue(ProfileAux profile) {
+                if (profile != null) {
+                        ServScheduler.getServices().resumeQueue(profile.getId());
+                }
+        }
 
 	public void captureScreenshots() {
 
@@ -120,8 +135,15 @@ public class LauncherActionController implements IBotStateListener {
 
 	@Override
 	public void onBotStateChange(DTOBotState botState) {
-        Platform.runLater(() -> {
-		layoutController.onBotStateChange(botState);
-	});
-    }
+		Platform.runLater(() -> {
+			layoutController.onBotStateChange(botState);
+		});
+	}
+
+	@Override
+	public void onQueueStateChange(DTOQueueState queueState) {
+		Platform.runLater(() -> {
+			layoutController.onQueueStateChange(queueState);
+		});
+	}
 }
