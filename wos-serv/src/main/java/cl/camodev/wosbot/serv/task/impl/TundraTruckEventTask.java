@@ -96,14 +96,14 @@ public class TundraTruckEventTask extends DelayedTask {
 	public TundraTruckEventTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
 	}
-	
+
 	@Override
 	protected void execute() {
 		logInfo("=== Starting Tundra Truck Event Task ===");
 
 		// Load configuration
 		loadConfiguration();
-	
+
 		// Check if task is still enabled
 		if (!taskEnabled) {
 			logInfo("Tundra Truck task is disabled. Rescheduling for next reset.");
@@ -114,7 +114,8 @@ public class TundraTruckEventTask extends DelayedTask {
 		// Schedule based on activation time if configured
 		if (useActivationTime) {
 			validateActivationTime();
-			scheduleActivationTime();
+			if (scheduledToActivationTime())
+				return;
 		}
 
 		// Attempt navigation
@@ -190,8 +191,10 @@ public class TundraTruckEventTask extends DelayedTask {
 	 * Schedule task based on configured activation time in UTC.
 	 * If activation time has already passed today, schedule immediately instead of
 	 * tomorrow.
+	 * 
+	 * @return true if scheduled to activation time, false if running now
 	 */
-	private void scheduleActivationTime() {
+	private boolean scheduledToActivationTime() {
 		try {
 			LocalTime targetTime = LocalTime.parse(activationTime.trim(), TIME_FORMATTER);
 			ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
@@ -207,16 +210,19 @@ public class TundraTruckEventTask extends DelayedTask {
 			// If activation time has already passed today, run immediately
 			if (nowUtc.isAfter(activationTimeUtc)) {
 				logInfo("Activation time " + activationTime + " UTC has already passed today. Running immediately.");
+				return false;
 			} else {
 				logInfo("Scheduling Tundra Truck task for " + activationTime + " UTC (" +
 						localActivationTime.format(DATETIME_FORMATTER) + " local time)");
 				reschedule(localActivationTime.toLocalDateTime());
+				return true;
 			}
 		} catch (DateTimeParseException e) {
 			logError("Failed to parse activation time '" + activationTime + "': " + e.getMessage());
 			// Fallback to game reset
 			reschedule(UtilTime.getGameReset());
 		}
+		return true;
 	}
 
 	/**
