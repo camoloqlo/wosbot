@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
@@ -56,6 +57,10 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected TextRecognitionRetrier<Integer> integerHelper;
     protected TextRecognitionRetrier<Duration> durationHelper;
     protected boolean shouldUpdateConfig;
+
+    // Time format
+	protected static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+	protected static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
 
     private static final int DEFAULT_RETRIES = 3;
 
