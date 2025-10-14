@@ -3,127 +3,139 @@
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
 
-<VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" spacing="15.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
-   <padding>
-      <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
-   </padding>
-   <children>
-      <!-- Enable Bear Trap -->
-      <CheckBox fx:id="checkBoxEnableBearTrap" mnemonicParsing="false" text="Enable Bear Trap">
-         <font>
-            <Font name="System Bold" size="14.0" />
-         </font>
-      </CheckBox>
-      
-      <Separator prefWidth="200.0" />
-      
-      <!-- Trap Schedule Section -->
-      <Label text="Trap Schedule">
-         <font>
-            <Font name="System Bold" size="13.0" />
-         </font>
-      </Label>
-      
-      <GridPane hgap="10.0" vgap="10.0">
-         <columnConstraints>
-            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="200.0" />
-            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="300.0" />
-         </columnConstraints>
-         <rowConstraints>
-            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-            <RowConstraints minHeight="10.0" prefHeight="20.0" vgrow="SOMETIMES" />
-            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-         </rowConstraints>
-         <children>
-            <Label text="Next Bear Trap (UTC):" GridPane.rowIndex="0" />
-            <TextField fx:id="textFieldScheduleDateTime" promptText="yyyy-MM-dd HH:mm" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+<GridPane hgap="20" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="500.0" prefWidth="720.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+    <padding>
+        <Insets bottom="18" left="18" right="18" top="18" />
+    </padding>
+    <columnConstraints>
+        <ColumnConstraints percentWidth="70" />
+        <ColumnConstraints percentWidth="30" />
+    </columnConstraints>
+    <rowConstraints>
+        <RowConstraints vgrow="ALWAYS" />
+    </rowConstraints>
+    <children>
+        <!-- Main content panel with ScrollPane -->
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" style="-fx-background-color: transparent; -fx-background: transparent;" GridPane.columnIndex="0" GridPane.rowIndex="0">
+            <content>
+                <VBox spacing="14" style="-fx-background-color: #1f1f1f; -fx-background-radius: 8; -fx-padding: 18;">
+                    <children>
+                        <CheckBox fx:id="checkBoxEnableBearTrap" mnemonicParsing="false" style="-fx-font-size: 15px; -fx-font-weight: bold;" text="Enable Bear Trap" />
 
-            <Label fx:id="labelDateTimeError" text="" textFill="RED" GridPane.columnIndex="1" GridPane.rowIndex="1">
-               <font>
-                  <Font size="11.0" />
-               </font>
-            </Label>
+                        <Label style="-fx-font-size: 12px; -fx-text-fill: #b5b5b5;" text="Automate Bear Trap event with scheduled preparation and rally management." wrapText="true" />
 
-            <Label text="Preparation Time (minutes):" GridPane.rowIndex="2" />
-            <TextField fx:id="textFieldPreparationTime" promptText="5" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-         </children>
-      </GridPane>
-      
-      <Separator prefWidth="200.0" />
-      
-      <!-- Preparation Section -->
-      <Label text="Preparation">
-         <font>
-            <Font name="System Bold" size="13.0" />
-         </font>
-      </Label>
-      
-      <VBox spacing="8.0">
-         <children>
-            <CheckBox fx:id="checkBoxActivePets" mnemonicParsing="false" text="Active Pets" />
-            <CheckBox fx:id="checkBoxRecallTroops" mnemonicParsing="false" text="Recall Gather Troops" />
-         </children>
-         <VBox.margin>
-            <Insets left="10.0" />
-         </VBox.margin>
-      </VBox>
-      
-      <Separator prefWidth="200.0" />
-      
-      <!-- Trap Configuration Section -->
-      <Label text="Trap Configuration">
-         <font>
-            <Font name="System Bold" size="13.0" />
-         </font>
-      </Label>
-      
-      <VBox spacing="10.0">
-         <children>
-            <!-- Trap Selection -->
-            <HBox alignment="CENTER_LEFT" spacing="10.0">
-               <children>
-                  <Label text="Trap:" />
-                  <ComboBox fx:id="comboBoxTrapNumber" prefWidth="80.0" />
-               </children>
-            </HBox>
-            
-            <!-- Call Rally -->
-            <VBox spacing="8.0">
-               <children>
-                  <CheckBox fx:id="checkBoxCallRally" mnemonicParsing="false" text="Call Own Rally" />
-                  <HBox alignment="CENTER_LEFT" spacing="10.0">
-                     <children>
-                        <Label text="Rally Flag:" />
-                        <ComboBox fx:id="comboBoxRallyFlag" prefWidth="80.0" />
-                     </children>
-                     <VBox.margin>
-                        <Insets left="25.0" />
-                     </VBox.margin>
-                  </HBox>
-               </children>
-            </VBox>
-            
-            <!-- Join Rally -->
-            <VBox spacing="8.0">
-               <children>
-                  <CheckBox fx:id="checkBoxEnableJoin" mnemonicParsing="false" text="Enable Join" />
-                  <HBox alignment="CENTER_LEFT" spacing="10.0">
-                     <children>
-                        <Label text="Joiner Flag:" />
-                        <ComboBox fx:id="comboBoxJoinFlag" prefWidth="80.0" />
-                     </children>
-                     <VBox.margin>
-                        <Insets left="25.0" />
-                     </VBox.margin>
-                  </HBox>
-               </children>
-            </VBox>
-         </children>
-         <VBox.margin>
-            <Insets left="10.0" />
-         </VBox.margin>
-      </VBox>
-   </children>
-</VBox>
+                        <Separator />
+
+                        <!-- Trap Schedule Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <Label maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#ffd966, #ff8c1a); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12; -fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Trap Schedule" />
+                                <VBox spacing="12" style="-fx-padding: 16;">
+                                    <children>
+                                        <VBox spacing="6">
+                                            <children>
+                                                <Label style="-fx-text-fill: #e5e5e5;" text="Next Bear Trap (UTC)" />
+                                                <TextField fx:id="textFieldScheduleDateTime" promptText="dd-MM-yyyy HH:mm" />
+                                                <Label fx:id="labelDateTimeError" style="-fx-font-size: 11px; -fx-text-fill: #ff4444;" text="" wrapText="true" />
+                                            </children>
+                                        </VBox>
+
+                                        <VBox spacing="6">
+                                            <children>
+                                                <Label style="-fx-text-fill: #e5e5e5;" text="Preparation Time (minutes)" />
+                                                <TextField fx:id="textFieldPreparationTime" prefWidth="100.0" promptText="5" />
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <!-- Preparation Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <Label maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#47b3ff, #1a7cff); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12; -fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Preparation" />
+                                <VBox spacing="10" style="-fx-padding: 16;">
+                                    <children>
+                                        <CheckBox fx:id="checkBoxActivePets" mnemonicParsing="false" text="Active Pets" />
+                                        <CheckBox fx:id="checkBoxRecallTroops" mnemonicParsing="false" text="Recall Gather Troops" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <!-- Trap Configuration Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <Label maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#ff6b6b, #c92a2a); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12; -fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Trap Configuration" />
+                                <VBox spacing="12" style="-fx-padding: 16;">
+                                    <children>
+                                        <!-- Trap Selection -->
+                                        <HBox alignment="CENTER_LEFT" spacing="10">
+                                            <children>
+                                                <Label style="-fx-text-fill: #e5e5e5;" text="Trap Number" minWidth="100.0" />
+                                                <ComboBox fx:id="comboBoxTrapNumber" prefWidth="100.0" />
+                                            </children>
+                                        </HBox>
+
+                                        <!-- Call Rally -->
+                                        <VBox spacing="8">
+                                            <children>
+                                                <CheckBox fx:id="checkBoxCallRally" mnemonicParsing="false" text="Call Own Rally" />
+                                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                                    <children>
+                                                        <Label style="-fx-text-fill: #e5e5e5;" text="Rally Flag" minWidth="100.0" />
+                                                        <ComboBox fx:id="comboBoxRallyFlag" prefWidth="100.0" />
+                                                    </children>
+                                                    <padding>
+                                                        <Insets left="20.0" />
+                                                    </padding>
+                                                </HBox>
+                                            </children>
+                                        </VBox>
+
+                                        <!-- Join Rally -->
+                                        <VBox spacing="8">
+                                            <children>
+                                                <CheckBox fx:id="checkBoxEnableJoin" mnemonicParsing="false" text="Enable Join Rally" />
+                                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                                    <children>
+                                                        <Label style="-fx-text-fill: #e5e5e5;" text="Join Flag" minWidth="100.0" />
+                                                        <ComboBox fx:id="comboBoxJoinFlag" prefWidth="100.0" />
+                                                    </children>
+                                                    <padding>
+                                                        <Insets left="20.0" />
+                                                    </padding>
+                                                </HBox>
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+
+        <!-- Info panel -->
+        <VBox alignment="TOP_LEFT" spacing="8" style="-fx-background-color: #262626; -fx-background-radius: 8; -fx-padding: 16;" GridPane.columnIndex="1" GridPane.rowIndex="0">
+            <children>
+                <Label style="-fx-font-size: 12px; -fx-text-fill: linear-gradient(#ffd966, #ff8c1a); -fx-font-weight: bold;" text="Bear Trap Event" wrapText="true" />
+                <Label text="" />
+                <Label style="-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #f2f2f2;" text="Quick guide" />
+                <Separator style="-fx-background-color: #ff8c1a; -fx-opacity: 1;" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Enable to activate the Bear Trap automation." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Set next trap time in UTC format (dd-MM-yyyy HH:mm)." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Preparation time: minutes before trap activation." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Active Pets will be enabled during preparation." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Recall troops will return your gathering marches" wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Call Rally to start your own rally on the trap." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Join Rally to join existing rallies automatically." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Gather and Autojoin will be rescheduled at end to send marches again." wrapText="true" />
+                <Separator style="-fx-background-color: #ff8c1a; -fx-opacity: 1;" />
+            </children>
+        </VBox>
+    </children>
+</GridPane>
