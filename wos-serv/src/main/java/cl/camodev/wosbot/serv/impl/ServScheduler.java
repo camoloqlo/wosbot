@@ -27,6 +27,8 @@ import cl.camodev.wosbot.ot.DTODailyTaskStatus;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTaskState;
 import cl.camodev.wosbot.serv.IBotStateListener;
+import cl.camodev.wosbot.ot.DTOQueueState;
+import cl.camodev.wosbot.serv.IQueueStateListener;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.DelayedTaskRegistry;
 import cl.camodev.wosbot.serv.task.TaskQueue;
@@ -37,7 +39,8 @@ public class ServScheduler {
 
 	private final TaskQueueManager queueManager = new TaskQueueManager();
 
-	private List<IBotStateListener> listeners = new ArrayList<IBotStateListener>();
+        private List<IBotStateListener> listeners = new ArrayList<IBotStateListener>();
+        private List<IQueueStateListener> queueStateListeners = new ArrayList<IQueueStateListener>();
 
 	private IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
 
@@ -143,7 +146,8 @@ public class ServScheduler {
 				});
 			});
 
-			queueManager.startQueues();
+                        queueManager.startQueues();
+                        notifyQueueState(null, false);
 
 			listeners.forEach(e -> {
 				DTOBotState state = new DTOBotState();
@@ -157,49 +161,84 @@ public class ServScheduler {
 
 	}
 
-	public void registryBotStateListener(IBotStateListener listener) {
+        public void registryBotStateListener(IBotStateListener listener) {
 
-		if (listeners == null) {
-			listeners = new ArrayList<IBotStateListener>();
-		}
-		listeners.add(listener);
-	}
+                if (listeners == null) {
+                        listeners = new ArrayList<IBotStateListener>();
+                }
+                listeners.add(listener);
+        }
 
-	public void stopBot() {
-		queueManager.stopQueues();
+        public void registryQueueStateListener(IQueueStateListener listener) {
 
-		listeners.forEach(e -> {
-			DTOBotState state = new DTOBotState();
+                if (queueStateListeners == null) {
+                        queueStateListeners = new ArrayList<IQueueStateListener>();
+                }
+                queueStateListeners.add(listener);
+        }
+
+        public void stopBot() {
+                queueManager.stopQueues();
+
+                listeners.forEach(e -> {
+                        DTOBotState state = new DTOBotState();
 			state.setRunning(false);
 			state.setPaused(false);
-			state.setActionTime(LocalDateTime.now());
-			e.onBotStateChange(state);
-		});
-	}
+                        state.setActionTime(LocalDateTime.now());
+                        e.onBotStateChange(state);
+                });
+                notifyQueueState(null, false);
+        }
 
-	public void pauseBot() {
-		queueManager.pauseQueues();
+        public void pauseBot() {
+                queueManager.pauseQueues();
 
-		listeners.forEach(e -> {
-			DTOBotState state = new DTOBotState();
+                listeners.forEach(e -> {
+                        DTOBotState state = new DTOBotState();
 			state.setRunning(true);
 			state.setPaused(true);
-			state.setActionTime(LocalDateTime.now());
-			e.onBotStateChange(state);
-		});
-	}
+                        state.setActionTime(LocalDateTime.now());
+                        e.onBotStateChange(state);
+                });
+                notifyQueueState(null, true);
+        }
 
-	public void resumeBot() {
-		queueManager.resumeQueues();
+        public void resumeBot() {
+                queueManager.resumeQueues();
 
-		listeners.forEach(e -> {
-			DTOBotState state = new DTOBotState();
+                listeners.forEach(e -> {
+                        DTOBotState state = new DTOBotState();
 			state.setRunning(true);
 			state.setPaused(false);
-			state.setActionTime(LocalDateTime.now());
-			e.onBotStateChange(state);
-		});
-	}
+                        state.setActionTime(LocalDateTime.now());
+                        e.onBotStateChange(state);
+                });
+                notifyQueueState(null, false);
+        }
+
+        public void pauseQueue(Long profileId) {
+                if (profileId != null) {
+                        queueManager.pauseQueue(profileId);
+                        notifyQueueState(profileId, true);
+                }
+        }
+
+        public void resumeQueue(Long profileId) {
+                if (profileId != null) {
+                        queueManager.resumeQueue(profileId);
+                        notifyQueueState(profileId, false);
+                }
+        }
+
+        private void notifyQueueState(Long profileId, boolean paused) {
+                if (queueStateListeners == null || queueStateListeners.isEmpty()) {
+                        return;
+                }
+
+                DTOQueueState state = new DTOQueueState(profileId, paused,
+                                queueManager.getActiveQueueStates());
+                queueStateListeners.forEach(listener -> listener.onQueueStateChange(state));
+        }
 
 	public void updateDailyTaskStatus(DTOProfiles profile, TpDailyTaskEnum task, LocalDateTime nextSchedule) {
 
