@@ -85,6 +85,18 @@ public class BearTrapLayoutController extends AbstractProfileController {
         comboBoxJoinFlag.getItems().addAll(1, 2, 3, 4, 5, 6,7,8);
         comboBoxMappings.put(comboBoxJoinFlag, EnumConfigurationKey.BEAR_TRAP_JOIN_FLAG_INT);
 
+        // Bind disable property of all controls to the enable checkbox (inverted)
+        // When checkbox is NOT selected, controls are disabled
+        textFieldScheduleDateTime.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+        textFieldPreparationTime.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+        checkBoxActivePets.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+        checkBoxRecallTroops.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+        comboBoxTrapNumber.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+        checkBoxCallRally.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+        comboBoxRallyFlag.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+        checkBoxEnableJoin.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+        comboBoxJoinFlag.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+
         // Set initial visibility of rally flag ComboBox based on call rally checkbox state
         comboBoxRallyFlag.setVisible(checkBoxCallRally.isSelected());
         comboBoxRallyFlag.setManaged(checkBoxCallRally.isSelected());
