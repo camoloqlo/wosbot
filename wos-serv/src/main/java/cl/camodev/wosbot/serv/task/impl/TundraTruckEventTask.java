@@ -442,7 +442,7 @@ public class TundraTruckEventTask extends DelayedTask {
 			logInfo("Attempting to send left truck.");
 			leftSent = trySendTruck(TruckSide.LEFT);
 		}
-		
+
 		if (rightStatus == TruckStatus.AVAILABLE) {
 			logInfo("Attempting to send right truck.");
 			rightSent = trySendTruck(TruckSide.RIGHT);
@@ -635,7 +635,8 @@ public class TundraTruckEventTask extends DelayedTask {
 		if (leftTime.isPresent() && rightTime.isPresent()) {
 			// Use the EARLIER time (soonest truck return)
 			nextSchedule = leftTime.get().isBefore(rightTime.get()) ? leftTime.get() : rightTime.get();
-			logInfo("Both truck times extracted. Next check: " + nextSchedule.format(DATETIME_FORMATTER) + " (soonest return)");
+			logInfo("Both truck times extracted. Next check: " + nextSchedule.format(DATETIME_FORMATTER)
+					+ " (soonest return)");
 		} else if (leftTime.isPresent()) {
 			nextSchedule = leftTime.get();
 			logInfo("Only left truck time extracted. Next check: " + nextSchedule.format(DATETIME_FORMATTER));

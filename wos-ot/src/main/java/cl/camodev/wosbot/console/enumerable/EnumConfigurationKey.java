@@ -37,17 +37,18 @@ public enum EnumConfigurationKey {
     // RESOURCE GATHERING AND MANAGEMENT
     // ========================================================================
 	GATHER_SPEED_BOOL("false", Boolean.class),
-	GATHER_SPEED_BOOST_TYPE_STRING("8h (250 gems)", String.class),
+	GATHER_SPEED_BOOST_TYPE_STRING("24h (600 gems)", String.class),
+	GATHER_TASK_BOOL("false", Boolean.class),
 	GATHER_COAL_BOOL("false", Boolean.class),
 	GATHER_WOOD_BOOL("false", Boolean.class),
 	GATHER_MEAT_BOOL("false", Boolean.class),
 	GATHER_IRON_BOOL("false", Boolean.class),
-	GATHER_COAL_LEVEL_INT("1", Integer.class),
-	GATHER_WOOD_LEVEL_INT("1", Integer.class),
-	GATHER_MEAT_LEVEL_INT("1", Integer.class),
-	GATHER_IRON_LEVEL_INT("1", Integer.class),
+	GATHER_COAL_LEVEL_INT("8", Integer.class),
+	GATHER_WOOD_LEVEL_INT("8", Integer.class),
+	GATHER_MEAT_LEVEL_INT("8", Integer.class),
+	GATHER_IRON_LEVEL_INT("8", Integer.class),
 	GATHER_ACTIVE_MARCH_QUEUE_INT("6", Integer.class),
-	GATHER_REMOVE_HEROS_BOOL("false", Boolean.class),
+	GATHER_REMOVE_HEROS_BOOL("true", Boolean.class),
 	
     // ========================================================================
     // TROOP TRAINING AND MANAGEMENT
@@ -70,7 +71,7 @@ public enum EnumConfigurationKey {
 	INTEL_BEASTS_FLAG_INT("1", Integer.class),
 	INTEL_USE_FLAG_BOOL("false", Boolean.class),
 	INTEL_FC_ERA_BOOL("false", Boolean.class),
-	INTEL_SMART_PROCESSING_BOOL("true", Boolean.class),
+	INTEL_SMART_PROCESSING_BOOL("false", Boolean.class),
 	
     // ========================================================================
     // ALLIANCE FEATURES

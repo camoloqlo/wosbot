@@ -33,14 +33,21 @@ import static cl.camodev.wosbot.console.enumerable.EnumTemplates.ALLIANCE_TERRIT
 /**
  * Bear Trap Task
  *
- * This task manages the Bear Trap feature with configurable schedule and preparation actions.
- * The task executes based on a reference date/time (in UTC) with preparation windows every 2 days.
+ * This task manages the Bear Trap feature with configurable schedule and
+ * preparation actions.
+ * The task executes based on a reference date/time (in UTC) with preparation
+ * windows every 2 days.
  *
  * Window logic:
+ * <p>
  * - Reference date marks the END of preparation window (trap activation time)
+ * <p>
  * - Preparation time is subtracted from reference to calculate window START
+ * <p>
  * - Windows repeat every 2 days from the reference date
- * - Example: Reference 21:00, 5min prep -> Window: 20:55 to 21:00, trap active until 21:30
+ * <p>
+ * - Example: Reference 21:00, 5min prep -> Window: 20:55 to 21:00, trap active
+ * until 21:30
  */
 public class BearTrapTask extends DelayedTask {
 
@@ -50,8 +57,7 @@ public class BearTrapTask extends DelayedTask {
     BotTextRecognitionProvider provider = new BotTextRecognitionProvider(emuManager, EMULATOR_NUMBER);
     TextRecognitionRetrier<Duration> durationHelper = new TextRecognitionRetrier<>(provider);
 
-
-    //Trap configuration
+    // Trap configuration
     private boolean callOwnRally;
     private boolean joinRally;
     private boolean usePets;
@@ -66,12 +72,11 @@ public class BearTrapTask extends DelayedTask {
     private DTOTesseractSettings settings = DTOTesseractSettings.builder()
             .setAllowedChars("0123456789/")
             .setRemoveBackground(true)
-            .setTextColor(new Color(253,253,253)) // White text
-            //.setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+            .setTextColor(new Color(253, 253, 253)) // White text
+            // .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
             .setReuseLastImage(true)
             .setDebug(true)
             .build();
-
 
     public BearTrapTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
@@ -88,7 +93,8 @@ public class BearTrapTask extends DelayedTask {
             case BEFORE:
                 // If we're before the window, execute at current window start
                 nextExecutionInstant = result.getCurrentWindowStart();
-                logInfo("Current time is BEFORE window. Next execution (UTC): " + LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC")));
+                logInfo("Current time is BEFORE window. Next execution (UTC): "
+                        + LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC")).format(DATETIME_FORMATTER));
                 break;
 
             case INSIDE:
@@ -101,7 +107,7 @@ public class BearTrapTask extends DelayedTask {
                 // If we're after the window, use next window
                 nextExecutionInstant = result.getNextWindowStart();
                 logInfo("Current time is AFTER window. Next execution (UTC): " +
-                        LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC")));
+                        LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC")).format(DATETIME_FORMATTER));
                 break;
 
             default:
@@ -111,12 +117,11 @@ public class BearTrapTask extends DelayedTask {
         // Convert from UTC Instant to local system time for scheduling
         LocalDateTime nextExecutionTimeLocal = LocalDateTime.ofInstant(
                 nextExecutionInstant,
-                ZoneId.systemDefault()
-        );
+                ZoneId.systemDefault());
 
-        logInfo("Next execution in local time: " + nextExecutionTimeLocal);
+        logInfo("Next execution in local time: " + nextExecutionTimeLocal.format(DATETIME_FORMATTER));
         // Schedule task using parent class reschedule mechanism
-        this.reschedule(nextExecutionTimeLocal);
+        reschedule(nextExecutionTimeLocal);
     }
 
     @Override
@@ -139,21 +144,20 @@ public class BearTrapTask extends DelayedTask {
             // Convert window times to LocalDateTime
             LocalDateTime windowStart = LocalDateTime.ofInstant(
                     window.getCurrentWindowStart(),
-                    ZoneId.of("UTC")
-            );
+                    ZoneId.of("UTC"));
             LocalDateTime windowEnd = LocalDateTime.ofInstant(
                     window.getCurrentWindowEnd(),
-                    ZoneId.of("UTC")
-            );
+                    ZoneId.of("UTC"));
 
             // Trap ACTIVATES automatically at END of preparation window
             LocalDateTime trapActivationTime = windowEnd.minusMinutes(30);
 
             LocalDateTime trapEndTime = trapActivationTime.plusMinutes(trapDurationTime);
 
-            logInfo("Preparation window: " + windowStart + " to " + trapActivationTime);
-            logInfo("Trap will auto-activate at: " + trapActivationTime);
-            logInfo("Trap will end at: " + trapEndTime);
+            logInfo("Preparation window: " + windowStart.format(DATETIME_FORMATTER) + " to "
+                    + trapActivationTime.format(DATETIME_FORMATTER));
+            logInfo("Trap will auto-activate at: " + trapActivationTime.format(DATETIME_FORMATTER));
+            logInfo("Trap will end at: " + trapEndTime.format(DATETIME_FORMATTER));
 
             LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
 
@@ -173,7 +177,7 @@ public class BearTrapTask extends DelayedTask {
                 }
                 logInfo("Trap has been ACTIVATED automatically!");
             } else {
-                //this will skip preration and go directly to play event
+                // this will skip preration and go directly to play event
                 logInfo("Trap is already ACTIVE (preparation time passed)");
             }
 
@@ -207,8 +211,7 @@ public class BearTrapTask extends DelayedTask {
     private boolean isInsideWindow() {
         LocalDateTime referenceDate = profile.getConfig(
                 BEAR_TRAP_SCHEDULE_DATETIME_STRING,
-                LocalDateTime.class
-        );
+                LocalDateTime.class);
 
         Instant referenceUTC = referenceDate.atZone(ZoneId.of("UTC")).toInstant();
 
@@ -224,8 +227,7 @@ public class BearTrapTask extends DelayedTask {
     private BearTrapHelper.WindowResult getWindowState() {
         LocalDateTime referenceDate = profile.getConfig(
                 BEAR_TRAP_SCHEDULE_DATETIME_STRING,
-                LocalDateTime.class
-        );
+                LocalDateTime.class);
 
         Instant referenceUTC = referenceDate.atZone(ZoneId.of("UTC")).toInstant();
 
@@ -249,15 +251,14 @@ public class BearTrapTask extends DelayedTask {
         // Convert from UTC Instant to local system time for scheduling
         LocalDateTime nextExecutionLocal = LocalDateTime.ofInstant(
                 nextExecutionInstant,
-                ZoneId.systemDefault()
-        );
+                ZoneId.systemDefault());
 
         referenceTrapTime = LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC"));
 
-        logInfo("Rescheduling Bear Trap for (UTC): " + referenceTrapTime);
-        logInfo("Rescheduling Bear Trap for (Local): " + nextExecutionLocal);
+        logInfo("Rescheduling Bear Trap for (UTC): " + referenceTrapTime.format(DATETIME_FORMATTER));
+        logInfo("Rescheduling Bear Trap for (Local): " + nextExecutionLocal.format(DATETIME_FORMATTER));
 
-        this.reschedule(nextExecutionLocal);
+        reschedule(nextExecutionLocal);
     }
 
     /**
@@ -283,35 +284,34 @@ public class BearTrapTask extends DelayedTask {
             if (callOwnRally && !ownRallyActive.get() && secondsRemaining > 360) {
                 long durationSeconds = callOwnRally();
                 if (durationSeconds > 0) {
-                    logInfo("Own rally started successfully, duration=" + durationSeconds + "s");
+                    LocalDateTime returnTime = now.plusSeconds(durationSeconds * 2 + 2).plusMinutes(5);
+                    logInfo("Own rally started successfully, returning in: " + returnTime.format(TIME_FORMATTER));
                     ownRallyActive.set(true);// marca el rally como activo
                     sleepTask(200);
                 } else {
-                    logDebug("Could not start rally (may already be active)");
+                    logWarning("Could not start rally (may already be active)");
                 }
             }
 
-            //handle join
-            if (joinRally){
+            // handle join
+            if (joinRally) {
 
                 DTOPoint point1 = new DTOPoint(203, 200);
-                DTOPoint point2 = new DTOPoint(246,226);
+                DTOPoint point2 = new DTOPoint(246, 226);
 
-                //check the available spots
+                // check the available spots
                 emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
                 Integer used = integerHelper.execute(
-                            point1, point2, 5, 10L,
+                        point1, point2, 5, 10L,
                         settings,
                         NumberValidators::isFractionFormat,
-                        NumberConverters::fractionToFirstInt
-                );
+                        NumberConverters::fractionToFirstInt);
 
                 Integer total = integerHelper.execute(
                         point1, point2, 5, 10L,
                         settings,
                         NumberValidators::isFractionFormat,
-                        NumberConverters::fractionToSecondInt
-                );
+                        NumberConverters::fractionToSecondInt);
 
                 int freeMarches;
 
@@ -324,7 +324,7 @@ public class BearTrapTask extends DelayedTask {
                     logInfo("Could not read marches, using default value: " + freeMarches);
                 }
 
-                //handle join marches
+                // handle join marches
                 if (freeMarches > 0) {
                     DTOImageSearchResult warButton = searchTemplateWithRetries(EnumTemplates.GAME_HOME_WAR, 90, 3);
 
@@ -340,7 +340,8 @@ public class BearTrapTask extends DelayedTask {
             // Periodic status log
             if (iterationCount % 10 == 0) {
                 long minutesRemaining = secondsRemaining / 60;
-                logInfo("Trap active - " + minutesRemaining + " minutes " + (secondsRemaining % 60) + " seconds remaining");
+                logInfo("Trap active - " + minutesRemaining + " minutes " + (secondsRemaining % 60)
+                        + " seconds remaining");
             }
 
             // Update current time after sleep
@@ -350,7 +351,6 @@ public class BearTrapTask extends DelayedTask {
             sleepTask(1000);
         }
 
-
         logInfo("=== TRAP ENDED - Strategy execution completed ===");
 
         // Update configuration with next window start time
@@ -358,14 +358,15 @@ public class BearTrapTask extends DelayedTask {
     }
 
     private void handleJoinRallies(int freeMarches) {
-        //search the green plus icon
+        // search the green plus icon
         DTOImageSearchResult plusIcon = searchTemplateWithRetries(EnumTemplates.BEAR_JOIN_PLUS_ICON, 90, 2);
         if (!plusIcon.isFound()) {
-            logDebug("No joinable rallies found (plus icon not present)");
+            logWarning("No joinable rallies found (plus icon not present)");
             ensureCorrectScreenLocation(EnumStartLocation.ANY);
             return;
         }
-        //tap the plus icon
+        logInfo("Joining rally with flag #" + joinRallyFlag);
+        // tap the plus icon
         tapRandomPoint(plusIcon.getPoint(), plusIcon.getPoint(), 1, 100);
         DTOPoint flagPoint = UtilRally.getMarchFlagPoint(joinRallyFlag);
         tapRandomPoint(flagPoint, flagPoint, 1, 0);
@@ -373,12 +374,11 @@ public class BearTrapTask extends DelayedTask {
         DTOImageSearchResult deploy = searchTemplateWithRetries(EnumTemplates.BEAR_DEPLOY_BUTTON, 90, 3);
 
         if (deploy.isFound()) {
-            logDebug("Deploy button not found. Rescheduling to try again in 5 minutes.");
+            logWarning("Deploy button not found. Rescheduling to try again in 5 minutes.");
             tapPoint(deploy.getPoint());
         }
         ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
-
 
     private void cleanup() {
         logInfo("Cleaning up Bear Trap state");
@@ -395,7 +395,6 @@ public class BearTrapTask extends DelayedTask {
      */
     private void prepareForTrap() {
         logInfo("Preparing for Bear Trap event...");
-
 
         logInfo("Disabling autojoin...");
         disableAutojoin();
@@ -420,24 +419,26 @@ public class BearTrapTask extends DelayedTask {
     }
 
     private boolean navigateToBearTrap(int trapNumber) {
-        //go to alliance
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(493, 1187), new DTOPoint(561, 1240));
+        // go to alliance
+        tapRandomPoint(new DTOPoint(493, 1187), new DTOPoint(561, 1240));
         sleepTask(3000);
-        //go to territory
+        // go to territory
 
-        DTOImageSearchResult territoryButton = emuManager.searchTemplate(EMULATOR_NUMBER,ALLIANCE_TERRITORY_BUTTON,90);
+        DTOImageSearchResult territoryButton = searchTemplateWithRetries(ALLIANCE_TERRITORY_BUTTON, 1);
         if (!territoryButton.isFound()) {
             logError("Territory button not found to go to bear trap");
             return false;
         }
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, territoryButton.getPoint(), territoryButton.getPoint(), 1, 2000);
-        //go to special buildings
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(460, 110), new DTOPoint(560, 130), 1, 300);
+        tapRandomPoint(territoryButton.getPoint(), territoryButton.getPoint(), 1, 2000);
+        // go to special buildings
+        tapRandomPoint(new DTOPoint(460, 110), new DTOPoint(560, 130), 1, 300);
         // click on go button based on trap number
 
         switch (trapNumber) {
-            case 1 -> emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(570, 350), new DTOPoint(620, 370), 1, 300);
-            case 2 -> emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(570, 530), new DTOPoint(620, 550), 1, 300);
+            case 1 ->
+                tapRandomPoint(new DTOPoint(570, 350), new DTOPoint(620, 370), 1, 300);
+            case 2 ->
+                tapRandomPoint(new DTOPoint(570, 530), new DTOPoint(620, 550), 1, 300);
             default -> {
                 logError("Invalid trap number: " + trapNumber);
                 return false;
@@ -456,9 +457,9 @@ public class BearTrapTask extends DelayedTask {
             return;
         }
         tapRandomPoint(petsButton.getPoint(), petsButton.getPoint(), 1, 500);
-        tapRandomPoint(new DTOPoint(100,410), new DTOPoint(160,460), 1, 500); //razorbreak
-        tapRandomPoint(new DTOPoint(120,1070), new DTOPoint(280,1100), 1, 500); //quick use
-        tapRandomPoint(new DTOPoint(460,800), new DTOPoint(550,830), 1, 100); //use
+        tapRandomPoint(new DTOPoint(100, 410), new DTOPoint(160, 460), 1, 500); // razorbreak
+        tapRandomPoint(new DTOPoint(120, 1070), new DTOPoint(280, 1100), 1, 500); // quick use
+        tapRandomPoint(new DTOPoint(460, 800), new DTOPoint(550, 830), 1, 100); // use
         tapBackButton();
         ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
@@ -475,9 +476,11 @@ public class BearTrapTask extends DelayedTask {
         while (attempt < maxRetries) {
             attempt++;
 
-            DTOImageSearchResult returningArrow = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_RECALL_BUTTON, 90, 3);
+            DTOImageSearchResult returningArrow = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_RECALL_BUTTON,
+                    90, 3);
             DTOImageSearchResult marchView = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_VIEW_BUTTON, 90, 3);
-            DTOImageSearchResult marchSpeedup = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_SPEEDUP_BUTTON, 90, 3);
+            DTOImageSearchResult marchSpeedup = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_SPEEDUP_BUTTON, 90,
+                    3);
 
             boolean foundReturning = returningArrow != null && returningArrow.isFound();
             boolean foundView = marchView != null && marchView.isFound();
@@ -519,7 +522,7 @@ public class BearTrapTask extends DelayedTask {
      */
     private void disableAutojoin() {
         // Navigate to alliance screen with alliance button
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(493, 1187), new DTOPoint(561, 1240));
+        tapRandomPoint(new DTOPoint(493, 1187), new DTOPoint(561, 1240));
         sleepTask(3000);
 
         DTOImageSearchResult warButton = searchTemplateWithRetries(EnumTemplates.ALLIANCE_WAR_BUTTON, 90, 5);
@@ -528,13 +531,13 @@ public class BearTrapTask extends DelayedTask {
             logError("Alliance War button not found to disable autojoin");
             return;
         }
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, warButton.getPoint(), warButton.getPoint(), 1, 1000);
+        tapRandomPoint(warButton.getPoint(), warButton.getPoint(), 1, 1000);
 
         // Tap autojoin button
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(260, 1200), new DTOPoint(450, 1240), 1, 1500);
+        tapRandomPoint(new DTOPoint(260, 1200), new DTOPoint(450, 1240), 1, 1500);
 
         // Tap stop button
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(120, 1070), new DTOPoint(240, 1110), 1, 500);
+        tapRandomPoint(new DTOPoint(120, 1070), new DTOPoint(240, 1110), 1, 500);
 
         ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
@@ -542,7 +545,7 @@ public class BearTrapTask extends DelayedTask {
     /**
      * Re-queues tasks that were disabled during trap preparation
      * Checks configuration and re-queues:
-     * - Gather tasks (meat, wood, coal, iron)
+     * - Gather task
      * - Alliance autojoin
      */
     private void requeueTasks() {
@@ -555,31 +558,11 @@ public class BearTrapTask extends DelayedTask {
             return;
         }
 
-        // Check and re-queue gather tasks if enabled
-        logInfo("Checking gather tasks...");
-
-        // Gather Meat
-        if (profile.getConfig(EnumConfigurationKey.GATHER_MEAT_BOOL, Boolean.class)) {
-            queue.executeTaskNow(TpDailyTaskEnum.GATHER_MEAT, true);
-            logInfo("Re-queued Gather Meat task");
-        }
-
-        // Gather Wood
-        if (profile.getConfig(EnumConfigurationKey.GATHER_WOOD_BOOL, Boolean.class)) {
-            queue.executeTaskNow(TpDailyTaskEnum.GATHER_WOOD, true);
-            logInfo("Re-queued Gather Wood task");
-        }
-
-        // Gather Coal
-        if (profile.getConfig(EnumConfigurationKey.GATHER_COAL_BOOL, Boolean.class)) {
-            queue.executeTaskNow(TpDailyTaskEnum.GATHER_COAL, true);
-            logInfo("Re-queued Gather Coal task");
-        }
-
-        // Gather Iron
-        if (profile.getConfig(EnumConfigurationKey.GATHER_IRON_BOOL, Boolean.class)) {
-            queue.executeTaskNow(TpDailyTaskEnum.GATHER_IRON, true);
-            logInfo("Re-queued Gather Iron task");
+        // Check and re-queue gather task if enabled
+        logInfo("Checking Gather Resources task...");
+        if (profile.getConfig(EnumConfigurationKey.GATHER_TASK_BOOL, Boolean.class)) {
+            queue.executeTaskNow(TpDailyTaskEnum.GATHER_RESOURCES, true);
+            logInfo("Re-queued Gather Resources task");
         }
 
         // Check and re-queue autojoin task if enabled
@@ -655,7 +638,7 @@ public class BearTrapTask extends DelayedTask {
                 DTOImageSearchResult deploy = searchTemplateWithRetries(EnumTemplates.BEAR_DEPLOY_BUTTON, 90, 3);
 
                 if (!deploy.isFound()) {
-                    logDebug("Deploy button not found. Rescheduling to try again in 5 minutes.");
+                    logWarning("Deploy button not found. Rescheduling to try again in 5 minutes.");
                     return 0;
                 }
 
@@ -679,24 +662,26 @@ public class BearTrapTask extends DelayedTask {
         }
     }
 
-
-    private void reloadConfig(){
-        referenceTrapTime =     profile.getConfig(BEAR_TRAP_SCHEDULE_DATETIME_STRING,   LocalDateTime.class);
-        trapPreparationTime =   profile.getConfig(BEAR_TRAP_PREPARATION_TIME_INT,       Integer.class);
+    private void reloadConfig() {
+        referenceTrapTime = profile.getConfig(BEAR_TRAP_SCHEDULE_DATETIME_STRING, LocalDateTime.class);
+        trapPreparationTime = profile.getConfig(BEAR_TRAP_PREPARATION_TIME_INT, Integer.class);
         trapDurationTime = 30;
-        callOwnRally =          profile.getConfig(BEAR_TRAP_CALL_RALLY_BOOL,        Boolean.class);
-        usePets =               profile.getConfig(BEAR_TRAP_ACTIVE_PETS_BOOL,       Boolean.class);
-        recallTroops =          profile.getConfig(BEAR_TRAP_RECALL_TROOPS_BOOL,    Boolean.class);
-        trapNumber =            profile.getConfig(BEAR_TRAP_NUMBER_INT,            Integer.class);
-        ownRallyFlag =          profile.getConfig(BEAR_TRAP_RALLY_FLAG_INT,       Integer.class);
-        joinRallyFlag =            profile.getConfig(BEAR_TRAP_JOIN_FLAG_INT,       Integer.class);
-        joinRally =             profile.getConfig(BEAR_TRAP_JOIN_RALLY_BOOL,       Boolean.class);
+        callOwnRally = profile.getConfig(BEAR_TRAP_CALL_RALLY_BOOL, Boolean.class);
+        usePets = profile.getConfig(BEAR_TRAP_ACTIVE_PETS_BOOL, Boolean.class);
+        recallTroops = profile.getConfig(BEAR_TRAP_RECALL_TROOPS_BOOL, Boolean.class);
+        trapNumber = profile.getConfig(BEAR_TRAP_NUMBER_INT, Integer.class);
+        ownRallyFlag = profile.getConfig(BEAR_TRAP_RALLY_FLAG_INT, Integer.class);
+        joinRallyFlag = profile.getConfig(BEAR_TRAP_JOIN_FLAG_INT, Integer.class);
+        joinRally = profile.getConfig(BEAR_TRAP_JOIN_RALLY_BOOL, Boolean.class);
     }
 
     /**
-     * Updates the BEAR_TRAP_SCHEDULE_DATETIME_STRING configuration with the next trap activation time (anchor)
-     * This method is called after the trap ends to persist the next execution time in the database
-     * The saved time is the trap activation time (anchor), not the preparation window start time
+     * Updates the BEAR_TRAP_SCHEDULE_DATETIME_STRING configuration with the next
+     * trap activation time (anchor)
+     * This method is called after the trap ends to persist the next execution time
+     * in the database
+     * The saved time is the trap activation time (anchor), not the preparation
+     * window start time
      */
     private void updateNextWindowDateTime() {
         // Get the next window information
@@ -705,7 +690,8 @@ public class BearTrapTask extends DelayedTask {
         // Get the next window START time
         LocalDateTime nextWindowStart = LocalDateTime.ofInstant(result.getNextWindowStart(), ZoneId.of("UTC"));
 
-        // The trap activation time (anchor) is preparation time minutes after the window start
+        // The trap activation time (anchor) is preparation time minutes after the
+        // window start
         LocalDateTime nextTrapActivation = nextWindowStart.plusMinutes(trapPreparationTime);
 
         // Format in "dd-MM-yyyy HH:mm" format
@@ -716,10 +702,9 @@ public class BearTrapTask extends DelayedTask {
 
         // Delegate to service to update the specific configuration
         ServConfig.getServices().updateProfileConfig(
-            profile,
-            BEAR_TRAP_SCHEDULE_DATETIME_STRING,
-            formattedDateTime
-        );
+                profile,
+                BEAR_TRAP_SCHEDULE_DATETIME_STRING,
+                formattedDateTime);
     }
 
     @Override

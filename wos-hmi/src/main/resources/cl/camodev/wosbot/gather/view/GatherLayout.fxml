@@ -11,81 +11,103 @@
 
 <GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="580.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1">
   <columnConstraints>
-      <ColumnConstraints hgrow="SOMETIMES" percentWidth="50.0" />
-      <ColumnConstraints hgrow="SOMETIMES" percentWidth="50.0" />
+      <ColumnConstraints hgrow="SOMETIMES" />
   </columnConstraints>
   <rowConstraints>
-    <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="16.666" prefHeight="277.0" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="16.666" prefHeight="277.0" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="16.666" prefHeight="277.0" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="16.666" prefHeight="277.0" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="16.666" prefHeight="277.0" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="16.666" prefHeight="277.0" vgrow="SOMETIMES" />
+      <RowConstraints maxHeight="1.7976931348623157E308" percentHeight="15.0" vgrow="SOMETIMES" />
+      <RowConstraints vgrow="SOMETIMES" />
   </rowConstraints>
    <children>
-      <CheckBox fx:id="checkBoxGatherMeat" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Meat">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </CheckBox>
-      <CheckBox fx:id="checkBoxGatherWood" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Wood" GridPane.rowIndex="1">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </CheckBox>
-      <CheckBox fx:id="checkBoxGatherIron" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Iron" GridPane.rowIndex="3" />
-      <CheckBox fx:id="checkBoxGatherCoal" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Coal" GridPane.rowIndex="2" />
-      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+      <GridPane fx:id="gridPaneGathering" GridPane.rowIndex="1">
+        <columnConstraints>
+          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+        </columnConstraints>
+        <rowConstraints>
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            <RowConstraints />
+            <RowConstraints />
+        </rowConstraints>
          <children>
-            <Label text="Level">
-               <HBox.margin>
+            <CheckBox fx:id="checkBoxGatherMeat" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Meat">
+               <GridPane.margin>
                   <Insets />
-               </HBox.margin></Label>
-            <ComboBox fx:id="comboBoxLevelCoal" />
-         </children>
-      </HBox>
-      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="5.0" GridPane.columnIndex="1">
-         <children>
-            <Label text="Level">
-               <HBox.margin>
+               </GridPane.margin>
+            </CheckBox>
+            <CheckBox fx:id="checkBoxGatherWood" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Wood" GridPane.rowIndex="1">
+               <GridPane.margin>
                   <Insets />
-               </HBox.margin></Label>
-            <ComboBox fx:id="comboBoxLevelMeat" />
-         </children>
-      </HBox>
-      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-         <children>
-            <Label text="Level">
-               <HBox.margin>
+               </GridPane.margin>
+            </CheckBox>
+            <CheckBox fx:id="checkBoxGatherCoal" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Coal" GridPane.rowIndex="2" />
+            <CheckBox fx:id="checkBoxGatherIron" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Iron" GridPane.rowIndex="3" />
+            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="10.0" GridPane.rowIndex="4">
+               <children>
+                  <CheckBox fx:id="checkBoxGatherSpeedBoost" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Speed Boost" />
+                  <ComboBox fx:id="comboBoxGatherSpeedBoostType" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="10.0" GridPane.rowIndex="5">
+               <children>
+                  <Label text="Active March Queue:" />
+                  <ComboBox fx:id="comboBoxActiveMarchQueue" />
+               </children>
+               <GridPane.margin>
                   <Insets />
-               </HBox.margin></Label>
-            <ComboBox fx:id="comboBoxLevelWood" />
+               </GridPane.margin>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="5.0" GridPane.columnIndex="1">
+               <children>
+                  <Label text="Level">
+                     <HBox.margin>
+                        <Insets />
+                     </HBox.margin>
+                  </Label>
+                  <ComboBox fx:id="comboBoxLevelMeat" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+               <children>
+                  <Label text="Level">
+                     <HBox.margin>
+                        <Insets />
+                     </HBox.margin>
+                  </Label>
+                  <ComboBox fx:id="comboBoxLevelWood" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+               <children>
+                  <Label text="Level">
+                     <HBox.margin>
+                        <Insets />
+                     </HBox.margin>
+                  </Label>
+                  <ComboBox fx:id="comboBoxLevelCoal" />
+               </children>
+            </HBox>
+            <CheckBox fx:id="checkBoxRemoveHeros" mnemonicParsing="false" text="Remove 2nd and 3rd hero from march" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+               <children>
+                  <Label text="Level">
+                     <HBox.margin>
+                        <Insets />
+                     </HBox.margin>
+                  </Label>
+                  <ComboBox fx:id="comboBoxLevelIron" />
+               </children>
+            </HBox>
          </children>
-      </HBox>
-      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+      </GridPane>
+      <HBox alignment="CENTER_LEFT">
          <children>
-            <Label text="Level">
-               <HBox.margin>
-                  <Insets />
-               </HBox.margin></Label>
-            <ComboBox fx:id="comboBoxLevelIron" />
+            <CheckBox fx:id="checkBoxGatherResources" mnemonicParsing="false" text="Activate Gathering" />
          </children>
       </HBox>
-      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="10.0" GridPane.columnSpan="2" GridPane.rowIndex="5">
-         <children>
-            <Label text="Active March Queue:" />
-            <ComboBox fx:id="comboBoxActiveMarchQueue" />
-         </children>
-         <GridPane.margin>
-            <Insets left="10.0" />
-         </GridPane.margin>
-      </HBox>
-      <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="10.0" GridPane.rowIndex="4">
-         <children>
-            <CheckBox fx:id="checkBoxGatherSpeedBoost" graphicTextGap="3.0" mnemonicParsing="false" text="Gather Speed Boost" />
-            <ComboBox fx:id="comboBoxGatherSpeedBoostType" />
-         </children>
-      </HBox>
-      <CheckBox fx:id="checkBoxRemoveHeros" mnemonicParsing="false" text="Remove 2nd and 3rd hero from march" GridPane.columnIndex="1" GridPane.rowIndex="4" />
    </children>
 </GridPane>
