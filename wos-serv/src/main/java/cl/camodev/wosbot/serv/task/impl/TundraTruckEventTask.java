@@ -4,8 +4,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Optional;
 
 import cl.camodev.utiles.UtilTime;
@@ -82,13 +82,8 @@ public class TundraTruckEventTask extends DelayedTask {
 	private static final int MAX_NAVIGATION_ATTEMPTS = 2;
 	private static final int MAX_SWIPE_ATTEMPTS = 5;
 	private static final int MAX_REFRESH_ATTEMPTS = 10;
-	private static final int MAX_COLLECT_ATTEMPTS = 3;
 	private static final int INITIAL_SWIPE_COUNT = 3;
 	private static final int POPUP_CLOSE_TAPS = 5;
-
-	// Time format
-	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-	private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 	// Configuration (loaded fresh each execution)
 	private boolean taskEnabled;
@@ -384,24 +379,21 @@ public class TundraTruckEventTask extends DelayedTask {
 	 * Collect any arrived trucks
 	 */
 	private void collectArrivedTrucks() {
-		for (int attempt = 0; attempt < MAX_COLLECT_ATTEMPTS; attempt++) {
-			DTOImageSearchResult arrivedTruck = emuManager.searchTemplate(
-					EMULATOR_NUMBER,
-					EnumTemplates.TUNDRA_TRUCK_ARRIVED,
-					90);
+		List<DTOImageSearchResult> arrivedsTruck = searchTemplatesWithRetries(EnumTemplates.TUNDRA_TRUCK_ARRIVED, 80, 3,
+				2);
 
-			logDebug("Searching for arrived trucks (attempt " + (attempt + 1) + "/" + MAX_COLLECT_ATTEMPTS + ")");
+		logDebug("Searching for arrived trucks");
 
-			if (arrivedTruck.isFound()) {
-				logInfo("Arrived truck found. Collecting rewards.");
-				tapPoint(arrivedTruck.getPoint());
-				sleepTask(1000);
+		if (arrivedsTruck.isEmpty())
+			logInfo("No arrived trucks found.");
+		else
+			logInfo(arrivedsTruck.size() + " arrived trucks found. Collecting rewards now.");
+
+		for (DTOImageSearchResult result : arrivedsTruck) {
+			if (result.isFound()) {
+				tapPoint(result.getPoint());
+				sleepTask(500);
 				closeWindow();
-			} else {
-				if (attempt == 0) {
-					logInfo("No arrived trucks found");
-				}
-				break;
 			}
 		}
 
@@ -417,7 +409,7 @@ public class TundraTruckEventTask extends DelayedTask {
 			logInfo("Remaining trucks OCR: '" + text + "'");
 
 			if (text != null && text.trim().matches("0\\s*/\\s*\\d+")) {
-				logInfo("No trucks available (0/X). Rescheduling for next activation time.");
+				logInfo("No trucks available (0/4). Rescheduling for next activation time.");
 				rescheduleWithActivationTime();
 				return false;
 			}
@@ -447,10 +439,12 @@ public class TundraTruckEventTask extends DelayedTask {
 		boolean rightSent = false;
 
 		if (leftStatus == TruckStatus.AVAILABLE) {
+			logInfo("Attempting to send left truck.");
 			leftSent = trySendTruck(TruckSide.LEFT);
 		}
-
+		
 		if (rightStatus == TruckStatus.AVAILABLE) {
+			logInfo("Attempting to send right truck.");
 			rightSent = trySendTruck(TruckSide.RIGHT);
 		}
 
@@ -641,13 +635,13 @@ public class TundraTruckEventTask extends DelayedTask {
 		if (leftTime.isPresent() && rightTime.isPresent()) {
 			// Use the EARLIER time (soonest truck return)
 			nextSchedule = leftTime.get().isBefore(rightTime.get()) ? leftTime.get() : rightTime.get();
-			logInfo("Both truck times extracted. Next check: " + nextSchedule + " (soonest return)");
+			logInfo("Both truck times extracted. Next check: " + nextSchedule.format(DATETIME_FORMATTER) + " (soonest return)");
 		} else if (leftTime.isPresent()) {
 			nextSchedule = leftTime.get();
-			logInfo("Only left truck time extracted. Next check: " + nextSchedule);
+			logInfo("Only left truck time extracted. Next check: " + nextSchedule.format(DATETIME_FORMATTER));
 		} else if (rightTime.isPresent()) {
 			nextSchedule = rightTime.get();
-			logInfo("Only right truck time extracted. Next check: " + nextSchedule);
+			logInfo("Only right truck time extracted. Next check: " + nextSchedule.format(DATETIME_FORMATTER));
 		} else {
 			// Fallback: 30 minutes
 			nextSchedule = now.plusMinutes(30);
@@ -690,7 +684,7 @@ public class TundraTruckEventTask extends DelayedTask {
 	 */
 	private void closeWindow() {
 		sleepTask(300);
-		tapRandomPoint(CLOSE_WINDOW.topLeft(), CLOSE_WINDOW.bottomRight(), 2, 300);
+		tapRandomPoint(CLOSE_WINDOW.topLeft(), CLOSE_WINDOW.bottomRight(), 2, 600);
 	}
 
 	@Override
