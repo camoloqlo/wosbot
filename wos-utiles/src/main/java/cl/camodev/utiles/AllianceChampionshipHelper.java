@@ -9,8 +9,8 @@ import java.time.temporal.ChronoUnit;
  *
  * Alliance Championship runs weekly with a specific execution window:
  * - START: Monday 00:01 UTC
- * - END: Wednesday 22:55 UTC
- * - Total duration: ~71 hours per week
+ * - END: TUESDAY 22:55 UTC
+ * - Total duration: ~46 hours
  *
  * This helper calculates whether we're currently inside a valid execution window
  * and provides timing information for scheduling.
@@ -20,14 +20,14 @@ public final class AllianceChampionshipHelper extends TimeWindowHelper {
     /** Day of week when window starts (Monday = 1) */
     private static final int WINDOW_START_DAY = DayOfWeek.MONDAY.getValue();
 
-    /** Day of week when window ends (Wednesday = 3) */
-    private static final int WINDOW_END_DAY = DayOfWeek.WEDNESDAY.getValue();
+    /** Day of week when window ends (TUESDAY = 3) */
+    private static final int WINDOW_END_DAY = DayOfWeek.TUESDAY.getValue();
 
     /** Hour when window starts on Monday (00:01 = 0 hours, 1 minute) */
     private static final int WINDOW_START_HOUR = 0;
     private static final int WINDOW_START_MINUTE = 1;
 
-    /** Hour when window ends on Wednesday (22:55 = 22 hours, 55 minutes) */
+    /** Hour when window ends on TUESDAY (22:55 = 22 hours, 55 minutes) */
     private static final int WINDOW_END_HOUR = 22;
     private static final int WINDOW_END_MINUTE = 55;
 
@@ -48,7 +48,7 @@ public final class AllianceChampionshipHelper extends TimeWindowHelper {
      *
      * Window definition:
      * - Starts: Monday 00:01 UTC
-     * - Ends: Wednesday 22:55 UTC
+     * - Ends: Tuesday 22:55 UTC
      * - Repeats weekly
      *
      * @param clock Time source
@@ -86,14 +86,12 @@ public final class AllianceChampionshipHelper extends TimeWindowHelper {
      */
     private static ZonedDateTime getWindowStart(ZonedDateTime now) {
         // Get this week's Monday at 00:01
-        ZonedDateTime monday = now
+        return now
                 .with(ChronoField.DAY_OF_WEEK, WINDOW_START_DAY)
                 .withHour(WINDOW_START_HOUR)
                 .withMinute(WINDOW_START_MINUTE)
                 .withSecond(0)
                 .withNano(0);
-
-        return monday;
     }
 
     /**
@@ -103,15 +101,13 @@ public final class AllianceChampionshipHelper extends TimeWindowHelper {
      * @return End of current week's window
      */
     private static ZonedDateTime getWindowEnd(ZonedDateTime now) {
-        // Get this week's Wednesday at 22:55
-        ZonedDateTime wednesday = now
+        // Get this week's TUESDAY at 22:55
+        return now
                 .with(ChronoField.DAY_OF_WEEK, WINDOW_END_DAY)
                 .withHour(WINDOW_END_HOUR)
                 .withMinute(WINDOW_END_MINUTE)
                 .withSecond(59)
                 .withNano(999_999_999);
-
-        return wednesday;
     }
 
     /**
