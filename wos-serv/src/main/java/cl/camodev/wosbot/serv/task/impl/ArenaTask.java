@@ -716,46 +716,38 @@ public class ArenaTask extends DelayedTask {
     private boolean checkBattleResult() {
         sleepTask(1000); // Wait for result screen to stabilize
 
-        try {
-            // Check victory region first
-            String victoryText = emuManager.ocrRegionText(
-                    EMULATOR_NUMBER,
-                    VICTORY_TEXT_TOP_LEFT,
-                    VICTORY_TEXT_BOTTOM_RIGHT);
+        // Check victory region first
+        String victoryText = OCRWithRetries(
+                VICTORY_TEXT_TOP_LEFT,
+                VICTORY_TEXT_BOTTOM_RIGHT);
 
-            String cleanVictory = cleanOcrText(victoryText);
+        String cleanVictory = cleanOcrText(victoryText);
 
-            if (cleanVictory.contains("victory")) {
-                logInfo("Battle result: Victory");
-                sleepTask(1000); // Wait before dismissing
-                tapBackButton();
-                return true;
-            }
-
-            // Check defeat region
-            String defeatText = emuManager.ocrRegionText(
-                    EMULATOR_NUMBER,
-                    DEFEAT_TEXT_TOP_LEFT,
-                    DEFEAT_TEXT_BOTTOM_RIGHT);
-
-            String cleanDefeat = cleanOcrText(defeatText);
-
-            if (cleanDefeat.contains("defeat")) {
-                logInfo("Battle result: Defeat");
-            } else {
-                logWarning(String.format("Unrecognized battle result. Victory OCR: '%s', Defeat OCR: '%s'",
-                        victoryText, defeatText));
-            }
-
+        if (cleanVictory.contains("victory")) {
+            logInfo("Battle result: Victory");
             sleepTask(1000); // Wait before dismissing
             tapBackButton();
-            return false;
-
-        } catch (Exception e) {
-            logError("OCR error while checking battle result: " + e.getMessage());
-            tapBackButton(); // Try to dismiss anyway
-            return false;
+            return true;
         }
+
+        // Check defeat region
+        String defeatText = OCRWithRetries(
+                DEFEAT_TEXT_TOP_LEFT,
+                DEFEAT_TEXT_BOTTOM_RIGHT);
+
+        String cleanDefeat = cleanOcrText(defeatText);
+
+        if (cleanDefeat.contains("defeat")) {
+            logInfo("Battle result: Defeat");
+        } else {
+            logWarning(String.format("Unrecognized battle result. Victory OCR: '%s', Defeat OCR: '%s'",
+                    victoryText, defeatText));
+        }
+
+        sleepTask(1000); // Wait before dismissing
+        tapBackButton();
+        return false;
+
     }
 
     /**
