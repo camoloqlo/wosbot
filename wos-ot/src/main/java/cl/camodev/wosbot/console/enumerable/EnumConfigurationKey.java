@@ -111,7 +111,13 @@ public enum EnumConfigurationKey {
 	ALLIANCE_MOBILIZATION_MINIMUM_POINTS_INT("520", Integer.class),
 	ALLIANCE_MOBILIZATION_AUTO_ACCEPT_BOOL("true", Boolean.class),
 	ALLIANCE_MOBILIZATION_USE_GEMS_FOR_ACCEPT_BOOL("false", Boolean.class),
-	
+	ALLIANCE_CHAMPIONSHIP_BOOL("false", Boolean.class),
+	ALLIANCE_CHAMPIONSHIP_OVERRIDE_DEPLOY_BOOL("false", Boolean.class),
+	ALLIANCE_CHAMPIONSHIP_INFANTRY_PERCENTAGE_INT("33", Integer.class),
+	ALLIANCE_CHAMPIONSHIP_LANCERS_PERCENTAGE_INT("33", Integer.class),
+	ALLIANCE_CHAMPIONSHIP_MARKSMANS_PERCENTAGE_INT("34", Integer.class),
+	ALLIANCE_CHAMPIONSHIP_POSITION_STRING("CENTER", String.class),
+
     // ========================================================================
     // LIFE ESSENCE AND PETS
     // ========================================================================

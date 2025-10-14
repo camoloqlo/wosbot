@@ -2,9 +2,6 @@ package cl.camodev.utiles;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
 /**
@@ -21,7 +18,7 @@ import java.time.temporal.ChronoUnit;
  * BEFORE the active window, INSIDE the active window (end inclusive), or AFTER it,
  * and provide timing details such as how long until the next cycle.
  */
-public final class BearTrapHelper {
+public final class BearTrapHelper extends TimeWindowHelper {
 
     /** Fixed portion of the window (in minutes). */
     private static final int DEFAULT_FIXED_WINDOW_MINUTES = 30;
@@ -31,65 +28,6 @@ public final class BearTrapHelper {
 
     /** Prevent instantiation. */
     private BearTrapHelper() {}
-
-    /**
-     * Possible states relative to a Bear Trap window.
-     */
-    public enum WindowState {
-        BEFORE,   // Before the current cycle's window
-        INSIDE,   // Inside the execution window (end inclusive)
-        AFTER     // After the current cycle's window
-    }
-
-    /**
-     * Result of a window calculation with timing details and current state.
-     */
-    public static final class WindowResult {
-        private final WindowState state;
-        private final Instant currentWindowStart;
-        private final Instant currentWindowEnd;
-        private final Instant nextWindowStart;
-        private final long minutesUntilNextWindow;
-        private final int currentWindowDurationMinutes;
-
-        private WindowResult(
-                WindowState state,
-                Instant currentWindowStart,
-                Instant currentWindowEnd,
-                Instant nextWindowStart,
-                long minutesUntilNextWindow,
-                int currentWindowDurationMinutes
-        ) {
-            this.state = state;
-            this.currentWindowStart = currentWindowStart;
-            this.currentWindowEnd = currentWindowEnd;
-            this.nextWindowStart = nextWindowStart;
-            this.minutesUntilNextWindow = minutesUntilNextWindow;
-            this.currentWindowDurationMinutes = currentWindowDurationMinutes;
-        }
-
-        public WindowState getState() { return state; }
-        public Instant getCurrentWindowStart() { return currentWindowStart; }
-        public Instant getCurrentWindowEnd() { return currentWindowEnd; }
-        public Instant getNextWindowStart() { return nextWindowStart; }
-        public long getMinutesUntilNextWindow() { return minutesUntilNextWindow; }
-        public int getCurrentWindowDurationMinutes() { return currentWindowDurationMinutes; }
-
-        @Override
-        public String toString() {
-            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss 'UTC'")
-                    .withZone(ZoneOffset.UTC);
-
-            StringBuilder sb = new StringBuilder();
-            sb.append("State: ").append(state).append("\n");
-            sb.append("Current window duration: ").append(currentWindowDurationMinutes).append(" minutes\n");
-            sb.append("Current window: ").append(fmt.format(currentWindowStart))
-                    .append(" - ").append(fmt.format(currentWindowEnd)).append("\n");
-            sb.append("Next window: ").append(fmt.format(nextWindowStart)).append("\n");
-            sb.append("Minutes until next window: ").append(minutesUntilNextWindow);
-            return sb.toString();
-        }
-    }
 
     /**
      * Calculates the Bear Trap window state for an anchor time.
@@ -136,15 +74,11 @@ public final class BearTrapHelper {
             int intervalDays,
             Clock clock
     ) {
-        if (fixedWindowMinutes <= 0) {
-            throw new IllegalArgumentException("Fixed window minutes must be greater than 0");
-        }
-        if (variableMinutes < 0) {
-            throw new IllegalArgumentException("Variable minutes (n) must be >= 0");
-        }
-        if (intervalDays <= 0) {
-            throw new IllegalArgumentException("Interval in days must be greater than 0");
-        }
+        // Validation using inherited methods
+        BearTrapHelper helper = new BearTrapHelper();
+        helper.validatePositive(fixedWindowMinutes, "Fixed window minutes");
+        helper.validateNonNegative(variableMinutes, "Variable minutes (n)");
+        helper.validatePositive(intervalDays, "Interval in days");
 
         final Instant now = Instant.now(clock);
 
@@ -157,13 +91,12 @@ public final class BearTrapHelper {
 
         // Before the first anchored window
         if (minutesSinceRefStart < 0) {
-            final long minutesUntilNext = now.until(referenceStart, ChronoUnit.MINUTES);
-            return new WindowResult(
-                    WindowState.BEFORE,
+            final Instant windowEnd = referenceStart.plus(windowDuration, ChronoUnit.MINUTES);
+            return helper.determineWindowState(
+                    now,
                     referenceStart,
-                    referenceStart.plus(windowDuration, ChronoUnit.MINUTES),
+                    windowEnd,
                     referenceStart,
-                    minutesUntilNext,
                     windowDuration
             );
         }
@@ -174,37 +107,13 @@ public final class BearTrapHelper {
         final Instant currentEnd   = currentStart.plus(windowDuration, ChronoUnit.MINUTES);
         final Instant nextStart    = currentStart.plus(intervalMinutes, ChronoUnit.MINUTES);
 
-        if (now.isBefore(currentStart)) {
-            final long minutesUntilNext = now.until(currentStart, ChronoUnit.MINUTES);
-            return new WindowResult(
-                    WindowState.BEFORE,
-                    currentStart,
-                    currentEnd,
-                    currentStart,
-                    minutesUntilNext,
-                    windowDuration
-            );
-        } else if (!now.isAfter(currentEnd)) { // inclusive end
-            final long minutesUntilNext = now.until(nextStart, ChronoUnit.MINUTES);
-            return new WindowResult(
-                    WindowState.INSIDE,
-                    currentStart,
-                    currentEnd,
-                    nextStart,
-                    minutesUntilNext,
-                    windowDuration
-            );
-        } else {
-            final long minutesUntilNext = now.until(nextStart, ChronoUnit.MINUTES);
-            return new WindowResult(
-                    WindowState.AFTER,
-                    currentStart,
-                    currentEnd,
-                    nextStart,
-                    minutesUntilNext,
-                    windowDuration
-            );
-        }
+        return helper.determineWindowState(
+                now,
+                currentStart,
+                currentEnd,
+                nextStart,
+                windowDuration
+        );
     }
 
     /**
@@ -218,24 +127,5 @@ public final class BearTrapHelper {
      */
     public static boolean shouldRun(Instant referenceAnchorUtc, int variableMinutes) {
         return calculateWindow(referenceAnchorUtc, variableMinutes).getState() == WindowState.INSIDE;
-    }
-
-    /**
-     * Simple demo.
-     */
-    public static void main(String[] args) {
-        // Example: anchor 2025-10-06 21:30 UTC, n = 5 → start 21:25, end 22:00
-        ZonedDateTime anchor = ZonedDateTime.of(2025, 10, 6, 21, 30, 0, 0, ZoneOffset.UTC);
-        Instant anchorUtc = anchor.toInstant();
-
-        int n = 5;
-
-        System.out.println("=== Bear Trap Window (Anchor Model) ===");
-        System.out.println("Anchor (UTC): " + anchor.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss 'UTC'")));
-        System.out.println("Window = [" + (30 + n) + " min]  Start = anchor - " + n + "m, End = anchor + 30m\n");
-
-        WindowResult r = calculateWindow(anchorUtc, n);
-        System.out.println(r);
-        System.out.println("\nShould run now? " + shouldRun(anchorUtc, n));
     }
 }

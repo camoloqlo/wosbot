@@ -91,6 +91,13 @@ public enum EnumTemplates {
 	
 	ALLIANCE_CHEST_CLAIM_BUTTON("/templates/dailymission/claimButton.png"),
 	ALLIANCE_CHEST_CLAIM_ALL_BUTTON("/templates/alliance/lootClaimAllButton.png"),
+
+    ALLIANCE_CHAMPIONSHIP_TAB("/templates/alliance/championshipTab.png"),
+    ALLIANCE_CHAMPIONSHIP_TROOPS_BUTTON("/templates/alliance/championshipTroopsButton.png"),
+    ALLIANCE_CHAMPIONSHIP_REGISTER_BUTTON("/templates/alliance/championshipRegisterButton.png"),
+    ALLIANCE_CHAMPIONSHIP_SWITCH_LINE_BUTTON("/templates/alliance/championshipSwitchLineButton.png"),
+    ALLIANCE_CHAMPIONSHIP_UPDATE_TROOPS_BUTTON("/templates/alliance/championshipUpdateTroopsButton.png"),
+    ALLIANCE_CHAMPIONSHIP_DISPATCH_TROOPS_BUTTON("/templates/alliance/championshipDispatchTroopsButton.png"),
 	
 	STOREHOUSE_CHEST("/templates/storehouse/chest.png"),
 	STOREHOUSE_CHEST_2("/templates/storehouse/chest2.png"),

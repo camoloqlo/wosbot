@@ -533,7 +533,44 @@ public class EmulatorManager {
         checkEmulatorInitialized();
         emulator.sendGameToBackground(emulatorNumber);
     }
-    
+
+    /**
+     * Writes text on the emulator using ADB input.
+     * Automatically escapes special characters for shell compatibility.
+     *
+     * @param emulatorNumber Emulator identifier
+     * @param text Text to write
+     */
+    public void writeText(String emulatorNumber, String text) {
+        checkEmulatorInitialized();
+
+        // Get profile name and log the text input
+        String profileName = getProfileNameForEmulator(emulatorNumber);
+        logger.info("{} - Writing text on emulator {}: {}",
+                profileName, emulatorNumber, text);
+
+        emulator.writeText(emulatorNumber, text);
+    }
+
+    /**
+     * Clears text from the currently focused input field.
+     * Simulates pressing backspace multiple times.
+     *
+     * @param emulatorNumber Emulator identifier
+     * @param count Number of backspace key presses
+     */
+    public void clearText(String emulatorNumber, int count) {
+        checkEmulatorInitialized();
+
+        // Get profile name and log the action
+        String profileName = getProfileNameForEmulator(emulatorNumber);
+        logger.info("{} - Clearing {} characters on emulator {}",
+                profileName, count, emulatorNumber);
+
+        emulator.clearText(emulatorNumber, count);
+    }
+
+
     public boolean isRunning(String emulatorNumber) {
         checkEmulatorInitialized();
         return emulator.isRunning(emulatorNumber);

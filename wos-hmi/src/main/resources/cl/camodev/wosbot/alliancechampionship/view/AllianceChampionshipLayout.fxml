@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<GridPane hgap="20" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="400.0" prefWidth="720.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+    <padding>
+        <Insets bottom="18" left="18" right="18" top="18" />
+    </padding>
+    <columnConstraints>
+        <ColumnConstraints percentWidth="70" />
+        <ColumnConstraints percentWidth="30" />
+    </columnConstraints>
+    <rowConstraints>
+        <RowConstraints vgrow="ALWAYS" />
+    </rowConstraints>
+    <children>
+        <!-- Main content panel -->
+        <VBox spacing="14" style="-fx-background-color: #1f1f1f; -fx-background-radius: 8; -fx-padding: 18;" GridPane.columnIndex="0" GridPane.rowIndex="0">
+            <children>
+                <CheckBox fx:id="checkBoxEnableChampionship" mnemonicParsing="false" style="-fx-font-size: 15px; -fx-font-weight: bold;" text="Enable Alliance Championship" />
+
+                <Label style="-fx-font-size: 12px; -fx-text-fill: #b5b5b5;" text="Deploy troops to Alliance Championship with customizable formation and position." wrapText="true" />
+
+                <Separator />
+
+                <!-- Deployment Settings -->
+                <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                    <children>
+                        <Label maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#47b3ff, #1a7cff); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12; -fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Deployment Configuration" />
+                        <VBox spacing="10" style="-fx-padding: 16;">
+                            <children>
+                                <CheckBox fx:id="checkBoxOverrideCurrentDeploy" mnemonicParsing="false" text="Override current deployment" />
+
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <children>
+                                        <Label style="-fx-text-fill: #e5e5e5;" text="Position" minWidth="100.0" />
+                                        <ComboBox fx:id="comboBoxPosition" prefWidth="150.0" />
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+
+                <!-- Troop Distribution -->
+                <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                    <children>
+                        <Label maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#ffb347, #ff7a18); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12; -fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Troop Distribution (%)" />
+                        <GridPane hgap="16" maxWidth="1.7976931348623157E308" style="-fx-padding: 16;" vgap="12">
+                            <columnConstraints>
+                                <ColumnConstraints percentWidth="33.33" />
+                                <ColumnConstraints percentWidth="33.33" />
+                                <ColumnConstraints percentWidth="33.34" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints />
+                            </rowConstraints>
+                            <children>
+                                <VBox spacing="6" GridPane.columnIndex="0">
+                                    <children>
+                                        <Label style="-fx-text-fill: #e5e5e5;" text="Infantry" />
+                                        <TextField fx:id="textfieldInfantryPercentage" prefWidth="80.0" promptText="33" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="6" GridPane.columnIndex="1">
+                                    <children>
+                                        <Label style="-fx-text-fill: #e5e5e5;" text="Lancers" />
+                                        <TextField fx:id="textfieldLancersPercentage" prefWidth="80.0" promptText="33" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="6" GridPane.columnIndex="2">
+                                    <children>
+                                        <Label style="-fx-text-fill: #e5e5e5;" text="Marksmans" />
+                                        <TextField fx:id="textfieldMarksmansPercentage" prefWidth="80.0" promptText="34" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </GridPane>
+                    </children>
+                </VBox>
+            </children>
+        </VBox>
+
+        <!-- Info panel -->
+        <VBox alignment="TOP_LEFT" spacing="8" style="-fx-background-color: #262626; -fx-background-radius: 8; -fx-padding: 16;" GridPane.columnIndex="1" GridPane.rowIndex="0">
+            <children>
+                <Label style="-fx-font-size: 12px; -fx-text-fill: linear-gradient(#66cfff, #1a7cff); -fx-font-weight: bold;" text="Alliance Championship" wrapText="true" />
+                <Label text="" />
+                <Label style="-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #f2f2f2;" text="Quick guide" />
+                <Separator style="-fx-background-color: #1a7cff; -fx-opacity: 1;" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Enable to activate the task." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Override current deploy will replace existing deployment." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Position: Select LEFT, CENTER, or RIGHT deployment slot." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Set troop percentages - total must equal 100%." wrapText="true" />
+                <Label style="-fx-font-size: 10px; -fx-text-fill: #d0d0d0;" text="• Task runs weekly: Monday 00:01 - Wednesday 22:55 UTC." wrapText="true" />
+                <Separator style="-fx-background-color: #1a7cff; -fx-opacity: 1;" />
+            </children>
+        </VBox>
+    </children>
+</GridPane>

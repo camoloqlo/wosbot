@@ -44,8 +44,6 @@ public abstract class Emulator {
 	protected String consolePath;
 	protected AndroidDebugBridge bridge = null;
 
-	private final ThreadLocal<BufferedImage> reusableImage = new ThreadLocal<>();
-
 	// Cache for devices to avoid repeated lookups
 	private final ConcurrentHashMap<String, IDevice> deviceCache = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<String, Long> deviceCacheTimestamp = new ConcurrentHashMap<>();
@@ -534,6 +532,84 @@ public abstract class Emulator {
 				throw new RuntimeException("Error pressing back button", e);
 			}
 		}, "pressBackButton");
+	}
+
+	/**
+	 * Writes text on the emulator using ADB input.
+	 * Automatically escapes special characters for shell compatibility.
+	 *
+	 * @param emulatorNumber Emulator identifier
+	 * @param text Text to write
+	 */
+	public void writeText(String emulatorNumber, String text) {
+		withRetries(emulatorNumber, device -> {
+			try {
+				// Escape special characters for shell input
+				String escapedText = escapeTextForShell(text);
+
+				// Use input text command
+				String command = "input text \"" + escapedText + "\"";
+				device.executeShellCommand(command, new NullOutputReceiver());
+				logger.debug("Text written on emulator {}: {}", emulatorNumber, text);
+				return null;
+			} catch (Exception e) {
+				throw new RuntimeException("Error writing text: " + text, e);
+			}
+		}, "writeText");
+	}
+
+	/**
+	 * Clears text from the currently focused input field.
+	 * Simulates pressing backspace multiple times.
+	 *
+	 * @param emulatorNumber Emulator identifier
+	 * @param count Number of backspace key presses
+	 */
+	public void clearText(String emulatorNumber, int count) {
+		withRetries(emulatorNumber, device -> {
+			try {
+				for (int i = 0; i < count; i++) {
+					device.executeShellCommand("input keyevent KEYCODE_DEL", new NullOutputReceiver());
+					Thread.sleep(50); // Small delay between key presses
+				}
+				logger.debug("Cleared {} characters on emulator {}", count, emulatorNumber);
+				return null;
+			} catch (Exception e) {
+				throw new RuntimeException("Error clearing text", e);
+			}
+		}, "clearText");
+	}
+
+	/**
+	 * Escapes special characters in text for safe shell input.
+	 * Handles spaces, quotes, and other special shell characters.
+	 *
+	 * @param text Text to escape
+	 * @return Escaped text safe for shell commands
+	 */
+	private String escapeTextForShell(String text) {
+		if (text == null || text.isEmpty()) {
+			return "";
+		}
+
+		// Replace spaces with %s (ADB input text uses %s for spaces)
+		String escaped = text.replace(" ", "%s");
+
+		// Escape special characters for shell
+		escaped = escaped.replace("\"", "\\\"");
+		escaped = escaped.replace("'", "\\'");
+		escaped = escaped.replace("$", "\\$");
+		escaped = escaped.replace("`", "\\`");
+		escaped = escaped.replace("\\", "\\\\");
+		escaped = escaped.replace("&", "\\&");
+		escaped = escaped.replace("|", "\\|");
+		escaped = escaped.replace(";", "\\;");
+		escaped = escaped.replace("<", "\\<");
+		escaped = escaped.replace(">", "\\>");
+		escaped = escaped.replace("(", "\\(");
+		escaped = escaped.replace(")", "\\)");
+
+		return escaped;
 	}
 
 	/**
