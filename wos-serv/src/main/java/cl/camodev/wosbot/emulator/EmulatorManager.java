@@ -1,7 +1,6 @@
 package cl.camodev.wosbot.emulator;
 
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,8 +11,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-
-import javax.imageio.ImageIO;
 
 import cl.camodev.utiles.ImageSearchUtil;
 import cl.camodev.utiles.UtilOCR;
@@ -63,7 +60,8 @@ public class EmulatorManager {
             throw new IllegalStateException("No emulator configuration found. Ensure initialization is completed.");
         }
 
-        String gameVersionName = globalConfig.getOrDefault(EnumConfigurationKey.GAME_VERSION_STRING.name(), GameVersion.GLOBAL.name());
+        String gameVersionName = globalConfig.getOrDefault(EnumConfigurationKey.GAME_VERSION_STRING.name(),
+                GameVersion.GLOBAL.name());
         try {
             GAME = GameVersion.valueOf(gameVersionName);
             logger.info("Game version set to {}", GAME.name());
@@ -72,18 +70,21 @@ public class EmulatorManager {
             GAME = GameVersion.GLOBAL;
         }
 
-
         String savedActiveEmulator = globalConfig.get(EnumConfigurationKey.CURRENT_EMULATOR_STRING.name());
         if (savedActiveEmulator == null) {
             throw new IllegalStateException("No active emulator set. Ensure an emulator is selected.");
         }
-        MAX_RUNNING_EMULATORS = Optional.ofNullable(globalConfig.get(EnumConfigurationKey.MAX_RUNNING_EMULATORS_INT.name())).map(Integer::parseInt).orElse(Integer.parseInt(EnumConfigurationKey.MAX_RUNNING_EMULATORS_INT.getDefaultValue()));
+        MAX_RUNNING_EMULATORS = Optional
+                .ofNullable(globalConfig.get(EnumConfigurationKey.MAX_RUNNING_EMULATORS_INT.name()))
+                .map(Integer::parseInt)
+                .orElse(Integer.parseInt(EnumConfigurationKey.MAX_RUNNING_EMULATORS_INT.getDefaultValue()));
         try {
             EmulatorType emulatorType = EmulatorType.valueOf(savedActiveEmulator);
             String consolePath = globalConfig.get(emulatorType.getConfigKey());
 
             if (consolePath == null || consolePath.isEmpty()) {
-                throw new IllegalStateException("No path found for the selected emulator: " + emulatorType.getDisplayName());
+                throw new IllegalStateException(
+                        "No path found for the selected emulator: " + emulatorType.getDisplayName());
             }
 
             switch (emulatorType) {
@@ -101,25 +102,26 @@ public class EmulatorManager {
             }
 
             logger.info("Emulator initialized: {}", emulatorType.getDisplayName());
-            //restartAdbServer();
+            // restartAdbServer();
 
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("Invalid emulator type found in configuration: " + savedActiveEmulator, e);
         }
     }
 
-	/**
-	 * Checks if the emulator has been configured before executing any action.
-	 */
-	private void checkEmulatorInitialized() {
-		if (emulator == null) {
-			throw new IllegalStateException();
-		}
-	}
+    /**
+     * Checks if the emulator has been configured before executing any action.
+     */
+    private void checkEmulatorInitialized() {
+        if (emulator == null) {
+            throw new IllegalStateException();
+        }
+    }
 
     /**
      * Captures a screenshot of the emulator as DTORawImage.
-     * The conversion to BufferedImage is done only when needed by specific operations.
+     * The conversion to BufferedImage is done only when needed by specific
+     * operations.
      */
     public DTORawImage captureScreenshotViaADB(String emulatorNumber) {
         checkEmulatorInitialized();
@@ -131,12 +133,12 @@ public class EmulatorManager {
      */
     public void tapAtPoint(String emulatorNumber, DTOPoint point) {
         checkEmulatorInitialized();
-        
+
         // Get profile name and log the tap
         String profileName = getProfileNameForEmulator(emulatorNumber);
-        logger.info("{} - Tapping at ({},{}) for emulator {}", 
+        logger.info("{} - Tapping at ({},{}) for emulator {}",
                 profileName, point.getX(), point.getY(), emulatorNumber);
-                
+
         emulator.tapAtRandomPoint(emulatorNumber, point, point);
     }
 
@@ -145,26 +147,27 @@ public class EmulatorManager {
      */
     public boolean tapAtRandomPoint(String emulatorNumber, DTOPoint point1, DTOPoint point2) {
         checkEmulatorInitialized();
-        
+
         // Get profile name and log the tap
         String profileName = getProfileNameForEmulator(emulatorNumber);
-        logger.info("{} - Random tapping in area ({},{}) to ({},{}) for emulator {}", 
+        logger.info("{} - Random tapping in area ({},{}) to ({},{}) for emulator {}",
                 profileName, point1.getX(), point1.getY(), point2.getX(), point2.getY(), emulatorNumber);
-                
+
         return emulator.tapAtRandomPoint(emulatorNumber, point1, point2);
     }
 
     /**
      * Performs multiple random taps within an area with a delay between them.
      */
-    public boolean tapAtRandomPoint(String emulatorNumber, DTOPoint point1, DTOPoint point2, int tapCount, int delayMs) {
+    public boolean tapAtRandomPoint(String emulatorNumber, DTOPoint point1, DTOPoint point2, int tapCount,
+            int delayMs) {
         checkEmulatorInitialized();
-        
+
         // Get profile name and log the tap
         String profileName = getProfileNameForEmulator(emulatorNumber);
-        logger.info("{} - Multiple random tapping ({} times) in area ({},{}) to ({},{}) for emulator {}", 
+        logger.info("{} - Multiple random tapping ({} times) in area ({},{}) to ({},{}) for emulator {}",
                 profileName, tapCount, point1.getX(), point1.getY(), point2.getX(), point2.getY(), emulatorNumber);
-                
+
         return emulator.tapAtRandomPoint(emulatorNumber, point1, point2, tapCount, delayMs);
     }
 
@@ -173,12 +176,12 @@ public class EmulatorManager {
      */
     public void executeSwipe(String emulatorNumber, DTOPoint start, DTOPoint end) {
         checkEmulatorInitialized();
-        
+
         // Get profile name and log the swipe
         String profileName = getProfileNameForEmulator(emulatorNumber);
-        logger.info("{} - Swiping from ({},{}) to ({},{}) for emulator {}", 
+        logger.info("{} - Swiping from ({},{}) to ({},{}) for emulator {}",
                 profileName, start.getX(), start.getY(), end.getX(), end.getY(), emulatorNumber);
-                
+
         emulator.swipe(emulatorNumber, start, end);
     }
 
@@ -195,34 +198,38 @@ public class EmulatorManager {
      */
     public void tapBackButton(String emulatorNumber) {
         checkEmulatorInitialized();
-        
+
         // Get profile name and log the back button press
         String profileName = getProfileNameForEmulator(emulatorNumber);
-        logger.info("{} - Pressing back button for emulator {}", 
+        logger.info("{} - Pressing back button for emulator {}",
                 profileName, emulatorNumber);
-                
+
         emulator.pressBackButton(emulatorNumber);
     }
 
     /**
      * Executes OCR on a screen region and extracts text.
      */
-    public String ocrRegionText(String emulatorNumber, DTOPoint p1, DTOPoint p2) throws IOException, TesseractException {
+    public String ocrRegionText(String emulatorNumber, DTOPoint p1, DTOPoint p2)
+            throws IOException, TesseractException {
         checkEmulatorInitialized();
         return emulator.ocrRegionText(emulatorNumber, p1, p2);
     }
 
     /**
-     * Executes OCR on a screen region and extracts text with custom Tesseract settings.
+     * Executes OCR on a screen region and extracts text with custom Tesseract
+     * settings.
+     * 
      * @param emulatorNumber Emulator identifier
-     * @param p1 First corner of the region
-     * @param p2 Second corner of the region
-     * @param settings Tesseract OCR configuration settings
+     * @param p1             First corner of the region
+     * @param p2             Second corner of the region
+     * @param settings       Tesseract OCR configuration settings
      * @return Recognized text
-     * @throws IOException if image capture fails
+     * @throws IOException        if image capture fails
      * @throws TesseractException if OCR fails
      */
-    public String ocrRegionText(String emulatorNumber, DTOPoint p1, DTOPoint p2, DTOTesseractSettings settings) throws IOException, TesseractException {
+    public String ocrRegionText(String emulatorNumber, DTOPoint p1, DTOPoint p2, DTOTesseractSettings settings)
+            throws IOException, TesseractException {
         checkEmulatorInitialized();
         return emulator.ocrRegionText(emulatorNumber, p1, p2, settings);
     }
@@ -234,7 +241,7 @@ public class EmulatorManager {
         try {
             // Use ServProfiles to find profile with this emulator number
             List<DTOProfiles> profiles = ServProfiles.getServices().getProfiles();
-            
+
             if (profiles != null) {
                 for (DTOProfiles profile : profiles) {
                     if (emulatorNumber.equals(profile.getEmulatorNumber())) {
@@ -243,15 +250,16 @@ public class EmulatorManager {
                 }
             }
         } catch (Exception e) {
-            logger.warn("Could not get profile name for emulator {}: {}", 
+            logger.warn("Could not get profile name for emulator {}: {}",
                     emulatorNumber, e.getMessage());
         }
-        
+
         return "Unknown";
     }
 
     /**
-     * Generates the region-specific template path based on the configured game version
+     * Generates the region-specific template path based on the configured game
+     * version
      */
     private String getRegionSpecificTemplatePath(String originalPath) {
         try {
@@ -303,7 +311,8 @@ public class EmulatorManager {
             return regionSpecificPath;
         }
 
-        // If the specific version doesn't exist or it's the global version, use the original
+        // If the specific version doesn't exist or it's the global version, use the
+        // original
         logger.debug("Using base template: {}", originalPath);
         return originalPath;
     }
@@ -311,18 +320,20 @@ public class EmulatorManager {
     /**
      * Searches for an image on the captured screen of the emulator.
      */
-    public DTOImageSearchResult searchTemplate(String emulatorNumber, EnumTemplates templatePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner , double threshold) {
+    public DTOImageSearchResult searchTemplate(String emulatorNumber, EnumTemplates templatePath,
+            DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double threshold) {
         checkEmulatorInitialized();
         DTORawImage rawImage = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        
+
         try {
             // Set profile name in ImageSearchUtil for logging
             String profileName = getProfileNameForEmulator(emulatorNumber);
             ImageSearchUtil.setProfileName(profileName);
-            
+
             // Pass the complete DTORawImage object
-            return ImageSearchUtil.searchTemplate(rawImage, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold);
+            return ImageSearchUtil.searchTemplate(rawImage, bestTemplatePath, topLeftCorner, bottomRightCorner,
+                    threshold);
         } finally {
             // Clear profile name after the search is done
             ImageSearchUtil.clearProfileName();
@@ -336,14 +347,15 @@ public class EmulatorManager {
         checkEmulatorInitialized();
         DTORawImage rawImage = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        
+
         try {
             // Set profile name in ImageSearchUtil for logging
             String profileName = getProfileNameForEmulator(emulatorNumber);
             ImageSearchUtil.setProfileName(profileName);
-            
+
             // Pass the complete DTORawImage object
-            return ImageSearchUtil.searchTemplate(rawImage, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold);
+            return ImageSearchUtil.searchTemplate(rawImage, bestTemplatePath, new DTOPoint(0, 0),
+                    new DTOPoint(720, 1280), threshold);
         } finally {
             // Clear profile name after the search is done
             ImageSearchUtil.clearProfileName();
@@ -351,20 +363,23 @@ public class EmulatorManager {
     }
 
     /**
-     * Searches for an image on the specified region of the emulator screen using grayscale matching.
+     * Searches for an image on the specified region of the emulator screen using
+     * grayscale matching.
      */
-    public DTOImageSearchResult searchTemplateGrayscale(String emulatorNumber, EnumTemplates templatePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double threshold) {
+    public DTOImageSearchResult searchTemplateGrayscale(String emulatorNumber, EnumTemplates templatePath,
+            DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double threshold) {
         checkEmulatorInitialized();
         DTORawImage rawImage = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        
+
         try {
             // Set profile name in ImageSearchUtil for logging
             String profileName = getProfileNameForEmulator(emulatorNumber);
             ImageSearchUtil.setProfileName(profileName);
-            
+
             // Pass the complete DTORawImage object
-            return ImageSearchUtil.searchTemplateGrayscale(rawImage, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold);
+            return ImageSearchUtil.searchTemplateGrayscale(rawImage, bestTemplatePath, topLeftCorner, bottomRightCorner,
+                    threshold);
         } finally {
             // Clear profile name after the search is done
             ImageSearchUtil.clearProfileName();
@@ -374,17 +389,19 @@ public class EmulatorManager {
     /**
      * Searches for an image on the entire emulator screen using grayscale matching.
      */
-    public DTOImageSearchResult searchTemplateGrayscale(String emulatorNumber, EnumTemplates templatePath, double threshold) {
+    public DTOImageSearchResult searchTemplateGrayscale(String emulatorNumber, EnumTemplates templatePath,
+            double threshold) {
         checkEmulatorInitialized();
         DTORawImage rawImage = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        
+
         try {
             // Set profile name in ImageSearchUtil for logging
             String profileName = getProfileNameForEmulator(emulatorNumber);
             ImageSearchUtil.setProfileName(profileName);
 
-            return ImageSearchUtil.searchTemplateGrayscale(rawImage, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold);
+            return ImageSearchUtil.searchTemplateGrayscale(rawImage, bestTemplatePath, new DTOPoint(0, 0),
+                    new DTOPoint(720, 1280), threshold);
         } finally {
             // Clear profile name after the search is done
             ImageSearchUtil.clearProfileName();
@@ -392,19 +409,22 @@ public class EmulatorManager {
     }
 
     /**
-     * Searches for multiple instances of an image on the specified region of the emulator screen using grayscale matching.
+     * Searches for multiple instances of an image on the specified region of the
+     * emulator screen using grayscale matching.
      */
-    public List<DTOImageSearchResult> searchTemplatesGrayscale(String emulatorNumber, EnumTemplates templatePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double threshold, int maxResults) {
+    public List<DTOImageSearchResult> searchTemplatesGrayscale(String emulatorNumber, EnumTemplates templatePath,
+            DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double threshold, int maxResults) {
         checkEmulatorInitialized();
         DTORawImage rawImage = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        
+
         try {
             // Set profile name in ImageSearchUtil for logging
             String profileName = getProfileNameForEmulator(emulatorNumber);
             ImageSearchUtil.setProfileName(profileName);
 
-            return ImageSearchUtil.searchTemplateGrayscaleMultiple(rawImage, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold, maxResults);
+            return ImageSearchUtil.searchTemplateGrayscaleMultiple(rawImage, bestTemplatePath, topLeftCorner,
+                    bottomRightCorner, threshold, maxResults);
         } finally {
             // Clear profile name after the search is done
             ImageSearchUtil.clearProfileName();
@@ -412,53 +432,60 @@ public class EmulatorManager {
     }
 
     /**
-     * Searches for multiple instances of an image on the entire emulator screen using grayscale matching.
+     * Searches for multiple instances of an image on the entire emulator screen
+     * using grayscale matching.
      */
-    public List<DTOImageSearchResult> searchTemplatesGrayscale(String emulatorNumber, EnumTemplates templatePath, double threshold, int maxResults) {
+    public List<DTOImageSearchResult> searchTemplatesGrayscale(String emulatorNumber, EnumTemplates templatePath,
+            double threshold, int maxResults) {
         checkEmulatorInitialized();
         DTORawImage rawImage = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        
+
         try {
             // Set profile name in ImageSearchUtil for logging
             String profileName = getProfileNameForEmulator(emulatorNumber);
             ImageSearchUtil.setProfileName(profileName);
 
-            return ImageSearchUtil.searchTemplateGrayscaleMultiple(rawImage, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold, maxResults);
+            return ImageSearchUtil.searchTemplateGrayscaleMultiple(rawImage, bestTemplatePath, new DTOPoint(0, 0),
+                    new DTOPoint(720, 1280), threshold, maxResults);
         } finally {
             // Clear profile name after the search is done
             ImageSearchUtil.clearProfileName();
         }
     }
 
-    public List<DTOImageSearchResult> searchTemplates(String emulatorNumber, EnumTemplates templatePath, DTOPoint topLeftCorner, DTOPoint bottomRightCorner , double threshold, int maxResults) {
+    public List<DTOImageSearchResult> searchTemplates(String emulatorNumber, EnumTemplates templatePath,
+            DTOPoint topLeftCorner, DTOPoint bottomRightCorner, double threshold, int maxResults) {
         checkEmulatorInitialized();
         DTORawImage rawImage = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        
+
         try {
             // Set profile name in ImageSearchUtil for logging
             String profileName = getProfileNameForEmulator(emulatorNumber);
             ImageSearchUtil.setProfileName(profileName);
 
-            return ImageSearchUtil.searchTemplateMultiple(rawImage, bestTemplatePath, topLeftCorner, bottomRightCorner, threshold, maxResults);
+            return ImageSearchUtil.searchTemplateMultiple(rawImage, bestTemplatePath, topLeftCorner, bottomRightCorner,
+                    threshold, maxResults);
         } finally {
             // Clear profile name after the search is done
             ImageSearchUtil.clearProfileName();
         }
     }
 
-    public List<DTOImageSearchResult> searchTemplates(String emulatorNumber, EnumTemplates templatePath, double threshold, int maxResults) {
+    public List<DTOImageSearchResult> searchTemplates(String emulatorNumber, EnumTemplates templatePath,
+            double threshold, int maxResults) {
         checkEmulatorInitialized();
         DTORawImage rawImage = captureScreenshotViaADB(emulatorNumber);
         String bestTemplatePath = getBestTemplatePath(templatePath.getTemplate());
-        
+
         try {
             // Set profile name in ImageSearchUtil for logging
             String profileName = getProfileNameForEmulator(emulatorNumber);
             ImageSearchUtil.setProfileName(profileName);
 
-            return ImageSearchUtil.searchTemplateMultiple(rawImage, bestTemplatePath, new DTOPoint(0,0), new DTOPoint(720,1280), threshold, maxResults);
+            return ImageSearchUtil.searchTemplateMultiple(rawImage, bestTemplatePath, new DTOPoint(0, 0),
+                    new DTOPoint(720, 1280), threshold, maxResults);
         } finally {
             // Clear profile name after the search is done
             ImageSearchUtil.clearProfileName();
@@ -466,11 +493,14 @@ public class EmulatorManager {
     }
 
     /**
-     * Analyzes the colors in a region of the screen, counting pixels that match certain criteria
+     * Analyzes the colors in a region of the screen, counting pixels that match
+     * certain criteria
+     * 
      * @param emulatorNumber Emulator identifier
-     * @param topLeft Top-left point of the region to analyze
-     * @param bottomRight Bottom-right point of the region to analyze
-     * @param stepSize Step size for scanning (e.g., 2 to check every other pixel)
+     * @param topLeft        Top-left point of the region to analyze
+     * @param bottomRight    Bottom-right point of the region to analyze
+     * @param stepSize       Step size for scanning (e.g., 2 to check every other
+     *                       pixel)
      * @return Array with counts for [background, green, red] pixels
      */
     public int[] analyzeRegionColors(String emulatorNumber, DTOPoint topLeft, DTOPoint bottomRight, int stepSize) {
@@ -480,7 +510,7 @@ public class EmulatorManager {
             BufferedImage image = UtilOCR.convertRawImageToBufferedImage(rawImage);
 
             int[] counts = new int[3]; // [background, green, red]
-            
+
             // Scan the region
             for (int y = topLeft.getY(); y <= bottomRight.getY(); y += stepSize) {
                 for (int x = topLeft.getX(); x <= bottomRight.getX(); x += stepSize) {
@@ -488,7 +518,7 @@ public class EmulatorManager {
                     int r = (rgb >> 16) & 0xFF;
                     int g = (rgb >> 8) & 0xFF;
                     int b = rgb & 0xFF;
-                    
+
                     // Check if it's background color (127, 173, 205)
                     if (Math.abs(r - 127) < 20 && Math.abs(g - 173) < 20 && Math.abs(b - 205) < 20) {
                         counts[0]++; // background
@@ -503,11 +533,11 @@ public class EmulatorManager {
                     }
                 }
             }
-            
+
             return counts;
         } catch (Exception e) {
             logger.error("Error analyzing region colors", e);
-            return new int[]{0, 0, 0};
+            return new int[] { 0, 0, 0 };
         }
     }
 
@@ -539,7 +569,7 @@ public class EmulatorManager {
      * Automatically escapes special characters for shell compatibility.
      *
      * @param emulatorNumber Emulator identifier
-     * @param text Text to write
+     * @param text           Text to write
      */
     public void writeText(String emulatorNumber, String text) {
         checkEmulatorInitialized();
@@ -557,7 +587,7 @@ public class EmulatorManager {
      * Simulates pressing backspace multiple times.
      *
      * @param emulatorNumber Emulator identifier
-     * @param count Number of backspace key presses
+     * @param count          Number of backspace key presses
      */
     public void clearText(String emulatorNumber, int count) {
         checkEmulatorInitialized();
@@ -569,7 +599,6 @@ public class EmulatorManager {
 
         emulator.clearText(emulatorNumber, count);
     }
-
 
     public boolean isRunning(String emulatorNumber) {
         checkEmulatorInitialized();
@@ -593,14 +622,16 @@ public class EmulatorManager {
             // Check if this thread already has an active slot
             if (activeSlots.contains(currentThread)) {
                 if (emulator.isRunning(profile.getEmulatorNumber())) {
-                    logger.info("Profile {} already has an active slot, continuing without acquiring a new one.", profile.getName());
+                    logger.info("Profile {} already has an active slot, continuing without acquiring a new one.",
+                            profile.getName());
                     logSlotHolders();
                     profile.setQueuePosition(0);
                     return;
                 } else {
                     activeSlots.remove(currentThread);
-//                    MAX_RUNNING_EMULATORS++;
-                    logger.info("Profile {} had a slot, but emulator was not running, removing from slot holders and placing in queue. ",
+                    // MAX_RUNNING_EMULATORS++;
+                    logger.info(
+                            "Profile {} had a slot, but emulator was not running, removing from slot holders and placing in queue. ",
                             profile.getName());
                     logSlotHolders();
                 }
@@ -612,7 +643,7 @@ public class EmulatorManager {
                 logger.info("Profile " + profile.getName() + " acquired slot immediately.");
                 logger.debug("Current slot holders: " + activeSlots);
                 profile.setQueuePosition(0);
-//                MAX_RUNNING_EMULATORS--;
+                // MAX_RUNNING_EMULATORS--;
                 activeSlots.add(currentThread); // Track this thread as having a slot
                 logSlotHolders();
                 return;
@@ -637,7 +668,7 @@ public class EmulatorManager {
             // It's the turn and a slot is available.
             waitingQueue.poll(); // Remove the thread from the queue.
             profile.setQueuePosition(0);
-//            MAX_RUNNING_EMULATORS--; // Acquire the slot.
+            // MAX_RUNNING_EMULATORS--; // Acquire the slot.
             activeSlots.add(currentThread); // Track this thread as having a slot
             logSlotHolders();
             // Notify other threads to re-evaluate the condition.
@@ -655,6 +686,7 @@ public class EmulatorManager {
         logger.info("Current slot holders: {}/{}. {}", activeSlots.size(), MAX_RUNNING_EMULATORS, listOfProfiles);
 
     }
+
     public void releaseEmulatorSlot(DTOProfiles profile) {
         Thread currentThread = Thread.currentThread();
         lock.lock();
@@ -664,8 +696,9 @@ public class EmulatorManager {
 
             // Only increment MAX_RUNNING_EMULATORS if this thread actually had a slot
             if (activeSlots.remove(currentThread)) {
-//                MAX_RUNNING_EMULATORS++;
-                logger.info("Thread {} released its slot, slots available: {}", currentThread.getName(), MAX_RUNNING_EMULATORS);
+                // MAX_RUNNING_EMULATORS++;
+                logger.info("Thread {} released its slot, slots available: {}", currentThread.getName(),
+                        MAX_RUNNING_EMULATORS);
             } else {
                 logger.warn("Thread {} tried to release a slot it didn't have", currentThread.getName());
             }
