@@ -64,7 +64,7 @@ public class GatherLayoutController extends AbstractProfileController {
 		gridPaneGathering.setDisable(!checkBoxGatherResources.isSelected());
 
 		checkBoxGatherResources.selectedProperty().addListener((obs, oldVal, newVal) -> {
-			gridPaneGathering.setDisable(oldVal);
+			gridPaneGathering.setDisable(!newVal);
 		});
 
 		initializeChangeEvents();

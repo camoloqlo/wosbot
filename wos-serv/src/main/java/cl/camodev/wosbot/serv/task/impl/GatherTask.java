@@ -480,7 +480,7 @@ public class GatherTask extends DelayedTask {
                 .setAllowedChars("0123456789:")
                 .build();
 
-        String timeText = OCRWithRetries(timeTopLeft, timeBottomRight,3 ,settings);
+        String timeText = OCRWithRetries(timeTopLeft, timeBottomRight, 3, settings);
 
         if (timeText == null || timeText.isEmpty()) {
             logWarning("OCR returned empty time text");
