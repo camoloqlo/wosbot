@@ -3,7 +3,6 @@ package cl.camodev.wosbot.serv.task;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.impl.*;
-import cl.camodev.wosbot.serv.task.impl.GatherTask.GatherType;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -27,10 +26,7 @@ public class DelayedTaskRegistry {
         registry.put(TpDailyTaskEnum.TREK_AUTOMATION, profile -> new TundraTrekAutoTask(profile, TpDailyTaskEnum.TREK_AUTOMATION));
 
         // Gathering tasks
-        registry.put(TpDailyTaskEnum.GATHER_MEAT, profile -> new GatherTask(profile, TpDailyTaskEnum.GATHER_MEAT, GatherType.MEAT));
-        registry.put(TpDailyTaskEnum.GATHER_WOOD, profile -> new GatherTask(profile, TpDailyTaskEnum.GATHER_WOOD, GatherType.WOOD));
-        registry.put(TpDailyTaskEnum.GATHER_COAL, profile -> new GatherTask(profile, TpDailyTaskEnum.GATHER_COAL, GatherType.COAL));
-        registry.put(TpDailyTaskEnum.GATHER_IRON, profile -> new GatherTask(profile, TpDailyTaskEnum.GATHER_IRON, GatherType.IRON));
+        registry.put(TpDailyTaskEnum.GATHER_RESOURCES, profile -> new GatherTask(profile, TpDailyTaskEnum.GATHER_RESOURCES));
         registry.put(TpDailyTaskEnum.BANK, profile -> new BankTask(profile, TpDailyTaskEnum.BANK));
         registry.put(TpDailyTaskEnum.SHOP_MYSTERY, profile -> new MysteryShopTask(profile, TpDailyTaskEnum.SHOP_MYSTERY));
 //		registry.put(TpDailyTaskEnum.BEAST_SLAY, profile -> new BeastSlayTask(profile, TpDailyTaskEnum.BEAST_SLAY));

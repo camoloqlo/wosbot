@@ -58,10 +58,7 @@ public enum TpDailyTaskEnum {
 	INITIALIZE(100, "Initialize",                  null),
 
 	GATHER_BOOST(101, "Gather Speed Boost",       EnumConfigurationKey.GATHER_SPEED_BOOL),
-	GATHER_MEAT(102, "Gather Meat",               EnumConfigurationKey.GATHER_MEAT_BOOL),
-	GATHER_WOOD(103, "Gather Wood",               EnumConfigurationKey.GATHER_WOOD_BOOL),
-	GATHER_COAL(104, "Gather Coal",               EnumConfigurationKey.GATHER_COAL_BOOL),
-	GATHER_IRON(105, "Gather Iron",               EnumConfigurationKey.GATHER_IRON_BOOL),
+	GATHER_RESOURCES(102, "Gather Resources",               EnumConfigurationKey.GATHER_TASK_BOOL),
 
 	EVENT_TUNDRA_TRUCK(200, "Tundra Truck Event",    EnumConfigurationKey.TUNDRA_TRUCK_EVENT_BOOL),
 	EVENT_HERO_MISSION(201, "Hero Mission Event",    EnumConfigurationKey.HERO_MISSION_EVENT_BOOL),

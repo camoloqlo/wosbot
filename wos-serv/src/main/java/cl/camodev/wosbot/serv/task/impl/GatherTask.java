@@ -1,8 +1,9 @@
 package cl.camodev.wosbot.serv.task.impl;
 
-import java.awt.*;
+import java.awt.Color;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -23,315 +24,799 @@ import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 
+/**
+ * Unified task for managing all gathering operations (Meat, Wood, Coal, Iron).
+ * 
+ * <p>
+ * This task:
+ * <ul>
+ * <li>Processes all enabled gather types in a single execution</li>
+ * <li>Checks for active gathering marches and reschedules accordingly</li>
+ * <li>Searches for resource tiles at configured levels</li>
+ * <li>Deploys gathering marches with optional hero removal</li>
+ * <li>Coordinates with Intel and GatherSpeed tasks to avoid conflicts</li>
+ * </ul>
+ * 
+ * <p>
+ * <b>Execution Flow:</b>
+ * <ol>
+ * <li>Check if Intel task is about to run (wait if so)</li>
+ * <li>Check if GatherSpeed task needs to run first (wait if so)</li>
+ * <li>For each enabled gather type:
+ * <ul>
+ * <li>Check if march is already active → reschedule for return time</li>
+ * <li>If not active → search and deploy new march</li>
+ * </ul>
+ * </li>
+ * <li>Reschedule based on earliest march return time</li>
+ * </ol>
+ */
 public class GatherTask extends DelayedTask {
-    private final GatherType gatherType;
-    private final IDailyTaskRepository iDailyTaskRepository = DailyTaskRepository.getRepository();
 
-    //@formatter:on
-    private DTOPoint[][] queues = {
-            { new DTOPoint(10, 342), new DTOPoint(435, 407), new DTOPoint(152, 378) },
-            { new DTOPoint(10, 415), new DTOPoint(435, 480), new DTOPoint(152, 451) },
-            { new DTOPoint(10, 488), new DTOPoint(435, 553), new DTOPoint(152, 524) },
-            { new DTOPoint(10, 561), new DTOPoint(435, 626), new DTOPoint(152, 597) },
-            { new DTOPoint(10, 634), new DTOPoint(435, 699), new DTOPoint(152, 670) },
-            { new DTOPoint(10, 707), new DTOPoint(435, 772), new DTOPoint(152, 743) },
+    private final IDailyTaskRepository dailyTaskRepository = DailyTaskRepository.getRepository();
+
+    // ========== Configuration Keys ==========
+    private static final boolean DEFAULT_TASK_ENABLED = true;
+    private static final int DEFAULT_ACTIVE_MARCH_QUEUES = 6;
+    private static final boolean DEFAULT_REMOVE_HEROES = false;
+    private static final int DEFAULT_RESOURCE_LEVEL = 5;
+    private static final boolean DEFAULT_INTEL_SMART_PROCESSING = false;
+    private static final boolean DEFAULT_GATHER_SPEED_ENABLED = false;
+
+    // ========== March Queue Coordinates ==========
+    /**
+     * March queue regions for detecting active gathering marches.
+     * Format: {topLeft, bottomRight, timeTextStart}
+     * - topLeft/bottomRight define the search area for resource icons
+     * - timeTextStart defines where the remaining time text begins
+     */
+    private static final MarchQueueRegion[] MARCH_QUEUES = {
+            new MarchQueueRegion(new DTOPoint(10, 342), new DTOPoint(435, 407), new DTOPoint(152, 378)), // Queue 1
+            new MarchQueueRegion(new DTOPoint(10, 415), new DTOPoint(435, 480), new DTOPoint(152, 451)), // Queue 2
+            new MarchQueueRegion(new DTOPoint(10, 488), new DTOPoint(435, 553), new DTOPoint(152, 524)), // Queue 3
+            new MarchQueueRegion(new DTOPoint(10, 561), new DTOPoint(435, 626), new DTOPoint(152, 597)), // Queue 4
+            new MarchQueueRegion(new DTOPoint(10, 634), new DTOPoint(435, 699), new DTOPoint(152, 670)), // Queue 5
+            new MarchQueueRegion(new DTOPoint(10, 707), new DTOPoint(435, 772), new DTOPoint(152, 743)), // Queue 6
     };
 
-    public GatherTask(DTOProfiles profile, TpDailyTaskEnum tpTask, GatherType gatherType) {
+    private static final int TIME_TEXT_WIDTH = 140;
+    private static final int TIME_TEXT_HEIGHT = 19;
+
+    // ========== Active Marches Menu ==========
+    private static final DTOPoint ACTIVE_MARCHES_BUTTON = new DTOPoint(2, 550);
+    private static final DTOPoint ACTIVE_MARCHES_TAB = new DTOPoint(340, 265);
+    private static final DTOPoint CLOSE_MENU_BUTTON = new DTOPoint(110, 270);
+    private static final DTOPoint CLOSE_MENU_CONFIRM = new DTOPoint(464, 551);
+
+    // ========== Resource Search Menu ==========
+    private static final DTOPoint SEARCH_BUTTON_TOP_LEFT = new DTOPoint(25, 850);
+    private static final DTOPoint SEARCH_BUTTON_BOTTOM_RIGHT = new DTOPoint(67, 898);
+    private static final DTOPoint RESOURCE_TAB_SWIPE_START = new DTOPoint(678, 913);
+    private static final DTOPoint RESOURCE_TAB_SWIPE_END = new DTOPoint(40, 913);
+
+    // ========== Resource Level Selection ==========
+    private static final DTOPoint LEVEL_DISPLAY_TOP_LEFT = new DTOPoint(588, 1040);
+    private static final DTOPoint LEVEL_DISPLAY_BOTTOM_RIGHT = new DTOPoint(628, 1066);
+    private static final DTOPoint LEVEL_SLIDER_SWIPE_START = new DTOPoint(435, 1052);
+    private static final DTOPoint LEVEL_SLIDER_SWIPE_END = new DTOPoint(40, 1052);
+    private static final DTOPoint LEVEL_INCREMENT_BUTTON_TOP_LEFT = new DTOPoint(470, 1040);
+    private static final DTOPoint LEVEL_INCREMENT_BUTTON_BOTTOM_RIGHT = new DTOPoint(500, 1066);
+    private static final DTOPoint LEVEL_DECREMENT_BUTTON_TOP_LEFT = new DTOPoint(50, 1040);
+    private static final DTOPoint LEVEL_DECREMENT_BUTTON_BOTTOM_RIGHT = new DTOPoint(85, 1066);
+    private static final DTOPoint LEVEL_LOCK_BUTTON = new DTOPoint(183, 1140);
+
+    // ========== Search and Deployment ==========
+    private static final DTOPoint SEARCH_EXECUTE_BUTTON_TOP_LEFT = new DTOPoint(301, 1200);
+    private static final DTOPoint SEARCH_EXECUTE_BUTTON_BOTTOM_RIGHT = new DTOPoint(412, 1229);
+
+    // ========== Constants ==========
+    private static final int MAX_RESOURCE_TAB_SWIPE_ATTEMPTS = 4;
+    private static final int INTEL_CONFLICT_BUFFER_MINUTES = 5;
+    private static final int GATHER_SPEED_WAIT_BUFFER_MINUTES = 5;
+    private static final int LEVEL_BUTTON_TAP_DELAY = 150;
+    private static final int HERO_REMOVAL_DELAY = 300;
+
+    // ========== Configuration (loaded in loadConfiguration()) ==========
+    private boolean taskEnabled;
+    private int activeMarchQueues;
+    private boolean removeHeroes;
+    private boolean intelSmartProcessing;
+    private boolean intelEnabled;
+    private boolean gatherSpeedEnabled;
+
+    // Per-resource configurations
+    private boolean meatEnabled;
+    private int meatLevel;
+    private boolean woodEnabled;
+    private int woodLevel;
+    private boolean coalEnabled;
+    private int coalLevel;
+    private boolean ironEnabled;
+    private int ironLevel;
+
+    // ========== Execution State ==========
+    private LocalDateTime earliestRescheduleTime;
+    private List<GatherType> enabledGatherTypes;
+
+    public GatherTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
-        this.gatherType = gatherType;
+    }
+
+    /**
+     * Loads task configuration from profile.
+     */
+    private void loadConfiguration() {
+        // Global settings
+        Boolean configuredEnabled = profile.getConfig(
+                EnumConfigurationKey.GATHER_TASK_BOOL, Boolean.class);
+        this.taskEnabled = (configuredEnabled != null) ? configuredEnabled : DEFAULT_TASK_ENABLED;
+
+        Integer configuredQueues = profile.getConfig(
+                EnumConfigurationKey.GATHER_ACTIVE_MARCH_QUEUE_INT, Integer.class);
+        this.activeMarchQueues = (configuredQueues != null) ? configuredQueues : DEFAULT_ACTIVE_MARCH_QUEUES;
+
+        Boolean configuredRemoveHeroes = profile.getConfig(
+                EnumConfigurationKey.GATHER_REMOVE_HEROS_BOOL, Boolean.class);
+        this.removeHeroes = (configuredRemoveHeroes != null) ? configuredRemoveHeroes : DEFAULT_REMOVE_HEROES;
+
+        Boolean configuredIntelSmart = profile.getConfig(
+                EnumConfigurationKey.INTEL_SMART_PROCESSING_BOOL, Boolean.class);
+        this.intelSmartProcessing = (configuredIntelSmart != null) ? configuredIntelSmart
+                : DEFAULT_INTEL_SMART_PROCESSING;
+
+        Boolean configuredIntelEnabled = profile.getConfig(
+                EnumConfigurationKey.INTEL_BOOL, Boolean.class);
+        this.intelEnabled = (configuredIntelEnabled != null) ? configuredIntelEnabled : false;
+
+        Boolean configuredGatherSpeed = profile.getConfig(
+                EnumConfigurationKey.GATHER_SPEED_BOOL, Boolean.class);
+        this.gatherSpeedEnabled = (configuredGatherSpeed != null) ? configuredGatherSpeed
+                : DEFAULT_GATHER_SPEED_ENABLED;
+
+        // Meat configuration
+        Boolean configuredMeatEnabled = profile.getConfig(
+                EnumConfigurationKey.GATHER_MEAT_BOOL, Boolean.class);
+        this.meatEnabled = (configuredMeatEnabled != null) ? configuredMeatEnabled : false;
+
+        Integer configuredMeatLevel = profile.getConfig(
+                EnumConfigurationKey.GATHER_MEAT_LEVEL_INT, Integer.class);
+        this.meatLevel = (configuredMeatLevel != null) ? configuredMeatLevel : DEFAULT_RESOURCE_LEVEL;
+
+        // Wood configuration
+        Boolean configuredWoodEnabled = profile.getConfig(
+                EnumConfigurationKey.GATHER_WOOD_BOOL, Boolean.class);
+        this.woodEnabled = (configuredWoodEnabled != null) ? configuredWoodEnabled : false;
+
+        Integer configuredWoodLevel = profile.getConfig(
+                EnumConfigurationKey.GATHER_WOOD_LEVEL_INT, Integer.class);
+        this.woodLevel = (configuredWoodLevel != null) ? configuredWoodLevel : DEFAULT_RESOURCE_LEVEL;
+
+        // Coal configuration
+        Boolean configuredCoalEnabled = profile.getConfig(
+                EnumConfigurationKey.GATHER_COAL_BOOL, Boolean.class);
+        this.coalEnabled = (configuredCoalEnabled != null) ? configuredCoalEnabled : false;
+
+        Integer configuredCoalLevel = profile.getConfig(
+                EnumConfigurationKey.GATHER_COAL_LEVEL_INT, Integer.class);
+        this.coalLevel = (configuredCoalLevel != null) ? configuredCoalLevel : DEFAULT_RESOURCE_LEVEL;
+
+        // Iron configuration
+        Boolean configuredIronEnabled = profile.getConfig(
+                EnumConfigurationKey.GATHER_IRON_BOOL, Boolean.class);
+        this.ironEnabled = (configuredIronEnabled != null) ? configuredIronEnabled : false;
+
+        Integer configuredIronLevel = profile.getConfig(
+                EnumConfigurationKey.GATHER_IRON_LEVEL_INT, Integer.class);
+        this.ironLevel = (configuredIronLevel != null) ? configuredIronLevel : DEFAULT_RESOURCE_LEVEL;
+
+        logDebug(String.format("Configuration loaded - Enabled: %s, Active queues: %d, Remove heroes: %s",
+                taskEnabled, activeMarchQueues, removeHeroes));
+        logDebug(String.format("Resources - Meat: %s (Lv%d), Wood: %s (Lv%d), Coal: %s (Lv%d), Iron: %s (Lv%d)",
+                meatEnabled, meatLevel, woodEnabled, woodLevel, coalEnabled, coalLevel, ironEnabled, ironLevel));
+    }
+
+    /**
+     * Resets execution-specific state.
+     */
+    private void resetExecutionState() {
+        this.earliestRescheduleTime = null;
+        this.enabledGatherTypes = new ArrayList<>();
+
+        // Build list of enabled gather types
+        if (meatEnabled)
+            enabledGatherTypes.add(GatherType.MEAT);
+        if (woodEnabled)
+            enabledGatherTypes.add(GatherType.WOOD);
+        if (coalEnabled)
+            enabledGatherTypes.add(GatherType.COAL);
+        if (ironEnabled)
+            enabledGatherTypes.add(GatherType.IRON);
+
+        logDebug("Execution state reset. Enabled types: " + enabledGatherTypes.size());
     }
 
     @Override
     protected void execute() {
+        loadConfiguration();
+        resetExecutionState();
 
-        if (profile.getConfig(EnumConfigurationKey.INTEL_SMART_PROCESSING_BOOL, Boolean.class)
-                && profile.getConfig(EnumConfigurationKey.INTEL_BOOL, Boolean.class)) {
-            // Make sure intel isn't about to run
-            DailyTask intel = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(), TpDailyTaskEnum.INTEL);
-            if (ChronoUnit.MINUTES.between(LocalDateTime.now(), intel.getNextSchedule()) < 5) {
-                reschedule(LocalDateTime.now().plusMinutes(35)); // Reschedule in 35 minutes, after intel has run
-                logWarning("Intel task is scheduled to run soon. Rescheduling Gather Task to run 30min after intel.");
-                return;
-            }
-        }
-
-        // Check if GatherSpeedTask is not processed yet
-        if (profile.getConfig(EnumConfigurationKey.GATHER_SPEED_BOOL, Boolean.class)
-                && !isGatherSpeedTaskReadyForGathering()) {
-            logInfo("Waiting for GatherSpeedTask to be processed. Checking again in 2 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(2)); // Check again in 2 minutes
+        if (!taskEnabled) {
+            logInfo("Gather task is disabled in configuration.");
+            setRecurring(false);
             return;
         }
 
-        // Check active marches
-        emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(2, 550));
-        sleepTask(500);
-        emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(340, 265));
-        sleepTask(500);
-        logInfo("Looking for an active " + gatherType + " gathering march.");
-
-        // Get active march queue setting and calculate search region
-        int activeMarchQueues = profile.getConfig(EnumConfigurationKey.GATHER_ACTIVE_MARCH_QUEUE_INT,
-                Integer.class);
-        int maxY = queues[Math.min(activeMarchQueues - 1, queues.length - 1)][1].getY(); // Use the Y coordinate of
-        // the last active queue
-
-        DTOImageSearchResult resource = emuManager.searchTemplate(EMULATOR_NUMBER, gatherType.getTemplate(),
-                new DTOPoint(10,
-                        342),
-                new DTOPoint(415, maxY), 90);
-
-        if (resource.isFound()) {
-            logInfo("Active " + gatherType + " gathering march found. Getting remaining time...");
-            int index = getIndex(resource.getPoint());
-            if (index != -1) {
-                try {
-                    String time = emuManager.ocrRegionText(EMULATOR_NUMBER, queues[index][2],
-                            new DTOPoint(queues[index][2].getX() + 140, queues[index][2].getY() + 19));
-                    LocalDateTime nextSchedule = UtilTime.parseTime(time).plusMinutes(2);
-                    logInfo("Gathering is in progress. Rescheduling for: " + nextSchedule);
-                    this.reschedule(nextSchedule);
-                } catch (Exception e) {
-                    logError("Failed to parse remaining time for the active gather march. Rescheduling in 5 minutes. "
-                            + e.getMessage());
-                    reschedule(LocalDateTime.now().plusMinutes(5));
-                }
-            } else {
-                logWarning(
-                        "Could not determine the queue index for the active gather march. Rescheduling in 5 minutes.");
-                reschedule(LocalDateTime.now().plusMinutes(5));
-            }
-            // Go back to home screen
-            emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(110, 270));
-            emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(464, 551));
-        } else {
-            logInfo("No active gathering march found for " + gatherType + ". Starting a new one.");
-            // Go back to home screen before starting search
-            emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(110, 270));
-            emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(464, 551));
-            sleepTask(1000);
-
-            // Open search (magnifying glass)
-            emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(25, 850), new DTOPoint(67, 898));
-            sleepTask(2000);
-
-            // Swipe left to find resource tiles
-            emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(678, 913), new DTOPoint(40, 913));
-            sleepTask(500);
-
-            // Find the correct resource tile
-            logDebug("Swiping to find the correct resource tile.");
-            DTOImageSearchResult tile = null;
-            int attempts = 0;
-            while (attempts < 4) {
-                tile = emuManager.searchTemplate(EMULATOR_NUMBER, gatherType.getTile(), 90);
-                if (tile.isFound()) {
-                    break;
-                }
-                attempts++;
-                logDebug("Swiping to find the correct resource tile, attempt " + attempts);
-                emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(678, 913), new DTOPoint(40, 913));
-                sleepTask(500);
-            }
-
-            if (tile.isFound()) {
-                logInfo("Resource tile found: " + gatherType.getTile());
-                emuManager.tapAtPoint(EMULATOR_NUMBER, tile.getPoint());
-                sleepTask(500);
-
-                // Set resource level
-                int level = profile.getConfig(gatherType.getConfig(), Integer.class);
-                logInfo("Setting resource level to " + level + ".");
-
-                // check if the current level is already selected to not act like a bot
-                Integer currentLevel = integerHelper.execute(
-                        new DTOPoint(588, 1040),
-                        new DTOPoint(628, 1066),
-                        5,
-                        200L,
-                        DTOTesseractSettings.builder()
-                                .setAllowedChars("0123456789")
-                                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                                .setRemoveBackground(true)
-                                .setTextColor(new Color(71, 106, 143))
-                                .build(),
-                        text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
-                        text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
-
-                if (currentLevel != null && currentLevel == level) {
-                    logInfo("The desired level is already selected. No need to change.");
-
-                } else if (currentLevel == null) {
-                    // backup plan if OCR fails
-                    emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(435, 1052), new DTOPoint(40, 1052)); // Swipe
-                                                                                                               // to
-                                                                                                               // level
-                                                                                                               // 1
-                    sleepTask(300);
-                    if (level > 1) {
-                        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(487, 1055), new DTOPoint(487, 1055),
-                                (level - 1), 150);
-                    }
-                } else {
-                    logInfo("Current level detected as " + currentLevel + ". Changing to level " + level + ".");
-                    if (currentLevel < level) {
-                        // increase level
-                        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(470, 1040), new DTOPoint(500, 1066),
-                                (level - currentLevel), 150);
-                    } else {
-                        // decrease level
-                        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(50, 1040), new DTOPoint(85, 1066),
-                                (currentLevel - level), 150);
-                    }
-                }
-
-                DTOImageSearchResult tick = emuManager.searchTemplate(EMULATOR_NUMBER,
-                        EnumTemplates.GAME_HOME_SHORTCUTS_FARM_TICK, 90);
-                if (!tick.isFound()) {
-                    emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(183, 1140));
-                }
-
-                // Click Search
-                logInfo("Searching for the tile...");
-                emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(301, 1200), new DTOPoint(412, 1229));
-                sleepTask(3000);
-
-                // Click Gather button on the map
-                DTOImageSearchResult gather = emuManager.searchTemplate(EMULATOR_NUMBER,
-                        EnumTemplates.GAME_HOME_SHORTCUTS_FARM_GATHER, 90);
-                if (gather.isFound()) {
-                    emuManager.tapAtPoint(EMULATOR_NUMBER, gather.getPoint());
-                    sleepTask(1000);
-
-                    boolean removeHeros = profile.getConfig(EnumConfigurationKey.GATHER_REMOVE_HEROS_BOOL,
-                            Boolean.class);
-                    if (removeHeros) {
-                        // Remove 2nd and 3rd heroes
-                        logInfo("Removing default heroes from march.");
-                        List<DTOImageSearchResult> results = emuManager.searchTemplates(EMULATOR_NUMBER,
-                                EnumTemplates.RALLY_REMOVE_HERO_BUTTON, 90, 3);
-
-                        results.sort(Comparator.comparingInt(r -> r.getPoint().getX()));
-
-                        for (int i = 1; i < results.size(); i++) {
-                            emuManager.tapAtPoint(EMULATOR_NUMBER, results.get(i).getPoint());
-                            sleepTask(300);
-                        }
-
-                    }
-
-                    // Click gather button on tile
-                    logInfo("Initiating gather march.");
-                    DTOImageSearchResult deployButton = emuManager.searchTemplate(EMULATOR_NUMBER,
-                            EnumTemplates.GATHER_DEPLOY_BUTTON, 90); // Deploy button
-                    if (deployButton.isFound()) {
-                        emuManager.tapAtPoint(EMULATOR_NUMBER, deployButton.getPoint());
-                        sleepTask(1000);
-
-                        // Check if another march is already on the way
-                        DTOImageSearchResult march = emuManager.searchTemplate(EMULATOR_NUMBER,
-                                EnumTemplates.TROOPS_ALREADY_MARCHING, 90);
-                        if (march.isFound()) {
-                            logWarning("The tile is already being gathered by another player. Rescheduling task.");
-                            tapBackButton();
-                            tapBackButton();
-                            reschedule(LocalDateTime.now().plusMinutes(1)); // Try again soon for a new tile
-                        } else {
-                            logInfo("March started successfully. Rescheduling the next check in 5 minutes.");
-                            reschedule(LocalDateTime.now().plusMinutes(5));
-                        }
-                    } else {
-                        logError("The 'March' button was not found. Aborting and rescheduling in 5 minutes.");
-                        tapBackButton();
-                        reschedule(LocalDateTime.now().plusMinutes(5));
-                    }
-
-                } else {
-                    logWarning(
-                            "The 'Gather' button on the map was not found. The tile might be occupied. Rescheduling in 5 minutes.");
-                    tapBackButton();
-                    reschedule(LocalDateTime.now().plusMinutes(5));
-                }
-            } else {
-                logError(
-                        "The resource tile was not found after multiple swipes. Aborting and rescheduling in 15 minutes.");
-                tapBackButton();
-                reschedule(LocalDateTime.now().plusMinutes(15)); // Wait longer if tiles can't be found
-            }
+        if (enabledGatherTypes.isEmpty()) {
+            logInfo("No gather types enabled. Disabling task.");
+            setRecurring(false);
+            return;
         }
+
+        logInfo(String.format("Starting gather task for %d resource types.", enabledGatherTypes.size()));
+
+        // Check Intel task conflict
+        if (intelSmartProcessing && intelEnabled && isIntelAboutToRun()) {
+            logWarning("Intel task scheduled to run soon. Rescheduling gather task for 35 minutes.");
+            reschedule(LocalDateTime.now().plusMinutes(35));
+            return;
+        }
+
+        // Check GatherSpeed dependency
+        if (gatherSpeedEnabled && !isGatherSpeedTaskReady()) {
+            logInfo("Waiting for GatherSpeed task. Checking again in 2 minutes.");
+            reschedule(LocalDateTime.now().plusMinutes(2));
+            return;
+        }
+
+        // Process each enabled gather type
+        for (GatherType gatherType : enabledGatherTypes) {
+            processGatherType(gatherType);
+        }
+
+        // Reschedule based on earliest march return time
+        finalizeReschedule();
     }
 
-    public int getIndex(DTOPoint point) {
-        // Get active march queue setting and limit the search to only active queues
-        int activeMarchQueues = profile.getConfig(EnumConfigurationKey.GATHER_ACTIVE_MARCH_QUEUE_INT, Integer.class);
-        int maxQueues = Math.min(activeMarchQueues, queues.length);
-
-        for (int i = 0; i < maxQueues; i++) {
-            // Get the range limits (to ensure correct order, we use Math.min and Math.max)
-            int minX = Math.min(queues[i][0].getX(), queues[i][1].getX());
-            int maxX = Math.max(queues[i][0].getX(), queues[i][1].getX());
-            int minY = Math.min(queues[i][0].getY(), queues[i][1].getY());
-            int maxY = Math.max(queues[i][0].getY(), queues[i][1].getY());
-
-            // Check if the point is within the limits
-            if (point.getX() >= minX && point.getX() <= maxX && point.getY() >= minY && point.getY() <= maxY) {
-                return i; // Returns the index of the found pair
-            }
-        }
-        return -1; // Returns -1 if the point is not in any of the ranges
-    }
-
-    private boolean isGatherSpeedTaskReadyForGathering() {
+    /**
+     * Checks if Intel task is scheduled to run within the conflict buffer.
+     */
+    private boolean isIntelAboutToRun() {
         try {
-            DailyTask gatherSpeedTask = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(),
-                    TpDailyTaskEnum.GATHER_BOOST);
+            DailyTask intel = dailyTaskRepository.findByProfileIdAndTaskName(
+                    profile.getId(), TpDailyTaskEnum.INTEL);
+
+            if (intel == null) {
+                return false;
+            }
+
+            long minutesUntilIntel = ChronoUnit.MINUTES.between(
+                    LocalDateTime.now(), intel.getNextSchedule());
+
+            boolean aboutToRun = minutesUntilIntel < INTEL_CONFLICT_BUFFER_MINUTES;
+
+            if (aboutToRun) {
+                logDebug(String.format("Intel task scheduled in %d minutes (threshold: %d minutes)",
+                        minutesUntilIntel, INTEL_CONFLICT_BUFFER_MINUTES));
+            }
+
+            return aboutToRun;
+
+        } catch (Exception e) {
+            logWarning("Failed to check Intel task schedule: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Checks if GatherSpeed task has been processed and is ready.
+     */
+    private boolean isGatherSpeedTaskReady() {
+        try {
+            DailyTask gatherSpeedTask = dailyTaskRepository.findByProfileIdAndTaskName(
+                    profile.getId(), TpDailyTaskEnum.GATHER_BOOST);
 
             if (gatherSpeedTask == null) {
-                // GatherSpeedTask has never been executed, so gathering should wait
-                logDebug("GatherSpeedTask has never been executed; waiting is required.");
+                logDebug("GatherSpeed task never executed. Waiting required.");
                 return false;
             }
 
             LocalDateTime nextSchedule = gatherSpeedTask.getNextSchedule();
             if (nextSchedule == null) {
-                // If there's no next schedule, check again in 5 minutes
-                logDebug("GatherSpeedTask has no next schedule; waiting is required.");
+                logDebug("GatherSpeed task has no next schedule. Waiting required.");
                 return false;
             }
 
-            // Check if the next schedule is more than 10 minutes from now
-            long minutesUntilNextSchedule = ChronoUnit.MINUTES.between(LocalDateTime.now(), nextSchedule);
+            long minutesUntilNext = ChronoUnit.MINUTES.between(LocalDateTime.now(), nextSchedule);
 
-            // FIX: Sometimes for whatever reason, ServScheduler doesn't update the next
-            // schedule correctly
-            // Due to this error, minutesUntilNextSchedule can be less than 0 even though
-            // task already run
-            // We will skip if its less than 0 to make sure gathering can start
-            if (minutesUntilNextSchedule > 0 && minutesUntilNextSchedule < 5) {
-                logDebug("The next GatherSpeedTask is in " + minutesUntilNextSchedule
-                        + " minutes; waiting is required.");
+            // If next run is very soon (< 5 min), wait for it
+            // Negative values mean it's overdue but hasn't updated yet - allow gathering
+            if (minutesUntilNext > 0 && minutesUntilNext < GATHER_SPEED_WAIT_BUFFER_MINUTES) {
+                logDebug(String.format("GatherSpeed task scheduled in %d minutes. Waiting.", minutesUntilNext));
                 return false;
-            } else {
-                logDebug("The next GatherSpeedTask is in " + minutesUntilNextSchedule
-                        + " minutes; gathering can start.");
-                return true;
             }
+
+            logDebug(String.format("GatherSpeed task ready (next in %d minutes).", minutesUntilNext));
+            return true;
 
         } catch (Exception e) {
-            logError("Error checking GatherSpeedTask status: " + e.getMessage() + ". Waiting is required.");
-            return false; // Wait for 2 minutes
+            logError("Error checking GatherSpeed task: " + e.getMessage());
+            return false;
         }
     }
 
-    @Override
-    protected Object getDistinctKey() {
-        return gatherType;
+    /**
+     * Processes a single gather type (check active march or deploy new).
+     */
+    private void processGatherType(GatherType gatherType) {
+        logInfo(String.format("Processing %s gathering.", gatherType.name()));
+
+        if (!openActiveMarchesMenu()) {
+            logWarning("Failed to open active marches menu.");
+            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+            return;
+        }
+
+        ActiveMarchResult result = checkActiveMarch(gatherType);
+
+        closeActiveMarchesMenu();
+
+        if (result.isActive()) {
+            logInfo(String.format("%s march is active. Returns in: %s",
+                    gatherType.name(), UtilTime.localDateTimeToDDHHMMSS(result.getReturnTime())));
+            updateRescheduleTime(result.getReturnTime());
+        } else {
+            logInfo(String.format("No active %s march found. Deploying new march.", gatherType.name()));
+            deployNewGatherMarch(gatherType);
+        }
     }
 
-    @Override
-    public boolean provideDailyMissionProgress() {
+    /**
+     * Opens the active marches menu.
+     */
+    private boolean openActiveMarchesMenu() {
+        logDebug("Opening active marches menu");
+
+        tapPoint(ACTIVE_MARCHES_BUTTON);
+        sleepTask(500); // Wait for sidebar
+
+        tapPoint(ACTIVE_MARCHES_TAB);
+        sleepTask(500); // Wait for tab switch
+
         return true;
+    }
+
+    /**
+     * Closes the active marches menu.
+     */
+    private void closeActiveMarchesMenu() {
+        logDebug("Closing active marches menu");
+
+        tapPoint(CLOSE_MENU_BUTTON);
+        sleepTask(300); // Wait for menu animation
+
+        tapPoint(CLOSE_MENU_CONFIRM);
+        sleepTask(300); // Wait for confirmation
+    }
+
+    /**
+     * Checks if a gather march is active for the specified resource type.
+     */
+    private ActiveMarchResult checkActiveMarch(GatherType gatherType) {
+        logDebug(String.format("Checking for active %s march", gatherType.name()));
+
+        // Calculate search region based on active march queues
+        int maxQueueIndex = Math.min(activeMarchQueues - 1, MARCH_QUEUES.length - 1);
+        DTOPoint searchBottomRight = new DTOPoint(415, MARCH_QUEUES[maxQueueIndex].bottomRight.getY());
+
+        DTOImageSearchResult resource = searchTemplateRegionWithRetries(
+                gatherType.getTemplate(),
+                MARCH_QUEUES[0].topLeft,
+                searchBottomRight,
+                3,
+                3);
+
+        if (!resource.isFound()) {
+            return ActiveMarchResult.notActive();
+        }
+
+        logDebug(String.format("Active %s march detected", gatherType.name()));
+
+        // Determine which queue contains this march
+        int queueIndex = findMarchQueueIndex(resource.getPoint());
+
+        if (queueIndex == -1) {
+            logWarning("Could not determine queue index for active march");
+            return ActiveMarchResult.withError(LocalDateTime.now().plusMinutes(5));
+        }
+
+        // Read remaining time
+        LocalDateTime returnTime = readMarchReturnTime(queueIndex);
+
+        if (returnTime == null) {
+            logWarning("Failed to read march return time");
+            return ActiveMarchResult.withError(LocalDateTime.now().plusMinutes(5));
+        }
+
+        return ActiveMarchResult.active(returnTime.plusMinutes(2)); // Add 2min buffer
+    }
+
+    /**
+     * Finds which queue index contains the given point.
+     */
+    private int findMarchQueueIndex(DTOPoint point) {
+        int maxQueues = Math.min(activeMarchQueues, MARCH_QUEUES.length);
+
+        for (int i = 0; i < maxQueues; i++) {
+            MarchQueueRegion region = MARCH_QUEUES[i];
+
+            if (point.getX() >= region.topLeft.getX() &&
+                    point.getX() <= region.bottomRight.getX() &&
+                    point.getY() >= region.topLeft.getY() &&
+                    point.getY() <= region.bottomRight.getY()) {
+                logDebug(String.format("March found in queue %d", i + 1));
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Reads the march return time from the specified queue.
+     */
+    private LocalDateTime readMarchReturnTime(int queueIndex) {
+        MarchQueueRegion region = MARCH_QUEUES[queueIndex];
+
+        DTOPoint timeTopLeft = region.timeTextStart;
+        DTOPoint timeBottomRight = new DTOPoint(
+                timeTopLeft.getX() + TIME_TEXT_WIDTH,
+                timeTopLeft.getY() + TIME_TEXT_HEIGHT);
+
+        DTOTesseractSettings settings = DTOTesseractSettings.builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setRemoveBackground(true)
+                .setTextColor(new Color(255, 255, 255))
+                .setAllowedChars("0123456789:")
+                .build();
+
+        String timeText = OCRWithRetries(timeTopLeft, timeBottomRight,3 ,settings);
+
+        if (timeText == null || timeText.isEmpty()) {
+            logWarning("OCR returned empty time text");
+            return null;
+        }
+
+        try {
+            logDebug("Time OCR result: '" + timeText + "'");
+            LocalDateTime returnTime = UtilTime.parseTime(timeText);
+            return returnTime;
+        } catch (Exception e) {
+            logError("Failed to parse march return time: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Deploys a new gather march for the specified resource type.
+     */
+    private void deployNewGatherMarch(GatherType gatherType) {
+        if (!openResourceSearchMenu()) {
+            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+            return;
+        }
+
+        if (!selectResourceTile(gatherType)) {
+            updateRescheduleTime(LocalDateTime.now().plusMinutes(15));
+            return;
+        }
+
+        int desiredLevel = getResourceLevel(gatherType);
+        if (!setResourceLevel(desiredLevel)) {
+            tapBackButton();
+            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+            return;
+        }
+
+        if (!executeSearch()) {
+            tapBackButton();
+            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+            return;
+        }
+
+        if (!deployMarch(gatherType)) {
+            tapBackButton();
+            updateRescheduleTime(LocalDateTime.now().plusMinutes(1));
+            return;
+        }
+
+        // Successfully deployed
+        updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+    }
+
+    /**
+     * Opens the resource search menu.
+     */
+    private boolean openResourceSearchMenu() {
+        logDebug("Opening resource search menu");
+
+        tapRandomPoint(SEARCH_BUTTON_TOP_LEFT, SEARCH_BUTTON_BOTTOM_RIGHT);
+        sleepTask(2000); // Wait for search menu to open
+
+        // Swipe left to find resource tiles tab
+        swipe(RESOURCE_TAB_SWIPE_START, RESOURCE_TAB_SWIPE_END);
+        sleepTask(500); // Wait for swipe animation
+
+        return true;
+    }
+
+    /**
+     * Selects the resource tile for the specified type.
+     */
+    private boolean selectResourceTile(GatherType gatherType) {
+        logDebug(String.format("Searching for %s tile", gatherType.name()));
+
+        for (int attempt = 0; attempt < MAX_RESOURCE_TAB_SWIPE_ATTEMPTS; attempt++) {
+            DTOImageSearchResult tile = searchTemplateWithRetries(gatherType.getTile());
+
+            if (tile.isFound()) {
+                logInfo(String.format("%s tile found", gatherType.name()));
+                tapPoint(tile.getPoint());
+                sleepTask(500); // Wait for tile selection
+                return true;
+            }
+
+            if (attempt < MAX_RESOURCE_TAB_SWIPE_ATTEMPTS - 1) {
+                logDebug(String.format("Tile not found, swiping (attempt %d/%d)",
+                        attempt + 1, MAX_RESOURCE_TAB_SWIPE_ATTEMPTS));
+                swipe(RESOURCE_TAB_SWIPE_START, RESOURCE_TAB_SWIPE_END);
+                sleepTask(500); // Wait for swipe animation
+            }
+        }
+
+        logError(String.format("%s tile not found after %d attempts",
+                gatherType.name(), MAX_RESOURCE_TAB_SWIPE_ATTEMPTS));
+        return false;
+    }
+
+    /**
+     * Gets the configured level for a resource type.
+     */
+    private int getResourceLevel(GatherType gatherType) {
+        switch (gatherType) {
+            case MEAT:
+                return meatLevel;
+            case WOOD:
+                return woodLevel;
+            case COAL:
+                return coalLevel;
+            case IRON:
+                return ironLevel;
+            default:
+                return DEFAULT_RESOURCE_LEVEL;
+        }
+    }
+
+    /**
+     * Sets the resource level to the desired value.
+     */
+    private boolean setResourceLevel(int desiredLevel) {
+        logInfo(String.format("Setting resource level to %d", desiredLevel));
+
+        // Read current level
+        Integer currentLevel = readCurrentResourceLevel();
+
+        if (currentLevel != null && currentLevel == desiredLevel) {
+            logInfo("Desired level already selected");
+            return true;
+        }
+
+        if (currentLevel == null) {
+            // OCR failed, use backup plan: reset to level 1 and increment
+            logDebug("OCR failed, using backup level selection");
+            resetLevelToOne();
+
+            if (desiredLevel > 1) {
+                tapRandomPoint(
+                        LEVEL_INCREMENT_BUTTON_TOP_LEFT,
+                        LEVEL_INCREMENT_BUTTON_BOTTOM_RIGHT,
+                        desiredLevel - 1,
+                        LEVEL_BUTTON_TAP_DELAY);
+            }
+        } else {
+            // OCR succeeded, adjust from current level
+            logDebug(String.format("Current level: %d, adjusting to %d", currentLevel, desiredLevel));
+
+            if (currentLevel < desiredLevel) {
+                int taps = desiredLevel - currentLevel;
+                tapRandomPoint(
+                        LEVEL_INCREMENT_BUTTON_TOP_LEFT,
+                        LEVEL_INCREMENT_BUTTON_BOTTOM_RIGHT,
+                        taps,
+                        LEVEL_BUTTON_TAP_DELAY);
+            } else {
+                int taps = currentLevel - desiredLevel;
+                tapRandomPoint(
+                        LEVEL_DECREMENT_BUTTON_TOP_LEFT,
+                        LEVEL_DECREMENT_BUTTON_BOTTOM_RIGHT,
+                        taps,
+                        LEVEL_BUTTON_TAP_DELAY);
+            }
+        }
+
+        // Ensure level lock checkbox is checked
+        ensureLevelLocked();
+
+        return true;
+    }
+
+    /**
+     * Reads the current resource level from the display.
+     */
+    private Integer readCurrentResourceLevel() {
+        DTOTesseractSettings settings = DTOTesseractSettings.builder()
+                .setAllowedChars("0123456789")
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setRemoveBackground(true)
+                .setTextColor(new Color(71, 106, 143))
+                .build();
+
+        Integer level = integerHelper.execute(
+                LEVEL_DISPLAY_TOP_LEFT,
+                LEVEL_DISPLAY_BOTTOM_RIGHT,
+                5,
+                200L,
+                settings,
+                text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
+                text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
+
+        if (level != null) {
+            logDebug("Current level detected: " + level);
+        } else {
+            logWarning("Failed to read current level via OCR");
+        }
+
+        return level;
+    }
+
+    /**
+     * Resets the level slider to level 1.
+     */
+    private void resetLevelToOne() {
+        logDebug("Resetting level slider to 1");
+        swipe(LEVEL_SLIDER_SWIPE_START, LEVEL_SLIDER_SWIPE_END);
+        sleepTask(300); // Wait for slider animation
+    }
+
+    /**
+     * Ensures the level lock checkbox is checked.
+     */
+    private void ensureLevelLocked() {
+        DTOImageSearchResult tick = searchTemplateWithRetries(
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_TICK);
+
+        if (!tick.isFound()) {
+            logDebug("Level not locked, tapping lock button");
+            tapPoint(LEVEL_LOCK_BUTTON);
+            sleepTask(300); // Wait for checkbox animation
+        }
+    }
+
+    /**
+     * Executes the resource search.
+     */
+    private boolean executeSearch() {
+        logInfo("Executing resource search");
+
+        tapRandomPoint(SEARCH_EXECUTE_BUTTON_TOP_LEFT, SEARCH_EXECUTE_BUTTON_BOTTOM_RIGHT);
+        sleepTask(3000); // Wait for search to complete and map to load
+
+        return true;
+    }
+
+    /**
+     * Deploys a gather march to the found tile.
+     */
+    private boolean deployMarch(GatherType gatherType) {
+        // Find and tap the Gather button on the map
+        DTOImageSearchResult gatherButton = searchTemplateWithRetries(
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_GATHER);
+
+        if (!gatherButton.isFound()) {
+            logWarning("Gather button not found. Tile may be occupied.");
+            return false;
+        }
+
+        logDebug("Tapping gather button");
+        tapPoint(gatherButton.getPoint());
+        sleepTask(1000); // Wait for march configuration screen
+
+        // Remove heroes if configured
+        if (removeHeroes) {
+            removeDefaultHeroes();
+        }
+
+        // Deploy the march
+        DTOImageSearchResult deployButton = searchTemplateWithRetries(
+                EnumTemplates.GATHER_DEPLOY_BUTTON);
+
+        if (!deployButton.isFound()) {
+            logError("Deploy button not found");
+            return false;
+        }
+
+        logInfo("Deploying gather march");
+        tapPoint(deployButton.getPoint());
+        sleepTask(1000); // Wait for deployment confirmation
+
+        // Check if tile is already being gathered
+        DTOImageSearchResult alreadyMarching = searchTemplateWithRetries(
+                EnumTemplates.TROOPS_ALREADY_MARCHING);
+
+        if (alreadyMarching.isFound()) {
+            logWarning("Tile already being gathered by another player");
+            tapBackButton();
+            tapBackButton();
+            return false;
+        }
+
+        logInfo(String.format("%s march deployed successfully", gatherType.name()));
+        return true;
+    }
+
+    /**
+     * Removes the 2nd and 3rd heroes from the march.
+     */
+    private void removeDefaultHeroes() {
+        logDebug("Removing default heroes from march");
+
+        List<DTOImageSearchResult> removeButtons = searchTemplatesWithRetries(
+                EnumTemplates.RALLY_REMOVE_HERO_BUTTON,
+                90,
+                3,
+                3);
+
+        if (removeButtons.isEmpty()) {
+            logWarning("No hero remove buttons found");
+            return;
+        }
+
+        // Sort by X coordinate (left to right)
+        removeButtons.sort(Comparator.comparingInt(r -> r.getPoint().getX()));
+
+        // Remove 2nd and 3rd heroes (skip first)
+        for (int i = 1; i < removeButtons.size(); i++) {
+            tapPoint(removeButtons.get(i).getPoint());
+            sleepTask(HERO_REMOVAL_DELAY); // Wait for hero removal animation
+        }
+
+        logDebug(String.format("Removed %d heroes", removeButtons.size() - 1));
+    }
+
+    /**
+     * Updates the earliest reschedule time if the new time is earlier.
+     */
+    private void updateRescheduleTime(LocalDateTime newTime) {
+        if (earliestRescheduleTime == null || newTime.isBefore(earliestRescheduleTime)) {
+            earliestRescheduleTime = newTime;
+            logDebug("Updated earliest reschedule time: " +
+                    UtilTime.localDateTimeToDDHHMMSS(newTime));
+        }
+    }
+
+    /**
+     * Finalizes rescheduling based on the earliest march return time.
+     */
+    private void finalizeReschedule() {
+        if (earliestRescheduleTime == null) {
+            // No marches active, check again in 5 minutes
+            logInfo("No active marches found. Rescheduling in 5 minutes.");
+            reschedule(LocalDateTime.now().plusMinutes(5));
+        } else {
+            logInfo(String.format("Rescheduling gather task for: %s",
+                    earliestRescheduleTime.format(DATETIME_FORMATTER)));
+            reschedule(earliestRescheduleTime);
+        }
     }
 
     @Override
@@ -339,35 +824,92 @@ public class GatherTask extends DelayedTask {
         return EnumStartLocation.WORLD;
     }
 
-    //@formatter:off
-	public enum GatherType {
-		MEAT( EnumTemplates.GAME_HOME_SHORTCUTS_MEAT, EnumTemplates.GAME_HOME_SHORTCUTS_FARM_MEAT, EnumConfigurationKey.GATHER_MEAT_LEVEL_INT),
-		WOOD( EnumTemplates.GAME_HOME_SHORTCUTS_WOOD, EnumTemplates.GAME_HOME_SHORTCUTS_FARM_WOOD, EnumConfigurationKey.GATHER_WOOD_LEVEL_INT),
-		COAL( EnumTemplates.GAME_HOME_SHORTCUTS_COAL, EnumTemplates.GAME_HOME_SHORTCUTS_FARM_COAL, EnumConfigurationKey.GATHER_COAL_LEVEL_INT),
-		IRON( EnumTemplates.GAME_HOME_SHORTCUTS_IRON, EnumTemplates.GAME_HOME_SHORTCUTS_FARM_IRON, EnumConfigurationKey.GATHER_IRON_LEVEL_INT);
+    @Override
+    public boolean provideDailyMissionProgress() {
+        return true;
+    }
 
-		EnumTemplates template;
-		EnumTemplates tile;
-		EnumConfigurationKey level;
+    // ========== Helper Classes ==========
 
-		GatherType(EnumTemplates enumTemplate, EnumTemplates tile, EnumConfigurationKey level) {
-            this.template = enumTemplate;
-            this.tile = tile;
-            this.level = level;
-		}
+    /**
+     * Represents a march queue region with search area and time text location.
+     */
+    private static class MarchQueueRegion {
+        private final DTOPoint topLeft;
+        private final DTOPoint bottomRight;
+        private final DTOPoint timeTextStart;
 
-		public EnumTemplates getTemplate() {
-            return template;
-		}
+        public MarchQueueRegion(DTOPoint topLeft, DTOPoint bottomRight, DTOPoint timeTextStart) {
+            this.topLeft = topLeft;
+            this.bottomRight = bottomRight;
+            this.timeTextStart = timeTextStart;
+        }
+    }
 
-		public EnumTemplates getTile() {
-            return tile;
-		}
+    /**
+     * Result object for active march checks.
+     */
+    private static class ActiveMarchResult {
+        private final boolean active;
+        private final LocalDateTime returnTime;
 
-		public EnumConfigurationKey getConfig() {
-            return level;
+        private ActiveMarchResult(boolean active, LocalDateTime returnTime) {
+            this.active = active;
+            this.returnTime = returnTime;
         }
 
-	}
+        public static ActiveMarchResult active(LocalDateTime returnTime) {
+            return new ActiveMarchResult(true, returnTime);
+        }
 
+        public static ActiveMarchResult notActive() {
+            return new ActiveMarchResult(false, null);
+        }
+
+        public static ActiveMarchResult withError(LocalDateTime fallbackTime) {
+            return new ActiveMarchResult(true, fallbackTime);
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+
+        public LocalDateTime getReturnTime() {
+            return returnTime;
+        }
+    }
+
+    /**
+     * Enum representing the four gather resource types.
+     */
+    public enum GatherType {
+        MEAT(
+                EnumTemplates.GAME_HOME_SHORTCUTS_MEAT,
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_MEAT),
+        WOOD(
+                EnumTemplates.GAME_HOME_SHORTCUTS_WOOD,
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_WOOD),
+        COAL(
+                EnumTemplates.GAME_HOME_SHORTCUTS_COAL,
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_COAL),
+        IRON(
+                EnumTemplates.GAME_HOME_SHORTCUTS_IRON,
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_IRON);
+
+        private final EnumTemplates template;
+        private final EnumTemplates tile;
+
+        GatherType(EnumTemplates template, EnumTemplates tile) {
+            this.template = template;
+            this.tile = tile;
+        }
+
+        public EnumTemplates getTemplate() {
+            return template;
+        }
+
+        public EnumTemplates getTile() {
+            return tile;
+        }
+    }
 }

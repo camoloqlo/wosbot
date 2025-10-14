@@ -88,7 +88,7 @@ public class BearTrapTask extends DelayedTask {
             case BEFORE:
                 // If we're before the window, execute at current window start
                 nextExecutionInstant = result.getCurrentWindowStart();
-                logInfo("Current time is BEFORE window. Next execution (UTC): " + LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC")));
+                logInfo("Current time is BEFORE window. Next execution (UTC): " + LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC")).format(DATETIME_FORMATTER));
                 break;
 
             case INSIDE:
@@ -101,7 +101,7 @@ public class BearTrapTask extends DelayedTask {
                 // If we're after the window, use next window
                 nextExecutionInstant = result.getNextWindowStart();
                 logInfo("Current time is AFTER window. Next execution (UTC): " +
-                        LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC")));
+                        LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC")).format(DATETIME_FORMATTER));
                 break;
 
             default:
@@ -114,9 +114,9 @@ public class BearTrapTask extends DelayedTask {
                 ZoneId.systemDefault()
         );
 
-        logInfo("Next execution in local time: " + nextExecutionTimeLocal);
+        logInfo("Next execution in local time: " + nextExecutionTimeLocal.format(DATETIME_FORMATTER));
         // Schedule task using parent class reschedule mechanism
-        this.reschedule(nextExecutionTimeLocal);
+        reschedule(nextExecutionTimeLocal);
     }
 
     @Override
@@ -151,9 +151,9 @@ public class BearTrapTask extends DelayedTask {
 
             LocalDateTime trapEndTime = trapActivationTime.plusMinutes(trapDurationTime);
 
-            logInfo("Preparation window: " + windowStart + " to " + trapActivationTime);
-            logInfo("Trap will auto-activate at: " + trapActivationTime);
-            logInfo("Trap will end at: " + trapEndTime);
+            logInfo("Preparation window: " + windowStart.format(DATETIME_FORMATTER) + " to " + trapActivationTime.format(DATETIME_FORMATTER));
+            logInfo("Trap will auto-activate at: " + trapActivationTime.format(DATETIME_FORMATTER));
+            logInfo("Trap will end at: " + trapEndTime.format(DATETIME_FORMATTER));
 
             LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
 
@@ -254,10 +254,10 @@ public class BearTrapTask extends DelayedTask {
 
         referenceTrapTime = LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC"));
 
-        logInfo("Rescheduling Bear Trap for (UTC): " + referenceTrapTime);
-        logInfo("Rescheduling Bear Trap for (Local): " + nextExecutionLocal);
+        logInfo("Rescheduling Bear Trap for (UTC): " + referenceTrapTime.format(DATETIME_FORMATTER));
+        logInfo("Rescheduling Bear Trap for (Local): " + nextExecutionLocal.format(DATETIME_FORMATTER));
 
-        this.reschedule(nextExecutionLocal);
+        reschedule(nextExecutionLocal);
     }
 
     /**
@@ -283,11 +283,12 @@ public class BearTrapTask extends DelayedTask {
             if (callOwnRally && !ownRallyActive.get() && secondsRemaining > 360) {
                 long durationSeconds = callOwnRally();
                 if (durationSeconds > 0) {
-                    logInfo("Own rally started successfully, duration=" + durationSeconds + "s");
+                    LocalDateTime returnTime = now.plusSeconds(durationSeconds * 2 + 2).plusMinutes(5);
+                    logInfo("Own rally started successfully, returning in: " + returnTime.format(TIME_FORMATTER));
                     ownRallyActive.set(true);// marca el rally como activo
                     sleepTask(200);
                 } else {
-                    logDebug("Could not start rally (may already be active)");
+                    logWarning("Could not start rally (may already be active)");
                 }
             }
 
@@ -361,10 +362,11 @@ public class BearTrapTask extends DelayedTask {
         //search the green plus icon
         DTOImageSearchResult plusIcon = searchTemplateWithRetries(EnumTemplates.BEAR_JOIN_PLUS_ICON, 90, 2);
         if (!plusIcon.isFound()) {
-            logDebug("No joinable rallies found (plus icon not present)");
+            logWarning("No joinable rallies found (plus icon not present)");
             ensureCorrectScreenLocation(EnumStartLocation.ANY);
             return;
         }
+        logInfo("Joining rally with flag #" + joinRallyFlag);
         //tap the plus icon
         tapRandomPoint(plusIcon.getPoint(), plusIcon.getPoint(), 1, 100);
         DTOPoint flagPoint = UtilRally.getMarchFlagPoint(joinRallyFlag);
@@ -373,7 +375,7 @@ public class BearTrapTask extends DelayedTask {
         DTOImageSearchResult deploy = searchTemplateWithRetries(EnumTemplates.BEAR_DEPLOY_BUTTON, 90, 3);
 
         if (deploy.isFound()) {
-            logDebug("Deploy button not found. Rescheduling to try again in 5 minutes.");
+            logWarning("Deploy button not found. Rescheduling to try again in 5 minutes.");
             tapPoint(deploy.getPoint());
         }
         ensureCorrectScreenLocation(EnumStartLocation.ANY);
@@ -560,26 +562,8 @@ public class BearTrapTask extends DelayedTask {
 
         // Gather Meat
         if (profile.getConfig(EnumConfigurationKey.GATHER_MEAT_BOOL, Boolean.class)) {
-            queue.executeTaskNow(TpDailyTaskEnum.GATHER_MEAT, true);
-            logInfo("Re-queued Gather Meat task");
-        }
-
-        // Gather Wood
-        if (profile.getConfig(EnumConfigurationKey.GATHER_WOOD_BOOL, Boolean.class)) {
-            queue.executeTaskNow(TpDailyTaskEnum.GATHER_WOOD, true);
-            logInfo("Re-queued Gather Wood task");
-        }
-
-        // Gather Coal
-        if (profile.getConfig(EnumConfigurationKey.GATHER_COAL_BOOL, Boolean.class)) {
-            queue.executeTaskNow(TpDailyTaskEnum.GATHER_COAL, true);
-            logInfo("Re-queued Gather Coal task");
-        }
-
-        // Gather Iron
-        if (profile.getConfig(EnumConfigurationKey.GATHER_IRON_BOOL, Boolean.class)) {
-            queue.executeTaskNow(TpDailyTaskEnum.GATHER_IRON, true);
-            logInfo("Re-queued Gather Iron task");
+            queue.executeTaskNow(TpDailyTaskEnum.GATHER_RESOURCES, true);
+            logInfo("Re-queued Gather Resources task");
         }
 
         // Check and re-queue autojoin task if enabled
@@ -655,7 +639,7 @@ public class BearTrapTask extends DelayedTask {
                 DTOImageSearchResult deploy = searchTemplateWithRetries(EnumTemplates.BEAR_DEPLOY_BUTTON, 90, 3);
 
                 if (!deploy.isFound()) {
-                    logDebug("Deploy button not found. Rescheduling to try again in 5 minutes.");
+                    logWarning("Deploy button not found. Rescheduling to try again in 5 minutes.");
                     return 0;
                 }
 
