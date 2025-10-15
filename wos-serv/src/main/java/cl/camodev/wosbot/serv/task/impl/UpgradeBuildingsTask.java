@@ -66,8 +66,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
             .build();
 
     // Upgrade queue areas
-    private static final DTOArea QUEUE_AREA_1 = new DTOArea(new DTOPoint(108, 377), new DTOPoint(358, 398));
-    private static final DTOArea QUEUE_AREA_2 = new DTOArea(new DTOPoint(108,450), new DTOPoint(358, 474));
+    private static final DTOArea QUEUE_AREA_1 = new DTOArea(new DTOPoint(95, 377), new DTOPoint(358, 398));
+    private static final DTOArea QUEUE_AREA_2 = new DTOArea(new DTOPoint(95,450), new DTOPoint(358, 474));
 
     // List of queue areas to check
     private final List<DTOArea> queues = new ArrayList<>(Arrays.asList(QUEUE_AREA_1, QUEUE_AREA_2));
@@ -105,12 +105,21 @@ public class UpgradeBuildingsTask extends DelayedTask {
                         result.state.status == UpgradeBuildingsTask.QueueStatus.IDLE_TEMP);
 
         if (hasIdleQueue) {
+            // List to store troop training times
+            List<Duration> troopTrainingTimes = new ArrayList<>();
+
             // Process idle queues
             for (UpgradeBuildingsTask.QueueAnalysisResult result : queueResults) {
                 if (result.state.status == UpgradeBuildingsTask.QueueStatus.IDLE ||
                         result.state.status == UpgradeBuildingsTask.QueueStatus.IDLE_TEMP) {
                     logInfo("Processing queue " + result.queueNumber + " (Status: " + result.state.status + ")");
-                    processQueue(result);
+                    Duration trainingTime = processQueue(result);
+
+                    // If a training building with time was found, store it
+                    if (trainingTime != null) {
+                        troopTrainingTimes.add(trainingTime);
+                        logInfo("Found training building with time: " + trainingTime.toMinutes() + " minutes");
+                    }
                 }
             }
 
@@ -127,7 +136,30 @@ public class UpgradeBuildingsTask extends DelayedTask {
             logInfo("=== Updated Queue Analysis After Processing ===");
             logQueueSummary(updatedResults);
 
-            // reschedule based on busy queues
+            // If troop training times were found, add them to the results for scheduling consideration
+            if (!troopTrainingTimes.isEmpty()) {
+                logInfo("Adding troop training times to scheduling calculation:");
+                for (Duration trainingTime : troopTrainingTimes) {
+                    logInfo("- Training time: " + trainingTime.toMinutes() + " minutes");
+
+                    // Convert training time to a format compatible with queue times
+                    int hours = (int)trainingTime.toHours();
+                    int minutes = (int)(trainingTime.toMinutes() % 60);
+                    int seconds = (int)(trainingTime.getSeconds() % 60);
+                    String timeString = String.format("%02d%02d%02d", hours, minutes, seconds);
+
+                    // Create a virtual analysis result with the training time
+                    UpgradeBuildingsTask.QueueState trainingState = new UpgradeBuildingsTask.QueueState(
+                            UpgradeBuildingsTask.QueueStatus.BUSY, timeString);
+                    UpgradeBuildingsTask.QueueAnalysisResult trainingResult = new UpgradeBuildingsTask.QueueAnalysisResult(
+                            -1, null, trainingState); // Use -1 as queue number for virtual training queues
+
+                    // Add to results for scheduling
+                    updatedResults.add(trainingResult);
+                }
+            }
+
+            // reschedule based on busy queues (now including troop training times)
             rescheduleBasedOnBusyQueues(updatedResults);
             closeLeftMenu();
         } else {
@@ -262,8 +294,9 @@ public class UpgradeBuildingsTask extends DelayedTask {
      * Processes a queue by tapping on it and handling the upgrade dialog
      *
      * @param queueResult The queue to process
+     * @return Duration with training time if it's a troop building, null otherwise
      */
-    private void processQueue(UpgradeBuildingsTask.QueueAnalysisResult queueResult) {
+    private Duration processQueue(UpgradeBuildingsTask.QueueAnalysisResult queueResult) {
         // Navigate to city view to ensure we're in the right screen
         navigateToCityView();
         sleepTask(500);
@@ -283,6 +316,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
             // Survivor building flow
             tapPoint(new DTOPoint(lowBuilding.getPoint().getX() + 100, lowBuilding.getPoint().getY()));
             processSurvivorBuilding();
+            return null;
         } else {
             // Try to find city building
             tapRandomPoint(new DTOPoint(338, 799), new DTOPoint(353, 807), 3, 100);
@@ -290,17 +324,20 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
             if (upgradeButton.isFound()) {
                 processCityBuilding();
+                return null;
             } else {
                 // Check if this is a troop training building
-                processTroopBuilding();
+                return processTroopBuilding();
             }
         }
     }
 
     /**
      * Processes a troop training building
+     *
+     * @return Duration with training time if detected, null otherwise
      */
-    private void processTroopBuilding() {
+    private Duration processTroopBuilding() {
         DTOImageSearchResult train = emuManager.searchTemplate(EMULATOR_NUMBER, BUILDING_BUTTON_TRAIN, 90);
 
         if (train.isFound()) {
@@ -321,14 +358,16 @@ public class UpgradeBuildingsTask extends DelayedTask {
                         TimeConverters::hhmmssToDuration);
 
                 if (trainingTime == null) {
-                    return;
+                    return null;
                 }
 
                 logInfo("A skill is currently being trained. Rescheduling task to run after training completes in " +
                         trainingTime.toMinutes() + " minutes.");
                 reschedule(LocalDateTime.now().plus(trainingTime).minusSeconds(5));
+                return trainingTime;
             }
         }
+        return null;
     }
 
     /**
@@ -636,7 +675,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
         } catch (Exception e) {
             logError("Error parsing time string '" + timeString + "': " + e.getMessage());
-            return 60; // Default to 1 hour if parsing fails
+            return 15; // Default to 1 hour if parsing fails
         }
     }
 
