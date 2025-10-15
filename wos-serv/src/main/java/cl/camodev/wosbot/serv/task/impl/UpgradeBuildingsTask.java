@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import static cl.camodev.ButtonContants.*;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.BUILDING_BUTTON_INFO;
@@ -116,18 +117,17 @@ public class UpgradeBuildingsTask extends DelayedTask {
             ensureCorrectScreenLocation(EnumStartLocation.HOME);
 
             logInfo("Reanalyzing queues after processing idle queues...");
-            sleepTask(1000); // Pequeña pausa para que el UI se actualice
 
             navigateToCityView();
 
-            // Reanalizar todas las colas
+            // reanalyze all queues after processing
             List<UpgradeBuildingsTask.QueueAnalysisResult> updatedResults = analyzeAllQueues();
 
-            // Log del resumen actualizado
+            // log updated summary
             logInfo("=== Updated Queue Analysis After Processing ===");
             logQueueSummary(updatedResults);
 
-            // Reprogramar con base en las colas ocupadas
+            // reschedule based on busy queues
             rescheduleBasedOnBusyQueues(updatedResults);
             closeLeftMenu();
         } else {
@@ -171,6 +171,47 @@ public class UpgradeBuildingsTask extends DelayedTask {
                 logQueueState(queueIndex, state);
 
                 queueIndex++;
+            }
+
+            // Check if any queue has UNKNOWN status and retry those
+            List<UpgradeBuildingsTask.QueueAnalysisResult> unknownResults = results.stream()
+                .filter(result -> result.state.status == UpgradeBuildingsTask.QueueStatus.UNKNOWN)
+                .collect(Collectors.toList());
+
+            if (!unknownResults.isEmpty()) {
+                logInfo("Found " + unknownResults.size() + " queue(s) with UNKNOWN status. Retrying with a new screenshot.");
+
+                // Capture a new screenshot
+                emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
+
+                // Create new results list to replace the old one
+                List<UpgradeBuildingsTask.QueueAnalysisResult> updatedResults = new ArrayList<>();
+
+                // Process each queue result, reanalyzing the unknown ones
+                for (UpgradeBuildingsTask.QueueAnalysisResult originalResult : results) {
+                    if (originalResult.state.status == UpgradeBuildingsTask.QueueStatus.UNKNOWN) {
+                        // Reanalyze this queue
+                        logInfo("Retrying analysis for queue " + originalResult.queueNumber);
+                        UpgradeBuildingsTask.QueueState newState = analyzeQueueState(originalResult.queueArea);
+
+                        // Create new result with updated state
+                        UpgradeBuildingsTask.QueueAnalysisResult newResult = new UpgradeBuildingsTask.QueueAnalysisResult(
+                            originalResult.queueNumber, originalResult.queueArea, newState);
+
+                        // Add to new results list
+                        updatedResults.add(newResult);
+
+                        // Log the updated state
+                        logInfo("Queue " + originalResult.queueNumber + " reanalyzed. New state: " + newState.status);
+                        logQueueState(originalResult.queueNumber, newState);
+                    } else {
+                        // Keep original result for non-UNKNOWN queues
+                        updatedResults.add(originalResult);
+                    }
+                }
+
+                // Replace original results with updated ones
+                results = updatedResults;
             }
         } catch (Exception e) {
             logError("Error analyzing construction queues: " + e.getMessage());
@@ -469,12 +510,12 @@ public class UpgradeBuildingsTask extends DelayedTask {
      *
      * @param queueResults List of queue analysis results
      */
-    private void rescheduleBasedOnBusyQueues(List<UpgradeBuildingsTask.QueueAnalysisResult> queueResults) {
+    private void rescheduleBasedOnBusyQueues(List<QueueAnalysisResult> queueResults) {
         logInfo("No IDLE queues available. Checking BUSY queues to reschedule...");
 
         // Filter only BUSY queues and find the one with minimum time
-        UpgradeBuildingsTask.QueueAnalysisResult shortestBusyQueue = queueResults.stream()
-                .filter(result -> result.state.status == UpgradeBuildingsTask.QueueStatus.BUSY && result.state.timeRemaining != null)
+        QueueAnalysisResult shortestBusyQueue = queueResults.stream()
+                .filter(result -> result.state.status == QueueStatus.BUSY && result.state.timeRemaining != null)
                 .min((q1, q2) -> {
                     long time1 = parseTimeToMinutes(q1.state.timeRemaining);
                     long time2 = parseTimeToMinutes(q2.state.timeRemaining);
@@ -484,11 +525,26 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
         if (shortestBusyQueue != null) {
             long minutesToWait = parseTimeToMinutes(shortestBusyQueue.state.timeRemaining);
-            LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(minutesToWait);
+            LocalDateTime rescheduleTime;
+
+            if (minutesToWait > 30) {
+
+                long halfTime = minutesToWait / 2;
+                rescheduleTime = LocalDateTime.now().plusMinutes(halfTime);
+                logInfo("Wait time exceeds 30 minutes (" + minutesToWait + " min). Rescheduling for half time: " +
+                        halfTime + " minutes from now");
+            } else if (minutesToWait < 5) {
+                rescheduleTime = LocalDateTime.now().plusMinutes(minutesToWait);
+                logInfo("Wait time is less than 5 minutes. Keeping normal schedule: " +
+                        minutesToWait + " minutes from now");
+            } else {
+                rescheduleTime = LocalDateTime.now().plusMinutes(minutesToWait);
+                logInfo("Wait time is " + minutesToWait + " minutes. Using normal schedule");
+            }
 
             logInfo("Shortest busy queue: Queue " + shortestBusyQueue.queueNumber +
                     " with " + shortestBusyQueue.state.timeRemaining + " remaining");
-            logInfo("Rescheduling task for: " + rescheduleTime + " (in " + minutesToWait + " minutes)");
+            logInfo("Rescheduling task for: " + rescheduleTime);
 
             this.reschedule(rescheduleTime);
         } else {
