@@ -28,7 +28,6 @@ public class HeroMissionEventTask extends DelayedTask {
     private final ServTaskManager servTaskManager = ServTaskManager.getInstance();
     private int flagNumber = 0;
     private boolean useFlag = false;
-    private boolean limitedHunting = false;
 
     public HeroMissionEventTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
@@ -39,8 +38,6 @@ public class HeroMissionEventTask extends DelayedTask {
         logInfo("=== Starting Hero's Mission ===");
 
         flagNumber = profile.getConfig(EnumConfigurationKey.HERO_MISSION_FLAG_INT, Integer.class);
-        String mode = profile.getConfig(EnumConfigurationKey.HERO_MISSION_MODE_STRING, String.class);
-        limitedHunting = mode.equals("Limited (10)");
         useFlag = flagNumber > 0;
 
         if (isBearRunning()) {
@@ -131,7 +128,7 @@ public class HeroMissionEventTask extends DelayedTask {
                 return true;
             }
             logInfo("Hero's Mission event not found. Swiping right and retrying...");
-            swipe(new DTOPoint(630, 143), new DTOPoint(500, 128));
+            swipe(new DTOPoint(630, 143), new DTOPoint(400, 128));
             sleepTask(300);
         }
 
@@ -275,77 +272,32 @@ public class HeroMissionEventTask extends DelayedTask {
 
     private ReaperAvailabilityResult reapersAvailable() {
         DTOTesseractSettings settingsRallied = new DTOTesseractSettings.Builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(254, 254, 254)) // White text
                 .setAllowedChars("0123456789") // Only allow digits
+                .setDebug(true)
                 .build();
 
-        DTOTesseractSettings settingsHorns = new DTOTesseractSettings.Builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setRemoveBackground(true)
-                .setTextColor(new Color(255, 255, 255)) // White text
-                .setAllowedChars("0123456789/") // Only allow digits and '/'
-                .build();
+        // Limited mode: Check how many reapers have been rallied
+        Integer reapersRallied = readNumberValue(
+                new DTOPoint(68, 1062),
+                new DTOPoint(125, 1093),
+                settingsRallied);
 
-        if (limitedHunting) {
-            // Limited mode: Check how many reapers have been rallied
-            Integer reapersRallied = readNumberValue(
-                    new DTOPoint(68, 1062),
-                    new DTOPoint(125, 1093),
-                    settingsRallied);
-
-            if (reapersRallied == null) {
-                logWarning("Failed to parse reapers rallied count via OCR");
-                sleepTask(500);
-                return ReaperAvailabilityResult.OCR_ERROR_RALLIED_COUNT;
-            }
-
-            logInfo("Reapers rallied until now: " + reapersRallied);
+        if (reapersRallied == null) {
+            logWarning("Failed to parse reapers rallied count via OCR: '" + reapersRallied + "'");
             sleepTask(500);
+            return ReaperAvailabilityResult.OCR_ERROR_RALLIED_COUNT;
+        }
 
-            if (reapersRallied < 10) {
-                return ReaperAvailabilityResult.AVAILABLE;
-            } else {
-                return ReaperAvailabilityResult.UNAVAILABLE;
-            }
+        logInfo("Reapers rallied until now: " + reapersRallied);
+        sleepTask(500);
 
+        if (reapersRallied < 10) {
+            return ReaperAvailabilityResult.AVAILABLE;
         } else {
-            // Unlimited mode: Check how many horns remain
-            Integer hornsRemaining = null;
-            try {
-                String hornsRemainingText = OCRWithRetries(
-                        new DTOPoint(68, 1062),
-                        new DTOPoint(125, 1093),
-                        5,
-                        settingsHorns);
-
-                if (hornsRemainingText != null) {
-                    String[] parts = hornsRemainingText.split("/");
-                    if (parts.length > 0) {
-                        hornsRemaining = Integer.parseInt(parts[0]);
-                    }
-                }
-            } catch (NumberFormatException e) {
-                logWarning("Failed to parse horns remaining text: " + e.getMessage());
-            }
-
-            if (hornsRemaining == null) {
-                logWarning("Failed to read horns remaining count via OCR");
-                sleepTask(500);
-                return ReaperAvailabilityResult.OCR_ERROR_HORNS_COUNT;
-            }
-
-            logInfo("Horns remaining: " + hornsRemaining);
-            sleepTask(500);
-
-            if (hornsRemaining > 0) {
-                return ReaperAvailabilityResult.AVAILABLE;
-            } else {
-                return ReaperAvailabilityResult.UNAVAILABLE;
-            }
+            return ReaperAvailabilityResult.UNAVAILABLE;
         }
     }
 
@@ -360,28 +312,23 @@ public class HeroMissionEventTask extends DelayedTask {
     }
 
     /**
-     * Represents the result of checking reaper/horn availability
+     * Represents the result of checking reaper availability
      */
     public enum ReaperAvailabilityResult {
         /**
-         * Reapers are available (limited mode: < 10 rallied, unlimited mode: horns > 0)
+         * Reapers are available (< 10 rallied)
          */
         AVAILABLE,
 
         /**
-         * No reapers available (limited mode: >= 10 rallied, unlimited mode: horns = 0)
+         * No reapers available (>= 10 rallied)
          */
         UNAVAILABLE,
 
         /**
-         * Failed to read the OCR value for reapers rallied count (limited mode)
+         * Failed to read the OCR value for reapers rallied count
          */
-        OCR_ERROR_RALLIED_COUNT,
-
-        /**
-         * Failed to read the OCR value for horns remaining count (unlimited mode)
-         */
-        OCR_ERROR_HORNS_COUNT;
+        OCR_ERROR_RALLIED_COUNT;
 
         /**
          * Convenience method to check if reapers are available
@@ -394,7 +341,7 @@ public class HeroMissionEventTask extends DelayedTask {
          * Convenience method to check if result is an OCR error
          */
         public boolean isOcrError() {
-            return this == OCR_ERROR_RALLIED_COUNT || this == OCR_ERROR_HORNS_COUNT;
+            return this == OCR_ERROR_RALLIED_COUNT;
         }
     }
 

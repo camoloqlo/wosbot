@@ -52,30 +52,16 @@
             <ComboBox fx:id="comboBoxMercenaryFlag" />
          </children>
       </HBox>
-      <VBox alignment="CENTER_LEFT" prefHeight="200.0" prefWidth="100.0" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+      <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
          <children>
-            <HBox alignment="CENTER_LEFT" spacing="5.0">
-               <children>
-                  <Label text="Flag selection" />
-                  <ComboBox fx:id="comboBoxHeroMissionFlag">
-                     <HBox.margin>
-                        <Insets />
-                     </HBox.margin>
-                  </ComboBox>
-               </children>
-            </HBox>
-            <HBox alignment="CENTER_LEFT" spacing="5.0">
-               <children>
-                  <Label text="Mode" />
-                  <ComboBox fx:id="comboBoxHeroMissionMode">
-                     <HBox.margin>
-                        <Insets />
-                     </HBox.margin>
-                  </ComboBox>
-               </children>
-            </HBox>
+            <Label text="Flag selection" />
+            <ComboBox fx:id="comboBoxHeroMissionFlag">
+               <HBox.margin>
+                  <Insets />
+               </HBox.margin>
+            </ComboBox>
          </children>
-      </VBox>
+      </HBox>
       <VBox alignment="BOTTOM_RIGHT" prefHeight="200.0" prefWidth="234.0">
          <children>
             <Label fx:id="labelDateTimeError" alignment="BOTTOM_LEFT" textFill="RED">
