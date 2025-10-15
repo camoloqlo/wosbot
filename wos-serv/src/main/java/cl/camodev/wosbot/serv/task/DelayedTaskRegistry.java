@@ -71,7 +71,7 @@ public class DelayedTaskRegistry {
 
 
         // City upgrade
-        registry.put(TpDailyTaskEnum.CITY_UPGRADE_FURNACE, profile -> new UpgradeFurnaceTask(profile, TpDailyTaskEnum.CITY_UPGRADE_FURNACE));
+        registry.put(TpDailyTaskEnum.CITY_UPGRADE_FURNACE, profile -> new UpgradeBuildingsTask(profile, TpDailyTaskEnum.CITY_UPGRADE_FURNACE));
 		registry.put(TpDailyTaskEnum.ARENA, profile -> new ArenaTask(profile, TpDailyTaskEnum.ARENA));
         registry.put(TpDailyTaskEnum.CITY_SURVIVORS, profile -> new NewSurvivorsTask(profile, TpDailyTaskEnum.CITY_SURVIVORS));
         

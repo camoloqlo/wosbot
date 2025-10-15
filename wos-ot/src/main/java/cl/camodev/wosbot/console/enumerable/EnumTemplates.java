@@ -42,6 +42,7 @@ public enum EnumTemplates {
 	GAME_HOME_SHORTCUTS_MARKSMAN("/templates/shortcuts/marksman.png"),
 	GAME_HOME_SHORTCUTS_RESEARCH_CENTER("/templates/shortcuts/researchCenter.png"),
 	GAME_HOME_SHORTCUTS_HELP_REQUEST("/templates/shortcuts/helpRequest.png"),
+    GAME_HOME_SHORTCUTS_HELP_REQUEST1("/templates/shortcuts/helpRequest1.png"),
 	GAME_HOME_SHORTCUTS_HELP_REQUEST2("/templates/shortcuts/helpRequest2.png"),
 	GAME_HOME_SHORTCUTS_UPGRADE("/templates/shortcuts/upgrade.png"),
 	GAME_HOME_SHORTCUTS_OBTAIN("/templates/shortcuts/obtain.png"),
@@ -77,10 +78,14 @@ public enum EnumTemplates {
 	BUILDING_BUTTON_DETAILS("/templates/building/detailsButton.png"),
 	BUILDING_BUTTON_RESEARCH("/templates/building/researchButton.png"),
 	BUILDING_BUTTON_LABYRINTH("/templates/building/labyrinthButton.png"),
+    BUILDING_BUTTON_INFO("/templates/building/infoButton.png"),
 
 	BUILDING_DETAILS_INFANTRY("/templates/building/detailsInfantry.png"),
 	BUILDING_DETAILS_LANCER("/templates/building/detailsLancer.png"),
 	BUILDING_DETAILS_MARKSMAN("/templates/building/detailsMarksman.png"),
+
+    BUILDING_SURVIVOR_BUTTON_UPGRADE("/templates/building/survivorUpgradeButton.png"),
+    BUILDING_SURVIVOR_BUTTON_FURNITURE_UPGRADE("/templates/building/survivorFurnitureUpgradeButton.png"),
 
     // ========================================================================
     // DAILY MISSIONS AND REWARDS
@@ -426,9 +431,9 @@ public enum EnumTemplates {
 	CHIEF_ORDER_ENACT_BUTTON("/templates/chieforder/chiefOrderEnactButton.png");
 
 	// @formatter:on
-	private String template;
+	private final String template;
 
-	private EnumTemplates(String template) {
+	EnumTemplates(String template) {
 		this.template = template;
 	}
 
