@@ -227,7 +227,7 @@ public class IntelligenceTask extends DelayedTask {
 		boolean beastFound = false;
 
 		// Search for fire beasts if enabled
-		if (fireBeastsEnabled && !marchQueueLimitReached && !(useFlag && beastMarchSent)) {
+		if (fireBeastsEnabled && !(useFlag && beastMarchSent)) {
 			logInfo("Searching for fire beasts.");
 			if (searchAndProcess(EnumTemplates.INTEL_FIRE_BEAST, 5, 90, this::processBeast)) {
 				beastFound = true;
@@ -238,7 +238,7 @@ public class IntelligenceTask extends DelayedTask {
 		}
 
 		// Search for regular beasts
-		if (!marchQueueLimitReached && !(useFlag && beastMarchSent)) {
+		if (!(useFlag && beastMarchSent)) {
 			logInfo("Searching for beasts using grayscale matching.");
 			EnumTemplates beastTemplate = fcEra ? EnumTemplates.INTEL_BEAST_GRAYSCALE_FC
 					: EnumTemplates.INTEL_BEAST_GRAYSCALE;
@@ -520,10 +520,7 @@ public class IntelligenceTask extends DelayedTask {
 
 	private MarchesAvailable getMarchesAvailable() {
 		// Open active marches panel
-		tapPoint(new DTOPoint(2, 550));
-		sleepTask(500);
-		tapPoint(new DTOPoint(340, 265));
-		sleepTask(500);
+		openLeftMenuCitySection(false);
 
 		// Try OCR to find idle marches
 		try {
