@@ -425,10 +425,8 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     protected boolean checkMarchesAvailable() {
-        // Open active marches panel
-        tapPoint(new DTOPoint(2, 550));
-        sleepTask(200);
-        tapRandomPoint(new DTOPoint(340, 265), new DTOPoint(340, 265), 3, 100);
+        // Open left menu on wilderness section
+        openLeftMenuCitySection(false);
 
         // Define march slot coordinates
         DTOPoint[] marchTopLeft = {
@@ -477,6 +475,18 @@ public abstract class DelayedTask implements Runnable, Delayed {
         logInfo("No idle marches detected in any of the 6 slots.");
         closeLeftMenu();
         return false;
+    }
+
+    protected void openLeftMenuCitySection(boolean cityTab) {
+        tapPoint(new DTOPoint(2, 550));
+        sleepTask(200);
+        if (cityTab) {
+            logInfo("Opening city left menu");
+            tapRandomPoint(new DTOPoint(100, 270), new DTOPoint(120, 270), 3, 100);
+        } else {
+            logInfo("Opening wilderness left menu");
+            tapRandomPoint(new DTOPoint(320, 270), new DTOPoint(340, 270), 3, 100);
+        }
     }
 
     protected void closeLeftMenu() {
