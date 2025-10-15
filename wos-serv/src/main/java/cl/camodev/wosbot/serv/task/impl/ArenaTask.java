@@ -46,12 +46,6 @@ public class ArenaTask extends DelayedTask {
     private static final boolean DEFAULT_REFRESH_WITH_GEMS = false;
 
     // ========== Arena Coordinates ==========
-    // Event list navigation
-    private static final DTOPoint EVENT_LIST_BUTTON_TOP_LEFT = new DTOPoint(3, 513);
-    private static final DTOPoint EVENT_LIST_BUTTON_BOTTOM_RIGHT = new DTOPoint(26, 588);
-    private static final DTOPoint EVENT_CATEGORY_TOP_LEFT = new DTOPoint(20, 250);
-    private static final DTOPoint EVENT_CATEGORY_BOTTOM_RIGHT = new DTOPoint(200, 280);
-
     // Arena screen
     private static final DTOPoint ARENA_ICON = new DTOPoint(702, 727);
     private static final DTOPoint ARENA_SCORE_TOP_LEFT = new DTOPoint(567, 1065);
@@ -225,7 +219,7 @@ public class ArenaTask extends DelayedTask {
                 .atTime(hour, minute)
                 .atZone(ZoneId.of("UTC"));
         ZonedDateTime cutoffTimeUtc = nowUtc.toLocalDate()
-                .atTime(23, 55)
+                .atTime(23, 56)
                 .atZone(ZoneId.of("UTC"));
 
         if (nowUtc.isBefore(scheduledTimeUtc)) {
@@ -265,11 +259,9 @@ public class ArenaTask extends DelayedTask {
      */
     private boolean navigateToArena() {
         logDebug("Opening event list");
-        tapRandomPoint(EVENT_LIST_BUTTON_TOP_LEFT, EVENT_LIST_BUTTON_BOTTOM_RIGHT);
-        sleepTask(500); // Wait for sidebar animation
 
-        tapRandomPoint(EVENT_CATEGORY_TOP_LEFT, EVENT_CATEGORY_BOTTOM_RIGHT);
-        sleepTask(500); // Wait for category selection
+        // Open left menu on city section
+        openLeftMenuCitySection(true);
 
         logDebug("Searching for Marksman Camp shortcut");
         DTOImageSearchResult marksmanResult = searchTemplateWithRetries(

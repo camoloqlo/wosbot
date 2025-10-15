@@ -22,11 +22,8 @@ public class ExpertsRomulusTroopsTask extends DelayedTask {
     protected void execute() {
         logInfo("Attempting to claim troops from Romulus.");
         try {
-            // This sequence of taps is intended to open the event list.
-            emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(3, 513), new DTOPoint(26, 588));
-            sleepTask(500);
-            emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(20, 250), new DTOPoint(200, 280));
-            sleepTask(500);
+            // Opens the left menu on city section
+            openLeftMenuCitySection(true);
 
             String troopType = profile.getConfig(EnumConfigurationKey.EXPERT_ROMULUS_TROOPS_TYPE_STRING, String.class);
             EnumTemplates troopTemplate;

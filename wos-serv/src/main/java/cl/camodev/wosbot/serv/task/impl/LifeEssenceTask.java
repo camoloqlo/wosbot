@@ -23,8 +23,6 @@ public class LifeEssenceTask extends DelayedTask {
 
 	// ===================== CONSTANTS =====================
 	// Navigation coordinates
-	private static final DTOPoint MENU_SHORTCUT = new DTOPoint(12, 550);
-	private static final DTOPoint CITY_TAB_BUTTON = new DTOPoint(110, 270);
 	private static final DTOPoint SHOP_TAB_BUTTON = new DTOPoint(670, 195);
 	private static final DTOPoint EXIT_BUTTON = new DTOPoint(40, 30);
 
@@ -145,13 +143,7 @@ public class LifeEssenceTask extends DelayedTask {
 		logInfo("Navigating to Life Essence menu");
 
 		// Open side menu
-		tapPoint(MENU_SHORTCUT);
-		sleepTask(2000); // Wait for menu transition
-
-		// Switch to City tab
-		logDebug("Switching to City tab");
-		tapPoint(CITY_TAB_BUTTON);
-		sleepTask(2000); // Wait for tab switch
+		openLeftMenuCitySection(true);
 
 		// Scroll down to reveal Life Essence menu
 		logDebug("Scrolling to reveal Life Essence menu");

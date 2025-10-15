@@ -30,13 +30,7 @@ public class WarAcademyTask extends DelayedTask {
     protected void execute() {
         //STEP 1: I need to go to left menu, then check if there's 2 matches of research template
         // left menu
-        tapRandomPoint(new DTOPoint(3, 513), new DTOPoint(26, 588));
-
-        sleepTask(1000);
-
-        // ensure we are in city tab
-        tapPoint(new DTOPoint(110, 270));
-        sleepTask(500);
+        openLeftMenuCitySection(true);
 
         // Search for research template with retry logic
         List<DTOImageSearchResult> researchResults = null;
