@@ -25,9 +25,6 @@ public class DailyLabyrinthTask extends DelayedTask {
     // =========================== CONSTANTS ===========================
 
     // Navigation points
-    private static final DTOPoint SIDE_MENU_AREA_START = new DTOPoint(3, 513);
-    private static final DTOPoint SIDE_MENU_AREA_END = new DTOPoint(26, 588);
-    private static final DTOPoint CITY_TAB_BUTTON = new DTOPoint(110, 270);
     private static final DTOPoint SCROLL_START_POINT = new DTOPoint(400, 800);
     private static final DTOPoint SCROLL_END_POINT = new DTOPoint(400, 100);
     private static final DTOPoint SKIP_BUTTON = new DTOPoint(71, 827);
@@ -92,12 +89,7 @@ public class DailyLabyrinthTask extends DelayedTask {
         logInfo("Navigating to the Labyrinth menu...");
 
         // Open side menu
-        tapRandomPoint(SIDE_MENU_AREA_START, SIDE_MENU_AREA_END);
-        sleepTask(MENU_NAVIGATION_DELAY);
-
-        // Switch to city tab
-        tapPoint(CITY_TAB_BUTTON);
-        sleepTask(TAB_SWITCH_DELAY);
+        openLeftMenuCitySection(true);
 
         // Scroll down to find labyrinth
         swipe(SCROLL_START_POINT, SCROLL_END_POINT);

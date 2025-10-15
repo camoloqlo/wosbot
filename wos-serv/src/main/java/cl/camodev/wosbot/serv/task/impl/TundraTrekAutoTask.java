@@ -32,9 +32,6 @@ public class TundraTrekAutoTask extends DelayedTask {
 
     // ===================== CONSTANTS =====================
     // Navigation points
-    private static final DTOPoint SIDE_MENU_AREA_START = new DTOPoint(3, 513);
-    private static final DTOPoint SIDE_MENU_AREA_END = new DTOPoint(26, 588);
-    private static final DTOPoint CITY_TAB_BUTTON = new DTOPoint(110, 270);
     private static final DTOPoint SCROLL_START_POINT = new DTOPoint(400, 800);
     private static final DTOPoint SCROLL_END_POINT = new DTOPoint(400, 100);
     private static final DTOPoint UPPER_SCREEN_CLICK = new DTOPoint(360, 200);
@@ -125,12 +122,7 @@ public class TundraTrekAutoTask extends DelayedTask {
         logInfo("Navigating to Tundra menu");
 
         // Open side menu
-        tapRandomPoint(SIDE_MENU_AREA_START, SIDE_MENU_AREA_END);
-        sleepTask(1000);
-
-        // Switch to city tab
-        tapPoint(CITY_TAB_BUTTON);
-        sleepTask(500);
+        openLeftMenuCitySection(true);
 
         // Scroll to bring Tundra menu into view
         swipe(SCROLL_START_POINT, SCROLL_END_POINT);
@@ -743,6 +735,6 @@ public class TundraTrekAutoTask extends DelayedTask {
 
     @Override
     protected EnumStartLocation getRequiredStartLocation() {
-        return EnumStartLocation.HOME;
+        return EnumStartLocation.ANY;
     }
 }
