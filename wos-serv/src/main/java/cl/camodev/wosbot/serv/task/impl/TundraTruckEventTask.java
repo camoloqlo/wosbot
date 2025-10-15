@@ -402,6 +402,7 @@ public class TundraTruckEventTask extends DelayedTask {
 
 	/**
 	 * Check if trucks are available to send
+	 * Also checks if trucks are in transit before rescheduling to reset
 	 */
 	private boolean checkAvailableTrucks() {
 		try {
@@ -409,7 +410,16 @@ public class TundraTruckEventTask extends DelayedTask {
 			logInfo("Remaining trucks OCR: '" + text + "'");
 
 			if (text != null && text.trim().matches("0\\s*/\\s*\\d+")) {
-				logInfo("No trucks available (0/4). Rescheduling for next activation time.");
+				logInfo("No trucks available to send (0/4)");
+
+				// Check if any trucks are still in transit
+				if (hasInTransitTrucks()) {
+					logInfo("Trucks are in transit. Scheduling next check for truck return time.");
+					scheduleNextTruckCheck();
+					return false;
+				}
+
+				logInfo("No trucks available and none in transit. Rescheduling for next activation time.");
 				rescheduleWithActivationTime();
 				return false;
 			}
@@ -419,6 +429,28 @@ public class TundraTruckEventTask extends DelayedTask {
 			logError("Error checking available trucks: " + e.getMessage(), e);
 			return true; // Proceed anyway
 		}
+	}
+
+	/**
+	 * Check if any trucks are currently in transit (have return times)
+	 */
+	private boolean hasInTransitTrucks() {
+		logDebug("Checking if any trucks are in transit...");
+
+		Optional<LocalDateTime> leftTime = extractTruckTime(TruckSide.LEFT);
+		Optional<LocalDateTime> rightTime = extractTruckTime(TruckSide.RIGHT);
+
+		boolean leftInTransit = leftTime.isPresent() && leftTime.get().isAfter(LocalDateTime.now());
+		boolean rightInTransit = rightTime.isPresent() && rightTime.get().isAfter(LocalDateTime.now());
+
+		if (leftInTransit) {
+			logInfo("Left truck is in transit, returns at: " + leftTime.get());
+		}
+		if (rightInTransit) {
+			logInfo("Right truck is in transit, returns at: " + rightTime.get());
+		}
+
+		return leftInTransit || rightInTransit;
 	}
 
 	/**
