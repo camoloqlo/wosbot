@@ -106,19 +106,18 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
         if (hasIdleQueue) {
             // List to store troop training times
-            List<Duration> troopTrainingTimes = new ArrayList<>();
+            List<LocalDateTime> troopTrainingTimes = new ArrayList<>();
 
             // Process idle queues
             for (UpgradeBuildingsTask.QueueAnalysisResult result : queueResults) {
                 if (result.state.status == UpgradeBuildingsTask.QueueStatus.IDLE ||
                         result.state.status == UpgradeBuildingsTask.QueueStatus.IDLE_TEMP) {
                     logInfo("Processing queue " + result.queueNumber + " (Status: " + result.state.status + ")");
-                    Duration trainingTime = processQueue(result);
+                    LocalDateTime trainingTime = processQueue(result);
 
                     // If a training building with time was found, store it
                     if (trainingTime != null) {
                         troopTrainingTimes.add(trainingTime);
-                        logInfo("Found training building with time: " + trainingTime.toMinutes() + " minutes");
                     }
                 }
             }
@@ -139,22 +138,23 @@ public class UpgradeBuildingsTask extends DelayedTask {
             // If troop training times were found, add them to the results for scheduling consideration
             if (!troopTrainingTimes.isEmpty()) {
                 logInfo("Adding troop training times to scheduling calculation:");
-                for (Duration trainingTime : troopTrainingTimes) {
-                    logInfo("- Training time: " + trainingTime.toMinutes() + " minutes");
+                for (LocalDateTime trainingTime : troopTrainingTimes) {
+                    LocalDateTime now = LocalDateTime.now();
+                    Duration duration = Duration.between(now, trainingTime);
 
-                    // Convert training time to a format compatible with queue times
-                    int hours = (int)trainingTime.toHours();
-                    int minutes = (int)(trainingTime.toMinutes() % 60);
-                    int seconds = (int)(trainingTime.getSeconds() % 60);
+                    long totalMinutes = duration.toMinutes();
+                    logInfo("- Training time: " + totalMinutes + " minutes");
+
+                    int hours = (int) duration.toHours();
+                    int minutes = (int) (duration.toMinutes() % 60);
+                    int seconds = (int) (duration.getSeconds() % 60);
                     String timeString = String.format("%02d%02d%02d", hours, minutes, seconds);
 
-                    // Create a virtual analysis result with the training time
                     UpgradeBuildingsTask.QueueState trainingState = new UpgradeBuildingsTask.QueueState(
                             UpgradeBuildingsTask.QueueStatus.BUSY, timeString);
                     UpgradeBuildingsTask.QueueAnalysisResult trainingResult = new UpgradeBuildingsTask.QueueAnalysisResult(
-                            -1, null, trainingState); // Use -1 as queue number for virtual training queues
+                            -1, null, trainingState);
 
-                    // Add to results for scheduling
                     updatedResults.add(trainingResult);
                 }
             }
@@ -294,9 +294,9 @@ public class UpgradeBuildingsTask extends DelayedTask {
      * Processes a queue by tapping on it and handling the upgrade dialog
      *
      * @param queueResult The queue to process
-     * @return Duration with training time if it's a troop building, null otherwise
+     * @return LocalDateTime with training completion time if it's a troop building, null otherwise
      */
-    private Duration processQueue(UpgradeBuildingsTask.QueueAnalysisResult queueResult) {
+    private LocalDateTime processQueue(UpgradeBuildingsTask.QueueAnalysisResult queueResult) {
         // Navigate to city view to ensure we're in the right screen
         navigateToCityView();
         sleepTask(500);
@@ -335,9 +335,9 @@ public class UpgradeBuildingsTask extends DelayedTask {
     /**
      * Processes a troop training building
      *
-     * @return Duration with training time if detected, null otherwise
+     * @return LocalDateTime with expected completion time if detected, null otherwise
      */
-    private Duration processTroopBuilding() {
+    private LocalDateTime processTroopBuilding() {
         DTOImageSearchResult train = emuManager.searchTemplate(EMULATOR_NUMBER, BUILDING_BUTTON_TRAIN, 90);
 
         if (train.isFound()) {
@@ -361,10 +361,11 @@ public class UpgradeBuildingsTask extends DelayedTask {
                     return null;
                 }
 
-                logInfo("A skill is currently being trained. Rescheduling task to run after training completes in " +
-                        trainingTime.toMinutes() + " minutes.");
-                reschedule(LocalDateTime.now().plus(trainingTime).minusSeconds(5));
-                return trainingTime;
+                LocalDateTime completionTime = LocalDateTime.now().plus(trainingTime);
+
+                logInfo("Building will complete training at approximately: " + completionTime);
+
+                return completionTime.minusSeconds(5);
             }
         }
         return null;
