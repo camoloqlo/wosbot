@@ -222,7 +222,8 @@ public class AllianceChestTask extends DelayedTask {
 	private void scheduleNextRun() {
 		int offsetMinutes = profile.getConfig(EnumConfigurationKey.ALLIANCE_CHESTS_OFFSET_INT, Integer.class);
 		LocalDateTime nextExecutionTime = LocalDateTime.now().plusMinutes(offsetMinutes);
-		reschedule(nextExecutionTime.isAfter(UtilTime.getGameReset()) ? UtilTime.getGameReset() : nextExecutionTime);
+		nextExecutionTime = nextExecutionTime.isAfter(UtilTime.getGameReset()) ? UtilTime.getGameReset() : nextExecutionTime;
+		reschedule(nextExecutionTime);
 		logInfo("Alliance chest task completed. Next run at: " + nextExecutionTime.format(DATETIME_FORMATTER));
 	}
 }
