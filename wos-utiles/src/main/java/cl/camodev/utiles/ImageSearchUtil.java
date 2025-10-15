@@ -438,12 +438,16 @@ public class ImageSearchUtil {
             // Template matching
             long matchStartTime = System.currentTimeMillis();
             resultado = new Mat(resultRows, resultCols, CvType.CV_32FC1);
-            
+
+            int method = (mask != null && !mask.empty())
+                    ? Imgproc.TM_CCORR_NORMED
+                    : Imgproc.TM_CCOEFF_NORMED;
+
             // Use mask if available, otherwise use standard matching
             if (mask != null && !mask.empty()) {
-                Imgproc.matchTemplate(imagenROI, template, resultado, Imgproc.TM_CCOEFF_NORMED, mask);
+                Imgproc.matchTemplate(imagenROI, template, resultado, method, mask);
             } else {
-                Imgproc.matchTemplate(imagenROI, template, resultado, Imgproc.TM_CCOEFF_NORMED);
+                Imgproc.matchTemplate(imagenROI, template, resultado, method);
             }
             
             long matchEndTime = System.currentTimeMillis();
@@ -451,7 +455,22 @@ public class ImageSearchUtil {
 
             // Search for the best match
             Core.MinMaxLocResult mmr = Core.minMaxLoc(resultado);
-            double matchPercentage = mmr.maxVal * 100.0;
+
+            // Log the raw value for debugging
+            if (mmr.maxVal > 1.0 || mmr.maxVal < -1.0 || Double.isNaN(mmr.maxVal) || Double.isInfinite(mmr.maxVal)) {
+                logger.warn("Abnormal maxVal detected: {} for template: {}", mmr.maxVal, templateResourcePath);
+            }
+
+            // Clamp the value to valid range [-1.0, 1.0] before converting to percentage
+            double normalizedVal = Math.max(-1.0, Math.min(1.0, mmr.maxVal));
+
+            // Handle NaN or Infinite values
+            if (Double.isNaN(normalizedVal) || Double.isInfinite(normalizedVal)) {
+                logger.error("Invalid match value (NaN or Infinite) for template: {}", templateResourcePath);
+                return new DTOImageSearchResult(false, null, 0.0);
+            }
+
+            double matchPercentage = normalizedVal * 100.0;
 
             long totalTime = System.currentTimeMillis() - startTime;
 
