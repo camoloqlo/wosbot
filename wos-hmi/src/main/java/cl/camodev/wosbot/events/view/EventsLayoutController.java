@@ -26,9 +26,6 @@ public class EventsLayoutController extends AbstractProfileController {
 	private ComboBox<Integer> comboBoxMercenaryFlag, comboBoxHeroMissionFlag;
 
 	@FXML
-	private ComboBox<String> comboBoxHeroMissionMode;
-
-	@FXML
 	private Label labelDateTimeError;
 
 	@FXML
@@ -36,7 +33,6 @@ public class EventsLayoutController extends AbstractProfileController {
 		// Set up flag combobox with integer values
 		comboBoxMercenaryFlag.getItems().addAll(0, 1, 2, 3, 4, 5, 6, 7, 8);
 		comboBoxHeroMissionFlag.getItems().addAll(0, 1, 2, 3, 4, 5, 6, 7, 8);
-		comboBoxHeroMissionMode.getItems().addAll("Limited (10)", "Unlimited");
 
 		// Map UI elements to configuration keys
 		comboBoxMappings.put(comboBoxMercenaryFlag, EnumConfigurationKey.MERCENARY_FLAG_INT);
@@ -50,7 +46,6 @@ public class EventsLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxMyriadBazaar, EnumConfigurationKey.MYRIAD_BAZAAR_EVENT_BOOL);
 
 		comboBoxMappings.put(comboBoxHeroMissionFlag, EnumConfigurationKey.HERO_MISSION_FLAG_INT);
-		comboBoxMappings.put(comboBoxHeroMissionMode, EnumConfigurationKey.HERO_MISSION_MODE_STRING);
 
 		// Map the activation hour text field
 		textFieldMappings.put(textfieldTundraActivationHour, EnumConfigurationKey.TUNDRA_TRUCK_ACTIVATION_TIME_STRING);

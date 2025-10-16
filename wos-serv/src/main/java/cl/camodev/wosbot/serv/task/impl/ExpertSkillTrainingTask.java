@@ -41,7 +41,7 @@ public class ExpertSkillTrainingTask extends DelayedTask {
         }
 
         // Navigate to experts screen
-        tapRandomPoint(new DTOPoint(3, 513), new DTOPoint(26, 588)); //left menu
+        openLeftMenuCitySection(true);
 
         int maxScrollAttempts = 5;
         DTOImageSearchResult trainingExpertButton = null;

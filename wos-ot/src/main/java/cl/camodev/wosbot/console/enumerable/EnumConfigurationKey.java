@@ -142,6 +142,7 @@ public enum EnumConfigurationKey {
 	DAILY_MISSION_OFFSET_INT("60", Integer.class),
 	DAILY_MISSION_AUTO_SCHEDULE_BOOL("false", Boolean.class),
 	STOREHOUSE_CHEST_BOOL("false", Boolean.class),
+	STOREHOUSE_STAMINA_CLAIM_TIME_STRING("", String.class),
 	DAILY_LABYRINTH_BOOL("false", Boolean.class),
 	ARENA_TASK_ACTIVATION_TIME_STRING("23:50", String.class),
 	ARENA_TASK_BOOL("false", Boolean.class),
@@ -162,7 +163,7 @@ public enum EnumConfigurationKey {
 	BOOL_HERO_RECRUITMENT("false", Boolean.class),
 	BOOL_VIP_POINTS("false", Boolean.class),
 	VIP_MONTHLY_BUY_BOOL("false", Boolean.class),
-	VIP_NEXT_MONTHLY_BUY_TIME_STRING("false", String.class),
+	VIP_NEXT_MONTHLY_BUY_TIME_STRING("", String.class),
 	BOOL_MYSTERY_SHOP("false", Boolean.class),
 	BOOL_MYSTERY_SHOP_250_HERO_WIDGET("false", Boolean.class),
 
@@ -203,7 +204,6 @@ public enum EnumConfigurationKey {
 	// Hero mission event
 	HERO_MISSION_EVENT_BOOL("false", Boolean.class),
 	HERO_MISSION_FLAG_INT("0", Integer.class),
-	HERO_MISSION_MODE_STRING("Limited (10)", String.class),
 
     // Journey of Light event
     JOURNEY_OF_LIGHT_BOOL("false", Boolean.class),

@@ -49,10 +49,9 @@ public class ExpertsRomulusTagTask extends DelayedTask {
 
     private void navigateToInfirmary() {
         logInfo("Navigating to the infirmary to reach enlistment office.");
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(3, 513), new DTOPoint(26, 588));
-        sleepTask(500);
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(20, 250), new DTOPoint(200, 280));
-		sleepTask(500);
+
+        // Opens the left menu on city section
+        openLeftMenuCitySection(true);
 
         DTOImageSearchResult researchCenter = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER, 90);
 

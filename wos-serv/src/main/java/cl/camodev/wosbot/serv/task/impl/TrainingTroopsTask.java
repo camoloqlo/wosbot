@@ -83,13 +83,8 @@ public class TrainingTroopsTask extends DelayedTask {
         // Navigate to troops interface
         logInfo("Navigating to the training interface for " + troopType);
 
-        // Tap on troops menu
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(3, 513), new DTOPoint(26, 588));
-        sleepTask(1000);
-
-        // Tap on training tab
-        emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(110, 270));
-        sleepTask(500);
+        // Open left menu on city section
+        openLeftMenuCitySection(true);
 
         // Search for the specific troop type
         DTOImageSearchResult troopsResult = emuManager.searchTemplate(EMULATOR_NUMBER, troopType.getTemplate(), 90);
@@ -158,13 +153,8 @@ public class TrainingTroopsTask extends DelayedTask {
     private void reopenTroopsInterface() {
         logInfo("Reopening troops interface for a status refresh.");
 
-        // Tap on troops menu
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(3, 513), new DTOPoint(26, 588));
-        sleepTask(1000);
-
-        // Tap on training tab
-        emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(110, 270));
-        sleepTask(500);
+        // Open left menu on city section
+        openLeftMenuCitySection(true);
 
         logInfo("Troops interface reopened successfully.");
     }
@@ -208,9 +198,11 @@ public class TrainingTroopsTask extends DelayedTask {
             LocalDateTime nextTrainingTime = parseTime(statusText);
             logInfo("Training in progress. Rescheduling for: " + nextTrainingTime);
             reschedule(nextTrainingTime);
+            closeLeftMenu();
             return true;
         } catch (Exception e) {
             logWarning("Could not parse training time from status text: '" + statusText + "'");
+            closeLeftMenu();
             return false; // Retry reading status
         }
     }

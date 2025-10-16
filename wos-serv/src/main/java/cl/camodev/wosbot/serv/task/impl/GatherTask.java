@@ -83,8 +83,6 @@ public class GatherTask extends DelayedTask {
     private static final int TIME_TEXT_HEIGHT = 19;
 
     // ========== Active Marches Menu ==========
-    private static final DTOPoint ACTIVE_MARCHES_BUTTON = new DTOPoint(2, 550);
-    private static final DTOPoint ACTIVE_MARCHES_TAB = new DTOPoint(340, 265);
     private static final DTOPoint CLOSE_MENU_BUTTON = new DTOPoint(110, 270);
     private static final DTOPoint CLOSE_MENU_CONFIRM = new DTOPoint(464, 551);
 
@@ -350,11 +348,7 @@ public class GatherTask extends DelayedTask {
     private void processGatherType(GatherType gatherType) {
         logInfo(String.format("Processing %s gathering.", gatherType.name()));
 
-        if (!openActiveMarchesMenu()) {
-            logWarning("Failed to open active marches menu.");
-            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
-            return;
-        }
+        openLeftMenuCitySection(false);
 
         ActiveMarchResult result = checkActiveMarch(gatherType);
 
@@ -368,21 +362,6 @@ public class GatherTask extends DelayedTask {
             logInfo(String.format("No active %s march found. Deploying new march.", gatherType.name()));
             deployNewGatherMarch(gatherType);
         }
-    }
-
-    /**
-     * Opens the active marches menu.
-     */
-    private boolean openActiveMarchesMenu() {
-        logDebug("Opening active marches menu");
-
-        tapPoint(ACTIVE_MARCHES_BUTTON);
-        sleepTask(500); // Wait for sidebar
-
-        tapPoint(ACTIVE_MARCHES_TAB);
-        sleepTask(500); // Wait for tab switch
-
-        return true;
     }
 
     /**

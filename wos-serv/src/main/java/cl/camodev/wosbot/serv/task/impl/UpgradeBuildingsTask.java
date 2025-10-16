@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import static cl.camodev.ButtonContants.*;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.BUILDING_BUTTON_INFO;
@@ -65,8 +66,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
             .build();
 
     // Upgrade queue areas
-    private static final DTOArea QUEUE_AREA_1 = new DTOArea(new DTOPoint(108, 377), new DTOPoint(358, 398));
-    private static final DTOArea QUEUE_AREA_2 = new DTOArea(new DTOPoint(108,450), new DTOPoint(358, 474));
+    private static final DTOArea QUEUE_AREA_1 = new DTOArea(new DTOPoint(95, 377), new DTOPoint(358, 398));
+    private static final DTOArea QUEUE_AREA_2 = new DTOArea(new DTOPoint(95,450), new DTOPoint(358, 474));
 
     // List of queue areas to check
     private final List<DTOArea> queues = new ArrayList<>(Arrays.asList(QUEUE_AREA_1, QUEUE_AREA_2));
@@ -104,30 +105,61 @@ public class UpgradeBuildingsTask extends DelayedTask {
                         result.state.status == UpgradeBuildingsTask.QueueStatus.IDLE_TEMP);
 
         if (hasIdleQueue) {
+            // List to store troop training times
+            List<LocalDateTime> troopTrainingTimes = new ArrayList<>();
+
             // Process idle queues
             for (UpgradeBuildingsTask.QueueAnalysisResult result : queueResults) {
                 if (result.state.status == UpgradeBuildingsTask.QueueStatus.IDLE ||
                         result.state.status == UpgradeBuildingsTask.QueueStatus.IDLE_TEMP) {
                     logInfo("Processing queue " + result.queueNumber + " (Status: " + result.state.status + ")");
-                    processQueue(result);
+                    LocalDateTime trainingTime = processQueue(result);
+
+                    // If a training building with time was found, store it
+                    if (trainingTime != null) {
+                        troopTrainingTimes.add(trainingTime);
+                    }
                 }
             }
 
             ensureCorrectScreenLocation(EnumStartLocation.HOME);
 
             logInfo("Reanalyzing queues after processing idle queues...");
-            sleepTask(1000); // Pequeña pausa para que el UI se actualice
 
             navigateToCityView();
 
-            // Reanalizar todas las colas
+            // reanalyze all queues after processing
             List<UpgradeBuildingsTask.QueueAnalysisResult> updatedResults = analyzeAllQueues();
 
-            // Log del resumen actualizado
+            // log updated summary
             logInfo("=== Updated Queue Analysis After Processing ===");
             logQueueSummary(updatedResults);
 
-            // Reprogramar con base en las colas ocupadas
+            // If troop training times were found, add them to the results for scheduling consideration
+            if (!troopTrainingTimes.isEmpty()) {
+                logInfo("Adding troop training times to scheduling calculation:");
+                for (LocalDateTime trainingTime : troopTrainingTimes) {
+                    LocalDateTime now = LocalDateTime.now();
+                    Duration duration = Duration.between(now, trainingTime);
+
+                    long totalMinutes = duration.toMinutes();
+                    logInfo("- Training time: " + totalMinutes + " minutes");
+
+                    int hours = (int) duration.toHours();
+                    int minutes = (int) (duration.toMinutes() % 60);
+                    int seconds = (int) (duration.getSeconds() % 60);
+                    String timeString = String.format("%02d%02d%02d", hours, minutes, seconds);
+
+                    UpgradeBuildingsTask.QueueState trainingState = new UpgradeBuildingsTask.QueueState(
+                            UpgradeBuildingsTask.QueueStatus.BUSY, timeString);
+                    UpgradeBuildingsTask.QueueAnalysisResult trainingResult = new UpgradeBuildingsTask.QueueAnalysisResult(
+                            -1, null, trainingState);
+
+                    updatedResults.add(trainingResult);
+                }
+            }
+
+            // reschedule based on busy queues (now including troop training times)
             rescheduleBasedOnBusyQueues(updatedResults);
             closeLeftMenu();
         } else {
@@ -171,6 +203,47 @@ public class UpgradeBuildingsTask extends DelayedTask {
                 logQueueState(queueIndex, state);
 
                 queueIndex++;
+            }
+
+            // Check if any queue has UNKNOWN status and retry those
+            List<UpgradeBuildingsTask.QueueAnalysisResult> unknownResults = results.stream()
+                .filter(result -> result.state.status == UpgradeBuildingsTask.QueueStatus.UNKNOWN)
+                .collect(Collectors.toList());
+
+            if (!unknownResults.isEmpty()) {
+                logInfo("Found " + unknownResults.size() + " queue(s) with UNKNOWN status. Retrying with a new screenshot.");
+
+                // Capture a new screenshot
+                emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
+
+                // Create new results list to replace the old one
+                List<UpgradeBuildingsTask.QueueAnalysisResult> updatedResults = new ArrayList<>();
+
+                // Process each queue result, reanalyzing the unknown ones
+                for (UpgradeBuildingsTask.QueueAnalysisResult originalResult : results) {
+                    if (originalResult.state.status == UpgradeBuildingsTask.QueueStatus.UNKNOWN) {
+                        // Reanalyze this queue
+                        logInfo("Retrying analysis for queue " + originalResult.queueNumber);
+                        UpgradeBuildingsTask.QueueState newState = analyzeQueueState(originalResult.queueArea);
+
+                        // Create new result with updated state
+                        UpgradeBuildingsTask.QueueAnalysisResult newResult = new UpgradeBuildingsTask.QueueAnalysisResult(
+                            originalResult.queueNumber, originalResult.queueArea, newState);
+
+                        // Add to new results list
+                        updatedResults.add(newResult);
+
+                        // Log the updated state
+                        logInfo("Queue " + originalResult.queueNumber + " reanalyzed. New state: " + newState.status);
+                        logQueueState(originalResult.queueNumber, newState);
+                    } else {
+                        // Keep original result for non-UNKNOWN queues
+                        updatedResults.add(originalResult);
+                    }
+                }
+
+                // Replace original results with updated ones
+                results = updatedResults;
             }
         } catch (Exception e) {
             logError("Error analyzing construction queues: " + e.getMessage());
@@ -221,8 +294,9 @@ public class UpgradeBuildingsTask extends DelayedTask {
      * Processes a queue by tapping on it and handling the upgrade dialog
      *
      * @param queueResult The queue to process
+     * @return LocalDateTime with training completion time if it's a troop building, null otherwise
      */
-    private void processQueue(UpgradeBuildingsTask.QueueAnalysisResult queueResult) {
+    private LocalDateTime processQueue(UpgradeBuildingsTask.QueueAnalysisResult queueResult) {
         // Navigate to city view to ensure we're in the right screen
         navigateToCityView();
         sleepTask(500);
@@ -242,6 +316,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
             // Survivor building flow
             tapPoint(new DTOPoint(lowBuilding.getPoint().getX() + 100, lowBuilding.getPoint().getY()));
             processSurvivorBuilding();
+            return null;
         } else {
             // Try to find city building
             tapRandomPoint(new DTOPoint(338, 799), new DTOPoint(353, 807), 3, 100);
@@ -249,17 +324,20 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
             if (upgradeButton.isFound()) {
                 processCityBuilding();
+                return null;
             } else {
                 // Check if this is a troop training building
-                processTroopBuilding();
+                return processTroopBuilding();
             }
         }
     }
 
     /**
      * Processes a troop training building
+     *
+     * @return LocalDateTime with expected completion time if detected, null otherwise
      */
-    private void processTroopBuilding() {
+    private LocalDateTime processTroopBuilding() {
         DTOImageSearchResult train = emuManager.searchTemplate(EMULATOR_NUMBER, BUILDING_BUTTON_TRAIN, 90);
 
         if (train.isFound()) {
@@ -280,14 +358,17 @@ public class UpgradeBuildingsTask extends DelayedTask {
                         TimeConverters::hhmmssToDuration);
 
                 if (trainingTime == null) {
-                    return;
+                    return null;
                 }
 
-                logInfo("A skill is currently being trained. Rescheduling task to run after training completes in " +
-                        trainingTime.toMinutes() + " minutes.");
-                reschedule(LocalDateTime.now().plus(trainingTime).minusSeconds(5));
+                LocalDateTime completionTime = LocalDateTime.now().plus(trainingTime);
+
+                logInfo("Building will complete training at approximately: " + completionTime);
+
+                return completionTime.minusSeconds(5);
             }
         }
+        return null;
     }
 
     /**
@@ -469,12 +550,12 @@ public class UpgradeBuildingsTask extends DelayedTask {
      *
      * @param queueResults List of queue analysis results
      */
-    private void rescheduleBasedOnBusyQueues(List<UpgradeBuildingsTask.QueueAnalysisResult> queueResults) {
+    private void rescheduleBasedOnBusyQueues(List<QueueAnalysisResult> queueResults) {
         logInfo("No IDLE queues available. Checking BUSY queues to reschedule...");
 
         // Filter only BUSY queues and find the one with minimum time
-        UpgradeBuildingsTask.QueueAnalysisResult shortestBusyQueue = queueResults.stream()
-                .filter(result -> result.state.status == UpgradeBuildingsTask.QueueStatus.BUSY && result.state.timeRemaining != null)
+        QueueAnalysisResult shortestBusyQueue = queueResults.stream()
+                .filter(result -> result.state.status == QueueStatus.BUSY && result.state.timeRemaining != null)
                 .min((q1, q2) -> {
                     long time1 = parseTimeToMinutes(q1.state.timeRemaining);
                     long time2 = parseTimeToMinutes(q2.state.timeRemaining);
@@ -484,11 +565,26 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
         if (shortestBusyQueue != null) {
             long minutesToWait = parseTimeToMinutes(shortestBusyQueue.state.timeRemaining);
-            LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(minutesToWait);
+            LocalDateTime rescheduleTime;
+
+            if (minutesToWait > 30) {
+
+                long halfTime = minutesToWait / 2;
+                rescheduleTime = LocalDateTime.now().plusMinutes(halfTime);
+                logInfo("Wait time exceeds 30 minutes (" + minutesToWait + " min). Rescheduling for half time: " +
+                        halfTime + " minutes from now");
+            } else if (minutesToWait < 5) {
+                rescheduleTime = LocalDateTime.now().plusMinutes(minutesToWait);
+                logInfo("Wait time is less than 5 minutes. Keeping normal schedule: " +
+                        minutesToWait + " minutes from now");
+            } else {
+                rescheduleTime = LocalDateTime.now().plusMinutes(minutesToWait);
+                logInfo("Wait time is " + minutesToWait + " minutes. Using normal schedule");
+            }
 
             logInfo("Shortest busy queue: Queue " + shortestBusyQueue.queueNumber +
                     " with " + shortestBusyQueue.state.timeRemaining + " remaining");
-            logInfo("Rescheduling task for: " + rescheduleTime + " (in " + minutesToWait + " minutes)");
+            logInfo("Rescheduling task for: " + rescheduleTime);
 
             this.reschedule(rescheduleTime);
         } else {
@@ -580,7 +676,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
         } catch (Exception e) {
             logError("Error parsing time string '" + timeString + "': " + e.getMessage());
-            return 60; // Default to 1 hour if parsing fails
+            return 15; // Default to 1 hour if parsing fails
         }
     }
 
