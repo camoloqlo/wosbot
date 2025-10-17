@@ -478,8 +478,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     }
 
     protected void openLeftMenuCitySection(boolean cityTab) {
-        tapPoint(new DTOPoint(2, 550));
-        sleepTask(200);
+        tapRandomPoint(new DTOPoint(8, 538), new DTOPoint(8, 560), 3, 400);
         if (cityTab) {
             logInfo("Opening city left menu");
             tapRandomPoint(new DTOPoint(100, 270), new DTOPoint(120, 270), 3, 100);
