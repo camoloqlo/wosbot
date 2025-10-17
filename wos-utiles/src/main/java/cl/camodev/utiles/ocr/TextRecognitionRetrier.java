@@ -1,5 +1,6 @@
 package cl.camodev.utiles.ocr;
 
+import cl.camodev.wosbot.ot.DTOArea;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 
@@ -57,26 +58,35 @@ public class TextRecognitionRetrier<T> {
                      DTOTesseractSettings settings,
                      Predicate<String> successPredicate,
                      Function<String, T> converter) {
-        String raw = null;
         for (int attempt = 0; attempt < maxRetries; attempt++) {
             logger.debug("Performing OCR (attempt {} of {})", attempt + 1, maxRetries);
             try {
-                raw = textRecognitionProvider.ocrRegion(p1, p2, settings);
+                String raw = textRecognitionProvider.ocrRegion(p1, p2, settings);
                 if (raw != null && successPredicate.test(raw)) {
                     return converter.apply(raw);
                 }
-            } catch (IOException | TesseractException e) {
+            } catch (IOException | TesseractException | RuntimeException e) {
                 logger.warn("OCR attempt {} threw an exception: {}", attempt + 1, e.getMessage());
-            } catch (RuntimeException e) {
-                logger.warn("OCR attempt {} threw a runtime exception: {}", attempt + 1, e.getMessage());
             }
-            try {
-                Thread.sleep(delayMs);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
+
+            if (attempt < maxRetries - 1) {
+                try {
+                    Thread.sleep(delayMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
             }
         }
         return null;
+    }
+
+    public T execute(DTOArea area,
+                     int maxRetries,
+                     long delayMs,
+                     DTOTesseractSettings settings,
+                     Predicate<String> successPredicate,
+                     Function<String, T> converter) {
+        return execute(area.topLeft(), area.bottomRight(), maxRetries, delayMs, settings, successPredicate, converter);
     }
 }

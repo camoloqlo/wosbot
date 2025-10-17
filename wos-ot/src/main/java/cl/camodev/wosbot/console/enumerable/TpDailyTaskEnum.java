@@ -42,9 +42,8 @@ public enum TpDailyTaskEnum {
 	PET_SKILL_TREASURE(53, "Pet Skill Treasure",   EnumConfigurationKey.PET_SKILL_TRESURE_BOOL),
 	PET_SKILL_GATHERING(54, "Pet Skill Gathering", EnumConfigurationKey.PET_SKILL_GATHERING_BOOL),
 
-	TRAINING_INFANTRY(61, "Training Infantry",     EnumConfigurationKey.TRAIN_INFANTRY_BOOL),
-	TRAINING_LANCER(62, "Training Lancer",         EnumConfigurationKey.TRAIN_LANCER_BOOL),
-	TRAINING_MARKSMAN(63, "Training Marksman",     EnumConfigurationKey.TRAIN_MARKSMAN_BOOL),
+	TRAINING_TROOPS(60, "Training",     EnumConfigurationKey.TRAIN_BOOL),
+
 
 	CITY_UPGRADE_FURNACE(70, "City Upgrade Furnace", EnumConfigurationKey.CITY_UPGRADE_FURNACE_BOOL),
 	CITY_SURVIVORS(71, "City Survivors", EnumConfigurationKey.CITY_ACCEPT_NEW_SURVIVORS_BOOL),

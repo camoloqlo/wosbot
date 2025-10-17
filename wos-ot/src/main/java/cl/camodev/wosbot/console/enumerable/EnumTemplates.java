@@ -28,6 +28,9 @@ public enum EnumTemplates {
 	
 	HOME_DEALS_BUTTON("/templates/home/dealsButton.png"),
 	HOME_EVENTS_BUTTON("/templates/home/eventsButton.png"),
+    
+    EVENTS_SUNFIRE_TAB("/templates/events/sunFireTab.png"),
+    SUNFIRE_MINISTRY_APPLY_BUTTON("/templates/events/sunFire/ministryApplyButton.png"),
 	
 	LEFT_MENU_CITY_TAB("/templates/leftmenu/cityTab.png"),
 	LEFT_MENU_LABYRINTH_BUTTON("/templates/leftmenu/labyrinth.png"),

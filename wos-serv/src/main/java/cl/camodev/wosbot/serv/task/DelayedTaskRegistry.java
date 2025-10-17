@@ -59,10 +59,7 @@ public class DelayedTaskRegistry {
         registry.put(TpDailyTaskEnum.PET_SKILL_GATHERING, profile -> new PetSkillsTask(profile, TpDailyTaskEnum.PET_SKILL_GATHERING, PetSkillsTask.PetSkill.GATHERING));
 
         // Training troops tasks
-        registry.put(TpDailyTaskEnum.TRAINING_INFANTRY, profile -> new TrainingTroopsTask(profile, TpDailyTaskEnum.TRAINING_INFANTRY, TrainingTroopsTask.TroopType.INFANTRY));
-        registry.put(TpDailyTaskEnum.TRAINING_LANCER, profile -> new TrainingTroopsTask(profile, TpDailyTaskEnum.TRAINING_LANCER, TrainingTroopsTask.TroopType.LANCER));
-        registry.put(TpDailyTaskEnum.TRAINING_MARKSMAN, profile -> new TrainingTroopsTask(profile, TpDailyTaskEnum.TRAINING_MARKSMAN, TrainingTroopsTask.TroopType.MARKSMAN));
-
+        registry.put(TpDailyTaskEnum.TRAINING_TROOPS, profile -> new TrainingTask(profile,TpDailyTaskEnum.TRAINING_TROOPS));
 
         // Chief Order tasks
         registry.put(TpDailyTaskEnum.CHIEF_ORDER_RUSH_JOB, profile -> new ChiefOrderTask(profile, TpDailyTaskEnum.CHIEF_ORDER_RUSH_JOB, cl.camodev.wosbot.serv.task.impl.ChiefOrderTask.ChiefOrderType.RUSH_JOB));

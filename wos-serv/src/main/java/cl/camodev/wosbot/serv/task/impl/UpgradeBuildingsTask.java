@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static cl.camodev.ButtonContants.*;
+import static cl.camodev.LeftMenuTextSettings.*;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.BUILDING_BUTTON_INFO;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.BUILDING_BUTTON_SPEED;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.BUILDING_BUTTON_TRAIN;
@@ -32,38 +33,7 @@ import static cl.camodev.wosbot.console.enumerable.EnumTemplates.GAME_HOME_SHORT
 
 public class UpgradeBuildingsTask extends DelayedTask {
 
-    // OCR Settings for different types of text detection
-    private static final DTOTesseractSettings WHITE_SETTINGS = DTOTesseractSettings.builder()
-            .setRemoveBackground(true)
-            .setTextColor(new Color(255,255,255))
-            .setReuseLastImage(true)
-            .setDebug(true)
-            .setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-            .build();
 
-    private static final DTOTesseractSettings WHITE_NUMBERS = DTOTesseractSettings.builder()
-            .setRemoveBackground(true)
-            .setTextColor(new Color(255,255,255))
-            .setReuseLastImage(true)
-            .setAllowedChars("0123456789d")
-            .setDebug(true)
-            .build();
-
-    private static final DTOTesseractSettings RED_SETTINGS = DTOTesseractSettings.builder()
-            .setRemoveBackground(true)
-            .setTextColor(new Color(243,59,59))
-            .setReuseLastImage(true)
-            .setDebug(true)
-            .build();
-
-
-    private static final DTOTesseractSettings ORANGE_SETTINGS = DTOTesseractSettings.builder()
-            .setRemoveBackground(true)
-            .setTextColor(new Color(237, 138, 33))
-            .setReuseLastImage(true)
-            .setDebug(true)
-            .setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-            .build();
 
     // Upgrade queue areas
     private static final DTOArea QUEUE_AREA_1 = new DTOArea(new DTOPoint(95, 377), new DTOPoint(358, 398));

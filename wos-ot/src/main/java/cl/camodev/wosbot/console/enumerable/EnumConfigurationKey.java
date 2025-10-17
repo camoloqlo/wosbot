@@ -53,10 +53,13 @@ public enum EnumConfigurationKey {
     // ========================================================================
     // TROOP TRAINING AND MANAGEMENT
     // ========================================================================
-	TRAIN_INFANTRY_BOOL("false", Boolean.class),
+	TRAIN_BOOL("false", Boolean.class),
+    TRAIN_INFANTRY_BOOL("false", Boolean.class),
 	TRAIN_MARKSMAN_BOOL("false", Boolean.class),
 	TRAIN_LANCER_BOOL("false", Boolean.class),
 	TRAIN_PRIORITIZE_PROMOTION_BOOL("false", Boolean.class),
+    TRAIN_MINISTRY_APPOINTMENT_BOOL("false", Boolean.class),
+    TRAIN_MINISTRY_APPOINTMENT_TIME_LONG("0", Long.class),
 	BOOL_TRAINING_RESOURCES("false", Boolean.class),
 	
     // ========================================================================
@@ -269,6 +272,8 @@ public enum EnumConfigurationKey {
             return (T) Boolean.valueOf(value);
         } else if (type.equals(Integer.class)) {
             return (T) Integer.valueOf(value);
+        } else if (type.equals(Long.class)) {
+            return (T) Long.valueOf(value);
         } else if (type.equals(Double.class)) {
             return (T) Double.valueOf(value);
         } else if (type.equals(String.class)) {

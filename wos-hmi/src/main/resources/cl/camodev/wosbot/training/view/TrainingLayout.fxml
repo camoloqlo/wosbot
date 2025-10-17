@@ -1,35 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.CheckBox?>
-<?import javafx.scene.layout.ColumnConstraints?>
-<?import javafx.scene.layout.GridPane?>
-<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-<GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="468.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="468.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
   <columnConstraints>
     <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
   </columnConstraints>
   <rowConstraints>
+      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
     <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
       <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
       <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
       <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
       <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="277.0" vgrow="SOMETIMES" />
+      <RowConstraints />
   </rowConstraints>
    <children>
-      <CheckBox fx:id="checkBoxTrainInfantry" mnemonicParsing="false" text="Train Infantry">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </CheckBox>
-      <CheckBox fx:id="checkBoxUseResources" mnemonicParsing="false" text="Use Resources to fill" GridPane.rowIndex="4">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </CheckBox>
-      <CheckBox fx:id="checkBoxTrainMarksman" mnemonicParsing="false" text="Train Marksmen" GridPane.rowIndex="1" />
-      <CheckBox fx:id="checkBoxTrainLancers" mnemonicParsing="false" text="Train Lancers" GridPane.rowIndex="2" />
-      <CheckBox fx:id="checkBoxTrainPrioritizePromotion" mnemonicParsing="false" text="Prioritize Troop Promotion" GridPane.rowIndex="3" />
+       <CheckBox fx:id="checkBoxEnableTraining" mnemonicParsing="false" text="Enable Training" />
+       <CheckBox fx:id="checkBoxTrainInfantry" mnemonicParsing="false" text="Train Infantry" GridPane.rowIndex="1" />
+       <CheckBox fx:id="checkBoxTrainMarksman" mnemonicParsing="false" text="Train Marksmen" GridPane.rowIndex="2" />
+       <CheckBox fx:id="checkBoxTrainLancers" mnemonicParsing="false" text="Train Lancers" GridPane.rowIndex="3" />
+<!--       <CheckBox fx:id="checkBoxTrainPrioritizePromotion" mnemonicParsing="false" text="Prioritize Troop Promotion" GridPane.rowIndex="4" />-->
+       <CheckBox fx:id="checkBoxUseResources" mnemonicParsing="false" text="Use Resources to fill" GridPane.rowIndex="4" />
+       <CheckBox fx:id="checkBoxAppointMinister" mnemonicParsing="false" text="Appoint Minister of education" GridPane.rowIndex="5" />
+
    </children>
 </GridPane>
