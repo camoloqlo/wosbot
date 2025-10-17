@@ -81,6 +81,7 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 	
 	private boolean showingGanttView = false;
 	private Node ganttViewNode = null;
+	private TaskGanttOverviewController ganttViewController = null;
 
 	@FXML
 	public void initialize() {
@@ -101,30 +102,10 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 			// Show Gantt view
 			showGanttView();
 			btnToggleView.setText("📋 Table View");
-			// Hide filter when in Gantt view (it doesn't apply)
-			if (txtFilterTaskName != null) {
-				txtFilterTaskName.setVisible(false);
-				txtFilterTaskName.setManaged(false);
-			}
-			Node filterLabel = txtFilterTaskName.getParent().getChildrenUnmodifiable().get(0);
-			if (filterLabel instanceof javafx.scene.control.Label) {
-				filterLabel.setVisible(false);
-				filterLabel.setManaged(false);
-			}
 		} else {
 			// Show standard table view
 			showTableView();
 			btnToggleView.setText("📊 Timeline View");
-			// Show filter again
-			if (txtFilterTaskName != null) {
-				txtFilterTaskName.setVisible(true);
-				txtFilterTaskName.setManaged(true);
-			}
-			Node filterLabel = txtFilterTaskName.getParent().getChildrenUnmodifiable().get(0);
-			if (filterLabel instanceof javafx.scene.control.Label) {
-				filterLabel.setVisible(true);
-				filterLabel.setManaged(true);
-			}
 		}
 	}
 	
@@ -140,6 +121,7 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 					getClass().getResource("/cl/camodev/wosbot/taskmanager/view/TaskGanttOverview.fxml")
 				);
 				ganttViewNode = loader.load();
+				ganttViewController = loader.getController();
 			} catch (java.io.IOException e) {
 				e.printStackTrace();
 				// If loading fails, revert to table view
@@ -148,6 +130,9 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 				btnToggleView.setText("📊 Timeline View");
 				return;
 			}
+		}
+		if (ganttViewController != null && txtFilterTaskName != null) {
+			ganttViewController.setTaskFilter(txtFilterTaskName.getText());
 		}
 		
 		// Add to container if not already there
@@ -189,6 +174,10 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 				return task.getTaskName().toLowerCase().contains(filter);
 			});
 		});
+
+		if (ganttViewController != null) {
+			ganttViewController.setTaskFilter(filterText);
+		}
 	}
 
 	// Method to update time-dependent values and trigger reordering
