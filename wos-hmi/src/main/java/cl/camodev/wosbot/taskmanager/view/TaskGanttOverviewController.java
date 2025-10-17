@@ -39,6 +39,8 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
 
     private TaskManagerActionController taskManagerActionController;
     private javafx.animation.Timeline autoRefreshTimeline;
+    private String taskFilter = "";
+    private List<DTOProfiles> lastLoadedProfiles = new ArrayList<>();
 
     private enum ViewMode {
         TWO_HOURS("2 Hours", -30, 90, 120, 5),
@@ -156,6 +158,23 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
         );
         autoRefreshTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
         autoRefreshTimeline.play();
+    }
+
+    /**
+     * Applies the task name filter used by the table view to the timeline.
+     */
+    public void setTaskFilter(String filterText) {
+        String normalized = filterText == null ? "" : filterText.trim().toLowerCase(Locale.ENGLISH);
+        if (Objects.equals(normalized, taskFilter)) {
+            return;
+        }
+
+        taskFilter = normalized;
+
+        if (!profileTasksMap.isEmpty() && !lastLoadedProfiles.isEmpty()) {
+            List<DTOProfiles> snapshot = new ArrayList<>(lastLoadedProfiles);
+            Platform.runLater(() -> rebuildUI(snapshot));
+        }
     }
     
     /**
@@ -556,7 +575,10 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
                 loadedCount[0]++;
                 // When all profiles are loaded, build UI in sorted order
                 if (loadedCount[0] == totalProfiles) {
-                    Platform.runLater(() -> rebuildUI(sortedProfiles));
+                    Platform.runLater(() -> {
+                        lastLoadedProfiles = new ArrayList<>(sortedProfiles);
+                        rebuildUI(sortedProfiles);
+                    });
                 }
             });
         }
@@ -564,6 +586,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
     
     private void rebuildUI(List<DTOProfiles> sortedProfiles) {
         vboxAccounts.getChildren().clear();
+        lastLoadedProfiles = new ArrayList<>(sortedProfiles);
         
         // Use the dynamically calculated available width
         double uniformWidth = availableWidth;
@@ -572,7 +595,15 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
         for (DTOProfiles profile : sortedProfiles) {
             List<TaskManagerAux> tasks = profileTasksMap.get(profile.getId());
             if (tasks != null) {
-                createAccountRow(profile, tasks, uniformWidth);
+                List<TaskManagerAux> visibleTasks = tasks.stream()
+                    .filter(this::matchesTaskFilter)
+                    .collect(Collectors.toList());
+
+                if (!taskFilter.isEmpty() && visibleTasks.isEmpty()) {
+                    continue;
+                }
+
+                createAccountRow(profile, visibleTasks, uniformWidth);
             }
         }
     }
@@ -993,5 +1024,13 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
                 }
             }
         };
+    }
+
+    private boolean matchesTaskFilter(TaskManagerAux task) {
+        if (taskFilter.isEmpty()) {
+            return true;
+        }
+        String name = task.getTaskName();
+        return name != null && name.toLowerCase(Locale.ENGLISH).contains(taskFilter);
     }
 }
