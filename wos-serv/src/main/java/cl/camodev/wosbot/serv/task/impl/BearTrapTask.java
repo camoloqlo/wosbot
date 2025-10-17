@@ -132,7 +132,7 @@ public class BearTrapTask extends DelayedTask {
             // Verify we're inside a valid window
             if (!isInsideWindow()) {
                 logWarning("Execute called OUTSIDE valid window. Rescheduling...");
-                rescheduleNextWindow();
+                reschedule(null);
                 return;
             }
 
@@ -199,7 +199,7 @@ public class BearTrapTask extends DelayedTask {
         } finally {
             // Clean up state and reschedule next window
             cleanup();
-            rescheduleNextWindow();
+           reschedule(null);
         }
     }
 
@@ -234,32 +234,6 @@ public class BearTrapTask extends DelayedTask {
         return BearTrapHelper.calculateWindow(referenceUTC, trapPreparationTime);
     }
 
-    /**
-     * Reschedules the task for the next execution window
-     * Uses the parent class reschedule() method to set the next execution time
-     */
-    private void rescheduleNextWindow() {
-        BearTrapHelper.WindowResult result = getWindowState();
-
-        Instant nextExecutionInstant;
-        if (result.getState() == BearTrapHelper.WindowState.INSIDE) {
-            nextExecutionInstant = Instant.now();
-        } else {
-            nextExecutionInstant = result.getNextWindowStart();
-        }
-
-        // Convert from UTC Instant to local system time for scheduling
-        LocalDateTime nextExecutionLocal = LocalDateTime.ofInstant(
-                nextExecutionInstant,
-                ZoneId.systemDefault());
-
-        referenceTrapTime = LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC"));
-
-        logInfo("Rescheduling Bear Trap for (UTC): " + referenceTrapTime.format(DATETIME_FORMATTER));
-        logInfo("Rescheduling Bear Trap for (Local): " + nextExecutionLocal.format(DATETIME_FORMATTER));
-
-        reschedule(nextExecutionLocal);
-    }
 
     /**
      * Executes the trap strategy while the trap is active
@@ -705,6 +679,30 @@ public class BearTrapTask extends DelayedTask {
                 profile,
                 BEAR_TRAP_SCHEDULE_DATETIME_STRING,
                 formattedDateTime);
+    }
+
+    @Override
+    public void reschedule(LocalDateTime newDateTime) {
+        BearTrapHelper.WindowResult result = getWindowState();
+
+        Instant nextExecutionInstant;
+        if (result.getState() == BearTrapHelper.WindowState.INSIDE) {
+            nextExecutionInstant = Instant.now();
+        } else {
+            nextExecutionInstant = result.getNextWindowStart();
+        }
+
+        // Convert from UTC Instant to local system time for scheduling
+        LocalDateTime nextExecutionLocal = LocalDateTime.ofInstant(
+                nextExecutionInstant,
+                ZoneId.systemDefault());
+
+        referenceTrapTime = LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC"));
+
+        logInfo("Rescheduling Bear Trap for (UTC): " + referenceTrapTime.format(DATETIME_FORMATTER));
+        logInfo("Rescheduling Bear Trap for (Local): " + nextExecutionLocal.format(DATETIME_FORMATTER));
+
+        scheduledTime = nextExecutionLocal;
     }
 
     @Override
