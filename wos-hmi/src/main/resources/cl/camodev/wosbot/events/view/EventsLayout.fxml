@@ -1,79 +1,152 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.CheckBox?>
-<?import javafx.scene.control.ComboBox?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.ColumnConstraints?>
-<?import javafx.scene.layout.GridPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.RowConstraints?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-<GridPane alignment="CENTER_LEFT" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="468.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1">
-  <columnConstraints>
-    <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-      <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-  </columnConstraints>
-  <rowConstraints>
-    <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="30.0" prefHeight="112.5" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="71.5" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="25.0" prefHeight="89.5" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="10.0" prefHeight="33.5" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" percentHeight="10.0" prefHeight="61.2" vgrow="SOMETIMES" />
-  </rowConstraints>
-   <children>
-       <CheckBox fx:id="checkBoxHeroMission" mnemonicParsing="false" text="Hero's Mission" GridPane.rowIndex="1" />
-       <CheckBox fx:id="checkBoxMercenaryEvent" mnemonicParsing="false" text="Mercenary Event" GridPane.rowIndex="2" />
-       <CheckBox fx:id="checkBoxJourneyofLight" mnemonicParsing="false" text="Journey of Light" GridPane.rowIndex="3" />
-       <CheckBox fx:id="checkBoxMyriadBazaar" mnemonicParsing="false" text="Claim free rewards on Myriad bazaar" GridPane.rowIndex="4" />
+<VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="550.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+    <!--    <padding>-->
+    <!--        <Insets bottom="18" left="18" right="18" top="18" />-->
+    <!--    </padding>-->
+    <children>
+        <!-- Main content panel with ScrollPane -->
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent; -fx-background: transparent;" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
+            <content>
+                <VBox spacing="14" style="-fx-background-color: #1f1f1f; -fx-background-radius: 8; -fx-padding: 18;">
+                    <children>
+                        <!-- Tundra Truck Event Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#66d9ff, #1a8cff); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
+                                    <children>
+                                        <CheckBox fx:id="checkBoxTundraEvent" mnemonicParsing="false" style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Tundra Truck Event" />
+                                    </children>
+                                </HBox>
+                                <VBox spacing="8" style="-fx-padding: 12;">
+                                    <children>
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Automates truck refreshes and selections • Set activation time to run at specific hour" wrapText="true" />
 
-       <VBox alignment="CENTER_LEFT" prefHeight="200.0" prefWidth="100.0" spacing="5.0" GridPane.columnIndex="1">
-         <children>
-            <CheckBox fx:id="checkBoxTundraUseGems" mnemonicParsing="false" text="Use gems for refresh" />
-            <CheckBox fx:id="checkBoxTundraSSR" mnemonicParsing="false" text="Go only for SSR trucks" />
-            <CheckBox fx:id="checkBoxTundraEventActivationHour" mnemonicParsing="false" text="Use activation time" />
-            <HBox alignment="CENTER_LEFT">
-               <children>
-                  <Label fx:id="labelTundraActivationHour" text="Activation time (UTC): " />
-                  <TextField fx:id="textfieldTundraActivationHour" prefWidth="60.0" promptText="HH:mm" />
-               </children>
-            </HBox>
-         </children>
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </VBox>
-      <HBox fx:id="hboxMercenaryFlagSelection" alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
-         <children>
-            <Label text="Flag selection" />
-            <ComboBox fx:id="comboBoxMercenaryFlag" />
-         </children>
-      </HBox>
-      <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-         <children>
-            <Label text="Flag selection" />
-            <ComboBox fx:id="comboBoxHeroMissionFlag">
-               <HBox.margin>
-                  <Insets />
-               </HBox.margin>
-            </ComboBox>
-         </children>
-      </HBox>
-      <VBox alignment="BOTTOM_RIGHT" prefHeight="200.0" prefWidth="234.0">
-         <children>
-            <Label fx:id="labelDateTimeError" alignment="BOTTOM_LEFT" textFill="RED">
-               <font>
-                  <Font size="11.0" />
-               </font>
-            </Label>
-         </children>
-         <GridPane.margin>
-            <Insets bottom="15.0" />
-         </GridPane.margin>
-      </VBox>
-      <CheckBox fx:id="checkBoxTundraEvent" mnemonicParsing="false" text="Tundra Event" />
-   </children>
-</GridPane>
+                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
+
+                                        <GridPane hgap="15" vgap="10">
+                                            <columnConstraints>
+                                                <ColumnConstraints percentWidth="50" />
+                                                <ColumnConstraints percentWidth="50" />
+                                            </columnConstraints>
+                                            <children>
+                                                <CheckBox fx:id="checkBoxTundraUseGems" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Use gems for refresh" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                                <CheckBox fx:id="checkBoxTundraSSR" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Go only for SSR trucks" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+                                                <CheckBox fx:id="checkBoxTundraEventActivationHour" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Use activation time" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                            </children>
+                                 <rowConstraints>
+                                    <RowConstraints />
+                                    <RowConstraints />
+                                 </rowConstraints>
+                                        </GridPane>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10">
+                                            <children>
+                                                <Label minWidth="140.0" style="-fx-text-fill: #e5e5e5;" text="Activation time (UTC)" />
+                                                <TextField fx:id="textfieldTundraActivationHour" prefWidth="80.0" promptText="HH:mm" />
+                                            </children>
+                                        </HBox>
+
+                                        <Label fx:id="labelDateTimeError" style="-fx-font-size: 11px; -fx-text-fill: #ff4444;" text="" wrapText="true" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <!-- Hero's Mission Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#ff5a5a, #b32121); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
+                                    <children>
+                                        <CheckBox fx:id="checkBoxHeroMission" mnemonicParsing="false" style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Hero's Mission Event" />
+                                    </children>
+                                </HBox>
+                                <VBox spacing="8" style="-fx-padding: 12;">
+                                    <children>
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Call rallies on reapers to get season hero shards" wrapText="true" />
+
+                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
+                                          <HBox alignment="CENTER_LEFT" spacing="10">
+                                              <children>
+                                                  <Label minWidth="100.0" style="-fx-text-fill: #e5e5e5;" text="Flag Selection" />
+                                                  <ComboBox fx:id="comboBoxHeroMissionFlag" prefWidth="120.0" />
+                                              </children>
+                                          </HBox>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <!-- Mercenary Event Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#a78bfa, #7c3aed); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
+                                    <children>
+                                        <CheckBox fx:id="checkBoxMercenaryEvent" mnemonicParsing="false" style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Mercenary Event" />
+                                    </children>
+                                </HBox>
+                                <VBox spacing="8" style="-fx-padding: 12;">
+                                    <children>
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Automatically hunt mercenaries" wrapText="true" />
+
+                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
+
+                                        <HBox fx:id="hboxMercenaryFlagSelection" alignment="CENTER_LEFT" spacing="10">
+                                            <children>
+                                                <Label minWidth="100.0" style="-fx-text-fill: #e5e5e5;" text="Flag Selection" />
+                                                <ComboBox fx:id="comboBoxMercenaryFlag" prefWidth="120.0" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <!-- Journey of Light Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#ffd966, #ffa500); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
+                                    <children>
+                                        <CheckBox fx:id="checkBoxJourneyofLight" mnemonicParsing="false" style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Journey of Light" />
+                                    </children>
+                                </HBox>
+                                <VBox spacing="8" style="-fx-padding: 12;">
+                                    <children>
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Automatically participate in Journey of Light event" wrapText="true" />
+
+                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
+
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #a0a0a0; -fx-font-style: italic;" text="No additional configuration required" wrapText="true" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <!-- Myriad Bazaar Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#34d399, #10b981); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
+                                    <children>
+                                        <CheckBox fx:id="checkBoxMyriadBazaar" mnemonicParsing="false" style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Myriad Bazaar" />
+                                    </children>
+                                </HBox>
+                                <VBox spacing="8" style="-fx-padding: 12;">
+                                    <children>
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Automatically collect daily free rewards from Myriad Bazaar" wrapText="true" />
+
+                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
+
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #a0a0a0; -fx-font-style: italic;" text="No additional configuration required" wrapText="true" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </children>
+</VBox>

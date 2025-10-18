@@ -60,9 +60,9 @@ public class ExpertsLayoutController extends AbstractProfileController {
 
     private void setupVisibilityListeners() {
         // Existing listener for troop options
-        claimTroopsCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
-            troopOptionsVBox.setVisible(newValue);
-        });
+//        claimTroopsCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+//            troopOptionsVBox.setVisible(newValue);
+//        });
 
         // New listener for expert skill training
         enableExpertSkillTrainingCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {

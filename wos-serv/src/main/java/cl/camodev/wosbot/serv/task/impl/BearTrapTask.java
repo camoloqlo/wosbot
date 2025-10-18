@@ -75,7 +75,7 @@ public class BearTrapTask extends DelayedTask {
             .setTextColor(new Color(253, 253, 253)) // White text
             // .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
             .setReuseLastImage(true)
-            .setDebug(true)
+            //.setDebug(true)
             .build();
 
     public BearTrapTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {

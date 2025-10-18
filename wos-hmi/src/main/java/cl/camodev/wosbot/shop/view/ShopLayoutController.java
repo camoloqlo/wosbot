@@ -32,12 +32,7 @@ public class ShopLayoutController extends AbstractProfileController {
 		comboBoxBankDelay.getItems().addAll(1, 7, 15, 30);
 		comboBoxMappings.put(comboBoxBankDelay, EnumConfigurationKey.INT_BANK_DELAY);
 
-		labelPeriod.setVisible(checkBoxBank.isSelected());
-		comboBoxBankDelay.setVisible(checkBoxBank.isSelected());
-		checkBoxBank.selectedProperty().addListener((obs, oldVal, newVal) -> {
-			labelPeriod.setVisible(newVal);
-			comboBoxBankDelay.setVisible(newVal);
-		});
+
 
 		initializeChangeEvents();
 	}

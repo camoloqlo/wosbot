@@ -1,43 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import cl.camodev.wosbot.common.view.PriorityListView?>
 
+<VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="550.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <ScrollPane fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER" style="-fx-background-color: transparent; -fx-background: transparent;" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308">
+            <content>
+                <VBox spacing="14" style="-fx-background-color: #1f1f1f; -fx-background-radius: 8; -fx-padding: 18;" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" VBox.vgrow="ALWAYS">
+                    <children>
+                        <!-- Alliance Shop Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#ffd966, #b38600); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
+                                    <children>
+                                        <CheckBox fx:id="enableAllianceShopCheckbox" mnemonicParsing="false" style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Enable Alliance Shop" />
+                                    </children>
+                                </HBox>
+                                <VBox spacing="10" style="-fx-padding: 12;" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308">
+                                    <children>
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Configure automated purchases from the Alliance Shop" wrapText="true" />
 
-<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      spacing="15">
-    <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
-    </padding>
+                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
 
-    <Label text="Alliance Shop Configuration" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                                        <!-- Alliance Coins Configuration Section -->
+                                        <VBox spacing="10" style="-fx-background-color: #2a2a2a; -fx-background-radius: 4; -fx-padding: 10;">
+                                            <children>
+                                                <Label style="-fx-text-fill: #e5e5e5; -fx-font-weight: bold;" text="Alliance Coins Configuration" />
 
-    <Separator/>
+                                                <HBox spacing="10" alignment="CENTER_LEFT">
+                                                    <children>
+                                                        <Label style="-fx-text-fill: #e5e5e5;" text="Minimum Alliance Coins to Activate:" />
+                                                        <TextField fx:id="minCoinsToActivateTextField" prefWidth="100" promptText="0" />
+                                                        <Label style="-fx-text-fill: #888;" text="coins" />
+                                                    </children>
+                                                </HBox>
 
-    <CheckBox fx:id="enableAllianceShopCheckbox" text="Enable Alliance Shop purchases"/>
+                                                <HBox spacing="10" alignment="CENTER_LEFT">
+                                                    <children>
+                                                        <Label style="-fx-text-fill: #e5e5e5;" text="Minimum Alliance Coins to Save:" />
+                                                        <TextField fx:id="minCoinsTextField" prefWidth="100" promptText="0" />
+                                                        <Label style="-fx-text-fill: #888;" text="coins" />
+                                                    </children>
+                                                </HBox>
+                                            </children>
+                                        </VBox>
 
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Minimum Alliance Coins to Activate:"/>
-        <TextField fx:id="minCoinsToActivateTextField" prefWidth="100" promptText="0"/>
-        <Label text="coins" style="-fx-text-fill: #888;"/>
-    </HBox>
+                                        <Label fx:id="instructionsLabel" wrapText="true"
+                                               text="Define the priority order for purchases. Items with priority 1 will be purchased first. You can drag items to reorder or use the buttons. The minimum coins setting acts as a trigger - when Alliance Tech task runs and detects you have at least this amount, it will automatically schedule the Alliance Shop purchase task during bot execution."
+                                               style="-fx-text-fill: #999999; -fx-font-size: 11px; -fx-font-style: italic;" />
 
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Minimum Alliance Coins to Save:"/>
-        <TextField fx:id="minCoinsTextField" prefWidth="100" promptText="0"/>
-        <Label text="coins" style="-fx-text-fill: #888;"/>
-    </HBox>
-
-    <Label fx:id="instructionsLabel" wrapText="true"
-           text="Define the priority order for purchases. Items with priority 1 will be purchased first. You can drag items to reorder or use the buttons. The minimum coins setting acts as a trigger - when Alliance Tech task runs and detects you have at least this amount, it will automatically schedule the Alliance Shop purchase task during bot execution."
-           style="-fx-text-fill: #666; -fx-font-size: 11px;"/>
-
-    <VBox spacing="5">
-        <Label text="Purchase Priorities:" style="-fx-font-weight: bold;"/>
-        <PriorityListView fx:id="allianceShopPriorities"
-                          prefHeight="250"/>
-    </VBox>
-
+                                        <!-- Priority List Section -->
+                                        <VBox spacing="8" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308">
+                                            <children>
+                                                <Label style="-fx-text-fill: #e5e5e5; -fx-font-weight: bold;" text="Purchase Priorities:" />
+                                                <PriorityListView fx:id="allianceShopPriorities" style="-fx-background-color: #333333;" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308" />
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </children>
 </VBox>

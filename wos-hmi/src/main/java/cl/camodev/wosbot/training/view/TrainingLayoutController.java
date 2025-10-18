@@ -4,6 +4,8 @@ import cl.camodev.wosbot.common.view.AbstractProfileController;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
+import java.util.Arrays;
+import java.util.List;
 
 public class TrainingLayoutController extends AbstractProfileController {
 
@@ -28,6 +30,9 @@ public class TrainingLayoutController extends AbstractProfileController {
 	@FXML
 	private CheckBox checkBoxUseResources;
 
+	// Lista de todos los checkboxes hijos
+	private List<CheckBox> childCheckboxes;
+
 	@FXML
 	private void initialize() {
         checkBoxMappings.put(checkBoxEnableTraining, EnumConfigurationKey.TRAIN_BOOL);
@@ -39,6 +44,32 @@ public class TrainingLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxUseResources, EnumConfigurationKey.BOOL_TRAINING_RESOURCES);
 
 		initializeChangeEvents();
-		checkBoxUseResources.setDisable(true);
+
+		// Inicializar la lista de checkboxes hijos
+		childCheckboxes = Arrays.asList(
+		    checkBoxTrainInfantry,
+		    checkBoxTrainLancers,
+		    checkBoxTrainMarksman,
+		    checkBoxAppointMinister,
+		    checkBoxUseResources
+		);
+
+		// Configurar el listener para el checkbox principal
+		checkBoxEnableTraining.selectedProperty().addListener((observable, oldValue, newValue) -> {
+		    updateChildrenState(newValue);
+		});
+
+		// Establecer estado inicial basado en el estado actual del checkbox principal
+		updateChildrenState(checkBoxEnableTraining.isSelected());
+	}
+
+	/**
+	 * Actualiza el estado de habilitación de todos los checkboxes hijos
+	 * @param enabled estado de habilitación a aplicar
+	 */
+	private void updateChildrenState(boolean enabled) {
+	    for (CheckBox child : childCheckboxes) {
+	        child.setDisable(!enabled);
+	    }
 	}
 }

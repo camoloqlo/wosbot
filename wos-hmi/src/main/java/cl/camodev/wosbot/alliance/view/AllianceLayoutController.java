@@ -53,7 +53,6 @@ public class AllianceLayoutController extends AbstractProfileController {
 		radioAllTroops.setSelected(true);
 		
 		// Bind visibility to auto-join checkbox
-		hboxAutojoinQueues.visibleProperty().bind(checkBoxAutojoin.selectedProperty());
 		radioAllTroops.visibleProperty().bind(checkBoxAutojoin.selectedProperty());
 		radioUseFormation.visibleProperty().bind(checkBoxAutojoin.selectedProperty());
 

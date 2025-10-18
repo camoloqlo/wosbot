@@ -1,49 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="306.0" prefWidth="580.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
-   <columnConstraints>
-      <ColumnConstraints hgrow="SOMETIMES" percentWidth="50.0" />
-      <ColumnConstraints hgrow="SOMETIMES" percentWidth="50.0" />
-   </columnConstraints>
-   <rowConstraints>
-      <RowConstraints maxHeight="1.7976931348623157E308" percentHeight="33.33333333333333" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" percentHeight="33.33333333333333" vgrow="SOMETIMES" />
-      <RowConstraints maxHeight="1.7976931348623157E308" percentHeight="33.33333333333333" vgrow="SOMETIMES" />
-   </rowConstraints>
-   <children>
-      <CheckBox fx:id="checkBoxNomadicMerchant" graphicTextGap="3.0" mnemonicParsing="false" text="Buy nomadic merchant resources">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </CheckBox>
-      <CheckBox fx:id="checkBoxNomadicMerchantVip" graphicTextGap="3.0" mnemonicParsing="false" text="Buy vip points on nomadic merchant" GridPane.columnIndex="1">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </CheckBox>
-      <CheckBox fx:id="checkBoxBank" graphicTextGap="3.0" mnemonicParsing="false" text="Enable Bank task" GridPane.rowIndex="1">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </CheckBox>
-      <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-         <children>
-            <Label fx:id="labelPeriod" text="Period:" />
-            <ComboBox fx:id="comboBoxBankDelay" prefWidth="100.0" promptText="Bank delay" />
-         </children>
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </HBox>
-      <CheckBox fx:id="checkBoxMysteryShop" graphicTextGap="3.0" mnemonicParsing="false" text="Enable Mystery Shop task" GridPane.rowIndex="2">
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
-      </CheckBox>
-      <CheckBox fx:id="checkBoxMysteryShop50DiscountGear" mnemonicParsing="false" text="Buy 50% discounted hero gear (250 badges)" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-   </children>
-</GridPane>
+<VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="550.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <ScrollPane fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER" style="-fx-background-color: transparent; -fx-background: transparent;" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308">
+            <content>
+                <VBox spacing="14" style="-fx-background-color: #1f1f1f; -fx-background-radius: 8; -fx-padding: 18;" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" VBox.vgrow="ALWAYS">
+                    <children>
+                        <!-- Nomadic Merchant Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#f1c40f, #d4ac0d); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
+                                    <children>
+                                        <Label style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Nomadic Merchant" />
+                                    </children>
+                                </HBox>
+                                <VBox spacing="10" style="-fx-padding: 12;">
+                                    <children>
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Configure purchases from the Nomadic Merchant shop" wrapText="true" />
+
+                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
+
+                                        <GridPane hgap="20" vgap="10">
+                                            <columnConstraints>
+                                                <ColumnConstraints percentWidth="50" />
+                                                <ColumnConstraints percentWidth="50" />
+                                            </columnConstraints>
+                                            <rowConstraints>
+                                                <RowConstraints />
+                                            </rowConstraints>
+                                            <children>
+                                                <CheckBox fx:id="checkBoxNomadicMerchant" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Buy resources" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                                <CheckBox fx:id="checkBoxNomadicMerchantVip" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Buy VIP points" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+                                            </children>
+                                        </GridPane>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <!-- Bank Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#2ecc71, #27ae60); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
+                                    <children>
+                                        <CheckBox fx:id="checkBoxBank" mnemonicParsing="false" style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Enable Bank" />
+                                    </children>
+                                </HBox>
+                                <VBox spacing="10" style="-fx-padding: 12;">
+                                    <children>
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Configure automatic bank transactions" wrapText="true" />
+
+                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
+
+                                        <HBox spacing="10" alignment="CENTER_LEFT">
+                                            <children>
+                                                <Label style="-fx-text-fill: #e5e5e5;" text="Period:" />
+                                                <ComboBox fx:id="comboBoxBankDelay" prefWidth="150.0" promptText="Select period" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <!-- Mystery Shop Section -->
+                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#9b59b6, #8e44ad); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
+                                    <children>
+                                        <CheckBox fx:id="checkBoxMysteryShop" mnemonicParsing="false" style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Enable Mystery Shop" />
+                                    </children>
+                                </HBox>
+                                <VBox spacing="10" style="-fx-padding: 12;">
+                                    <children>
+                                        <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Configure automatic purchases from Mystery Shop" wrapText="true" />
+
+                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
+
+                                        <CheckBox fx:id="checkBoxMysteryShop50DiscountGear" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Buy 50% discounted hero gear (250 badges)" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </children>
+</VBox>
