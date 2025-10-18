@@ -237,7 +237,7 @@ public class ServProfiles implements IServProfile {
 		dataChangeListeners.add(listener);
 	}
 
-	private void notifyProfileDataChange(DTOProfiles profile) {
+	public void notifyProfileDataChange(DTOProfiles profile) {
 		if (dataChangeListeners != null) {
 			for (IProfileDataChangeListener listener : dataChangeListeners) {
 				listener.onProfileDataChanged(profile);

@@ -15,6 +15,7 @@ import cl.camodev.wosbot.profile.model.IProfileChangeObserver;
 import cl.camodev.wosbot.profile.model.IProfileLoadListener;
 import cl.camodev.wosbot.profile.model.ProfileAux;
 import cl.camodev.wosbot.serv.impl.ServLogs;
+import cl.camodev.wosbot.serv.impl.ServProfiles;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -69,6 +70,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 		initializeController();
 		initializeTableView();
 		loadProfiles();
+        ServProfiles.getServices().addProfileDataChangeListener(dto -> Platform.runLater(() -> handleProfileDataChange(dto)));
 
 	}
 
@@ -316,6 +318,63 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 				}
 			});
 		});
+	}
+
+	private void handleProfileDataChange(DTOProfiles dto) {
+		try {
+			if (dto == null) {
+				loadProfiles();
+				return;
+			}
+
+			if (profiles == null || profiles.isEmpty()) {
+				loadProfiles();
+				return;
+			}
+
+			ProfileAux target = profiles.stream()
+					.filter(p -> p.getId().equals(dto.getId()))
+					.findFirst()
+					.orElse(null);
+
+			if (target == null) {
+				loadProfiles();
+				return;
+			}
+
+			if (dto.getName() != null) target.setName(dto.getName());
+			if (dto.getEmulatorNumber() != null) target.setEmulatorNumber(dto.getEmulatorNumber());
+			if (dto.getPriority() != null) target.setPriority(dto.getPriority());
+			if (dto.getEnabled() != null) target.setEnabled(dto.getEnabled());
+			if (dto.getReconnectionTime() != null) target.setReconnectionTime(dto.getReconnectionTime());
+
+			if (dto.getConfigs() == null || dto.getConfigs().isEmpty()) {
+				loadProfiles();
+				return;
+			}
+
+			dto.getConfigs().forEach(cfgDto -> {
+				ConfigAux existing = target.getConfigs().stream()
+						.filter(c -> c.getName().equals(cfgDto.getConfigurationName()))
+						.findFirst()
+						.orElse(null);
+				if (existing != null) {
+					existing.setValue(cfgDto.getValue());
+				} else {
+					target.getConfigs().add(new ConfigAux(cfgDto.getConfigurationName(), cfgDto.getValue()));
+				}
+			});
+
+			if (tableviewLogMessages != null) {
+				tableviewLogMessages.refresh();
+			}
+
+            if (target.getId().equals(loadedProfileId)) {
+				notifyProfileLoadListeners(target);
+			}
+		} catch (Exception ex) {
+			loadProfiles();
+		}
 	}
 
 	public void addProfileLoadListener(IProfileLoadListener moduleController) {

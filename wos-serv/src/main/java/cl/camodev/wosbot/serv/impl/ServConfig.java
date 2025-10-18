@@ -78,6 +78,8 @@ public class ServConfig {
 
 				if (saved) {
 					logger.info("Configuration {} updated to: {}", key.name(), value);
+					// Notify UI that profile data has changed
+					ServProfiles.getServices().notifyProfileDataChange(profile);
 				} else {
 					logger.warn("Failed to persist configuration {}", key.name());
 				}
@@ -107,6 +109,8 @@ public class ServConfig {
 
 				if (created) {
 					logger.info("Configuration {} created with value: {}", key.name(), value);
+					// Notify UI that profile data has changed
+					ServProfiles.getServices().notifyProfileDataChange(profile);
 				} else {
 					logger.warn("Failed to create configuration {}", key.name());
 				}
