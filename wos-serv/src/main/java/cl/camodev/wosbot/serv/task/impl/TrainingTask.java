@@ -12,7 +12,6 @@ import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 
-
 import java.awt.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -26,7 +25,6 @@ import static cl.camodev.wosbot.console.enumerable.EnumConfigurationKey.*;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.*;
 
 public class TrainingTask extends DelayedTask {
-
 
     private final DTOArea INFANTRY_AREA = new DTOArea(new DTOPoint(161, 563), new DTOPoint(289, 588));
     private final DTOArea LANCER_AREA = new DTOArea(new DTOPoint(161, 636), new DTOPoint(289, 664));
@@ -43,12 +41,11 @@ public class TrainingTask extends DelayedTask {
     private Boolean ministryAppointment;
     private LocalDateTime appointmentTime;
 
-    //private ConcurrentHashMap<TroopType, QueueInfo> queueStatus = new ConcurrentHashMap<>();
-
+    // private ConcurrentHashMap<TroopType, QueueInfo> queueStatus = new
+    // ConcurrentHashMap<>();
 
     // helper for flexible text recognition
     private final TextRecognitionRetrier<LocalDateTime> trainingTimeHelper;
-
 
     public TrainingTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
@@ -60,9 +57,12 @@ public class TrainingTask extends DelayedTask {
         updateTaskConfig();
         // analyze queues that are marked for training in the configuration
         queues = new ArrayList<>();
-        if (trainInfantry) queues.add(INFANTRY_AREA);
-        if (trainLancer) queues.add(LANCER_AREA);
-        if (trainMarksman) queues.add(MARKSMAN_AREA);
+        if (trainInfantry)
+            queues.add(INFANTRY_AREA);
+        if (trainLancer)
+            queues.add(LANCER_AREA);
+        if (trainMarksman)
+            queues.add(MARKSMAN_AREA);
 
         if (queues.isEmpty()) {
             logInfo("No troop types selected for training. Exiting task.");
@@ -72,23 +72,26 @@ public class TrainingTask extends DelayedTask {
 
         List<QueueInfo> analyzedQueues = analyzeQueues();
 
-        // i need to add a delta time for those queues that are in "TRAINING" state and will be ready in less than 3 minutes
+        // i need to add a delta time for those queues that are in "TRAINING" state and
+        // will be ready in less than 3 minutes
         // maybe i could make this time configurable in the future
-        // if that is the case, I'll reschedule the task to run in when that queue is ready
+        // if that is the case, I'll reschedule the task to run in when that queue is
+        // ready
         Optional<QueueInfo> soonReady = analyzedQueues.stream()
                 .filter(q -> q.status() == QueueStatus.TRAINING && q.readyAt() != null)
                 .filter(q -> Duration.between(LocalDateTime.now(), q.readyAt()).toMinutes() <= 3)
                 .findFirst();
 
-
         if (soonReady.isPresent()) {
             QueueInfo queue = soonReady.get();
-            logInfo("Queue for " + queue.type().name() + " will be ready in less than 3 minutes. Rescheduling task when it's ready at " + queue.readyAt());
-            this.reschedule(queue.readyAt());
+            logInfo("Queue for " + queue.type().name()
+                    + " will be ready in less than 3 minutes. Rescheduling task when it's ready at " + queue.readyAt().format(DATETIME_FORMATTER));
+            reschedule(queue.readyAt());
             return;
         }
 
-        // if all the queues are in training state, i can reschedule the task to run when most of them are ready
+        // if all the queues are in training state, i can reschedule the task to run
+        // when most of them are ready
         boolean allTraining = analyzedQueues.stream().allMatch(q -> q.status() == QueueStatus.TRAINING);
 
         if (allTraining) {
@@ -98,33 +101,36 @@ public class TrainingTask extends DelayedTask {
                     .min(LocalDateTime::compareTo);
 
             if (nextReadyTime.isPresent()) {
-                logInfo("All selected queues are in TRAINING state. Rescheduling task to run when the next queue is ready at " + nextReadyTime.get());
-                this.reschedule(nextReadyTime.get());
+                logInfo("All selected queues are in TRAINING state. Rescheduling task to run when the next queue is ready at "
+                        + nextReadyTime.get().format(DATETIME_FORMATTER));
+                reschedule(nextReadyTime.get());
+                closeLeftMenu();
                 return;
             } else {
-                logWarning("All selected queues are in TRAINING state but could not determine next ready time. Continuing with task execution.");
+                logWarning(
+                        "All selected queues are in TRAINING state but could not determine next ready time. Continuing with task execution.");
             }
         }
 
-        // if any of the queues is in "UPGRADING" state i'll execute short reschedules of 10 minutes until all are ready
+        // if any of the queues is in "UPGRADING" state i'll execute short reschedules
+        // of 10 minutes until all are ready
         boolean anyUpgrading = analyzedQueues.stream().anyMatch(q -> q.status() == QueueStatus.UPGRADING);
 
         if (anyUpgrading) {
             logInfo("At least one selected queue is in UPGRADING state. Rescheduling task to check again in 10 minutes.");
-            this.reschedule(LocalDateTime.now().plusMinutes(10));
+            reschedule(LocalDateTime.now().plusMinutes(10));
             return;
         }
 
-        // recollect those queues that are in state "COMPLETE" or "IDLE" and are configured to be trained
-        List<QueueInfo> readyQueues = analyzedQueues.stream().
-                filter(q -> (q.status() == QueueStatus.COMPLETE || q.status() == QueueStatus.IDLE)).
-                toList();
+        // recollect those queues that are in state "COMPLETE" or "IDLE" and are
+        // configured to be trained
+        List<QueueInfo> readyQueues = analyzedQueues.stream()
+                .filter(q -> (q.status() == QueueStatus.COMPLETE || q.status() == QueueStatus.IDLE)).toList();
 
         if (readyQueues.isEmpty()) {
             logInfo("No queues are ready for training.");
             return;
         }
-
 
         if (ministryAppointment && appointmentTime != null) {
             LocalDateTime now = LocalDateTime.now();
@@ -135,40 +141,28 @@ public class TrainingTask extends DelayedTask {
                 // User cannot be removed from ministry position yet
             } else {
                 logInfo("Ministry appointment protection window has expired. Position can be changed.");
-                //navigate to events
-                DTOImageSearchResult eventsResult = searchTemplateWithRetries(HOME_EVENTS_BUTTON, 90, 3);
 
-                if (!eventsResult.isFound()) {
-                    logError("Events button not found. Cannot proceed to change ministry appointment.");
-                }
-                tapRandomPoint(eventsResult.getPoint(), eventsResult.getPoint(), 1, 500);
-                tapRandomPoint(new DTOPoint(1,0), new DTOPoint(720,0), 5, 200); //force to close any possible popup
+                // go to sunfire castle tab
+                boolean sunfireCastleTabFound = navigateToSunfireCastleTab();
 
-                //swipe all right to left cuz castle usually is very end of the list
-                for (int i = 0; i < 2; i++) {
-                    swipe(new DTOPoint(610,140), new DTOPoint(130,140));
-                    sleepTask(100);
-                }
-
-                //go to sunfire castle
-                DTOImageSearchResult sunfireCastle = searchTemplateWithRetries(EVENTS_SUNFIRE_TAB, 90, 3);
-                if (!sunfireCastle.isFound()) {
+                if (!sunfireCastleTabFound) {
                     logError("Sunfire castle tab not found. Cannot proceed to change ministry appointment.");
-                }else{
-                    tapRandomPoint(sunfireCastle.getPoint(), sunfireCastle.getPoint(), 1, 500);
-                    tapRandomPoint(new DTOPoint(534,692), new DTOPoint(633,720), 1, 300); //appointment details
-                    tapRandomPoint(new DTOPoint(532,1057), new DTOPoint(617,1152), 1, 300); //moe details
+                } else {
+                    tapRandomPoint(new DTOPoint(534, 692), new DTOPoint(633, 720), 1, 300); // appointment details
+                    tapRandomPoint(new DTOPoint(532, 1057), new DTOPoint(617, 1152), 1, 300); // moe details
 
                     // at this point i need to search the "apply" button
-                    // if the buttons is there, i need to apply appointment and get the new appointment time ocring the time
-                    // otherwise i need to check if there's an appointment active ocring the same area
+                    // if the buttons is there, i need to apply appointment and get the new
+                    // appointment time ocring the time
+                    // otherwise i need to check if there's an appointment active ocring the same
+                    // area
                     // if both cases fails, i need to check if the appointment is active
                     DTOImageSearchResult applyButton = emuManager
                             .searchTemplate(EMULATOR_NUMBER, SUNFIRE_MINISTRY_APPLY_BUTTON, 90);
                     if (applyButton.isFound()) {
                         logInfo("Applying for ministry appointment...");
                         tapRandomPoint(applyButton.getPoint(), applyButton.getPoint(), 1, 1000);
-                        tapRandomPoint(new DTOPoint(440,770), new DTOPoint(580,800), 1, 2000); //confirmation
+                        tapRandomPoint(new DTOPoint(440, 770), new DTOPoint(580, 800), 1, 2000); // confirmation
                         // now i need to ocr the appointment time
                         Duration newAppointmentTime = durationHelper.execute(
                                 new DTOPoint(397, 1069),
@@ -186,11 +180,11 @@ public class TrainingTask extends DelayedTask {
 
                         if (newAppointmentTime != null) {
                             appointmentTime = LocalDateTime.now().plusMinutes(newAppointmentTime.getSeconds());
-                            logInfo("New ministry appointment time set for: " + appointmentTime);
+                            logInfo("New ministry appointment time set for: " + appointmentTime.format(DATETIME_FORMATTER));
                         } else {
                             appointmentTime = LocalDateTime.now();
                         }
-                    }else {
+                    } else {
                         // check if there's an active appointment
                         Duration activeAppointmentTime = durationHelper.execute(
                                 new DTOPoint(397, 1069),
@@ -204,7 +198,7 @@ public class TrainingTask extends DelayedTask {
                                         .setAllowedChars("0123456789:d")
                                         .build(),
                                 (text) -> {
-                                    //text can be ":hh:mm:ss" or "xxd :hh:mm:ss"
+                                    // text can be ":hh:mm:ss" or "xxd :hh:mm:ss"
                                     String trimmed = text.trim();
 
                                     // Verificar si tiene formato con días (contiene 'd')
@@ -252,7 +246,7 @@ public class TrainingTask extends DelayedTask {
 
                         if (activeAppointmentTime != null) {
                             appointmentTime = LocalDateTime.now().plusSeconds(activeAppointmentTime.getSeconds());
-                            logInfo("Existing ministry appointment time found: " + appointmentTime);
+                            logInfo("Existing ministry appointment time found: " + appointmentTime.format(DATETIME_FORMATTER));
                         } else {
                             // if both fails, i need to check if the appointment is active
                             logInfo("Trying to determine if ministry appointment is active...");
@@ -262,7 +256,6 @@ public class TrainingTask extends DelayedTask {
                     }
                 }
 
-
             }
 
             ServConfig.getServices().updateProfileConfig(profile,
@@ -271,7 +264,6 @@ public class TrainingTask extends DelayedTask {
                             .toInstant()
                             .toEpochMilli()));
         }
-
 
         // procedd to train troops based on configuration
         for (QueueInfo queue : readyQueues) {
@@ -287,10 +279,10 @@ public class TrainingTask extends DelayedTask {
             logInfo("Preparing going to train " + type.name());
             tapRandomPoint(areaToTap.topLeft(), areaToTap.bottomRight(), 1, 500);
 
-            //in case there's troops to claim, i need to claim them first
+            // in case there's troops to claim, i need to claim them first
             tapRandomPoint(new DTOPoint(310, 650), new DTOPoint(450, 730), 10, 100);
 
-            //search the train button
+            // search the train button
             DTOImageSearchResult trainingButtonResult = emuManager
                     .searchTemplate(EMULATOR_NUMBER, BUILDING_BUTTON_TRAIN, 90);
 
@@ -299,11 +291,12 @@ public class TrainingTask extends DelayedTask {
                 return;
             }
             tapRandomPoint(trainingButtonResult.getPoint(), trainingButtonResult.getPoint(), 1, 1000);
-            tapRandomPoint(new DTOPoint(1,0), new DTOPoint(720,0), 5, 200);// force to close any possible popup
+            tapRandomPoint(new DTOPoint(1, 0), new DTOPoint(720, 0), 5, 200);// force to close any possible popup
             boolean shouldMatchAppointment = false;
             Duration neededTime = null;
 
-            // Solo calcular tropas si ministryAppointment está activo Y appointmentTime no es null
+            // Solo calcular tropas si ministryAppointment está activo Y appointmentTime no
+            // es null
             if (ministryAppointment && appointmentTime != null) {
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime appointmentEnd = appointmentTime.plusMinutes(30);
@@ -325,11 +318,13 @@ public class TrainingTask extends DelayedTask {
                     long minutes = neededTime.toMinutesPart();
                     long seconds = neededTime.toSecondsPart();
 
-                    logInfo(String.format("Status: BEFORE appointment window. Need to finish training in %02d:%02d:%02d",
+                    logInfo(String.format(
+                            "Status: BEFORE appointment window. Need to finish training in %02d:%02d:%02d",
                             hours, minutes, seconds));
                 } else if (now.isAfter(appointmentTime) && now.isBefore(appointmentEnd)) {
                     long minutesIntoAppointment = Duration.between(appointmentTime, now).toMinutes();
-                    logInfo(String.format("Status: INSIDE appointment window (%d minutes in, ends at %s). Training normally.",
+                    logInfo(String.format(
+                            "Status: INSIDE appointment window (%d minutes in, ends at %s). Training normally.",
                             minutesIntoAppointment,
                             appointmentEnd.format(formatter)));
                 } else {
@@ -346,7 +341,7 @@ public class TrainingTask extends DelayedTask {
             }
 
             if (shouldMatchAppointment && neededTime != null) {
-                //now i have to check what's the max time i can train now
+                // now i have to check what's the max time i can train now
                 // and i need to know the troops number to do the maths
                 emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
                 Duration trainTime = durationHelper.execute(
@@ -367,8 +362,10 @@ public class TrainingTask extends DelayedTask {
                         text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
                         text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
 
-                //in case that the train time is smaller than the appointment time, i can train max troops
-                // otherwise i need to calculate how many troops i can train to match the appointment time
+                // in case that the train time is smaller than the appointment time, i can train
+                // max troops
+                // otherwise i need to calculate how many troops i can train to match the
+                // appointment time
                 int troopsToTrain;
                 if (trainTime != null && maxtroops != null) {
                     // Formatear durations para logs legibles
@@ -443,7 +440,8 @@ public class TrainingTask extends DelayedTask {
                         }
                     }
                 } else {
-                    logWarning(String.format("Could not read training data (trainTime: %s, maxTroops: %s). Training normally.",
+                    logWarning(String.format(
+                            "Could not read training data (trainTime: %s, maxTroops: %s). Training normally.",
                             trainTime != null ? "OK" : "NULL",
                             maxtroops != null ? maxtroops : "NULL"));
                     DTOImageSearchResult trainButton = emuManager
@@ -459,7 +457,8 @@ public class TrainingTask extends DelayedTask {
                 // - Inside appointment window
                 // - After appointment window
 
-                //im im here i shold train or promote troops based on priorizePromotion setting when ministry appointment disabled
+                // im im here i shold train or promote troops based on priorizePromotion setting
+                // when ministry appointment disabled
                 if (!ministryAppointment && priorizePromotion) {
 
                 }
@@ -474,16 +473,68 @@ public class TrainingTask extends DelayedTask {
 
     }
 
+    /**
+     * Navigate to Sunfire Castle section
+     */
+    private boolean navigateToSunfireCastleTab() {
+        logInfo("Navigating to Sunfire Castle tab");
+
+        // Find and click Events button
+        DTOImageSearchResult eventsButton = searchTemplateWithRetries(EnumTemplates.HOME_EVENTS_BUTTON);
+        if (!eventsButton.isFound()) {
+            logWarning("Events button not found");
+            return false;
+        }
+
+        tapPoint(eventsButton.getPoint());
+        sleepTask(1000);
+
+        // Close any popups
+        tapRandomPoint(new DTOPoint(1, 0), new DTOPoint(720, 0), 5, 200);
+
+        // Search for Sunfire Castle tab
+        DTOImageSearchResult sunfireCastle = searchTemplateWithRetries(EVENTS_SUNFIRE_TAB, 90, 2);
+
+        if (sunfireCastle.isFound()) {
+            tapRandomPoint(sunfireCastle.getPoint(), sunfireCastle.getPoint(), 1, 500);
+            return true;
+        }
+
+        // Tab not immediately visible - try swiping
+        logInfo("Sunfire Castle tab not immediately visible. Swiping to locate it.");
+
+        // Swipe completely right first
+        for (int i = 0; i < 2; i++) {
+            swipe(new DTOPoint(610, 140), new DTOPoint(130, 140));
+            sleepTask(100);
+        }
+        sleepTask(300);
+
+        // Search while swiping left
+        for (int attempt = 0; attempt < 3; attempt++) {
+            sunfireCastle = searchTemplateWithRetries(EVENTS_SUNFIRE_TAB, 90, 2);
+
+            if (sunfireCastle.isFound()) {
+                tapRandomPoint(sunfireCastle.getPoint(), sunfireCastle.getPoint(), 1, 500);
+                return true;
+            }
+
+            logDebug("Sunfire Castle tab not found. Swiping left (attempt " + (attempt + 1) + "/" + 3 + ")");
+            swipe(new DTOPoint(500, 128), new DTOPoint(630, 143));
+            sleepTask(300);
+        }
+
+        return false;
+    }
+
     private List<QueueInfo> analyzeQueues() {
         openLeftMenuCitySection(true);
         List<QueueInfo> result = new ArrayList<>();
 
-
         emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
 
         // i need to analyze only those queues that are configured to be trained
-        TroopType[] troopTypes = {TroopType.INFANTRY, TroopType.LANCER, TroopType.MARKSMAN};
-
+        TroopType[] troopTypes = { TroopType.INFANTRY, TroopType.LANCER, TroopType.MARKSMAN };
 
         for (int i = 0; i < queues.size(); i++) {
 
@@ -508,7 +559,6 @@ public class TrainingTask extends DelayedTask {
                 unknownQueueIndices.add(i);
             }
         }
-
 
         if (!unknownQueueIndices.isEmpty()) {
             logInfo("Found " + unknownQueueIndices.size() + " queues with UNKNOWN status. Performing retries...");
@@ -597,7 +647,8 @@ public class TrainingTask extends DelayedTask {
     private QueueInfo checkForStateText(DTOArea queueArea, TroopType troopType, DTOTesseractSettings[] settingsToTry) {
         for (DTOTesseractSettings settings : settingsToTry) {
             try {
-                String text = emuManager.ocrRegionText(EMULATOR_NUMBER, queueArea.topLeft(), queueArea.bottomRight(), settings);
+                String text = emuManager.ocrRegionText(EMULATOR_NUMBER, queueArea.topLeft(), queueArea.bottomRight(),
+                        settings);
 
                 if (text != null && !text.trim().isEmpty()) {
                     String lowerText = text.trim().toLowerCase();
@@ -626,8 +677,8 @@ public class TrainingTask extends DelayedTask {
         return null; // No se encontró un estado conocido
     }
 
-
-    private QueueInfo checkForTrainingTime(DTOArea queueArea, TroopType troopType, DTOTesseractSettings[] settingsToTry) {
+    private QueueInfo checkForTrainingTime(DTOArea queueArea, TroopType troopType,
+            DTOTesseractSettings[] settingsToTry) {
         for (DTOTesseractSettings settings : settingsToTry) {
             try {
                 // Usar el nuevo trainingTimeHelper que devuelve directamente LocalDateTime
@@ -654,7 +705,8 @@ public class TrainingTask extends DelayedTask {
     }
 
     /**
-     * Validador que determina si el texto tiene un formato válido de tiempo de entrenamiento
+     * Validador que determina si el texto tiene un formato válido de tiempo de
+     * entrenamiento
      */
     private boolean isValidTrainingTimeFormat(String text) {
         if (text == null || text.isEmpty()) {
@@ -682,7 +734,8 @@ public class TrainingTask extends DelayedTask {
      *
      * @param text      Time text to convert
      * @param troopType Type of troop for logging purposes
-     * @return LocalDateTime when the training will be completed, or null if parsing fails
+     * @return LocalDateTime when the training will be completed, or null if parsing
+     *         fails
      */
     private LocalDateTime convertTimeTextToLocalDateTime(String text, TroopType troopType) {
         try {
@@ -713,7 +766,7 @@ public class TrainingTask extends DelayedTask {
                         .plusMinutes(minutes)
                         .plusSeconds(seconds);
 
-                logInfo(troopType + " training will be ready at: " + readyAt);
+                logInfo(troopType + " training will be ready at: " + readyAt.format(DATETIME_FORMATTER));
 
                 return readyAt;
             } else {
@@ -736,8 +789,7 @@ public class TrainingTask extends DelayedTask {
         if (appointmentTimestamp != null && appointmentTimestamp > 0) {
             this.appointmentTime = LocalDateTime.ofInstant(
                     Instant.ofEpochMilli(appointmentTimestamp),
-                    ZoneId.systemDefault()
-            );
+                    ZoneId.systemDefault());
         } else {
             this.appointmentTime = LocalDateTime.MIN;
         }

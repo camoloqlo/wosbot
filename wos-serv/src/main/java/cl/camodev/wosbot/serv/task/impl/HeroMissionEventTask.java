@@ -276,7 +276,7 @@ public class HeroMissionEventTask extends DelayedTask {
                 .setRemoveBackground(true)
                 .setTextColor(new Color(254, 254, 254)) // White text
                 .setAllowedChars("0123456789") // Only allow digits
-                .setDebug(true)
+                //.setDebug(true)
                 .build();
 
         // Limited mode: Check how many reapers have been rallied

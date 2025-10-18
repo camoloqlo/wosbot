@@ -19,7 +19,7 @@ public class PetAllianceTreasuresTask extends DelayedTask {
 
 	@Override
 	public EnumStartLocation getRequiredStartLocation() {
-		return EnumStartLocation.HOME;
+		return EnumStartLocation.ANY;
 	}
 
 	@Override
