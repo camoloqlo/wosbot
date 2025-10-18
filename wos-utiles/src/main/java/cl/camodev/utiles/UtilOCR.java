@@ -1,6 +1,6 @@
 package cl.camodev.utiles;
 
-import java.awt.Color;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -97,50 +97,11 @@ public class UtilOCR {
         // Extract, upscale and process region directly from raw data in a single pass
         long extractStartTime = System.currentTimeMillis();
         BufferedImage processedImage = extractAndProcessRegion(
-            rawImage, x, y, width, height, 4,
-            settings.isRemoveBackground(), settings.getTextColor()
+                rawImage, x, y, width, height, 4,
+                settings.isRemoveBackground(), settings.getTextColor()
         );
         long extractEndTime = System.currentTimeMillis();
         log.debug("Image extraction and processing took: {} ms", (extractEndTime - extractStartTime));
-
-        // Optional: dump debug images
-        if (settings.isDebug()) {
-            long debugStartTime = System.currentTimeMillis();
-            try {
-                Path projectRoot = Paths.get(System.getProperty("user.dir"));
-                Path tempDir = projectRoot.resolve("temp");
-                if (!Files.exists(tempDir)) {
-                    Files.createDirectories(tempDir);
-                }
-
-                String timestamp = String.valueOf(System.currentTimeMillis());
-
-                // Save stage 0: raw (full image converted from raw data)
-                BufferedImage fullImage = convertRawImageToBufferedImage(rawImage);
-                ByteArrayOutputStream baos0 = new ByteArrayOutputStream();
-                ImageIO.write(fullImage, "png", baos0);
-                Path outputPath0 = tempDir.resolve(timestamp + "_0_raw.png");
-                Files.write(outputPath0, baos0.toByteArray());
-
-                // Save stage 1: cutted (without background removal)
-                BufferedImage cuttedImage = extractAndProcessRegion(rawImage, x, y, width, height, 4, false, null);
-                ByteArrayOutputStream baos1 = new ByteArrayOutputStream();
-                ImageIO.write(cuttedImage, "png", baos1);
-                Path outputPath1 = tempDir.resolve(timestamp + "_1_cut.png");
-                Files.write(outputPath1, baos1.toByteArray());
-
-                // Save stage 2: processed (final image used for OCR)
-                ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
-                ImageIO.write(processedImage, "png", baos2);
-                Path outputPath2 = tempDir.resolve(timestamp + "_2_processed.png");
-                Files.write(outputPath2, baos2.toByteArray());
-
-                long debugEndTime = System.currentTimeMillis();
-                log.debug("Debug images saved took: {} ms", (debugEndTime - debugStartTime));
-            } catch (IOException e) {
-                log.error("Failed to save debug images: {}", e.getMessage());
-            }
-        }
 
         // Configure Tesseract
         long tesseractConfigStartTime = System.currentTimeMillis();
@@ -167,6 +128,168 @@ public class UtilOCR {
         String result = tesseract.doOCR(processedImage).replace("\n", "").replace("\r", "").trim();
         long ocrEndTime = System.currentTimeMillis();
         log.debug("Tesseract OCR execution took: {} ms", (ocrEndTime - ocrStartTime));
+
+        // Optional: dump debug image
+        if (settings.isDebug()) {
+            long debugStartTime = System.currentTimeMillis();
+            try {
+                Path projectRoot = Paths.get(System.getProperty("user.dir"));
+                Path tempDir = projectRoot.resolve("temp");
+                if (!Files.exists(tempDir)) {
+                    Files.createDirectories(tempDir);
+                }
+
+                String timestamp = String.valueOf(System.currentTimeMillis());
+
+                // Get full image
+                BufferedImage fullImage = convertRawImageToBufferedImage(rawImage);
+
+                // Build configuration text
+                StringBuilder configText = new StringBuilder();
+                configText.append("Tesseract Configuration:");
+                configText.append("\n  Language: eng");
+                configText.append("\n  Page Seg Mode: ").append(settings.hasPageSegMode() ? settings.getPageSegMode() : "Default");
+                configText.append("\n  OCR Engine Mode: ").append(settings.hasOcrEngineMode() ? settings.getOcrEngineMode() : "Default");
+                configText.append("\n  Allowed Chars: ").append(settings.hasAllowedChars() ? settings.getAllowedChars() : "All");
+                configText.append("\n  Remove Background: ").append(settings.isRemoveBackground());
+                configText.append("\n  Text Color: ").append(settings.getTextColor() != null ? settings.getTextColor() : "Auto");
+                configText.append("\n  Upscale Factor: 4x");
+                configText.append("\n\nDetected Text: \"").append(result).append("\"");
+
+                // Calculate dimensions
+                int padding = 20;
+                int titleHeight = 40;
+                int configBoxHeight = 200;
+
+                // Right side width: max between processed image and config box
+                int rightSideWidth = Math.max(processedImage.getWidth(), 500);
+
+                int combinedWidth = fullImage.getWidth() + padding + rightSideWidth;
+                int combinedHeight = Math.max(
+                        fullImage.getHeight() + titleHeight,
+                        processedImage.getHeight() + titleHeight + configBoxHeight + padding
+                );
+
+                // Create combined image
+                BufferedImage combinedImage = new BufferedImage(
+                        combinedWidth,
+                        combinedHeight,
+                        BufferedImage.TYPE_INT_ARGB
+                );
+                Graphics2D g2d = combinedImage.createGraphics();
+                g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Fill background with white
+                g2d.setColor(Color.WHITE);
+                g2d.fillRect(0, 0, combinedWidth, combinedHeight);
+
+                // === LEFT SIDE: Full image with red rectangle and text ===
+                BufferedImage fullImageWithOverlay = new BufferedImage(
+                        fullImage.getWidth(),
+                        fullImage.getHeight(),
+                        BufferedImage.TYPE_INT_ARGB
+                );
+                Graphics2D g2dFull = fullImageWithOverlay.createGraphics();
+                g2dFull.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                g2dFull.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Draw the original full image
+                g2dFull.drawImage(fullImage, 0, 0, null);
+
+                // Configure graphics for rectangle and text
+                g2dFull.setColor(Color.RED);
+                g2dFull.setStroke(new BasicStroke(3));
+
+                // Draw red rectangle around the search region
+                g2dFull.drawRect(x, y, width, height);
+
+                // Configure font for text
+                g2dFull.setFont(new Font("Arial", Font.BOLD, 20));
+                FontMetrics fm = g2dFull.getFontMetrics();
+                int textWidth = fm.stringWidth(result);
+                int textHeight = fm.getHeight();
+
+                // Determine text position (above or below rectangle based on available space)
+                int textX = x + 5;
+                int textY;
+
+                if (y > textHeight + 10) {
+                    // Draw text above the rectangle
+                    textY = y - 10;
+                } else {
+                    // Draw text below the rectangle
+                    textY = y + height + textHeight;
+                }
+
+                // Draw background for text (semi-transparent black for better readability)
+                g2dFull.setColor(new Color(0, 0, 0, 180));
+                g2dFull.fillRect(textX - 5, textY - textHeight + 5, textWidth + 10, textHeight);
+
+                // Draw the detected text
+                g2dFull.setColor(Color.RED);
+                g2dFull.drawString(result, textX, textY);
+                g2dFull.dispose();
+
+                // Draw title for left side
+                g2d.setColor(Color.BLACK);
+                g2d.setFont(new Font("Arial", Font.BOLD, 16));
+                g2d.drawString("Full Image with Region", 10, 20);
+
+                // Draw full image with overlay
+                g2d.drawImage(fullImageWithOverlay, 0, titleHeight, null);
+
+                // === RIGHT SIDE: Processed image and configuration ===
+                int rightStartX = fullImage.getWidth() + padding;
+
+                // Draw title for processed image
+                g2d.drawString("Processed Region", rightStartX + 10, 20);
+
+                // Draw processed image on the right
+                g2d.drawImage(processedImage, rightStartX, titleHeight, null);
+
+                // Draw configuration box below processed image
+                int configBoxY = titleHeight + processedImage.getHeight() + padding;
+
+                // Draw configuration box background
+                g2d.setColor(new Color(240, 240, 240));
+                g2d.fillRect(rightStartX, configBoxY, rightSideWidth, configBoxHeight);
+
+                // Draw configuration box border
+                g2d.setColor(Color.GRAY);
+                g2d.setStroke(new BasicStroke(1));
+                g2d.drawRect(rightStartX, configBoxY, rightSideWidth, configBoxHeight);
+
+                // Draw configuration text
+                g2d.setColor(Color.BLACK);
+                g2d.setFont(new Font("Monospaced", Font.PLAIN, 12));
+
+                String[] configLines = configText.toString().split("\n");
+                int lineY = configBoxY + 20;
+                for (String line : configLines) {
+                    g2d.drawString(line, rightStartX + 10, lineY);
+                    lineY += 18;
+                }
+
+                // Draw separator line between left and right
+                g2d.setColor(Color.GRAY);
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawLine(fullImage.getWidth() + padding/2, 0, fullImage.getWidth() + padding/2, combinedHeight);
+
+                g2d.dispose();
+
+                // Save combined image
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(combinedImage, "png", baos);
+                Path outputPath = tempDir.resolve(timestamp + "_debug.png");
+                Files.write(outputPath, baos.toByteArray());
+
+                long debugEndTime = System.currentTimeMillis();
+                log.debug("Debug image saved took: {} ms", (debugEndTime - debugStartTime));
+            } catch (IOException e) {
+                log.error("Failed to save debug image: {}", e.getMessage());
+            }
+        }
 
         long totalTime = System.currentTimeMillis() - startTime;
         log.debug("=== OCR Process Completed === Total time: {} ms, Result: '{}'", totalTime, result);
