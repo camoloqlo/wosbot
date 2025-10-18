@@ -162,29 +162,11 @@ public class TrainingTask extends DelayedTask {
                     if (applyButton.isFound()) {
                         logInfo("Applying for ministry appointment...");
                         tapRandomPoint(applyButton.getPoint(), applyButton.getPoint(), 1, 1000);
-                        tapRandomPoint(new DTOPoint(440, 770), new DTOPoint(580, 800), 1, 2000); // confirmation
-                        // now i need to ocr the appointment time
-                        Duration newAppointmentTime = durationHelper.execute(
-                                new DTOPoint(397, 1069),
-                                new DTOPoint(596, 1094),
-                                5,
-                                200L,
-                                DTOTesseractSettings.builder()
-                                        .setRemoveBackground(true)
-                                        .setTextColor(new Color(121, 136, 155))
-                                        .setReuseLastImage(false)
-                                        .setAllowedChars("0123456789:")
-                                        .build(),
-                                TimeValidators::isHHmmss,
-                                TimeConverters::hhmmssToDuration);
+                        tapRandomPoint(new DTOPoint(440, 770), new DTOPoint(580, 800), 1, 2500); // confirmation
 
-                        if (newAppointmentTime != null) {
-                            appointmentTime = LocalDateTime.now().plusMinutes(newAppointmentTime.getSeconds());
-                            logInfo("New ministry appointment time set for: " + appointmentTime.format(DATETIME_FORMATTER));
-                        } else {
-                            appointmentTime = LocalDateTime.now();
-                        }
-                    } else {
+                    }else{
+                        logInfo("Apply button not found, checking for existing appointment...");
+                    }
                         // check if there's an active appointment
                         Duration activeAppointmentTime = durationHelper.execute(
                                 new DTOPoint(397, 1069),
@@ -253,7 +235,7 @@ public class TrainingTask extends DelayedTask {
                             appointmentTime = LocalDateTime.now();
 
                         }
-                    }
+
                 }
 
             }
