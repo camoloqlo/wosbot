@@ -120,12 +120,13 @@ public class BearTrapTask extends DelayedTask {
                 ZoneId.systemDefault());
 
         logInfo("Next execution in local time: " + nextExecutionTimeLocal.format(DATETIME_FORMATTER));
-        // Schedule task using parent class reschedule mechanism
-        reschedule(nextExecutionTimeLocal);
+        // Apply to scheduler
+        this.scheduledTime = nextExecutionTimeLocal;
     }
 
     @Override
     protected void execute() {
+        reloadConfig();
         logInfo("Starting Bear Trap task execution");
 
         try {
@@ -197,9 +198,13 @@ public class BearTrapTask extends DelayedTask {
             logError("Error during Bear Trap execution: " + e.getMessage());
             e.printStackTrace();
         } finally {
-            // Clean up state and reschedule next window
-            cleanup();
-           reschedule(null);
+            // Persist next trap anchor regardless of outcome
+            try {
+                updateNextWindowDateTime();
+            } catch (Exception ex) {
+                logWarning("Could not persist next anchor at end of execution: " + ex.getMessage());
+            }
+
         }
     }
 
@@ -683,26 +688,42 @@ public class BearTrapTask extends DelayedTask {
 
     @Override
     public void reschedule(LocalDateTime newDateTime) {
+        // If a specific time is provided, delegate to parent implementation
+        if (newDateTime != null) {
+            super.reschedule(newDateTime);
+            logInfo("Rescheduled explicitly for (Local): " + newDateTime.format(DATETIME_FORMATTER));
+            // Persist next trap anchor on explicit reschedule
+            try {
+                updateNextWindowDateTime();
+            } catch (Exception ex) {
+                logWarning("Could not persist next anchor on explicit reschedule: " + ex.getMessage());
+            }
+            return;
+        }
+
+        // Otherwise, compute based on current window state
+        reloadConfig();
         BearTrapHelper.WindowResult result = getWindowState();
 
         Instant nextExecutionInstant;
-        if (result.getState() == BearTrapHelper.WindowState.INSIDE) {
-            nextExecutionInstant = Instant.now();
-        } else {
-            nextExecutionInstant = result.getNextWindowStart();
+        switch (result.getState()) {
+            case BEFORE:
+                nextExecutionInstant = result.getCurrentWindowStart();
+                break;
+            case INSIDE:
+                nextExecutionInstant = Instant.now();
+                break;
+            case AFTER:
+            default:
+                nextExecutionInstant = result.getNextWindowStart();
+                break;
         }
 
-        // Convert from UTC Instant to local system time for scheduling
-        LocalDateTime nextExecutionLocal = LocalDateTime.ofInstant(
-                nextExecutionInstant,
-                ZoneId.systemDefault());
+        LocalDateTime nextExecutionLocal = LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.systemDefault());
+        this.scheduledTime = nextExecutionLocal;
 
-        referenceTrapTime = LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC"));
-
-        logInfo("Rescheduling Bear Trap for (UTC): " + referenceTrapTime.format(DATETIME_FORMATTER));
         logInfo("Rescheduling Bear Trap for (Local): " + nextExecutionLocal.format(DATETIME_FORMATTER));
-
-        scheduledTime = nextExecutionLocal;
+        logInfo("Rescheduling Bear Trap for (UTC): " + LocalDateTime.ofInstant(nextExecutionInstant, ZoneId.of("UTC")).format(DATETIME_FORMATTER));
     }
 
     @Override
