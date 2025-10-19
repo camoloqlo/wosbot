@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -15,6 +16,7 @@ import cl.camodev.wosbot.ot.DTOQueueProfileState;
 import cl.camodev.wosbot.ot.DTOTaskState;
 import cl.camodev.wosbot.serv.impl.ServLogs;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
+import cl.camodev.wosbot.serv.impl.ServConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,8 +41,12 @@ public class TaskQueueManager {
 		logger.info("Starting queues ");
 		taskQueues.entrySet().stream()
 			.sorted(Map.Entry.<Long, TaskQueue>comparingByValue((queue1, queue2) -> {
-				// Get the delay configuration for both queues
-				Integer delay = queue1.getProfile().getConfig(EnumConfigurationKey.MAX_IDLE_TIME_INT, Integer.class);
+				// Obtener el delay global desde ServConfig con fallback al default
+				int delay = Optional
+						.ofNullable(ServConfig.getServices().getGlobalConfig())
+						.map(cfg -> cfg.get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name()))
+						.map(Integer::parseInt)
+						.orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue()));
 
 				// Check if queues have tasks with acceptable idle time
 				boolean hasAcceptableIdle1 = queue1.hasTasksWithAcceptableIdleTime(delay);
@@ -59,7 +65,11 @@ public class TaskQueueManager {
 			.forEach(entry -> {
 				TaskQueue queue = entry.getValue();
 				DTOProfiles profile = queue.getProfile();
-				Integer delay = profile.getConfig(EnumConfigurationKey.MAX_IDLE_TIME_INT, Integer.class);
+				int delay = Optional
+						.ofNullable(ServConfig.getServices().getGlobalConfig())
+						.map(cfg -> cfg.get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name()))
+						.map(Integer::parseInt)
+						.orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue()));
 				boolean hasAcceptableIdle = queue.hasTasksWithAcceptableIdleTime(delay);
 
 				logger.info("Starting queue for profile: {} with priority: {} (has tasks with idle < {} min: {})",

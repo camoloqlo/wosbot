@@ -26,6 +26,7 @@ import cl.camodev.wosbot.serv.impl.ServLogs;
 import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
+import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.task.impl.InitializeTask;
 
 import org.slf4j.Logger;
@@ -226,15 +227,16 @@ public class TaskQueue {
      * @return true if the Initialize task should proceed, false otherwise
      */
     private boolean shouldExecuteInitializeTask() {
-        // Get the maximum idle time configuration
-        long maxIdleMinutes = Optional
-                .ofNullable(profile.getGlobalsettings().get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name()))
+        // Get the maximum idle time configuration desde ServConfig con fallback al default
+        int maxIdleMinutes = Optional
+                .ofNullable(ServConfig.getServices().getGlobalConfig())
+                .map(cfg -> cfg.get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name()))
                 .map(Integer::parseInt)
                 .orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue()));
 
         // Check if there are tasks with acceptable idle time (excluding Initialize
         // tasks)
-        return hasTasksWithAcceptableIdleTime((int) maxIdleMinutes);
+        return hasTasksWithAcceptableIdleTime(maxIdleMinutes);
     }
 
     private DTOTaskState createInitialTaskState(DelayedTask task) {
@@ -379,12 +381,16 @@ public class TaskQueue {
         }
     }
 
+
     // Idle time management methods
     private void idlingEmulator(LocalDateTime delayUntil) {
-        boolean sendToBackground = Boolean.parseBoolean(
-                profile.getGlobalsettings().getOrDefault(
+        boolean sendToBackground = Optional
+                .ofNullable(ServConfig.getServices().getGlobalConfig())
+                .map(cfg -> cfg.getOrDefault(
                         EnumConfigurationKey.IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL.name(),
-                        EnumConfigurationKey.IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL.getDefaultValue()));
+                        EnumConfigurationKey.IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL.getDefaultValue()))
+                .map(Boolean::parseBoolean)
+                .orElse(Boolean.parseBoolean(EnumConfigurationKey.IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL.getDefaultValue()));
 
         if (sendToBackground) {
             // Send game to background (home screen), keep emulator and game running
@@ -474,10 +480,13 @@ public class TaskQueue {
             return;
         }
 
-        taskQueueStatus.setIdleTimeLimit(Optional
-                .ofNullable(profile.getGlobalsettings().get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name()))
+        // Obtener MAX_IDLE_TIME_INT desde ServConfig en lugar del perfil, con fallback al default
+        int idleLimit = Optional
+                .ofNullable(ServConfig.getServices().getGlobalConfig())
+                .map(cfg -> cfg.get(EnumConfigurationKey.MAX_IDLE_TIME_INT.name()))
                 .map(Integer::parseInt)
-                .orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue())));
+                .orElse(Integer.parseInt(EnumConfigurationKey.MAX_IDLE_TIME_INT.getDefaultValue()));
+        taskQueueStatus.setIdleTimeLimit(idleLimit);
 
         // If delay exceeds max idle time, and we haven't yet handled it
         if (!taskQueueStatus.isIdleTimeExceeded() && taskQueueStatus.checkIdleTimeExceeded()) {
