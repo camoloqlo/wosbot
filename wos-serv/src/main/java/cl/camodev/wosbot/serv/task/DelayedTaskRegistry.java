@@ -3,6 +3,7 @@ package cl.camodev.wosbot.serv.task;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.impl.*;
+import cl.camodev.wosbot.almac.repo.ProfileRepository;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -88,12 +89,22 @@ public class DelayedTaskRegistry {
 
     /**
      * Creates a new instance of {@link DelayedTask} based on the provided task type and profile.
+     * Updates the profile from the database to get the latest configurations.
      */
     public static DelayedTask create(TpDailyTaskEnum type, DTOProfiles profile) {
+        // Update profile from database to get latest configurations
+        DTOProfiles updatedProfile = profile;
+        if (profile != null && profile.getId() != null) {
+            DTOProfiles refreshed = ProfileRepository.getRepository().getProfileWithConfigsById(profile.getId());
+            if (refreshed != null) {
+                updatedProfile = refreshed;
+            }
+        }
+
         Function<DTOProfiles, DelayedTask> factory = registry.get(type);
         if (factory == null) {
             throw new IllegalArgumentException("No factory registered for task type: " + type);
         }
-        return factory.apply(profile);
+        return factory.apply(updatedProfile);
     }
 }

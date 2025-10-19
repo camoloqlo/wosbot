@@ -48,7 +48,7 @@ public class TaskQueue {
 
     // Thread that will evaluate and execute tasks
     private Thread schedulerThread;
-    private final DTOProfiles profile;
+    private DTOProfiles profile;
 
     public TaskQueue(DTOProfiles profile) {
         this.profile = profile;
@@ -128,6 +128,11 @@ public class TaskQueue {
 
         while (taskQueueStatus.isRunning()) {
             taskQueueStatus.loopStarted();
+
+            profile = ServProfiles.getServices().getProfiles().stream()
+                    .filter(p -> p.getId().equals(profile.getId()))
+                    .findFirst()
+                    .orElse(profile);
 
             if (taskQueueStatus.isPaused()) {
                 handlePausedState();
@@ -697,6 +702,7 @@ public class TaskQueue {
         if (existing != null) {
             // Task already exists, reschedule it to run now
             taskQueue.remove(existing);
+            existing.setProfile(profile);
             existing.reschedule(LocalDateTime.now());
             existing.setRecurring(recurring);
             taskQueue.offer(existing);

@@ -36,4 +36,9 @@ public class DTOConfig {
 	public void setValue(String value) {
 		this.value = value;
 	}
+
+    @Override
+    public String toString() {
+        return "DTOConfig [profileId=" + profileId + ", configurationName=" + configurationName + ", value=" + value + "]";
+    }
 }
