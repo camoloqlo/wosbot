@@ -764,6 +764,10 @@ public abstract class DelayedTask implements Runnable, Delayed {
         return taskName;
     }
 
+    public void setProfile(DTOProfiles profile) {
+        this.profile = profile;
+    }
+
     @Override
     public long getDelay(TimeUnit unit) {
         long diff = scheduledTime.toEpochSecond(ZoneOffset.UTC) - LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
@@ -783,38 +787,41 @@ public abstract class DelayedTask implements Runnable, Delayed {
         if (!thisInit && otherInit)
             return 1;
 
-        // Priority 2: Tasks with delay <= 0 (ready to execute)
+        // Get delays
         long thisDelay = this.getDelay(TimeUnit.NANOSECONDS);
         long otherDelay = o.getDelay(TimeUnit.NANOSECONDS);
 
         boolean thisReady = thisDelay <= 0;
         boolean otherReady = otherDelay <= 0;
 
-        // If both are ready or both are not ready, continue to next priority level
+        // Priority 2: Tasks with delay <= 0 (ready) have higher priority than not ready
         if (thisReady && !otherReady)
             return -1;
         if (!thisReady && otherReady)
             return 1;
 
-        // Priority 3: BearTrapTask (only matters if both have same ready status)
-        boolean thisBearTrap = this instanceof BearTrapTask;
-        boolean otherBearTrap = o instanceof BearTrapTask;
+        // If both are ready (delay <= 0), compare by task type first
+        if (thisReady && otherReady) {
+            // Priority 3a: BearTrapTask among ready tasks
+            boolean thisBearTrap = this instanceof BearTrapTask;
+            boolean otherBearTrap = o instanceof BearTrapTask;
+            if (thisBearTrap && !otherBearTrap)
+                return -1;
+            if (!thisBearTrap && otherBearTrap)
+                return 1;
 
-        if (thisBearTrap && !otherBearTrap)
-            return -1;
-        if (!thisBearTrap && otherBearTrap)
-            return 1;
+            // Priority 4a: ArenaTask among ready tasks
+            boolean thisArena = this instanceof ArenaTask;
+            boolean otherArena = o instanceof ArenaTask;
+            if (thisArena && !otherArena)
+                return -1;
+            if (!thisArena && otherArena)
+                return 1;
+        }
 
-        // Priority 4: ArenaTask (only matters if both have same ready status and neither is BearTrap)
-        boolean thisArena = this instanceof ArenaTask;
-        boolean otherArena = o instanceof ArenaTask;
-
-        if (thisArena && !otherArena)
-            return -1;
-        if (!thisArena && otherArena)
-            return 1;
-
-        // Priority 5: For tasks of same type/priority, compare by scheduled time (earlier first)
+        // Priority 5: Compare by scheduled time (delay)
+        // For ready tasks of same type: by delay (most overdue first)
+        // For non-ready tasks: by delay (earliest scheduled first)
         return Long.compare(thisDelay, otherDelay);
     }
 
