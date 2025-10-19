@@ -775,7 +775,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
         if (this == o)
             return 0;
 
-        // Priority 1: InitializeTask has highest priority
+        // Priority 1: InitializeTask has absolute highest priority
         boolean thisInit = this instanceof InitializeTask;
         boolean otherInit = o instanceof InitializeTask;
         if (thisInit && !otherInit)
@@ -783,32 +783,39 @@ public abstract class DelayedTask implements Runnable, Delayed {
         if (!thisInit && otherInit)
             return 1;
 
-        // Priority 2: BearTrapTask
+        // Priority 2: Tasks with delay <= 0 (ready to execute)
+        long thisDelay = this.getDelay(TimeUnit.NANOSECONDS);
+        long otherDelay = o.getDelay(TimeUnit.NANOSECONDS);
+
+        boolean thisReady = thisDelay <= 0;
+        boolean otherReady = otherDelay <= 0;
+
+        // If both are ready or both are not ready, continue to next priority level
+        if (thisReady && !otherReady)
+            return -1;
+        if (!thisReady && otherReady)
+            return 1;
+
+        // Priority 3: BearTrapTask (only matters if both have same ready status)
         boolean thisBearTrap = this instanceof BearTrapTask;
         boolean otherBearTrap = o instanceof BearTrapTask;
 
-        if (thisBearTrap && !otherBearTrap && this.getDelay(TimeUnit.NANOSECONDS) <= 0) {
+        if (thisBearTrap && !otherBearTrap)
             return -1;
-        }
-
-        if (!thisBearTrap && otherBearTrap && o.getDelay(TimeUnit.NANOSECONDS) <= 0) {
+        if (!thisBearTrap && otherBearTrap)
             return 1;
-        }
 
-        // Priority 3: ArenaTask
+        // Priority 4: ArenaTask (only matters if both have same ready status and neither is BearTrap)
         boolean thisArena = this instanceof ArenaTask;
         boolean otherArena = o instanceof ArenaTask;
 
-        if (thisArena && !otherArena && this.getDelay(TimeUnit.NANOSECONDS) <= 0)
+        if (thisArena && !otherArena)
             return -1;
-
-        if (!thisArena && otherArena && o.getDelay(TimeUnit.NANOSECONDS) <= 0)
+        if (!thisArena && otherArena)
             return 1;
 
-        // For tasks of same priority, compare by scheduled time
-        long diff = this.getDelay(TimeUnit.NANOSECONDS)
-                - o.getDelay(TimeUnit.NANOSECONDS);
-        return Long.compare(diff, 0);
+        // Priority 5: For tasks of same type/priority, compare by scheduled time (earlier first)
+        return Long.compare(thisDelay, otherDelay);
     }
 
     public LocalDateTime getScheduled() {
