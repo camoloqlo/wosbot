@@ -38,52 +38,6 @@ public class AllianceChampionshipTask extends DelayedTask {
     String positionValue;
     DeploymentPosition position;
 
-	/**
-	 * Enum representing the deployment position in Alliance Championship.
-	 */
-	public enum DeploymentPosition {
-		LEFT("LEFT"),
-		CENTER("CENTER"),
-		RIGHT("RIGHT");
-
-		private final String value;
-
-		DeploymentPosition(String value) {
-			this.value = value;
-		}
-
-		public String getValue() {
-			return value;
-		}
-
-		/**
-		 * Parse a string value to DeploymentPosition enum.
-		 * Returns CENTER as default if value is null, empty, or invalid.
-		 *
-		 * @param value String value from configuration
-		 * @return Corresponding DeploymentPosition enum
-		 */
-		public static DeploymentPosition fromString(String value) {
-			if (value == null || value.trim().isEmpty()) {
-				return CENTER;
-			}
-
-			for (DeploymentPosition position : DeploymentPosition.values()) {
-				if (position.value.equalsIgnoreCase(value.trim())) {
-					return position;
-				}
-			}
-
-			// Default to CENTER if invalid value
-			return CENTER;
-		}
-
-		@Override
-		public String toString() {
-			return value;
-		}
-	}
-
 	public AllianceChampionshipTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
 		super(profile, tpTask);
         updateConfiguration();
@@ -272,15 +226,15 @@ public class AllianceChampionshipTask extends DelayedTask {
 
         //set new values
 
-        tapRandomPoint(new DTOPoint(583,519), new DTOPoint(603,531), 1,200); //infantry
-        emuManager.writeText(EMULATOR_NUMBER,infantryPercentage+"\r");
-
-        tapRandomPoint(new DTOPoint(583,666), new DTOPoint(603,685), 1,200); //lancers
-        emuManager.writeText(EMULATOR_NUMBER,lancersPercentage+"\r");
-
-        tapRandomPoint(new DTOPoint(583,815), new DTOPoint(603,829), 1,200); //marksmans
-        emuManager.writeText(EMULATOR_NUMBER,marksmansPercentage+"\r");
-
+        tapRandomPoint(new DTOPoint(583,519), new DTOPoint(603,531), 1,400); //infantry
+        emuManager.writeText(EMULATOR_NUMBER, String.valueOf(infantryPercentage));
+        sleepTask(200);
+        tapRandomPoint(new DTOPoint(583,666), new DTOPoint(603,685), 1,400); //lancers
+        emuManager.writeText(EMULATOR_NUMBER, String.valueOf(lancersPercentage));
+        sleepTask(200);
+        tapRandomPoint(new DTOPoint(583,815), new DTOPoint(603,829), 1,400); //marksmans
+        emuManager.writeText(EMULATOR_NUMBER, String.valueOf(marksmansPercentage));
+        sleepTask(200);
         //confirm troops %
         tapRandomPoint(new DTOPoint(304,965), new DTOPoint(423,996), 1,500); //confirm button
 
@@ -311,23 +265,23 @@ public class AllianceChampionshipTask extends DelayedTask {
         //reset all to 0
         tapRandomPoint(new DTOPoint(583,519), new DTOPoint(603,531), 1,200); //infantry
         emuManager.clearText(EMULATOR_NUMBER,4);
-
+        sleepTask(200);
         tapRandomPoint(new DTOPoint(583,666), new DTOPoint(603,685), 1,200); //lancers
         emuManager.clearText(EMULATOR_NUMBER,4);
-
+        sleepTask(200);
         tapRandomPoint(new DTOPoint(583,815), new DTOPoint(603,829), 1,200); //marksmans
         emuManager.clearText(EMULATOR_NUMBER,4);
-
+        sleepTask(200);
         //set new values
 
-        tapRandomPoint(new DTOPoint(583,519), new DTOPoint(603,531), 1,200); //infantry
-        emuManager.writeText(EMULATOR_NUMBER,infantryPercentage+"\r");
+        tapRandomPoint(new DTOPoint(583,519), new DTOPoint(603,531), 1,400); //infantry
+        emuManager.writeText(EMULATOR_NUMBER, String.valueOf(infantryPercentage));
 
-        tapRandomPoint(new DTOPoint(583,666), new DTOPoint(603,685), 1,200); //lancers
-        emuManager.writeText(EMULATOR_NUMBER,lancersPercentage+"\r");
+        tapRandomPoint(new DTOPoint(583,666), new DTOPoint(603,685), 1,400); //lancers
+        emuManager.writeText(EMULATOR_NUMBER, String.valueOf(lancersPercentage));
 
-        tapRandomPoint(new DTOPoint(583,815), new DTOPoint(603,829), 1,200); //marksmans
-        emuManager.writeText(EMULATOR_NUMBER,marksmansPercentage+"\r");
+        tapRandomPoint(new DTOPoint(583,815), new DTOPoint(603,829), 1,400); //marksmans
+        emuManager.writeText(EMULATOR_NUMBER, String.valueOf(marksmansPercentage));
 
         //confirm troops %
         tapRandomPoint(new DTOPoint(304,965), new DTOPoint(423,996), 1,500); //confirm button
@@ -408,6 +362,52 @@ public class AllianceChampionshipTask extends DelayedTask {
             case RIGHT -> new DTOArea(new DTOPoint(510, 900), new DTOPoint(680, 1000));
         };
     }
+
+	/**
+	 * Enum representing the deployment position in Alliance Championship.
+	 */
+	public enum DeploymentPosition {
+		LEFT("LEFT"),
+		CENTER("CENTER"),
+		RIGHT("RIGHT");
+
+		private final String value;
+
+		DeploymentPosition(String value) {
+			this.value = value;
+		}
+
+		/**
+		 * Parse a string value to DeploymentPosition enum.
+		 * Returns CENTER as default if value is null, empty, or invalid.
+		 *
+		 * @param value String value from configuration
+		 * @return Corresponding DeploymentPosition enum
+		 */
+		public static DeploymentPosition fromString(String value) {
+			if (value == null || value.trim().isEmpty()) {
+				return CENTER;
+			}
+
+			for (DeploymentPosition position : DeploymentPosition.values()) {
+				if (position.value.equalsIgnoreCase(value.trim())) {
+					return position;
+				}
+			}
+
+			// Default to CENTER if invalid value
+			return CENTER;
+		}
+
+		public String getValue() {
+			return value;
+		}
+
+		@Override
+		public String toString() {
+			return value;
+		}
+	}
 
 }
 
