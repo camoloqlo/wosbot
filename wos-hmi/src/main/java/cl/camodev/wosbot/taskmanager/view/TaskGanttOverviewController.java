@@ -5,9 +5,11 @@ import cl.camodev.wosbot.ot.DTODailyTaskStatus;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTaskState;
 import cl.camodev.wosbot.taskmanager.model.TaskManagerAux;
+import cl.camodev.wosbot.serv.IStaminaChangeListener;
 import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
+import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.taskmanager.controller.TaskManagerActionController;
 import cl.camodev.wosbot.taskmanager.ITaskStatusChangeListener;
 import javafx.application.Platform;
@@ -19,12 +21,16 @@ import javafx.scene.layout.VBox;
 import javafx.scene.control.Label;
 import javafx.scene.shape.Rectangle;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class TaskGanttOverviewController implements ITaskStatusChangeListener {
+public class TaskGanttOverviewController implements ITaskStatusChangeListener, IStaminaChangeListener {
     @FXML
     private VBox vboxAccounts;
 
@@ -41,6 +47,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
     private javafx.animation.Timeline autoRefreshTimeline;
     private String taskFilter = "";
     private List<DTOProfiles> lastLoadedProfiles = new ArrayList<>();
+    private final Map<Long, Label> profileStaminaLabels = new HashMap<>();
 
     private enum ViewMode {
         TWO_HOURS("2 Hours", -30, 90, 120, 5),
@@ -86,22 +93,164 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
         }
     }
 
-    private static final class TimelineMetrics {
-        private final LocalDateTime viewStart;
-    private final double pixelsPerMinute;
+    private static final double TWO_HOUR_PIVOT_RATIO = 30d / 120d;
 
-        TimelineMetrics(LocalDateTime viewStart, double timelineWidth, int windowMinutes) {
+    private static final class TimelineMetrics {
+        private enum ScaleType { LINEAR, PURE_LOG, HYBRID_LOG_LINEAR }
+
+        private final ScaleType scaleType;
+        private final LocalDateTime viewStart;
+        private final LocalDateTime viewEnd;
+        private final double width;
+        private final double windowMinutes;
+
+        // Linear
+        private final double linearPixelsPerMinute;
+
+        // Pure logarithmic
+        private final double pureLogDenominator;
+
+        // Hybrid log-linear
+        private final LocalDateTime pivotTime;
+        private final double hybridLeftSpanMinutes;
+        private final double hybridRightSpanMinutes;
+        private final double hybridPivotX;
+        private final double hybridLeftLogDenominator;
+        private final double hybridRightPixelsPerMinute;
+
+        private TimelineMetrics(
+            ScaleType scaleType,
+            LocalDateTime viewStart,
+            LocalDateTime viewEnd,
+            double width,
+            double windowMinutes,
+            double linearPixelsPerMinute,
+            double pureLogDenominator,
+            LocalDateTime pivotTime,
+            double hybridLeftSpanMinutes,
+            double hybridRightSpanMinutes,
+            double hybridPivotX,
+            double hybridLeftLogDenominator,
+            double hybridRightPixelsPerMinute
+        ) {
+            this.scaleType = scaleType;
             this.viewStart = viewStart;
-            this.pixelsPerMinute = timelineWidth / windowMinutes;
+            this.viewEnd = viewEnd;
+            this.width = width;
+            this.windowMinutes = windowMinutes;
+            this.linearPixelsPerMinute = linearPixelsPerMinute;
+            this.pureLogDenominator = pureLogDenominator;
+            this.pivotTime = pivotTime;
+            this.hybridLeftSpanMinutes = hybridLeftSpanMinutes;
+            this.hybridRightSpanMinutes = hybridRightSpanMinutes;
+            this.hybridPivotX = hybridPivotX;
+            this.hybridLeftLogDenominator = hybridLeftLogDenominator;
+            this.hybridRightPixelsPerMinute = hybridRightPixelsPerMinute;
         }
 
-        double pixelsPerMinute() {
-            return pixelsPerMinute;
+        static TimelineMetrics linear(LocalDateTime viewStart, double width, int windowMinutes) {
+            LocalDateTime viewEnd = viewStart.plusMinutes(windowMinutes);
+            double effectiveMinutes = Math.max(1d, ChronoUnit.SECONDS.between(viewStart, viewEnd) / 60d);
+            double pixelsPerMinute = width / effectiveMinutes;
+            return new TimelineMetrics(
+                ScaleType.LINEAR,
+                viewStart,
+                viewEnd,
+                width,
+                effectiveMinutes,
+                pixelsPerMinute,
+                0d,
+                null,
+                0d,
+                0d,
+                0d,
+                0d,
+                pixelsPerMinute
+            );
+        }
+
+        static TimelineMetrics logarithmic(LocalDateTime viewStart, LocalDateTime viewEnd, double width) {
+            double effectiveMinutes = Math.max(1d, ChronoUnit.SECONDS.between(viewStart, viewEnd) / 60d);
+            return new TimelineMetrics(
+                ScaleType.PURE_LOG,
+                viewStart,
+                viewEnd,
+                width,
+                effectiveMinutes,
+                width / effectiveMinutes,
+                Math.log1p(effectiveMinutes),
+                null,
+                0d,
+                0d,
+                0d,
+                0d,
+                0d
+            );
+        }
+
+        static TimelineMetrics hybridLogLinear(LocalDateTime viewStart, LocalDateTime pivotTime, LocalDateTime viewEnd, double width, double pivotRatio) {
+            double totalMinutes = Math.max(1d, ChronoUnit.SECONDS.between(viewStart, viewEnd) / 60d);
+            double leftSpan = Math.max(0d, ChronoUnit.SECONDS.between(viewStart, pivotTime) / 60d);
+            double rightSpan = Math.max(0d, totalMinutes - leftSpan);
+            double clampedRatio = Math.max(0d, Math.min(1d, pivotRatio));
+            double pivotX = width * clampedRatio;
+            double leftLogDenominator = leftSpan > 0d ? Math.log1p(leftSpan) : 1d;
+            double rightPixelsPerMinute = rightSpan > 0d ? (width - pivotX) / rightSpan : 0d;
+            return new TimelineMetrics(
+                ScaleType.HYBRID_LOG_LINEAR,
+                viewStart,
+                viewEnd,
+                width,
+                totalMinutes,
+                rightPixelsPerMinute,
+                0d,
+                pivotTime,
+                leftSpan,
+                rightSpan,
+                pivotX,
+                leftLogDenominator,
+                rightPixelsPerMinute
+            );
         }
 
         double toX(LocalDateTime time) {
             double minutes = ChronoUnit.SECONDS.between(viewStart, time) / 60.0;
-            return minutes * pixelsPerMinute;
+            minutes = Math.max(0d, Math.min(minutes, windowMinutes));
+
+            switch (scaleType) {
+                case LINEAR:
+                    return minutes * linearPixelsPerMinute;
+                case PURE_LOG:
+                    if (pureLogDenominator == 0d) {
+                        return 0d;
+                    }
+                    return width * Math.log1p(minutes) / pureLogDenominator;
+                case HYBRID_LOG_LINEAR:
+                    if (minutes <= hybridLeftSpanMinutes) {
+                        if (hybridLeftSpanMinutes <= 0d || hybridLeftLogDenominator == 0d) {
+                            return 0d;
+                        }
+                        double distanceFromPivot = Math.max(0d, hybridLeftSpanMinutes - minutes);
+                        double normalized = Math.log1p(distanceFromPivot) / hybridLeftLogDenominator;
+                        return hybridPivotX * (1d - normalized);
+                    }
+                    double rightMinutes = minutes - hybridLeftSpanMinutes;
+                    return hybridPivotX + rightMinutes * hybridRightPixelsPerMinute;
+                default:
+                    throw new IllegalStateException("Unexpected scale type: " + scaleType);
+            }
+        }
+
+        double widthBetween(LocalDateTime start, double minutesSpan) {
+            double clampedSpan = Math.max(0d, minutesSpan);
+            Duration duration = Duration.ofMillis((long) Math.round(clampedSpan * 60_000d));
+            LocalDateTime end = start.plus(duration);
+            if (end.isAfter(viewEnd)) {
+                end = viewEnd;
+            }
+            double startX = toX(start);
+            double endX = toX(end);
+            return Math.max(0d, endX - startX);
         }
     }
 
@@ -120,6 +269,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
         
         // Register as listener for live task updates
         ServTaskManager.getInstance().addTaskStatusChangeListener(this);
+        StaminaService.getServices().addStaminaChangeListener(this);
         
         // Configure VBox for compact display
         if (vboxAccounts != null) {
@@ -269,7 +419,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
     }
 
     private void buildTwentyFourHourAxis(javafx.scene.layout.Pane axisPane, LocalDateTime now) {
-        LocalDateTime startTime = now.minusHours(1).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime startTime = resolveViewStart(ViewMode.TWENTY_FOUR_HOURS, now);
         double hourWidth = availableWidth / 25.0;
         double labelWidth = Math.max(48, Math.min(120, hourWidth + 24));
 
@@ -321,7 +471,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
     }
 
     private void buildWeekAxis(javafx.scene.layout.Pane axisPane, LocalDateTime now) {
-        LocalDateTime startTime = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime startTime = resolveViewStart(ViewMode.WEEK, now);
         double dayWidth = availableWidth / 8.0;
         double labelWidth = Math.max(100, Math.min(160, dayWidth + 40));
 
@@ -391,50 +541,61 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
     }
 
     private void buildTwoHourAxis(javafx.scene.layout.Pane axisPane, LocalDateTime now) {
-        LocalDateTime startTime = now.minusMinutes(30);
-        double intervalWidth = availableWidth / 8.0;
-        double labelWidth = Math.max(70, Math.min(120, intervalWidth + 30));
+        LocalDateTime viewStart = resolveViewStart(ViewMode.TWO_HOURS, now);
+        LocalDateTime viewEnd = resolveViewEnd(ViewMode.TWO_HOURS, now);
+    TimelineMetrics metrics = TimelineMetrics.hybridLogLinear(viewStart, now, viewEnd, availableWidth, TWO_HOUR_PIVOT_RATIO);
 
-        for (int i = 0; i < 9; i++) {
-            LocalDateTime time = startTime.plusMinutes(i * 15);
-            java.time.ZonedDateTime utcTime = time.atZone(java.time.ZoneId.systemDefault())
-                .withZoneSameInstant(java.time.ZoneOffset.UTC);
+        List<LocalDateTime> tickTimes = buildTwoHourTickTimes(viewStart, now, viewEnd);
+        if (tickTimes.isEmpty()) {
+            return;
+        }
 
-            javafx.scene.layout.VBox timeBox = new javafx.scene.layout.VBox(0);
+        double labelWidth = 104;
+
+        for (int i = 0; i < tickTimes.size(); i++) {
+            LocalDateTime time = tickTimes.get(i);
+            ZonedDateTime localZone = time.atZone(ZoneId.systemDefault());
+            ZonedDateTime utcTime = localZone.withZoneSameInstant(ZoneOffset.UTC);
+
+            boolean isNow = time.isEqual(now);
+            boolean isPast = time.isBefore(now);
+
+            String localLabel = String.format("%02d:%02d", localZone.getHour(), localZone.getMinute());
+            String utcLabel = String.format("%02d:%02d", utcTime.getHour(), utcTime.getMinute());
+
+            String localColor = isNow ? "#ffb347" : (isPast ? "#888888" : "#666666");
+            String utcColor = isNow ? "#ffb347" : (isPast ? "#666666" : "#555555");
+
+            Label lblLocal = new Label(localLabel);
+            lblLocal.setStyle(String.format("-fx-text-fill: %s; -fx-font-size: 10; -fx-font-weight: %s;", localColor, isNow ? "bold" : "normal"));
+
+            Label lblUtc = new Label(utcLabel);
+            lblUtc.setStyle(String.format("-fx-text-fill: %s; -fx-font-size: 8; -fx-font-weight: %s;", utcColor, isNow ? "bold" : "normal"));
+
+            javafx.scene.layout.VBox timeBox = new javafx.scene.layout.VBox(lblLocal, lblUtc);
             timeBox.setAlignment(javafx.geometry.Pos.CENTER);
             timeBox.setPrefWidth(labelWidth);
             timeBox.setMinWidth(labelWidth);
             timeBox.setMaxWidth(labelWidth);
 
-            String localLabel = String.format("%02d:%02d", time.getHour(), time.getMinute());
-            String utcLabel = String.format("%02d:%02d", utcTime.getHour(), utcTime.getMinute());
-
-            Label lblLocal = new Label(localLabel);
-            lblLocal.setStyle(String.format(
-                "-fx-text-fill: %s; -fx-font-size: 10;",
-                (time.getMinute() == 0) ? "#888888" : "#666666"
-            ));
-
-            Label lblUtc = new Label(utcLabel);
-            lblUtc.setStyle(String.format(
-                "-fx-text-fill: %s; -fx-font-size: 8;",
-                (time.getMinute() == 0) ? "#666666" : "#555555"
-            ));
-
-            timeBox.getChildren().addAll(lblLocal, lblUtc);
-            double centerX = i * intervalWidth;
+            double centerX = metrics.toX(time);
             double layoutX = centerX - (labelWidth / 2.0);
+            double maxX = availableWidth - labelWidth;
             javafx.geometry.Pos alignment = javafx.geometry.Pos.CENTER;
             javafx.geometry.Insets padding = javafx.geometry.Insets.EMPTY;
+
             if (i == 0) {
                 layoutX = 0;
                 alignment = javafx.geometry.Pos.CENTER_LEFT;
                 padding = new javafx.geometry.Insets(0, 0, 0, 2);
-            } else if (i == 8) {
-                layoutX = availableWidth - labelWidth;
+            } else if (i == tickTimes.size() - 1) {
+                layoutX = maxX;
                 alignment = javafx.geometry.Pos.CENTER_RIGHT;
                 padding = new javafx.geometry.Insets(0, 2, 0, 0);
+            } else {
+                layoutX = Math.max(0, Math.min(layoutX, maxX));
             }
+
             timeBox.setAlignment(alignment);
             lblLocal.setAlignment(alignment);
             lblUtc.setAlignment(alignment);
@@ -442,6 +603,54 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
             timeBox.setLayoutX(layoutX);
             axisPane.getChildren().add(timeBox);
         }
+    }
+
+    private LocalDateTime resolveViewStart(ViewMode mode, LocalDateTime now) {
+        return switch (mode) {
+            case TWO_HOURS -> {
+                ZonedDateTime nowUtc = now.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
+                ZonedDateTime midnightUtc = nowUtc.toLocalDate().atStartOfDay(ZoneOffset.UTC);
+                yield midnightUtc.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+            }
+            case TWENTY_FOUR_HOURS -> now.minusHours(1).withMinute(0).withSecond(0).withNano(0);
+            case WEEK -> now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+        };
+    }
+
+    private LocalDateTime resolveViewEnd(ViewMode mode, LocalDateTime now) {
+        return switch (mode) {
+            case TWO_HOURS -> now.plusMinutes(mode.getWindowMinutes());
+            case TWENTY_FOUR_HOURS, WEEK -> resolveViewStart(mode, now).plusMinutes(mode.getWindowMinutes());
+        };
+    }
+
+    private List<LocalDateTime> buildTwoHourTickTimes(LocalDateTime viewStart, LocalDateTime now, LocalDateTime viewEnd) {
+        java.util.NavigableSet<LocalDateTime> ticks = new java.util.TreeSet<>();
+        ticks.add(viewStart);
+
+        for (int hour = 6; hour <= 18; hour += 6) {
+            LocalDateTime candidate = viewStart.plusHours(hour);
+            if (!candidate.isBefore(now)) {
+                break;
+            }
+            ticks.add(candidate);
+        }
+
+        ticks.add(now);
+
+        int[] futureMinutes = {15, 30, 45, 60, 75, 90, 105, 120};
+        for (int minutes : futureMinutes) {
+            LocalDateTime candidate = now.plusMinutes(minutes);
+            if (!candidate.isAfter(viewEnd)) {
+                ticks.add(candidate);
+            }
+        }
+
+        if (!ticks.contains(viewEnd)) {
+            ticks.add(viewEnd);
+        }
+
+        return new ArrayList<>(ticks);
     }
 
     private TimelineMetrics drawTimelineBackground(javafx.scene.layout.Pane timelinePane, ViewMode mode, double width, int rowHeight, LocalDateTime now) {
@@ -461,8 +670,8 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
                     timelinePane.getChildren().add(line);
                 }
 
-                LocalDateTime viewStart = now.minusHours(1).withMinute(0).withSecond(0).withNano(0);
-                TimelineMetrics metrics = new TimelineMetrics(viewStart, width, mode.getWindowMinutes());
+                LocalDateTime viewStart = resolveViewStart(ViewMode.TWENTY_FOUR_HOURS, now);
+                TimelineMetrics metrics = TimelineMetrics.linear(viewStart, width, mode.getWindowMinutes());
                 double nowX = metrics.toX(now);
 
                 javafx.scene.shape.Line nowLine = new javafx.scene.shape.Line(nowX, 0, nowX, rowHeight);
@@ -490,8 +699,8 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
                     timelinePane.getChildren().add(line);
                 }
 
-                LocalDateTime viewStart = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
-                TimelineMetrics metrics = new TimelineMetrics(viewStart, width, mode.getWindowMinutes());
+                LocalDateTime viewStart = resolveViewStart(ViewMode.WEEK, now);
+                TimelineMetrics metrics = TimelineMetrics.linear(viewStart, width, mode.getWindowMinutes());
                 double nowX = metrics.toX(now);
 
                 javafx.scene.shape.Line nowLine = new javafx.scene.shape.Line(nowX, 0, nowX, rowHeight);
@@ -502,17 +711,28 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
                 return metrics;
             }
             case TWO_HOURS -> {
-                double intervalWidth = width / 8.0;
-                for (int i = 0; i <= 8; i++) {
-                    double x = i * intervalWidth;
+                LocalDateTime viewStart = resolveViewStart(mode, now);
+                LocalDateTime viewEnd = resolveViewEnd(mode, now);
+                TimelineMetrics metrics = TimelineMetrics.hybridLogLinear(viewStart, now, viewEnd, width, TWO_HOUR_PIVOT_RATIO);
+                List<LocalDateTime> tickTimes = buildTwoHourTickTimes(viewStart, now, viewEnd);
+                for (LocalDateTime tickTime : tickTimes) {
+                    if (tickTime.isEqual(now)) {
+                        continue; // Dedicated red line handles the current time marker.
+                    }
+                    double x = metrics.toX(tickTime);
                     javafx.scene.shape.Line line = new javafx.scene.shape.Line(x, 0, x, rowHeight);
-                    line.setStroke(javafx.scene.paint.Color.web((i % 4 == 0) ? "#555555" : "#3a3a3a"));
-                    line.setStrokeWidth((i % 4 == 0) ? 1.5 : 0.5);
+                    boolean major;
+                    if (tickTime.isBefore(now)) {
+                        long hoursFromStart = Math.max(0, ChronoUnit.HOURS.between(viewStart, tickTime));
+                        major = hoursFromStart == 0 || hoursFromStart % 6 == 0;
+                    } else {
+                        long minutesFromNow = ChronoUnit.MINUTES.between(now, tickTime);
+                        major = minutesFromNow % 60 == 0;
+                    }
+                    line.setStroke(javafx.scene.paint.Color.web(major ? "#555555" : "#3a3a3a"));
+                    line.setStrokeWidth(major ? 1.5 : 0.5);
                     timelinePane.getChildren().add(line);
                 }
-
-                LocalDateTime viewStart = now.minusMinutes(30);
-                TimelineMetrics metrics = new TimelineMetrics(viewStart, width, mode.getWindowMinutes());
                 double nowX = metrics.toX(now);
 
                 javafx.scene.shape.Line nowLine = new javafx.scene.shape.Line(nowX, 0, nowX, rowHeight);
@@ -586,6 +806,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
     
     private void rebuildUI(List<DTOProfiles> sortedProfiles) {
         vboxAccounts.getChildren().clear();
+        profileStaminaLabels.clear();
         lastLoadedProfiles = new ArrayList<>(sortedProfiles);
         
         // Use the dynamically calculated available width
@@ -607,13 +828,13 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
             }
         }
     }
-
-        // Optional: Stop the timer when closing
-        public void stopAutoRefresh() {
-            if (autoRefreshTimeline != null) {
-                autoRefreshTimeline.stop();
-            }
+    // Optional: Stop the timer when closing
+    public void stopAutoRefresh() {
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
         }
+        StaminaService.getServices().removeStaminaChangeListener(this);
+    }
     
     /**
      * Calculates tracks (lanes) for overlapping tasks.
@@ -628,11 +849,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
             .filter(t -> t.isExecuting() || t.getNextExecution() != null)
             .filter(t -> {
                 LocalDateTime displayTime = resolveDisplayTime(t, now);
-                if (displayTime == null) {
-                    return false;
-                }
-                long minutesFromNow = ChronoUnit.MINUTES.between(now, displayTime);
-                return viewMode.isWithinWindow(minutesFromNow);
+                return isWithinViewWindow(displayTime, now);
             })
             .sorted(Comparator.comparing(t -> {
                 LocalDateTime displayTime = resolveDisplayTime(t, now);
@@ -769,20 +986,36 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
         // If no tasks present, show minimal height (32px)
         // Otherwise calculate height based on number of tracks
         int trackCount = tracks.isEmpty() ? 0 : tracks.size();
-        int rowHeight = trackCount == 0 ? 32 : (24 * trackCount + 8); // 24px per track + 8px padding
+    int calculatedHeight = trackCount == 0 ? 48 : (24 * trackCount + 12);
+    int rowHeight = Math.max(48, calculatedHeight); // Maintain minimum height so labels never get clipped
         
         // HBox for Account row with fixed height
         HBox accountRow = new HBox(8);
-        accountRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+    accountRow.setAlignment(javafx.geometry.Pos.TOP_LEFT);
         accountRow.setPrefHeight(rowHeight);
         accountRow.setMinHeight(rowHeight);
         accountRow.setMaxHeight(rowHeight);
         accountRow.setStyle("-fx-padding: 0; -fx-spacing: 8;"); // No padding, only spacing between elements
 
-        Label lblAccount = new Label(profile.getName());
-        lblAccount.setStyle("-fx-text-fill: #ffffff; -fx-pref-width: 120; -fx-font-size: 12; -fx-font-weight: bold;");
-        lblAccount.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        accountRow.getChildren().add(lblAccount);
+    Label lblAccount = new Label(profile.getName());
+    lblAccount.setStyle("-fx-text-fill: #ffffff; -fx-font-size: 12; -fx-font-weight: bold;");
+    lblAccount.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+    int currentStamina = StaminaService.getServices().getCurrentStamina(profile.getId());
+    Label staminaLabel = new Label(formatStaminaValue(currentStamina));
+    staminaLabel.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 10;");
+    staminaLabel.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+    VBox accountInfo = new VBox(0);
+    accountInfo.setAlignment(javafx.geometry.Pos.TOP_LEFT);
+    accountInfo.setPrefWidth(ACCOUNT_LABEL_WIDTH);
+    accountInfo.setMinWidth(ACCOUNT_LABEL_WIDTH);
+    accountInfo.setMaxWidth(ACCOUNT_LABEL_WIDTH);
+    accountInfo.getChildren().addAll(lblAccount, staminaLabel);
+    accountInfo.setSpacing(0);
+
+    profileStaminaLabels.put(profile.getId(), staminaLabel);
+    accountRow.getChildren().add(accountInfo);
         
         // Add spacer to align with time axis header (Local/UTC label column)
         javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
@@ -830,8 +1063,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
                 String taskAbbreviation = getTaskAbbreviation(task.getTaskName());
                 double textWidth = taskAbbreviation.length() * 9 + 12;
 
-                long minutesFromNow = ChronoUnit.MINUTES.between(now, displayTime);
-                if (!viewMode.isWithinWindow(minutesFromNow)) {
+                if (!isWithinViewWindow(displayTime, now)) {
                     continue;
                 }
 
@@ -839,7 +1071,8 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
                 if (alignedTime == null) {
                     continue;
                 }
-                double barWidth = Math.max(textWidth, viewMode.getMinBarWidthMinutes() * metrics.pixelsPerMinute());
+                double minWidth = Math.max(0d, metrics.widthBetween(alignedTime, viewMode.getMinBarWidthMinutes()));
+                double barWidth = Math.max(textWidth, Math.max(12, minWidth));
                 double xPosition = metrics.toX(alignedTime);
                 double maxX = timelinePaneWidth - barWidth;
                 if (maxX < 0) {
@@ -943,6 +1176,36 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener {
 
         accountRow.getChildren().add(timelinePane);
         vboxAccounts.getChildren().add(accountRow);
+    }
+
+    @Override
+    public void onStaminaChanged(Long profileId, int newStamina) {
+        if (profileId == null) {
+            return;
+        }
+
+        Platform.runLater(() -> {
+            Label staminaLabel = profileStaminaLabels.get(profileId);
+            if (staminaLabel != null) {
+                staminaLabel.setText(formatStaminaValue(newStamina));
+            }
+        });
+    }
+
+    private boolean isWithinViewWindow(LocalDateTime time, LocalDateTime now) {
+        if (time == null) {
+            return false;
+        }
+
+        LocalDateTime viewStart = resolveViewStart(viewMode, now);
+        LocalDateTime viewEnd = resolveViewEnd(viewMode, now);
+        boolean afterStart = !time.isBefore(viewStart);
+        boolean beforeEnd = !time.isAfter(viewEnd);
+        return afterStart && beforeEnd;
+    }
+
+    private String formatStaminaValue(int stamina) {
+        return String.format("Stamina: %d", Math.max(0, stamina));
     }
     
     /**
