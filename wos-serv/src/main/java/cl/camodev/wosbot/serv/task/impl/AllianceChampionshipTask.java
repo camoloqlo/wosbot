@@ -273,13 +273,13 @@ public class AllianceChampionshipTask extends DelayedTask {
         //set new values
 
         tapRandomPoint(new DTOPoint(583,519), new DTOPoint(603,531), 1,200); //infantry
-        emuManager.writeText(EMULATOR_NUMBER,String.valueOf(infantryPercentage));
+        emuManager.writeText(EMULATOR_NUMBER,infantryPercentage+"\r");
 
         tapRandomPoint(new DTOPoint(583,666), new DTOPoint(603,685), 1,200); //lancers
-        emuManager.writeText(EMULATOR_NUMBER,String.valueOf(lancersPercentage));
+        emuManager.writeText(EMULATOR_NUMBER,lancersPercentage+"\r");
 
         tapRandomPoint(new DTOPoint(583,815), new DTOPoint(603,829), 1,200); //marksmans
-        emuManager.writeText(EMULATOR_NUMBER,String.valueOf(marksmansPercentage));
+        emuManager.writeText(EMULATOR_NUMBER,marksmansPercentage+"\r");
 
         //confirm troops %
         tapRandomPoint(new DTOPoint(304,965), new DTOPoint(423,996), 1,500); //confirm button
@@ -321,13 +321,13 @@ public class AllianceChampionshipTask extends DelayedTask {
         //set new values
 
         tapRandomPoint(new DTOPoint(583,519), new DTOPoint(603,531), 1,200); //infantry
-        emuManager.writeText(EMULATOR_NUMBER,String.valueOf(infantryPercentage));
+        emuManager.writeText(EMULATOR_NUMBER,infantryPercentage+"\r");
 
         tapRandomPoint(new DTOPoint(583,666), new DTOPoint(603,685), 1,200); //lancers
-        emuManager.writeText(EMULATOR_NUMBER,String.valueOf(lancersPercentage));
+        emuManager.writeText(EMULATOR_NUMBER,lancersPercentage+"\r");
 
         tapRandomPoint(new DTOPoint(583,815), new DTOPoint(603,829), 1,200); //marksmans
-        emuManager.writeText(EMULATOR_NUMBER,String.valueOf(marksmansPercentage));
+        emuManager.writeText(EMULATOR_NUMBER,marksmansPercentage+"\r");
 
         //confirm troops %
         tapRandomPoint(new DTOPoint(304,965), new DTOPoint(423,996), 1,500); //confirm button
