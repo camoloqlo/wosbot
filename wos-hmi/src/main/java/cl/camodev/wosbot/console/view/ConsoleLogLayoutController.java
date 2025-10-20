@@ -6,14 +6,18 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 import cl.camodev.wosbot.console.controller.ConsoleLogActionController;
+import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
 import cl.camodev.wosbot.console.model.LogMessageAux;
 import cl.camodev.wosbot.ot.DTOLogMessage;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.IProfileDataChangeListener;
+import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.impl.ServProfiles;
+import cl.camodev.wosbot.serv.impl.ServScheduler;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -72,6 +76,16 @@ public class ConsoleLogLayoutController implements IProfileDataChangeListener {
 		new ConsoleLogActionController(this);
 		logMessages = FXCollections.observableArrayList();
 		filteredLogMessages = new FilteredList<>(logMessages);
+
+        checkboxDebug.setSelected(Optional
+                .ofNullable(ServConfig.getServices().getGlobalConfig())
+                .map(cfg -> cfg.get(EnumConfigurationKey.BOOL_DEBUG.name()))
+                .map(Boolean::parseBoolean)
+                .orElse(Boolean.parseBoolean(EnumConfigurationKey.BOOL_DEBUG.getDefaultValue())));
+
+        checkboxDebug.setOnAction(e -> {
+            ServScheduler.getServices().saveEmulatorPath(EnumConfigurationKey.BOOL_DEBUG.name(), String.valueOf(checkboxDebug.isSelected()));
+        });
 		
 		columnTimeStamp.setCellValueFactory(cellData -> cellData.getValue().timeStampProperty());
 		columnMessage.setCellValueFactory(cellData -> cellData.getValue().messageProperty());
