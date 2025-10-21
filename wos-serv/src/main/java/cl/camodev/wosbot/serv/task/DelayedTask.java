@@ -309,13 +309,14 @@ public abstract class DelayedTask implements Runnable, Delayed {
         DTOTesseractSettings settings = DTOTesseractSettings.builder()
                 .setAllowedChars("0123456789/")
                 .setRemoveBackground(true)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setTextColor(new Color(255, 255, 255)) // White text
                 //.setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 // .setReuseLastImage(true)
                 .build();
 
         Integer stamina = integerHelper.execute(
-                new DTOPoint(324, 255), new DTOPoint(477, 283), 5, 200L,
+                new DTOPoint(324, 255), new DTOPoint(477, 289), 5, 200L,
                 settings,
                 NumberValidators::isFractionFormat,
                 NumberConverters::fractionToFirstInt);
