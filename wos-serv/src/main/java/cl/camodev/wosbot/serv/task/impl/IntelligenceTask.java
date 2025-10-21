@@ -139,6 +139,9 @@ public class IntelligenceTask extends DelayedTask {
 
 			// Handle rescheduling
 			handleRescheduling(anyIntelProcessed, nonBeastIntelProcessed, marchesAvailable);
+
+			// Return to home screen for next run
+			tapBackButton();
 		}
 
 		logInfo("Intel Task finished.");
