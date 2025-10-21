@@ -73,10 +73,6 @@ public class IntelligenceTask extends DelayedTask {
 		boolean anyIntelProcessed = false;
 		boolean nonBeastIntelProcessed = false;
 
-		// Check march availability once
-		MarchesAvailable marchesAvailable = checkMarchAvailability();
-		marchQueueLimitReached = !marchesAvailable.available();
-
 		autoJoinTask = ServTaskManager.getInstance().getTaskState(profile.getId(),
 				TpDailyTaskEnum.ALLIANCE_AUTOJOIN.getId());
 		isAutoJoinTaskEnabled = (autoJoinTask != null) ? true : false;
@@ -96,6 +92,11 @@ public class IntelligenceTask extends DelayedTask {
 		}
 
 		while(processingTask) {
+
+			// Check march availability once
+			MarchesAvailable marchesAvailable = checkMarchAvailability();
+			marchQueueLimitReached = !marchesAvailable.available();
+			
 			// Claim completed missions
 			claimCompletedMissions();
 			
