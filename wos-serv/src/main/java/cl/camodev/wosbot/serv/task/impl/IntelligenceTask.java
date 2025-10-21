@@ -18,6 +18,7 @@ import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTaskState;
+import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
@@ -522,12 +523,18 @@ public class IntelligenceTask extends DelayedTask {
 		// Open active marches panel
 		openLeftMenuCitySection(false);
 
+		DTOTesseractSettings settings = DTOTesseractSettings.builder()
+		.setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+		.setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+		.build();
+
 		// Try OCR to find idle marches
 		try {
 			for (int i = 0; i < 5; i++) {
 				String ocrSearchResult = emuManager.ocrRegionText(EMULATOR_NUMBER,
 						new DTOPoint(10, 342),
-						new DTOPoint(435, 772));
+						new DTOPoint(435, 772), 
+						settings);
 				Pattern idleMarchesPattern = Pattern.compile("idle");
 				Matcher m = idleMarchesPattern.matcher(ocrSearchResult.toLowerCase());
 				if (m.find()) {
