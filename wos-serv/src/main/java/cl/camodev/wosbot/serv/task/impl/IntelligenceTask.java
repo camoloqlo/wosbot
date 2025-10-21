@@ -92,6 +92,9 @@ public class IntelligenceTask extends DelayedTask {
 		}
 
 		while(processingTask) {
+			beastMarchSent = false;
+			anyIntelProcessed = false;
+			nonBeastIntelProcessed = false;
 
 			// Check march availability once
 			MarchesAvailable marchesAvailable = checkMarchAvailability();
