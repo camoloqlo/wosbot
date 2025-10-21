@@ -287,6 +287,7 @@ public enum EnumTemplates {
 	LIFE_ESSENCE_DAILY_CARING_BUTTON("/templates/island/dailyCaringButton.png"),
 	ISLAND_WEEKLY_FREE_SCROLL("/templates/island/weeklyFreeScroll.png"),
 	ISLAND_WEEKLY_FREE_SCROLL_BUY_BUTTON("/templates/island/weeklyFreeScrollBuyButton.png"),
+    ISLAND_LIKE_BUTTON("/templates/island/likeButton.png"),
 	
     // ========================================================================
     // MERCHANTS AND SHOPS
