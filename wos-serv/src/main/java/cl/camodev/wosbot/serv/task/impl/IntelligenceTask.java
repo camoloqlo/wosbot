@@ -96,6 +96,9 @@ public class IntelligenceTask extends DelayedTask {
 			anyIntelProcessed = false;
 			nonBeastIntelProcessed = false;
 
+			// Return to world screen for march checks
+			ensureCorrectScreenLocation(EnumStartLocation.WORLD);
+
 			// Check march availability once
 			MarchesAvailable marchesAvailable = checkMarchAvailability();
 			marchQueueLimitReached = !marchesAvailable.available();
@@ -142,9 +145,6 @@ public class IntelligenceTask extends DelayedTask {
 
 			// Handle rescheduling
 			handleRescheduling(anyIntelProcessed, nonBeastIntelProcessed, marchesAvailable);
-
-			// Return to home screen for next run
-			tapBackButton();
 		}
 
 		logInfo("Intel Task finished.");
