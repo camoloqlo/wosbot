@@ -43,6 +43,9 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     @FXML
     private ToggleButton toggleViewButton;
 
+    @FXML
+    private ToggleButton toggleInactiveTasksButton;
+
     private TaskManagerActionController taskManagerActionController;
     private javafx.animation.Timeline autoRefreshTimeline;
     private String taskFilter = "";
@@ -263,6 +266,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     private double availableWidth = 720; // Default
     private static final double ACCOUNT_LABEL_WIDTH = 128;
     private static final double TIME_AXIS_LABEL_WIDTH = 60; // Width of "Local/UTC" label column
+    private boolean showInactiveTasks = false;
 
     public void initialize() {
         taskManagerActionController = new TaskManagerActionController(null);
@@ -280,6 +284,11 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         // Initialize toggle button
         if (toggleViewButton != null) {
             toggleViewButton.setText(viewMode.getLabel());
+        }
+
+        if (toggleInactiveTasksButton != null) {
+            toggleInactiveTasksButton.setSelected(true);
+            toggleInactiveTasksButton.setText("Show inactive");
         }
         
         // Listener for window size changes
@@ -374,6 +383,21 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         }
         buildTimeAxis();
         loadAccounts();
+    }
+
+    @FXML
+    private void toggleInactiveTasks() {
+        boolean hideInactive = toggleInactiveTasksButton != null && toggleInactiveTasksButton.isSelected();
+        showInactiveTasks = !hideInactive;
+        if (toggleInactiveTasksButton != null) {
+            toggleInactiveTasksButton.setText(hideInactive ? "Show inactive" : "Hide inactive");
+        }
+
+        if (!lastLoadedProfiles.isEmpty()) {
+            rebuildUI(new ArrayList<>(lastLoadedProfiles));
+        } else {
+            loadAccounts();
+        }
     }
 
     private void buildTimeAxis() {
@@ -818,6 +842,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             if (tasks != null) {
                 List<TaskManagerAux> visibleTasks = tasks.stream()
                     .filter(this::matchesTaskFilter)
+                    .filter(task -> showInactiveTasks || !isInactiveTask(task))
                     .collect(Collectors.toList());
 
                 if (!taskFilter.isEmpty() && visibleTasks.isEmpty()) {
@@ -844,20 +869,18 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     private List<List<TaskManagerAux>> calculateTracks(List<TaskManagerAux> tasks, LocalDateTime now) {
         List<List<TaskManagerAux>> tracks = new ArrayList<>();
         
-        // Filter tasks by visible time window and sort by start time
-        List<TaskManagerAux> sortedTasks = tasks.stream()
-            .filter(t -> t.isExecuting() || t.getNextExecution() != null)
-            .filter(t -> {
-                LocalDateTime displayTime = resolveDisplayTime(t, now);
-                return isWithinViewWindow(displayTime, now);
-            })
-            .sorted(Comparator.comparing(t -> {
-                LocalDateTime displayTime = resolveDisplayTime(t, now);
-                return displayTime != null ? displayTime : now;
-            }))
-            .collect(Collectors.toList());
-        
-        for (TaskManagerAux task : sortedTasks) {
+    // Filter tasks by visible time window and sort by start time
+    List<TaskManagerAux> sortedTasks = tasks.stream()
+        .filter(this::shouldDisplayInTimeline)
+        .filter(t -> {
+            LocalDateTime displayTime = resolveDisplayTime(t, now);
+            return isWithinViewWindow(displayTime, now);
+        })
+        .sorted(Comparator.comparing(t -> {
+            LocalDateTime displayTime = resolveDisplayTime(t, now);
+            return displayTime != null ? displayTime : now;
+        }))
+        .collect(Collectors.toList());        for (TaskManagerAux task : sortedTasks) {
             LocalDateTime taskStart = resolveDisplayTime(task, now);
             if (taskStart == null) {
                 continue;
@@ -964,7 +987,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 // Create new only if no existing object available
                 return new TaskManagerAux(task.getName(), s.getLastExecution(), s.getNextSchedule(), task, profile.getId(), diffInSeconds, ready, scheduled, isExecuting);
             })
-            .filter(task -> (task.getNextExecution() != null && task.isScheduled()) || task.isExecuting()) // Show scheduled tasks OR currently running tasks
+            .filter(this::shouldDisplayInTimeline)
             .collect(Collectors.toList());
 
             // Store tasks for this profile
@@ -1046,6 +1069,9 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             for (TaskManagerAux task : trackTasks) {
                 LocalDateTime scheduledTime = task.getNextExecution();
                 boolean isCurrentlyExecuting = task.isExecuting();
+                boolean isScheduled = task.isScheduled();
+                boolean isReady = task.hasReadyTask();
+                boolean inactive = isInactiveTask(task);
                 
                 // Determine the timestamp used for positioning within the timeline.
                 LocalDateTime displayTime;
@@ -1102,11 +1128,16 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                     strokeColor = "#fff200";
                     strokeWidth = 2.5;
                     status = "RUNNING";
-                } else if (task.hasReadyTask()) {
+                } else if (isScheduled && isReady) {
                     fillColor = "#4CAF50";
                     strokeColor = "#2e7d32";
                     strokeWidth = 1.5;
                     status = "READY";
+                } else if (inactive) {
+                    fillColor = "#616161";
+                    strokeColor = "#8a8a8a";
+                    strokeWidth = 1;
+                    status = isReady ? "INACTIVE (READY)" : "INACTIVE";
                 } else {
                     fillColor = "#47d9ff";
                     strokeColor = "#0288d1";
@@ -1128,12 +1159,16 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                     ? scheduledTime
                     : (task.getLastExecution() != null ? task.getLastExecution() : displayTime);
                 String timeLabel = isCurrentlyExecuting ? "Running since" : "Time";
-                String tooltipText = String.format("%s\n%s: %02d:%02d\nStatus: %s\n\n[Click to Execute]", 
-                    task.getTaskName(), 
+                String timeDisplay = tooltipTime != null
+                    ? String.format("%02d:%02d", tooltipTime.getHour(), tooltipTime.getMinute())
+                    : "N/A";
+                String actionHint = !isCurrentlyExecuting ? "\n\n[Click to Execute]" : "";
+                String tooltipText = String.format("%s\n%s: %s\nStatus: %s%s",
+                    task.getTaskName(),
                     timeLabel,
-                    tooltipTime.getHour(), 
-                    tooltipTime.getMinute(),
-                    status);
+                    timeDisplay,
+                    status,
+                    actionHint);
                 javafx.scene.control.Tooltip tooltip = new javafx.scene.control.Tooltip(tooltipText);
                 // Configure tooltip to show faster and stay visible
                 tooltip.setShowDelay(javafx.util.Duration.millis(200)); // Show after 200ms
@@ -1211,6 +1246,27 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     /**
      * Creates abbreviations for task names to display them on narrow bars
      */
+    private boolean shouldDisplayInTimeline(TaskManagerAux task) {
+        if (task == null) {
+            return false;
+        }
+        return task.isExecuting()
+            || task.hasReadyTask()
+            || task.isScheduled()
+            || task.getNextExecution() != null
+            || task.getLastExecution() != null;
+    }
+
+    private boolean isInactiveTask(TaskManagerAux task) {
+        if (task == null) {
+            return true;
+        }
+        if (task.isExecuting()) {
+            return false;
+        }
+        return !task.isScheduled();
+    }
+
     private String getTaskAbbreviation(String taskName) {
         // Mapping for specific task names to abbreviations
         return switch (taskName) {

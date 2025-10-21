@@ -30,6 +30,10 @@
                         <Rectangle width="16" height="16" style="-fx-fill: #47d9ff; -fx-arc-width: 3; -fx-arc-height: 3;" />
                         <Label text="Scheduled" style="-fx-text-fill: #cccccc; -fx-font-size: 11;" />
                     </HBox>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <Rectangle width="16" height="16" style="-fx-fill: #616161; -fx-stroke: #8a8a8a; -fx-stroke-width: 1; -fx-arc-width: 3; -fx-arc-height: 3;" />
+                        <Label text="Inactive" style="-fx-text-fill: #cccccc; -fx-font-size: 11;" />
+                    </HBox>
                 </children>
             </HBox>
 
@@ -37,6 +41,7 @@
 
             <!-- View Toggle -->
             <HBox spacing="8" alignment="CENTER_RIGHT">
+                <ToggleButton fx:id="toggleInactiveTasksButton" text="Hide inactive" style="-fx-font-size: 11; -fx-background-color: #3a3a3a; -fx-text-fill: #cccccc; -fx-padding: 4 12;" onAction="#toggleInactiveTasks" />
                 <Label text="View:" style="-fx-text-fill: #cccccc; -fx-font-size: 11;" />
                 <ToggleButton fx:id="toggleViewButton" text="2 Hours" style="-fx-font-size: 11; -fx-background-color: #3a3a3a; -fx-text-fill: #ffb347; -fx-padding: 4 12;" onAction="#toggleTimeView" />
             </HBox>
