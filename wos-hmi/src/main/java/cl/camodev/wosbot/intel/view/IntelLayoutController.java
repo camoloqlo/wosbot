@@ -31,6 +31,9 @@ public class IntelLayoutController extends AbstractProfileController {
     private CheckBox checkBoxSmartIntel;
 
 	@FXML
+	private CheckBox checkBoxRecallGatherTroops;
+
+	@FXML
 	private CheckBox checkBoxUseFlag;
 
 	@FXML
@@ -53,6 +56,21 @@ public class IntelLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxFireCrystalEra, EnumConfigurationKey.INTEL_FC_ERA_BOOL);
 		checkBoxMappings.put(checkBoxUseFlag, EnumConfigurationKey.INTEL_USE_FLAG_BOOL);
         checkBoxMappings.put(checkBoxSmartIntel, EnumConfigurationKey.INTEL_SMART_PROCESSING_BOOL);
+		checkBoxMappings.put(checkBoxRecallGatherTroops, EnumConfigurationKey.INTEL_RECALL_GATHER_TROOPS_BOOL);
+		
+		// Make Smart Intel Processing and Recall Gather Troops mutually exclusive
+		checkBoxSmartIntel.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+			if (isSelected && checkBoxRecallGatherTroops.isSelected()) {
+				checkBoxRecallGatherTroops.setSelected(false);
+			}
+		});
+		
+		checkBoxRecallGatherTroops.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+			if (isSelected && checkBoxSmartIntel.isSelected()) {
+				checkBoxSmartIntel.setSelected(false);
+			}
+		});
+		
 		initializeChangeEvents();
 
 	}
