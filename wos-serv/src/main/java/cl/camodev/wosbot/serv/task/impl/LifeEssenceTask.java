@@ -82,11 +82,28 @@ public class LifeEssenceTask extends DelayedTask {
 			buyWeeklyFreeScroll();
 		}
 
+        likeIsland();
+
 		// Exit and reschedule
 		exitAndReschedule(claimedCount);
 	}
 
-	/**
+    private void likeIsland() {
+
+        DTOImageSearchResult likeButton =         searchTemplateRegionWithRetries(
+                EnumTemplates.ISLAND_LIKE_BUTTON,
+                new DTOPoint(634, 718),
+                new DTOPoint(700,774),
+                3,
+                100);
+        if (likeButton.isFound()) {
+            logInfo("Liking the island");
+            tapPoint(likeButton.getPoint());
+            sleepTask(500); // Wait for like action
+        }
+    }
+
+    /**
 	 * Load configuration from profile after refresh
 	 */
 	private void loadConfiguration() {
