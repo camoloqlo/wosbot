@@ -53,20 +53,16 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     private final Map<Long, Label> profileStaminaLabels = new HashMap<>();
 
     private enum ViewMode {
-        TWO_HOURS("2 Hours", -30, 90, 120, 5),
-        TWENTY_FOUR_HOURS("24 Hours", -60, 1440, 1500, 5),
-        WEEK("Week", 0, 10080, 11520, 60);
+        TWO_HOURS("2 Hours", 120, 5),
+        TWENTY_FOUR_HOURS("24 Hours", 1500, 5),
+        WEEK("Week", 11520, 60);
 
         private final String label;
-        private final int minOffsetMinutes;
-        private final int maxOffsetMinutes;
         private final int windowMinutes;
         private final int minBarDurationMinutes;
 
-        ViewMode(String label, int minOffsetMinutes, int maxOffsetMinutes, int windowMinutes, int minBarDurationMinutes) {
+        ViewMode(String label, int windowMinutes, int minBarDurationMinutes) {
             this.label = label;
-            this.minOffsetMinutes = minOffsetMinutes;
-            this.maxOffsetMinutes = maxOffsetMinutes;
             this.windowMinutes = windowMinutes;
             this.minBarDurationMinutes = minBarDurationMinutes;
         }
@@ -81,10 +77,6 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
 
         double getMinBarWidthMinutes() {
             return minBarDurationMinutes;
-        }
-
-        boolean isWithinWindow(long minutesFromNow) {
-            return minutesFromNow >= minOffsetMinutes && minutesFromNow <= maxOffsetMinutes;
         }
 
         ViewMode next() {
@@ -114,9 +106,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         private final double pureLogDenominator;
 
         // Hybrid log-linear
-        private final LocalDateTime pivotTime;
         private final double hybridLeftSpanMinutes;
-        private final double hybridRightSpanMinutes;
         private final double hybridPivotX;
         private final double hybridLeftLogDenominator;
         private final double hybridRightPixelsPerMinute;
@@ -129,9 +119,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             double windowMinutes,
             double linearPixelsPerMinute,
             double pureLogDenominator,
-            LocalDateTime pivotTime,
             double hybridLeftSpanMinutes,
-            double hybridRightSpanMinutes,
             double hybridPivotX,
             double hybridLeftLogDenominator,
             double hybridRightPixelsPerMinute
@@ -143,9 +131,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             this.windowMinutes = windowMinutes;
             this.linearPixelsPerMinute = linearPixelsPerMinute;
             this.pureLogDenominator = pureLogDenominator;
-            this.pivotTime = pivotTime;
             this.hybridLeftSpanMinutes = hybridLeftSpanMinutes;
-            this.hybridRightSpanMinutes = hybridRightSpanMinutes;
             this.hybridPivotX = hybridPivotX;
             this.hybridLeftLogDenominator = hybridLeftLogDenominator;
             this.hybridRightPixelsPerMinute = hybridRightPixelsPerMinute;
@@ -163,31 +149,10 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 effectiveMinutes,
                 pixelsPerMinute,
                 0d,
-                null,
-                0d,
                 0d,
                 0d,
                 0d,
                 pixelsPerMinute
-            );
-        }
-
-        static TimelineMetrics logarithmic(LocalDateTime viewStart, LocalDateTime viewEnd, double width) {
-            double effectiveMinutes = Math.max(1d, ChronoUnit.SECONDS.between(viewStart, viewEnd) / 60d);
-            return new TimelineMetrics(
-                ScaleType.PURE_LOG,
-                viewStart,
-                viewEnd,
-                width,
-                effectiveMinutes,
-                width / effectiveMinutes,
-                Math.log1p(effectiveMinutes),
-                null,
-                0d,
-                0d,
-                0d,
-                0d,
-                0d
             );
         }
 
@@ -207,9 +172,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 totalMinutes,
                 rightPixelsPerMinute,
                 0d,
-                pivotTime,
                 leftSpan,
-                rightSpan,
                 pivotX,
                 leftLogDenominator,
                 rightPixelsPerMinute
