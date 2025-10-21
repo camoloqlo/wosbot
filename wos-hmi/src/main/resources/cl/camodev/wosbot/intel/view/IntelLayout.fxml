@@ -43,7 +43,8 @@
                                                 <CheckBox fx:id="checkBoxSurvivors" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Survivors" GridPane.columnIndex="0" GridPane.rowIndex="2" />
                                                 <CheckBox fx:id="checkBoxJourney" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Journey" GridPane.columnIndex="1" GridPane.rowIndex="2" />
 
-                                                <CheckBox fx:id="checkBoxSmartIntel" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Use Smart Intel Processing" GridPane.columnIndex="0" GridPane.rowIndex="3" GridPane.columnSpan="2" />
+                                                <CheckBox fx:id="checkBoxSmartIntel" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Use Smart Intel Processing" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                                                <CheckBox fx:id="checkBoxRecallGatherTroops" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Recall Gather Troops" GridPane.columnIndex="1" GridPane.rowIndex="3" />
                                             </children>
                                         </GridPane>
 
