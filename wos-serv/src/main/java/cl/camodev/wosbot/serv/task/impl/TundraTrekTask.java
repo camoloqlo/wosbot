@@ -76,7 +76,7 @@ public class TundraTrekTask extends DelayedTask {
                 sleepTask(1000);
 
                 // Open supplies claim screen
-                tapRandomPoint(new DTOPoint(344, 29), new DTOPoint(413, 49));
+                tapRandomPoint(new DTOPoint(500, 29), new DTOPoint(590, 49));
                 sleepTask(2000);
                 return true;
             } else {
