@@ -148,14 +148,6 @@ public class ArenaTask extends DelayedTask {
         loadConfiguration();
         resetExecutionState();
 
-        // Check if task is enabled
-        Boolean isTaskEnabled = profile.getConfig(EnumConfigurationKey.ARENA_TASK_BOOL, Boolean.class);
-        if (isTaskEnabled == null || !isTaskEnabled) {
-            logInfo("Arena task is disabled in configuration.");
-            this.setRecurring(false);
-            return;
-        }
-
         // Validate activation time format
         if (!isValidTimeFormat(activationTime)) {
             logWarning("Invalid activation time format: " + activationTime +
