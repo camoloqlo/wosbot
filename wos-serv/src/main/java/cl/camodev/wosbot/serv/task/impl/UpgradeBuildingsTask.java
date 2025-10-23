@@ -1,6 +1,5 @@
 package cl.camodev.wosbot.serv.task.impl;
 
-
 import cl.camodev.utiles.time.TimeConverters;
 import cl.camodev.utiles.time.TimeValidators;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -9,8 +8,6 @@ import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import org.jetbrains.annotations.NotNull;
 
-
-import java.awt.Color;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -30,14 +27,11 @@ import static cl.camodev.wosbot.console.enumerable.EnumTemplates.GAME_HOME_SHORT
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.GAME_HOME_SHORTCUTS_HELP_REQUEST1;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.GAME_HOME_SHORTCUTS_OBTAIN;
 
-
 public class UpgradeBuildingsTask extends DelayedTask {
-
-
 
     // Upgrade queue areas
     private static final DTOArea QUEUE_AREA_1 = new DTOArea(new DTOPoint(95, 377), new DTOPoint(358, 398));
-    private static final DTOArea QUEUE_AREA_2 = new DTOArea(new DTOPoint(95,450), new DTOPoint(358, 474));
+    private static final DTOArea QUEUE_AREA_2 = new DTOArea(new DTOPoint(95, 450), new DTOPoint(358, 474));
 
     // List of queue areas to check
     private final List<DTOArea> queues = new ArrayList<>(Arrays.asList(QUEUE_AREA_1, QUEUE_AREA_2));
@@ -45,7 +39,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
     /**
      * Constructor for UpgradeFurnaceTask
      *
-     * @param profile The profile configuration
+     * @param profile         The profile configuration
      * @param tpDailyTaskEnum The daily task type
      */
     public UpgradeBuildingsTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTaskEnum) {
@@ -105,7 +99,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
             logInfo("=== Updated Queue Analysis After Processing ===");
             logQueueSummary(updatedResults);
 
-            // If troop training times were found, add them to the results for scheduling consideration
+            // If troop training times were found, add them to the results for scheduling
+            // consideration
             if (!troopTrainingTimes.isEmpty()) {
                 logInfo("Adding troop training times to scheduling calculation:");
                 for (LocalDateTime trainingTime : troopTrainingTimes) {
@@ -143,7 +138,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
      */
     private void navigateToCityView() {
         emuManager.tapAtRandomPoint(EMULATOR_NUMBER, LEFT_MENU.topLeft(), LEFT_MENU.bottomRight(), 1, 1000);
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, LEFT_MENU_CITY_TAB.topLeft(), LEFT_MENU_CITY_TAB.bottomRight(), 1, 1000);
+        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, LEFT_MENU_CITY_TAB.topLeft(), LEFT_MENU_CITY_TAB.bottomRight(), 1,
+                1000);
     }
 
     /**
@@ -166,7 +162,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
                 UpgradeBuildingsTask.QueueState state = analyzeQueueState(queueArea);
 
                 // Store result
-                UpgradeBuildingsTask.QueueAnalysisResult result = new UpgradeBuildingsTask.QueueAnalysisResult(queueIndex, queueArea, state);
+                UpgradeBuildingsTask.QueueAnalysisResult result = new UpgradeBuildingsTask.QueueAnalysisResult(
+                        queueIndex, queueArea, state);
                 results.add(result);
 
                 // Log queue state
@@ -177,11 +174,12 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
             // Check if any queue has UNKNOWN status and retry those
             List<UpgradeBuildingsTask.QueueAnalysisResult> unknownResults = results.stream()
-                .filter(result -> result.state.status == UpgradeBuildingsTask.QueueStatus.UNKNOWN)
-                .collect(Collectors.toList());
+                    .filter(result -> result.state.status == UpgradeBuildingsTask.QueueStatus.UNKNOWN)
+                    .collect(Collectors.toList());
 
             if (!unknownResults.isEmpty()) {
-                logInfo("Found " + unknownResults.size() + " queue(s) with UNKNOWN status. Retrying with a new screenshot.");
+                logInfo("Found " + unknownResults.size()
+                        + " queue(s) with UNKNOWN status. Retrying with a new screenshot.");
 
                 // Capture a new screenshot
                 emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
@@ -198,7 +196,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
                         // Create new result with updated state
                         UpgradeBuildingsTask.QueueAnalysisResult newResult = new UpgradeBuildingsTask.QueueAnalysisResult(
-                            originalResult.queueNumber, originalResult.queueArea, newState);
+                                originalResult.queueNumber, originalResult.queueArea, newState);
 
                         // Add to new results list
                         updatedResults.add(newResult);
@@ -226,7 +224,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
      * Logs the state of a queue
      *
      * @param queueIndex The queue number
-     * @param state The queue state
+     * @param state      The queue state
      */
     private void logQueueState(int queueIndex, UpgradeBuildingsTask.QueueState state) {
         switch (state.status) {
@@ -264,7 +262,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
      * Processes a queue by tapping on it and handling the upgrade dialog
      *
      * @param queueResult The queue to process
-     * @return LocalDateTime with training completion time if it's a troop building, null otherwise
+     * @return LocalDateTime with training completion time if it's a troop building,
+     *         null otherwise
      */
     private LocalDateTime processQueue(UpgradeBuildingsTask.QueueAnalysisResult queueResult) {
         // Navigate to city view to ensure we're in the right screen
@@ -275,8 +274,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
         emuManager.tapAtRandomPoint(
                 EMULATOR_NUMBER,
                 queueResult.queueArea.topLeft(),
-                queueResult.queueArea.bottomRight()
-        );
+                queueResult.queueArea.bottomRight());
         sleepTask(500);
 
         // Check for survivor building or city building
@@ -305,7 +303,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
     /**
      * Processes a troop training building
      *
-     * @return LocalDateTime with expected completion time if detected, null otherwise
+     * @return LocalDateTime with expected completion time if detected, null
+     *         otherwise
      */
     private LocalDateTime processTroopBuilding() {
         DTOImageSearchResult train = emuManager.searchTemplate(EMULATOR_NUMBER, BUILDING_BUTTON_TRAIN, 90);
@@ -431,13 +430,11 @@ public class UpgradeBuildingsTask extends DelayedTask {
      */
     private void requestHelp() {
         // Search for help buttons in parallel
-        CompletableFuture<DTOImageSearchResult> helpFuture = CompletableFuture.supplyAsync(() ->
-                searchTemplateWithRetries(GAME_HOME_SHORTCUTS_HELP_REQUEST, 90, 10, 10)
-        );
+        CompletableFuture<DTOImageSearchResult> helpFuture = CompletableFuture
+                .supplyAsync(() -> searchTemplateWithRetries(GAME_HOME_SHORTCUTS_HELP_REQUEST, 90, 10, 10));
 
-        CompletableFuture<DTOImageSearchResult> help1Future = CompletableFuture.supplyAsync(() ->
-                searchTemplateWithRetries(GAME_HOME_SHORTCUTS_HELP_REQUEST1, 90, 10, 10)
-        );
+        CompletableFuture<DTOImageSearchResult> help1Future = CompletableFuture
+                .supplyAsync(() -> searchTemplateWithRetries(GAME_HOME_SHORTCUTS_HELP_REQUEST1, 90, 10, 10));
 
         CompletableFuture.allOf(helpFuture, help1Future).join();
 
@@ -453,7 +450,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
     }
 
     /**
-     * Analyzes the state of a queue using OCR with different text color configurations
+     * Analyzes the state of a queue using OCR with different text color
+     * configurations
      *
      * @param queueArea The area to analyze
      * @return QueueState representing the queue's current status
@@ -473,8 +471,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
                         EMULATOR_NUMBER,
                         queueArea.topLeft(),
                         queueArea.bottomRight(),
-                        settings
-                ).trim();
+                        settings).trim();
 
                 logDebug("OCR result with settings " + settings.getClass().getSimpleName() + ": '" + ocrText + "'");
 
@@ -513,7 +510,6 @@ public class UpgradeBuildingsTask extends DelayedTask {
             return new UpgradeBuildingsTask.QueueState(UpgradeBuildingsTask.QueueStatus.UNKNOWN, null);
         }
     }
-
 
     /**
      * Reschedules the task based on the shortest busy queue time
@@ -566,7 +562,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
     }
 
     @Override
-    protected EnumStartLocation getRequiredStartLocation(){
+    protected EnumStartLocation getRequiredStartLocation() {
         return EnumStartLocation.HOME;
     }
 
@@ -654,11 +650,11 @@ public class UpgradeBuildingsTask extends DelayedTask {
      * Enum representing the possible states of a construction queue
      */
     private enum QueueStatus {
-        IDLE,           // Queue is available
-        BUSY,           // Queue is currently upgrading something
-        NOT_PURCHASED,  // Queue needs to be purchased
-        IDLE_TEMP,      // Queue is available but is temp queue
-        UNKNOWN         // Could not determine state
+        IDLE, // Queue is available
+        BUSY, // Queue is currently upgrading something
+        NOT_PURCHASED, // Queue needs to be purchased
+        IDLE_TEMP, // Queue is available but is temp queue
+        UNKNOWN // Could not determine state
     }
 
     /**
