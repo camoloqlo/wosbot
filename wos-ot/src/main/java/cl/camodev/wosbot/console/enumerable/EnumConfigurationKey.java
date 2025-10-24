@@ -130,9 +130,10 @@ public enum EnumConfigurationKey {
 	LIFE_ESSENCE_BUY_WEEKLY_SCROLL_BOOL("true", Boolean.class),
 	LIFE_ESSENCE_CONSECUTIVE_FAILURES_INT("0", Integer.class),
 	LIFE_ESSENCE_NEXT_SCROLL_TIME_STRING("", String.class),
+	PET_SKILLS_BOOL("false", Boolean.class),
 	PET_SKILL_STAMINA_BOOL("false", Boolean.class),
 	PET_SKILL_FOOD_BOOL("false", Boolean.class),
-	PET_SKILL_TRESURE_BOOL("false", Boolean.class),
+	PET_SKILL_TREASURE_BOOL("false", Boolean.class),
 	PET_SKILL_GATHERING_BOOL("false", Boolean.class),
 	PET_PERSONAL_TREASURE_BOOL("false", Boolean.class),
 	

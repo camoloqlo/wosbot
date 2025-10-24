@@ -1,30 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
-<VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="550.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+<VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="550.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1">
     <children>
-        <ScrollPane fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER" style="-fx-background-color: transparent; -fx-background: transparent;" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308">
+        <ScrollPane fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" style="-fx-background-color: transparent; -fx-background: transparent;" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
             <content>
-                <VBox spacing="14" style="-fx-background-color: #1f1f1f; -fx-background-radius: 8; -fx-padding: 18;" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" VBox.vgrow="ALWAYS">
+                <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" spacing="14" style="-fx-background-color: #1f1f1f; -fx-background-radius: 8; -fx-padding: 18;" VBox.vgrow="ALWAYS">
                     <children>
                         <!-- Pets Section -->
-                        <VBox spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308">
+                        <VBox maxHeight="1.7976931348623157E308" spacing="0" style="-fx-background-color: #242424; -fx-background-radius: 8;" VBox.vgrow="ALWAYS">
                             <children>
                                 <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" style="-fx-background-color: linear-gradient(#4dd0e1, #0097a7); -fx-background-radius: 8 8 0 0; -fx-padding: 8 12;">
                                     <children>
                                         <Label style="-fx-font-weight: bold; -fx-text-fill: #1c1c1c;" text="Pet Management" />
                                     </children>
                                 </HBox>
-                                <VBox spacing="10" style="-fx-padding: 12;" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308">
+                                <VBox maxHeight="1.7976931348623157E308" spacing="10" style="-fx-padding: 12;" VBox.vgrow="ALWAYS">
                                     <children>
                                         <Label style="-fx-font-size: 10px; -fx-text-fill: #b5b5b5;" text="Automates pet-related tasks and skill activation" wrapText="true" />
 
                                         <Separator style="-fx-opacity: 0.3; -fx-padding: 4 0;" />
 
                                         <!-- Main Configuration Area - uses all available space -->
-                                        <VBox spacing="15" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308">
+                                        <VBox maxHeight="1.7976931348623157E308" spacing="15" VBox.vgrow="ALWAYS">
                                             <children>
                                                 <!-- Treasures Section -->
                                                 <VBox spacing="10" style="-fx-background-color: #2a2a2a; -fx-background-radius: 4; -fx-padding: 10;">
@@ -50,7 +58,15 @@
                                                 <!-- Pet Skills Section -->
                                                 <VBox spacing="10" style="-fx-background-color: #2a2a2a; -fx-background-radius: 4; -fx-padding: 10;">
                                                     <children>
-                                                        <Label style="-fx-text-fill: #e5e5e5; -fx-font-weight: bold;" text="Pet Skills" />
+                                          <HBox maxWidth="1.7976931348623157E308">
+                                             <children>
+                                                <CheckBox fx:id="checkBoxPetSkills" mnemonicParsing="false" text="Activate Pet Skills">
+                                                   <font>
+                                                      <Font name="System Bold" size="12.0" />
+                                                   </font>
+                                                </CheckBox>
+                                             </children>
+                                          </HBox>
 
                                                         <GridPane hgap="20" vgap="10">
                                                             <columnConstraints>
