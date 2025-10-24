@@ -700,7 +700,7 @@ public class ArenaTask extends DelayedTask {
         TextRecognitionRetrier<String> textHelper = new TextRecognitionRetrier<>(provider);
 
         DTOTesseractSettings textSettings = DTOTesseractSettings.builder()
-                .setDebug(true)
+                //.setDebug(true)
                 .setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
                 .build();
 
