@@ -1,9 +1,11 @@
 package cl.camodev.wosbot.serv.task.impl;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 import cl.camodev.utiles.UtilTime;
+import cl.camodev.utiles.time.TimeConverters;
+import cl.camodev.utiles.time.TimeValidators;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -101,7 +103,7 @@ public class VipTask extends DelayedTask {
 		logDebug(String.format("Configuration loaded - Buy monthly VIP: %s, Next buy: %s",
 				buyMonthlyVip,
 				(nextMonthlyVipBuyTime != null)
-						? nextMonthlyVipBuyTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss"))
+						? nextMonthlyVipBuyTime.format(DATETIME_FORMATTER)
 						: "not set"));
 	}
 
@@ -171,7 +173,7 @@ public class VipTask extends DelayedTask {
 		// Check if cooldown is active
 		if (nextMonthlyVipBuyTime != null && LocalDateTime.now().isBefore(nextMonthlyVipBuyTime)) {
 			logInfo(String.format("Monthly VIP purchase on cooldown. Next purchase available at: %s (in %s)",
-					nextMonthlyVipBuyTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")),
+					nextMonthlyVipBuyTime.format(DATETIME_FORMATTER),
 					UtilTime.localDateTimeToDDHHMMSS(nextMonthlyVipBuyTime)));
 			return;
 		}
@@ -240,86 +242,33 @@ public class VipTask extends DelayedTask {
 				.setAllowedChars("0123456789d")
 				.build();
 
-		String expirationTimeText = OCRWithRetries(
+		Duration expirationTime = durationHelper.execute(
 				VIP_EXPIRATION_TIME_TOP_LEFT,
 				VIP_EXPIRATION_TIME_BOTTOM_RIGHT,
 				3,
-				timeSettings);
+				200L,
+				timeSettings,
+				TimeValidators::isValidTime,
+				TimeConverters::toDuration);
 
-		if (expirationTimeText == null || expirationTimeText.isEmpty()) {
+		if (expirationTime == null) {
 			logWarning("Failed to read VIP expiration time from screen");
 			return;
 		}
 
-		logDebug("OCR result: '" + expirationTimeText + "'");
+		LocalDateTime calculatedExpirationTime = LocalDateTime.now().plus(expirationTime);
+		logDebug("OCR result: '" + UtilTime.localDateTimeToDDHHMMSS(calculatedExpirationTime) + "'");
 
-		try {
-			LocalDateTime calculatedExpirationTime = parseVipExpirationTime(expirationTimeText);
+		// Store the expiration time in ISO format
+		profile.setConfig(
+				EnumConfigurationKey.VIP_NEXT_MONTHLY_BUY_TIME_STRING,
+				calculatedExpirationTime.toString());
+		setShouldUpdateConfig(true);
 
-			// Store the expiration time in ISO format
-			profile.setConfig(
-					EnumConfigurationKey.VIP_NEXT_MONTHLY_BUY_TIME_STRING,
-					calculatedExpirationTime.toString());
-			setShouldUpdateConfig(true);
+		logInfo(String.format("VIP expiration time stored: %s (expires in %s)",
+				calculatedExpirationTime.format(DATETIME_FORMATTER),
+				UtilTime.localDateTimeToDDHHMMSS(calculatedExpirationTime)));
 
-			logInfo(String.format("VIP expiration time stored: %s (expires in %s)",
-					calculatedExpirationTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")),
-					UtilTime.localDateTimeToDDHHMMSS(calculatedExpirationTime)));
-
-		} catch (Exception e) {
-			logError("Failed to parse VIP expiration time '" + expirationTimeText + "': " + e.getMessage());
-		}
-	}
-
-	/**
-	 * Parses VIP expiration time from OCR text.
-	 * Accepts formats like:
-	 * - "24d 00:33:59"
-	 * - "24d003359"
-	 * - "00:33:59"
-	 * - "003359"
-	 *
-	 * @param timeText the OCR time text
-	 * @return absolute expiration LocalDateTime
-	 * @throws IllegalArgumentException if format is invalid
-	 */
-	private LocalDateTime parseVipExpirationTime(String timeText) {
-		if (timeText == null || timeText.isBlank()) {
-			throw new IllegalArgumentException("Time text is empty or null");
-		}
-
-		String cleaned = timeText.trim().toLowerCase();
-		LocalDateTime now = LocalDateTime.now();
-
-		try {
-			int days = 0;
-			String timePart;
-
-			// Split days if present
-			if (cleaned.contains("d")) {
-				String[] parts = cleaned.split("d", 2);
-				days = Integer.parseInt(parts[0].replaceAll("\\D", "")); // strip stray chars
-				timePart = parts[1].replaceAll("\\D", ""); // only keep digits
-			} else {
-				timePart = cleaned.replaceAll("\\D", ""); // only keep digits
-			}
-
-			if (timePart.length() != 6) {
-				throw new IllegalArgumentException("Expected 6 digits for time, got: " + timePart);
-			}
-
-			int hours = Integer.parseInt(timePart.substring(0, 2));
-			int minutes = Integer.parseInt(timePart.substring(2, 4));
-			int seconds = Integer.parseInt(timePart.substring(4, 6));
-
-			return now.plusDays(days)
-					.plusHours(hours)
-					.plusMinutes(minutes)
-					.plusSeconds(seconds);
-
-		} catch (NumberFormatException e) {
-			throw new IllegalArgumentException("Invalid numeric format in: " + timeText, e);
-		}
 	}
 
 	/**
