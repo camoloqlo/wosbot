@@ -3,7 +3,6 @@ package cl.camodev.wosbot.serv.task.impl;
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
-import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
@@ -58,9 +57,6 @@ public class TundraTrekAutoTask extends DelayedTask {
     // Retry configuration
     private static final int TEMPLATE_SEARCH_RETRIES = 3;
 
-    // Configuration (loaded fresh each execution)
-    private boolean taskEnabled;
-
     public TundraTrekAutoTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
     }
@@ -68,15 +64,6 @@ public class TundraTrekAutoTask extends DelayedTask {
     @Override
     protected void execute() {
         logInfo("=== Starting Tundra Trek Auto Task ===");
-
-        // Load configuration
-        loadConfiguration();
-
-        if (!taskEnabled) {
-            logInfo("Tundra Trek automation is disabled. Task will not run again.");
-            setRecurring(false);
-            return;
-        }
 
         try {
             // Navigate to tundra menu
@@ -103,16 +90,6 @@ public class TundraTrekAutoTask extends DelayedTask {
             logError("Unexpected error during TundraTrekAuto task: " + e.getMessage(), e);
             rescheduleWithDelay(Duration.ofHours(1), "Unexpected error");
         }
-    }
-
-    /**
-     * Load configuration from profile after refresh
-     */
-    private void loadConfiguration() {
-        this.taskEnabled = profile.getConfig(
-                EnumConfigurationKey.TUNDRA_TREK_AUTOMATION_BOOL,
-                Boolean.class);
-        logDebug("Configuration loaded: taskEnabled=" + taskEnabled);
     }
 
     /**

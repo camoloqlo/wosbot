@@ -15,7 +15,7 @@ public class DelayedTaskRegistry {
     static {
         registry.put(TpDailyTaskEnum.HERO_RECRUITMENT, profile -> new HeroRecruitmentTask(profile, TpDailyTaskEnum.HERO_RECRUITMENT));
         registry.put(TpDailyTaskEnum.NOMADIC_MERCHANT, profile -> new NomadicMerchantTask(profile, TpDailyTaskEnum.NOMADIC_MERCHANT));
-        registry.put(TpDailyTaskEnum.WAR_ACADEMY_SHARDS, profile -> new WarAcademyTask(profile, TpDailyTaskEnum.WAR_ACADEMY_SHARDS));
+        registry.put(TpDailyTaskEnum.WAR_ACADEMY_TASK_BOOL, profile -> new WarAcademyTask(profile, TpDailyTaskEnum.WAR_ACADEMY_TASK_BOOL));
         registry.put(TpDailyTaskEnum.CRYSTAL_LABORATORY, profile -> new CrystalLaboratoryTask(profile, TpDailyTaskEnum.CRYSTAL_LABORATORY));
         registry.put(TpDailyTaskEnum.VIP_POINTS, profile -> new VipTask(profile, TpDailyTaskEnum.VIP_POINTS));
         registry.put(TpDailyTaskEnum.PET_ADVENTURE, profile -> new PetAdventureChestTask(profile, TpDailyTaskEnum.PET_ADVENTURE));

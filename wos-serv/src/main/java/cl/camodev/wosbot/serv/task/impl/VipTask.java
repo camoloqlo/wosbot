@@ -42,7 +42,6 @@ public class VipTask extends DelayedTask {
 
 	// ========== Configuration Keys ==========
 	private static final boolean DEFAULT_BUY_MONTHLY_VIP = false;
-	private static final boolean DEFAULT_TASK_ENABLED = true;
 
 	// ========== VIP Menu Coordinates ==========
 	private static final DTOPoint VIP_MENU_BUTTON_TOP_LEFT = new DTOPoint(430, 48);
@@ -69,7 +68,6 @@ public class VipTask extends DelayedTask {
 
 	// ========== Configuration (loaded in loadConfiguration()) ==========
 	private boolean buyMonthlyVip;
-	private boolean taskEnabled;
 	private LocalDateTime nextMonthlyVipBuyTime;
 
 	public VipTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
@@ -84,10 +82,6 @@ public class VipTask extends DelayedTask {
 		Boolean configuredBuyVip = profile.getConfig(
 				EnumConfigurationKey.VIP_MONTHLY_BUY_BOOL, Boolean.class);
 		this.buyMonthlyVip = (configuredBuyVip != null) ? configuredBuyVip : DEFAULT_BUY_MONTHLY_VIP;
-
-		Boolean configuredEnabled = profile.getConfig(
-				EnumConfigurationKey.BOOL_VIP_POINTS, Boolean.class);
-		this.taskEnabled = (configuredEnabled != null) ? configuredEnabled : DEFAULT_TASK_ENABLED;
 
 		// Load next monthly VIP buy time (stored as ISO string)
 		String nextBuyTimeStr = profile.getConfig(
@@ -104,8 +98,8 @@ public class VipTask extends DelayedTask {
 			this.nextMonthlyVipBuyTime = null;
 		}
 
-		logDebug(String.format("Configuration loaded - Task enabled: %s, Buy monthly VIP: %s, Next buy: %s",
-				taskEnabled, buyMonthlyVip,
+		logDebug(String.format("Configuration loaded - Buy monthly VIP: %s, Next buy: %s",
+				buyMonthlyVip,
 				(nextMonthlyVipBuyTime != null)
 						? nextMonthlyVipBuyTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss"))
 						: "not set"));
@@ -114,13 +108,6 @@ public class VipTask extends DelayedTask {
 	@Override
 	protected void execute() {
 		loadConfiguration();
-
-		// Check if task is enabled
-		if (!taskEnabled) {
-			logInfo("VIP task is disabled in configuration.");
-			setRecurring(false);
-			return;
-		}
 
 		logInfo("Starting VIP task.");
 

@@ -27,7 +27,7 @@ public class CityEventsLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxCrystalLabFC, EnumConfigurationKey.BOOL_CRYSTAL_LAB_FC);
 		checkBoxMappings.put(checkBoxDailyDiscountedRFC, EnumConfigurationKey.BOOL_CRYSTAL_LAB_DAILY_DISCOUNTED_RFC);
 		checkBoxMappings.put(checkBoxExplorationChest, EnumConfigurationKey.BOOL_EXPLORATION_CHEST);
-		checkBoxMappings.put(checkBoxWarAcademyShards, EnumConfigurationKey.BOOL_WAR_ACADEMY_SHARDS);
+		checkBoxMappings.put(checkBoxWarAcademyShards, EnumConfigurationKey.WAR_ACADEMY_TASK_BOOL);
 		checkBoxMappings.put(checkBoxMailRewards, EnumConfigurationKey.MAIL_REWARDS_BOOL);
 		checkBoxMappings.put(checkBoxLifeEssence, EnumConfigurationKey.LIFE_ESSENCE_BOOL);
 		checkBoxMappings.put(checkBoxWeeklyScroll, EnumConfigurationKey.LIFE_ESSENCE_BUY_WEEKLY_SCROLL_BOOL);

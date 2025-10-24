@@ -86,7 +86,6 @@ public class TundraTruckEventTask extends DelayedTask {
 	private static final int POPUP_CLOSE_TAPS = 5;
 
 	// Configuration (loaded fresh each execution)
-	private boolean taskEnabled;
 	private boolean useGems;
 	private boolean truckSSR;
 	private String activationTime; // Format: "HH:mm"
@@ -102,13 +101,6 @@ public class TundraTruckEventTask extends DelayedTask {
 
 		// Load configuration
 		loadConfiguration();
-
-		// Check if task is still enabled
-		if (!taskEnabled) {
-			logInfo("Tundra Truck task is disabled. Rescheduling for next reset.");
-			reschedule(UtilTime.getGameReset());
-			return;
-		}
 
 		// Schedule based on activation time if configured
 		if (useActivationTime) {
@@ -155,14 +147,13 @@ public class TundraTruckEventTask extends DelayedTask {
 	 * Load configuration from profile after refresh
 	 */
 	private void loadConfiguration() {
-		this.taskEnabled = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_EVENT_BOOL, Boolean.class);
 		this.useGems = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_USE_GEMS_BOOL, Boolean.class);
 		this.truckSSR = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_SSR_BOOL, Boolean.class);
 		this.activationTime = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_ACTIVATION_TIME_STRING, String.class);
 		this.useActivationTime = profile.getConfig(EnumConfigurationKey.TUNDRA_TRUCK_ACTIVATION_TIME_BOOL,
 				Boolean.class);
 
-		logDebug("Configuration loaded: taskEnabled=" + taskEnabled + ", useGems=" + useGems +
+		logDebug("Configuration loaded: " + "useGems=" + useGems +
 				", truckSSR=" + truckSSR + ", useActivationTime=" + useActivationTime +
 				", activationTime=" + activationTime);
 	}

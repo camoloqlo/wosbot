@@ -56,7 +56,6 @@ public class GatherTask extends DelayedTask {
     private final IDailyTaskRepository dailyTaskRepository = DailyTaskRepository.getRepository();
 
     // ========== Configuration Keys ==========
-    private static final boolean DEFAULT_TASK_ENABLED = true;
     private static final int DEFAULT_ACTIVE_MARCH_QUEUES = 6;
     private static final boolean DEFAULT_REMOVE_HEROES = false;
     private static final int DEFAULT_RESOURCE_LEVEL = 5;
@@ -115,7 +114,6 @@ public class GatherTask extends DelayedTask {
     private static final int HERO_REMOVAL_DELAY = 300;
 
     // ========== Configuration (loaded in loadConfiguration()) ==========
-    private boolean taskEnabled;
     private int activeMarchQueues;
     private boolean removeHeroes;
     private boolean intelSmartProcessing;
@@ -146,10 +144,6 @@ public class GatherTask extends DelayedTask {
      */
     private void loadConfiguration() {
         // Global settings
-        Boolean configuredEnabled = profile.getConfig(
-                EnumConfigurationKey.GATHER_TASK_BOOL, Boolean.class);
-        this.taskEnabled = (configuredEnabled != null) ? configuredEnabled : DEFAULT_TASK_ENABLED;
-
         Integer configuredQueues = profile.getConfig(
                 EnumConfigurationKey.GATHER_ACTIVE_MARCH_QUEUE_INT, Integer.class);
         this.activeMarchQueues = (configuredQueues != null) ? configuredQueues : DEFAULT_ACTIVE_MARCH_QUEUES;
@@ -213,7 +207,7 @@ public class GatherTask extends DelayedTask {
         this.ironLevel = (configuredIronLevel != null) ? configuredIronLevel : DEFAULT_RESOURCE_LEVEL;
 
         logDebug(String.format("Configuration loaded - Enabled: %s, Active queues: %d, Remove heroes: %s",
-                taskEnabled, activeMarchQueues, removeHeroes));
+                activeMarchQueues, removeHeroes));
         logDebug(String.format("Resources - Meat: %s (Lv%d), Wood: %s (Lv%d), Coal: %s (Lv%d), Iron: %s (Lv%d)",
                 meatEnabled, meatLevel, woodEnabled, woodLevel, coalEnabled, coalLevel, ironEnabled, ironLevel));
     }
@@ -242,12 +236,6 @@ public class GatherTask extends DelayedTask {
     protected void execute() {
         loadConfiguration();
         resetExecutionState();
-
-        if (!taskEnabled) {
-            logInfo("Gather task is disabled in configuration.");
-            setRecurring(false);
-            return;
-        }
 
         if (enabledGatherTypes.isEmpty()) {
             logInfo("No gather types enabled. Disabling task.");

@@ -33,14 +33,6 @@ public class AllianceMobilizationTask extends DelayedTask {
     protected void execute() {
         logInfo("Alliance Mobilization - Starting task for profile: " + profile.getName());
 
-        // Check if Alliance Mobilization is enabled
-        boolean allianceMobilizationEnabled = profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_BOOL, Boolean.class);
-        if (!allianceMobilizationEnabled) {
-            logInfo("Alliance Mobilization is disabled. Skipping task.");
-            this.setRecurring(false);
-            return;
-        }
-
         // Read Auto Accept configuration
         boolean autoAcceptEnabled = profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_AUTO_ACCEPT_BOOL, Boolean.class);
 

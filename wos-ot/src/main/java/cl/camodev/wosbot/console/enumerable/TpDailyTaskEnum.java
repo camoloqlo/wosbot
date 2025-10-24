@@ -5,7 +5,7 @@ public enum TpDailyTaskEnum {
 	//@formatter:off
 	HERO_RECRUITMENT(1, "Hero Recruitment",      	EnumConfigurationKey.BOOL_HERO_RECRUITMENT),
 	NOMADIC_MERCHANT(2, "Nomadic Merchant",       	EnumConfigurationKey.BOOL_NOMADIC_MERCHANT),
-	WAR_ACADEMY_SHARDS(3, "War Academy Shards",  	EnumConfigurationKey.BOOL_WAR_ACADEMY_SHARDS),
+	WAR_ACADEMY_TASK_BOOL(3, "War Academy Shards",  	EnumConfigurationKey.WAR_ACADEMY_TASK_BOOL),
 	CRYSTAL_LABORATORY(4, "Crystal Laboratory",  	EnumConfigurationKey.BOOL_CRYSTAL_LAB_FC),
 	VIP_POINTS(5, "VIP Points",                   	EnumConfigurationKey.BOOL_VIP_POINTS),
 	PET_ADVENTURE(6, "Pet Adventure",             	EnumConfigurationKey.PET_PERSONAL_TREASURE_BOOL),
