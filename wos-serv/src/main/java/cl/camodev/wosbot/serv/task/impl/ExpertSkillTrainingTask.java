@@ -73,8 +73,8 @@ public class ExpertSkillTrainingTask extends DelayedTask {
                     5,
                     300,
                     null,
-                    TimeValidators::isHHmmss,
-                    TimeConverters::hhmmssToDuration);
+                    TimeValidators::isValidTime,
+                    TimeConverters::toDuration);
             if (trainingTime==null){
                 return;
             }

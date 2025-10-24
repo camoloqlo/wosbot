@@ -607,8 +607,8 @@ public class BearTrapTask extends DelayedTask {
                     maxRetries,
                     delayMs,
                     null,
-                    TimeValidators::isHHmmss,
-                    TimeConverters::hhmmssToDuration);
+                    TimeValidators::isValidTime,
+                    TimeConverters::toDuration);
 
             if (marchingTime != null) {
                 // Calculate rally duration: 5 minutes + (march time * 2) - 1 second buffer
