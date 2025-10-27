@@ -573,8 +573,8 @@ public class AllianceMobilizationTask extends DelayedTask {
         emuManager.tapAtPoint(EMULATOR_NUMBER, refreshButtonLocation);
         sleepTask(1500);
 
-        DTOPoint timerTopLeft = new DTOPoint(375, 610);
-        DTOPoint timerBottomRight = new DTOPoint(490, 642);
+        DTOPoint timerTopLeft = new DTOPoint(295, 571);
+        DTOPoint timerBottomRight = new DTOPoint(379, 604);
         int cooldownSeconds = readRefreshCooldownFromPopup(timerTopLeft, timerBottomRight);
 
         DTOPoint refreshConfirmButtonLocation = new DTOPoint(510, 790);
