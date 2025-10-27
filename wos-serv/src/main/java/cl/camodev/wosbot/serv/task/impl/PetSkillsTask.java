@@ -64,7 +64,7 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
  * <li>If any cooldown is successfully read: reschedule to earliest
  * cooldown</li>
  * <li>If all OCR fails: reschedule in 5 minutes as fallback</li>
- * <li>If no skills enabled: disable recurring execution</li>
+ * <li>If no skills enabled: reschedule to game reset</li>
  * </ul>
  */
 public class PetSkillsTask extends DelayedTask {
@@ -478,8 +478,8 @@ public class PetSkillsTask extends DelayedTask {
         Duration cooldownDuration = readCooldownDuration();
 
         if (cooldownDuration == null) {
-            logWarning("Failed to read cooldown for " + skill.name() + ". Skipping cooldown tracking.");
-            return;
+            logWarning("Failed to read cooldown for " + skill.name() + ". Using 5 minute fallback cooldown.");
+            cooldownDuration = Duration.ofMinutes(5);
         }
 
         LocalDateTime cooldownEnd = LocalDateTime.now().plus(cooldownDuration);
