@@ -21,6 +21,8 @@ import java.util.regex.Pattern;
  */
 public class AllianceShopTask extends DelayedTask {
 
+    private Boolean expertUnlocked =false;
+
 	public AllianceShopTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
         this.recurring=false;
@@ -95,6 +97,18 @@ public class AllianceShopTask extends DelayedTask {
 
         emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(450,1233), new DTOPoint(590,1263),3,200);
 
+        //verify if expert is unlocked by searching for the expert icon, if its found i must adjust the cards coords
+        DTOImageSearchResult expertIcon = searchTemplateWithRetries(
+                EnumTemplates.ALLIANCE_SHOP_EXPERT_ICON,
+                90,
+                3
+        );
+
+        if (expertIcon.isFound()) {
+            expertUnlocked = true;
+            logInfo("Expert unlocked detected in Alliance Shop. Adjusting item coordinates accordingly.");
+        }
+
 		// 3. Iterate through enabled items by priority order
         for (DTOPriorityItem priority : enabledPriorities) {
             logInfo("Attempting to purchase: " + priority.getName() + " (Priority: " + priority.getPriority() + ")");
@@ -120,7 +134,7 @@ public class AllianceShopTask extends DelayedTask {
                 priceArea.topLeft(),
                 priceArea.bottomRight(),
                 5,
-                200L,
+                1000L,
                 DTOTesseractSettings.builder().setAllowedChars("0123456789").build(),
                     text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
                     text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
@@ -135,7 +149,7 @@ public class AllianceShopTask extends DelayedTask {
                     quantityArea.topLeft(),
                     quantityArea.bottomRight(),
                     5,
-                    200L,
+                    1000L,
                     DTOTesseractSettings.builder()
                             .setAllowedChars("0123456789")
                             .setTextColor(Color.white)
@@ -237,8 +251,10 @@ public class AllianceShopTask extends DelayedTask {
             throw new IllegalArgumentException("El número de tarjeta debe estar entre 1 y 9");
         }
 
+        final int adjustedCardNumber = expertUnlocked ? 121 : 0;
+
         final int startX = 27;
-        final int startY = 192;
+        final int startY = 192 + adjustedCardNumber;
         final int itemWidth = 215;
         final int itemHeight = 266;
         final int spacingX = 5;
@@ -287,9 +303,10 @@ public class AllianceShopTask extends DelayedTask {
         if (cardNumber < 1 || cardNumber > 9) {
             throw new IllegalArgumentException("El número de tarjeta debe estar entre 1 y 9");
         }
+        final int adjustedCardNumber = expertUnlocked ? 121 : 0;
 
         final int startX = 27;
-        final int startY = 192;
+        final int startY = 192 + adjustedCardNumber;
         final int itemWidth = 215;
         final int itemHeight = 266;
         final int spacingX = 5;
@@ -320,8 +337,10 @@ public class AllianceShopTask extends DelayedTask {
             throw new IllegalArgumentException("El número de tarjeta debe estar entre 1 y 9");
         }
 
+        final int adjustedCardNumber = expertUnlocked ? 121 : 0;
+
         final int startX = 27;
-        final int startY = 192;
+        final int startY = 192 + adjustedCardNumber;
         final int itemWidth = 215;
         final int itemHeight = 266;
         final int spacingX = 5;

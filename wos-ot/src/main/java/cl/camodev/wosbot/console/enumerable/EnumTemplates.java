@@ -194,6 +194,7 @@ public enum EnumTemplates {
 	ALLIANCE_HELP_BUTTON("/templates/alliance/helpButton.png"),
 	ALLIANCE_HELP_REQUESTS("/templates/alliance/helpRequests.png"),
 
+    ALLIANCE_SHOP_EXPERT_ICON("/templates/alliance/expertBadge.png"),
     ALLIANCE_SHOP_SOLD_OUT("/templates/alliance/shopSoldOut.png"),
 
     // ========================================================================
