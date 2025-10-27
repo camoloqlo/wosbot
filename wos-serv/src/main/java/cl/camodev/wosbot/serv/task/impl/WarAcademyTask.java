@@ -3,244 +3,304 @@ package cl.camodev.wosbot.serv.task.impl;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import cl.camodev.utiles.UtilTime;
+import cl.camodev.utiles.number.NumberConverters;
+import cl.camodev.utiles.number.NumberValidators;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 
+/**
+ * Task responsible for redeeming War Academy shards.
+ * 
+ * <p>
+ * This task:
+ * <ul>
+ * <li>Navigates to War Academy via Research Center</li>
+ * <li>Opens the Redeem section</li>
+ * <li>Reads remaining shards count via OCR</li>
+ * <li>Redeems maximum available shards</li>
+ * <li>Checks if more shards are available</li>
+ * <li>Reschedules based on shard availability</li>
+ * </ul>
+ * 
+ * <p>
+ * The task runs daily and reschedules to game reset when all shards are
+ * redeemed.
+ */
 public class WarAcademyTask extends DelayedTask {
 
-    private final int MAX_RETRY_ATTEMPTS = 3;
+    // ========== Navigation Coordinates ==========
+    private static final DTOPoint LEFT_MENU_SWIPE_START = new DTOPoint(255, 477);
+    private static final DTOPoint LEFT_MENU_SWIPE_END = new DTOPoint(255, 425);
+    private static final DTOPoint BUILDING_TAP_CENTER = new DTOPoint(360, 790);
+
+    // ========== War Academy UI Coordinates ==========
+    private static final DTOPoint REDEEM_TAB_BUTTON = new DTOPoint(642, 164);
+    private static final DTOPoint SHARDS_OCR_TOP_LEFT = new DTOPoint(466, 456);
+    private static final DTOPoint SHARDS_OCR_BOTTOM_RIGHT = new DTOPoint(624, 484);
+
+    // ========== Redeem Action Coordinates ==========
+    private static final DTOPoint REDEEM_BUTTON = new DTOPoint(545, 520);
+    private static final DTOPoint MAX_SHARDS_BUTTON = new DTOPoint(614, 705);
+    private static final DTOPoint CONFIRM_BUTTON = new DTOPoint(358, 828);
+
+    // ========== Constants ==========
+    private static final int MIN_RESEARCH_CENTERS_REQUIRED = 2;
+    private static final int BUILDING_TAP_COUNT = 5;
+    private static final int BUILDING_TAP_DELAY = 100;
+    private static final int RETRY_DELAY_MINUTES = 5;
+    private static final int ADDITIONAL_SHARDS_DELAY_HOURS = 2;
+
+    // ========== OCR Settings ==========
+    private static final DTOTesseractSettings SHARDS_OCR_SETTINGS = DTOTesseractSettings.builder()
+            .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+            .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+            .setAllowedChars("0123456789")
+            .build();
 
     public WarAcademyTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
         super(profile, tpDailyTask);
     }
 
     @Override
-    public EnumStartLocation getRequiredStartLocation() {
+    protected void execute() {
+
+        logInfo("Starting War Academy task.");
+
+        if (!navigateToWarAcademy()) {
+            logWarning("Failed to navigate to War Academy.");
+            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            return;
+        }
+
+        if (!openRedeemSection()) {
+            logWarning("Failed to open Redeem section.");
+            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            return;
+        }
+
+        Integer remainingShards = readRemainingShards();
+
+        if (remainingShards == null) {
+            logError("Failed to read remaining shards count.");
+            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            return;
+        }
+
+        if (remainingShards <= 0) {
+            logInfo("No shards available to redeem.");
+            reschedule(UtilTime.getGameReset());
+            return;
+        }
+
+        logInfo(String.format("Found %d shards to redeem.", remainingShards));
+
+        if (!redeemMaximumShards()) {
+            logWarning("Failed to redeem shards.");
+            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            return;
+        }
+
+        handlePostRedemptionCheck();
+    }
+
+    /**
+     * Navigates to War Academy via Research Center.
+     * 
+     * <p>
+     * Navigation flow:
+     * <ol>
+     * <li>Opens left city menu</li>
+     * <li>Swipes to bring Research Centers into view</li>
+     * <li>Finds at least 2 Research Center icons</li>
+     * <li>Taps the bottommost one (War Academy)</li>
+     * <li>Taps building center to enter</li>
+     * <li>Opens Research button</li>
+     * <li>Verifies War Academy UI is visible</li>
+     * </ol>
+     * 
+     * @return true if navigation succeeded, false otherwise
+     */
+    private boolean navigateToWarAcademy() {
+        logInfo("Navigating to War Academy.");
+
+        openLeftMenuCitySection(true);
+
+        // Swipe to bring Research Centers into view
+        logDebug("Swiping to reveal Research Centers");
+        swipe(LEFT_MENU_SWIPE_START, LEFT_MENU_SWIPE_END);
+        sleepTask(500); // Wait for swipe animation
+
+        // Search for Research Centers
+        List<DTOImageSearchResult> researchCenters = searchTemplatesWithRetries(
+                EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER,
+                90,
+                3,
+                MIN_RESEARCH_CENTERS_REQUIRED);
+
+        if (researchCenters.size() < MIN_RESEARCH_CENTERS_REQUIRED) {
+            logError(String.format("Only found %d Research Centers, need at least %d.",
+                    researchCenters.size(), MIN_RESEARCH_CENTERS_REQUIRED));
+            return false;
+        }
+
+        logInfo(String.format("Found %d Research Centers.", researchCenters.size()));
+
+        // Tap the bottommost Research Center (highest Y coordinate = War Academy)
+        DTOImageSearchResult warAcademyCenter = researchCenters.stream()
+                .max(Comparator.comparingInt(r -> r.getPoint().getY()))
+                .orElseThrow(() -> new RuntimeException("No valid Research Center found"));
+
+        logDebug("Tapping War Academy (bottommost Research Center)");
+        tapPoint(warAcademyCenter.getPoint());
+        sleepTask(1000); // Wait for building zoom
+
+        // Tap building center to enter
+        logDebug("Tapping building center to enter");
+        tapRandomPoint(BUILDING_TAP_CENTER, BUILDING_TAP_CENTER, BUILDING_TAP_COUNT, BUILDING_TAP_DELAY);
+        sleepTask(1000); // Wait for building to open
+
+        // Open Research section
+        DTOImageSearchResult researchButton = searchTemplateWithRetries(
+                EnumTemplates.BUILDING_BUTTON_RESEARCH);
+
+        if (!researchButton.isFound()) {
+            logError("Research button not found.");
+            return false;
+        }
+
+        logDebug("Opening Research section");
+        tapPoint(researchButton.getPoint());
+        sleepTask(500); // Wait for Research screen
+
+        // Verify War Academy UI
+        DTOImageSearchResult warAcademyUI = searchTemplateWithRetries(
+                EnumTemplates.VALIDATION_WAR_ACADEMY_UI);
+
+        if (!warAcademyUI.isFound()) {
+            logError("War Academy UI validation failed.");
+            return false;
+        }
+
+        logInfo("Successfully navigated to War Academy.");
+        return true;
+    }
+
+    /**
+     * Opens the Redeem section in War Academy.
+     * 
+     * @return true if section opened successfully, false otherwise
+     */
+    private boolean openRedeemSection() {
+        logDebug("Opening Redeem section");
+
+        tapPoint(REDEEM_TAB_BUTTON);
+        sleepTask(500); // Wait for tab to load
+
+        return true;
+    }
+
+    /**
+     * Reads the remaining shards count via OCR using integerHelper.
+     * 
+     * @return number of remaining shards, or null if reading failed
+     */
+    private Integer readRemainingShards() {
+        logInfo("Reading remaining shards count via OCR.");
+
+        Integer shards = integerHelper.execute(
+                SHARDS_OCR_TOP_LEFT,
+                SHARDS_OCR_BOTTOM_RIGHT,
+                5,
+                200L,
+                SHARDS_OCR_SETTINGS,
+                text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
+                text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
+
+        if (shards != null) {
+            logInfo("Successfully read shards count: " + shards);
+        } else {
+            logWarning("Failed to read shards count via OCR.");
+        }
+
+        return shards;
+    }
+
+    /**
+     * Redeems the maximum number of available shards.
+     * 
+     * <p>
+     * Redemption flow:
+     * <ol>
+     * <li>Taps Redeem button</li>
+     * <li>Selects maximum shards</li>
+     * <li>Confirms redemption</li>
+     * </ol>
+     * 
+     * @return true if redemption succeeded, false otherwise
+     */
+    private boolean redeemMaximumShards() {
+        logInfo("Redeeming maximum available shards.");
+
+        // Tap Redeem button
+        logDebug("Tapping Redeem button");
+        tapPoint(REDEEM_BUTTON);
+        sleepTask(500); // Wait for redemption dialog
+
+        // Select maximum shards
+        logDebug("Selecting maximum shards");
+        tapPoint(MAX_SHARDS_BUTTON);
+        sleepTask(100); // Wait for selection
+
+        // Confirm redemption
+        logDebug("Confirming redemption");
+        tapPoint(CONFIRM_BUTTON);
+        sleepTask(1000); // Wait for redemption to process
+
+        logInfo("Shards redeemed successfully.");
+        return true;
+    }
+
+    /**
+     * Checks if additional shards are available after redemption
+     * and reschedules accordingly.
+     */
+    private void handlePostRedemptionCheck() {
+        logInfo("Checking for additional shards after redemption.");
+
+        Integer finalShards = readRemainingShards();
+
+        if (finalShards == null) {
+            logError("Failed to read final shards count.");
+            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            return;
+        }
+
+        if (finalShards > 0) {
+            logInfo(String.format("Additional shards found: %d. Rescheduling in %d hours.",
+                    finalShards, ADDITIONAL_SHARDS_DELAY_HOURS));
+            reschedule(LocalDateTime.now().plusHours(ADDITIONAL_SHARDS_DELAY_HOURS));
+        } else {
+            logInfo("No additional shards found. Rescheduling for game reset.");
+            reschedule(UtilTime.getGameReset());
+        }
+    }
+
+    @Override
+    protected EnumStartLocation getRequiredStartLocation() {
         return EnumStartLocation.HOME;
     }
 
     @Override
-    protected void execute() {
-        //STEP 1: I need to go to left menu, then check if there's 2 matches of research template
-        // left menu
-        openLeftMenuCitySection(true);
-
-        // Search for research template with retry logic
-        List<DTOImageSearchResult> researchResults = null;
-
-        for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
-            logInfo("Searching for research centers");
-            logDebug("Searching for research centers (Attempt " + attempt + "/" + MAX_RETRY_ATTEMPTS + ")...");
-
-            swipe(new DTOPoint(255, 477), new DTOPoint(255, 425));
-            sleepTask(500);
-
-            researchResults = emuManager.searchTemplates(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER, 90, 2);
-
-            if (researchResults.size() >= 2) {
-                logInfo("Found " + researchResults.size() + " research centers on attempt " + attempt + ".");
-                break;
-            } else {
-                logWarning("Only " + researchResults.size() + " research centers were found on attempt " + attempt + ".");
-                if (attempt < MAX_RETRY_ATTEMPTS) {
-                    sleepTask(1000); // Wait a bit before next attempt
-                }
-            }
-        }
-
-        if (researchResults.size() < 2) {
-            logError("Not enough research centers were found after " + MAX_RETRY_ATTEMPTS + " attempts. Stopping the task.");
-            return;
-        }
-        //STEP 2: tap on the match with highest y coordinate
-        DTOImageSearchResult highestYMatch = researchResults.stream()
-                .max(Comparator.comparingInt(r -> r.getPoint().getY()))
-                .orElseThrow(() -> new RuntimeException("No valid research center found"));
-
-        tapPoint(highestYMatch.getPoint());
-
-        sleepTask(1000);
-        tapRandomPoint(new DTOPoint(360, 790), new DTOPoint(360, 790), 5, 100);
-
-        //STEP 3: search for building reseach button template with retry logic
-        DTOImageSearchResult researchButton = null;
-
-        for (int buttonAttempt = 1; buttonAttempt <= MAX_RETRY_ATTEMPTS; buttonAttempt++) {
-            logInfo("Searching for the research button");
-            logDebug("Searching for the research button (Attempt " + buttonAttempt + "/" + MAX_RETRY_ATTEMPTS + ")...");
-
-            researchButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.BUILDING_BUTTON_RESEARCH, 90);
-
-            if (researchButton.isFound()) {
-                logInfo("The research button was found on attempt " + buttonAttempt + ".");
-                break;
-            } else {
-                logWarning("The research button was not found on attempt " + buttonAttempt + ".");
-                if (buttonAttempt < MAX_RETRY_ATTEMPTS) {
-                    sleepTask(1000); // Wait 1s before next attempt
-                }
-            }
-        }
-
-        if (!researchButton.isFound()) {
-            logError("The research button was not found after " + MAX_RETRY_ATTEMPTS + " attempts. Stopping the task.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
-            return;
-        }
-        tapPoint(researchButton.getPoint());
-        sleepTask(500);
-
-        //STEP 4: check if we are in war academy UI with retry logic
-
-
-        DTOImageSearchResult warAcademyUi = null;
-
-        for (int uiAttempt = 1; uiAttempt <= MAX_RETRY_ATTEMPTS; uiAttempt++) {
-            logInfo("Searching for the War Academy UI");
-            logDebug("Searching for the War Academy UI (Attempt " + uiAttempt + "/" + MAX_RETRY_ATTEMPTS + ")...");
-
-            warAcademyUi = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.VALIDATION_WAR_ACADEMY_UI, 90);
-
-            if (warAcademyUi.isFound()) {
-                logInfo("The War Academy UI was found on attempt " + uiAttempt + ".");
-                break;
-            } else {
-                logWarning("The War Academy UI was not found on attempt " + uiAttempt + ".");
-                if (uiAttempt < MAX_RETRY_ATTEMPTS) {
-                    sleepTask(1000); // Wait 1s before next attempt
-                }
-            }
-        }
-
-        if (!warAcademyUi.isFound()) {
-            logError("The War Academy UI was not found after " + MAX_RETRY_ATTEMPTS + " attempts.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
-            return;
-        }
-
-
-        //STEP 5: go to redeem button
-        tapPoint(new DTOPoint(642, 164));
-        sleepTask(500);
-
-    //STEP 6: check the remaining shards using OCR with retry logic
-    String ocrResult;
-        int remainingShards = -1;
-
-        for (int ocrAttempt = 1; ocrAttempt <= MAX_RETRY_ATTEMPTS; ocrAttempt++) {
-            logInfo("Reading the number of remaining shards via OCR");
-            logDebug("Reading the number of remaining shards via OCR (Attempt " + ocrAttempt + "/" + MAX_RETRY_ATTEMPTS + ")...");
-
-            try {
-                ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(466, 456), new DTOPoint(624, 484));
-                int parsed = parseOcrDigits(ocrResult);
-                if (parsed >= 0) {
-                    remainingShards = parsed;
-                    logInfo("OCR was successful on attempt " + ocrAttempt + ". Found " + remainingShards + " shards.");
-                    break;
-                } else {
-                    logWarning("OCR attempt " + ocrAttempt + " failed to find a numeric value in the result: " + ocrResult);
-                    if (ocrAttempt < MAX_RETRY_ATTEMPTS) {
-                        sleepTask(1000); // Wait 1s before retry
-                    }
-                }
-            } catch (Exception e) {
-                logWarning("OCR attempt " + ocrAttempt + " threw an exception: " + e.getMessage());
-                if (ocrAttempt < MAX_RETRY_ATTEMPTS) {
-                    sleepTask(1000); // Wait 1s before retry
-                }
-            }
-        }
-
-        if (remainingShards == -1) {
-            logError("OCR failed to find any numeric value after " + MAX_RETRY_ATTEMPTS + " attempts. Rescheduling the task.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
-            return;
-        }
-
-        //STEP 7: check if the remaining shards are greater than 0
-        if (remainingShards <= 0) {
-            logInfo("There are no remaining shards to redeem.");
-            reschedule(UtilTime.getGameReset());
-            return;
-        }
-
-        //STEP 8: confirm redeem and select the maximum number of shards to redeem
-        tapPoint(new DTOPoint(545, 520));
-        sleepTask(500);
-        // tap on the maximum amount of shards to redeem
-        tapPoint(new DTOPoint(614, 705));
-        sleepTask(100);
-        // tap on the confirm button
-        tapPoint(new DTOPoint(358, 828));
-
-        sleepTask(1000);
-
-        //STEP 9: check if there's additional shards to redeem with retry logic
-    int finalRemainingShards = -1;
-
-        for (int finalOcrAttempt = 1; finalOcrAttempt <= MAX_RETRY_ATTEMPTS; finalOcrAttempt++) {
-            logInfo("Reading the final number of remaining shards via OCR");
-            logDebug("Reading the final number of remaining shards via OCR (Attempt " + finalOcrAttempt + "/" + MAX_RETRY_ATTEMPTS + ")...");
-
-            try {
-                ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(466, 456), new DTOPoint(624, 484));
-                int parsed = parseOcrDigits(ocrResult);
-                if (parsed >= 0) {
-                    finalRemainingShards = parsed;
-                    logInfo("Final OCR was successful on attempt " + finalOcrAttempt + ". Found " + finalRemainingShards + " shards.");
-                    break;
-                } else {
-                    logWarning("Final OCR attempt " + finalOcrAttempt + " failed to find a numeric value in the result: " + ocrResult);
-                    if (finalOcrAttempt < MAX_RETRY_ATTEMPTS) {
-                        sleepTask(1000); // Wait 1s before retry
-                    }
-                }
-            } catch (Exception e) {
-                logWarning("Final OCR attempt " + finalOcrAttempt + " threw an exception: " + e.getMessage());
-                if (finalOcrAttempt < MAX_RETRY_ATTEMPTS) {
-                    sleepTask(1000); // Wait 1s before retry
-                }
-            }
-        }
-
-        if (finalRemainingShards == -1) {
-            logError("The final OCR failed to find any numeric value after " + MAX_RETRY_ATTEMPTS + " attempts.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
-            return;
-        }
-
-        //STEP 10: check if the remaining shards are greater than 0
-        if (finalRemainingShards > 0) {
-            logInfo("Additional shards were found: " + finalRemainingShards + ". Rescheduling the task to redeem them.");
-            reschedule(LocalDateTime.now().plusHours(2));
-
-        } else {
-            logInfo("No additional shards were found after the final check.");
-            reschedule(UtilTime.getGameReset());
-
-        }
-    
+    public boolean provideDailyMissionProgress() {
+        return false;
     }
-
-    private int parseOcrDigits(String text) {
-            if (text == null) return -1;
-            try {
-                String normalized = text
-                        .replaceAll("[Oo]", "0")
-                        .replaceAll("[Il!\\|]", "1")
-                        .replaceAll("[^0-9]", "");
-                if (normalized.isEmpty()) return -1;
-                return Integer.parseInt(normalized);
-            } catch (Exception ex) {
-                return -1;
-            }
-        }
 }

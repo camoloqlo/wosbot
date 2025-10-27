@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.awt.Color;
 
 import cl.camodev.utiles.UtilTime;
+import cl.camodev.utiles.ocr.TextRecognitionRetrier;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -73,10 +74,8 @@ public class ArenaTask extends DelayedTask {
     private static final DTOPoint BATTLE_RETREAT_BUTTON = new DTOPoint(252, 635);
 
     // Battle result OCR regions
-    private static final DTOPoint VICTORY_TEXT_TOP_LEFT = new DTOPoint(186, 392);
-    private static final DTOPoint VICTORY_TEXT_BOTTOM_RIGHT = new DTOPoint(536, 494);
-    private static final DTOPoint DEFEAT_TEXT_TOP_LEFT = new DTOPoint(195, 290);
-    private static final DTOPoint DEFEAT_TEXT_BOTTOM_RIGHT = new DTOPoint(516, 384);
+    private static final DTOPoint VICTORY_TEXT_TOP_LEFT = new DTOPoint(174, 387);
+    private static final DTOPoint VICTORY_TEXT_BOTTOM_RIGHT = new DTOPoint(538, 503);
 
     // Extra attempts purchase
     private static final DTOPoint PURCHASE_PRICE_TOP_LEFT = new DTOPoint(328, 840);
@@ -147,14 +146,6 @@ public class ArenaTask extends DelayedTask {
     protected void execute() {
         loadConfiguration();
         resetExecutionState();
-
-        // Check if task is enabled
-        Boolean isTaskEnabled = profile.getConfig(EnumConfigurationKey.ARENA_TASK_BOOL, Boolean.class);
-        if (isTaskEnabled == null || !isTaskEnabled) {
-            logInfo("Arena task is disabled in configuration.");
-            this.setRecurring(false);
-            return;
-        }
 
         // Validate activation time format
         if (!isValidTimeFormat(activationTime)) {
@@ -706,60 +697,35 @@ public class ArenaTask extends DelayedTask {
      * @return true if victory, false if defeat or unknown
      */
     private boolean checkBattleResult() {
-        sleepTask(1000); // Wait for result screen to stabilize
+        TextRecognitionRetrier<String> textHelper = new TextRecognitionRetrier<>(provider);
 
-        // Check victory region first
-        String victoryText = OCRWithRetries(
+        DTOTesseractSettings textSettings = DTOTesseractSettings.builder()
+                //.setDebug(true)
+                .setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+                .build();
+
+        String resultText = textHelper.execute(
                 VICTORY_TEXT_TOP_LEFT,
-                VICTORY_TEXT_BOTTOM_RIGHT);
+                VICTORY_TEXT_BOTTOM_RIGHT,
+                3,
+                200L,
+                textSettings,
+                text -> text.matches("^[a-zA-Z]*$"),
+                text -> text.toLowerCase());
 
-        String cleanVictory = cleanOcrText(victoryText);
+        logDebug("OCR for result region: " + resultText);
 
-        if (cleanVictory.contains("victory")) {
+        if (resultText.contains("victory")) {
             logInfo("Battle result: Victory");
             sleepTask(1000); // Wait before dismissing
             tapBackButton();
             return true;
         }
 
-        // Check defeat region
-        String defeatText = OCRWithRetries(
-                DEFEAT_TEXT_TOP_LEFT,
-                DEFEAT_TEXT_BOTTOM_RIGHT);
-
-        String cleanDefeat = cleanOcrText(defeatText);
-
-        if (cleanDefeat.contains("defeat")) {
-            logInfo("Battle result: Defeat");
-        } else {
-            logWarning(String.format("Unrecognized battle result. Victory OCR: '%s', Defeat OCR: '%s'",
-                    victoryText, defeatText));
-        }
-
-        sleepTask(1000); // Wait before dismissing
+        logInfo("Battle result: Defeat");
+        sleepTask(1000);
         tapBackButton();
         return false;
-
-    }
-
-    /**
-     * Cleans OCR text by removing common artifacts and normalizing.
-     * 
-     * @param text raw OCR text
-     * @return cleaned lowercase text
-     */
-    private String cleanOcrText(String text) {
-        if (text == null) {
-            return "";
-        }
-
-        return text.toLowerCase()
-                .replace("-", "")
-                .replace("gs", "")
-                .replace("fs", "")
-                .replace("es", "")
-                .replace("aa", "")
-                .trim();
     }
 
     /**

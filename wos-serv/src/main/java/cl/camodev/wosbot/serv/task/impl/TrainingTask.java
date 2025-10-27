@@ -332,8 +332,8 @@ public class TrainingTask extends DelayedTask {
                         3,
                         200L,
                         WHITE_DURATION,
-                        TimeValidators::isHHmmss,
-                        TimeConverters::hhmmssToDuration);
+                        TimeValidators::isValidTime,
+                        TimeConverters::toDuration);
 
                 Integer maxtroops = integerHelper.execute(
                         new DTOPoint(470, 1038),

@@ -41,9 +41,6 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
  */
 public class StorehouseChest extends DelayedTask {
 
-    // ========== Configuration Keys ==========
-    private static final boolean DEFAULT_TASK_ENABLED = true;
-
     // ========== Navigation Coordinates ==========
     private static final DTOPoint STOREHOUSE_LOCATION_TOP_LEFT = new DTOPoint(30, 430);
     private static final DTOPoint STOREHOUSE_LOCATION_BOTTOM_RIGHT = new DTOPoint(50, 470);
@@ -86,7 +83,6 @@ public class StorehouseChest extends DelayedTask {
             .build();
 
     // ========== Configuration (loaded in loadConfiguration()) ==========
-    private boolean taskEnabled;
     private String storedStaminaTime;
 
     // ========== Execution State (reset each execution) ==========
@@ -101,16 +97,12 @@ public class StorehouseChest extends DelayedTask {
      * Loads task configuration from profile.
      */
     private void loadConfiguration() {
-        Boolean configuredEnabled = profile.getConfig(
-                EnumConfigurationKey.STOREHOUSE_CHEST_BOOL, Boolean.class);
-        this.taskEnabled = (configuredEnabled != null) ? configuredEnabled : DEFAULT_TASK_ENABLED;
-
         // Check if we have a stored stamina claim time
         String storedStaminaTime = profile.getConfig(
                 EnumConfigurationKey.STOREHOUSE_STAMINA_CLAIM_TIME_STRING, String.class);
         this.storedStaminaTime = storedStaminaTime;
 
-        logDebug(String.format("Configuration loaded - Task enabled: %s, Stored stamina time: %s", taskEnabled, storedStaminaTime));
+        logDebug(String.format("Configuration loaded - Stored stamina time: %s", storedStaminaTime));
     }
 
     /**
@@ -126,12 +118,6 @@ public class StorehouseChest extends DelayedTask {
     protected void execute() {
         loadConfiguration();
         resetExecutionState();
-
-        if (!taskEnabled) {
-            logInfo("Storehouse chest task is disabled in configuration.");
-            setRecurring(false);
-            return;
-        }
 
         logInfo("Starting Storehouse task.");
 
@@ -271,7 +257,7 @@ public class StorehouseChest extends DelayedTask {
      * Stamina is claimed once per day at game reset.
      */
     private boolean isTimeToClaimStamina() {
-        
+
         if (storedStaminaTime != null && !storedStaminaTime.isEmpty()) {
             try {
                 LocalDateTime nextClaimTime = LocalDateTime.parse(storedStaminaTime);

@@ -53,17 +53,12 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
  */
 public class GatherTask extends DelayedTask {
 
-    private final IDailyTaskRepository dailyTaskRepository = DailyTaskRepository.getRepository();
-
     // ========== Configuration Keys ==========
-    private static final boolean DEFAULT_TASK_ENABLED = true;
     private static final int DEFAULT_ACTIVE_MARCH_QUEUES = 6;
     private static final boolean DEFAULT_REMOVE_HEROES = false;
     private static final int DEFAULT_RESOURCE_LEVEL = 5;
     private static final boolean DEFAULT_INTEL_SMART_PROCESSING = false;
     private static final boolean DEFAULT_GATHER_SPEED_ENABLED = false;
-
-    // ========== March Queue Coordinates ==========
     /**
      * March queue regions for detecting active gathering marches.
      * Format: {topLeft, bottomRight, timeTextStart}
@@ -79,19 +74,17 @@ public class GatherTask extends DelayedTask {
             new MarchQueueRegion(new DTOPoint(10, 707), new DTOPoint(435, 772), new DTOPoint(152, 743)), // Queue 6
     };
 
+    // ========== March Queue Coordinates ==========
     private static final int TIME_TEXT_WIDTH = 140;
     private static final int TIME_TEXT_HEIGHT = 19;
-
     // ========== Active Marches Menu ==========
     private static final DTOPoint CLOSE_MENU_BUTTON = new DTOPoint(110, 270);
     private static final DTOPoint CLOSE_MENU_CONFIRM = new DTOPoint(464, 551);
-
     // ========== Resource Search Menu ==========
     private static final DTOPoint SEARCH_BUTTON_TOP_LEFT = new DTOPoint(25, 850);
     private static final DTOPoint SEARCH_BUTTON_BOTTOM_RIGHT = new DTOPoint(67, 898);
     private static final DTOPoint RESOURCE_TAB_SWIPE_START = new DTOPoint(678, 913);
     private static final DTOPoint RESOURCE_TAB_SWIPE_END = new DTOPoint(40, 913);
-
     // ========== Resource Level Selection ==========
     private static final DTOPoint LEVEL_DISPLAY_TOP_LEFT = new DTOPoint(588, 1040);
     private static final DTOPoint LEVEL_DISPLAY_BOTTOM_RIGHT = new DTOPoint(628, 1066);
@@ -102,20 +95,17 @@ public class GatherTask extends DelayedTask {
     private static final DTOPoint LEVEL_DECREMENT_BUTTON_TOP_LEFT = new DTOPoint(50, 1040);
     private static final DTOPoint LEVEL_DECREMENT_BUTTON_BOTTOM_RIGHT = new DTOPoint(85, 1066);
     private static final DTOPoint LEVEL_LOCK_BUTTON = new DTOPoint(183, 1140);
-
     // ========== Search and Deployment ==========
     private static final DTOPoint SEARCH_EXECUTE_BUTTON_TOP_LEFT = new DTOPoint(301, 1200);
     private static final DTOPoint SEARCH_EXECUTE_BUTTON_BOTTOM_RIGHT = new DTOPoint(412, 1229);
-
     // ========== Constants ==========
     private static final int MAX_RESOURCE_TAB_SWIPE_ATTEMPTS = 4;
     private static final int INTEL_CONFLICT_BUFFER_MINUTES = 5;
     private static final int GATHER_SPEED_WAIT_BUFFER_MINUTES = 5;
     private static final int LEVEL_BUTTON_TAP_DELAY = 150;
     private static final int HERO_REMOVAL_DELAY = 300;
-
+    private final IDailyTaskRepository dailyTaskRepository = DailyTaskRepository.getRepository();
     // ========== Configuration (loaded in loadConfiguration()) ==========
-    private boolean taskEnabled;
     private int activeMarchQueues;
     private boolean removeHeroes;
     private boolean intelSmartProcessing;
@@ -145,10 +135,6 @@ public class GatherTask extends DelayedTask {
      */
     private void loadConfiguration() {
         // Global settings
-        Boolean configuredEnabled = profile.getConfig(
-                EnumConfigurationKey.GATHER_TASK_BOOL, Boolean.class);
-        this.taskEnabled = (configuredEnabled != null) ? configuredEnabled : DEFAULT_TASK_ENABLED;
-
         Integer configuredQueues = profile.getConfig(
                 EnumConfigurationKey.GATHER_ACTIVE_MARCH_QUEUE_INT, Integer.class);
         this.activeMarchQueues = (configuredQueues != null) ? configuredQueues : DEFAULT_ACTIVE_MARCH_QUEUES;
@@ -207,8 +193,8 @@ public class GatherTask extends DelayedTask {
                 EnumConfigurationKey.GATHER_IRON_LEVEL_INT, Integer.class);
         this.ironLevel = (configuredIronLevel != null) ? configuredIronLevel : DEFAULT_RESOURCE_LEVEL;
 
-        logDebug(String.format("Configuration loaded - Enabled: %s, Active queues: %d, Remove heroes: %s",
-                taskEnabled, activeMarchQueues, removeHeroes));
+        logDebug(String.format("Configuration loaded - Active queues: %d, Remove heroes: %s",
+                activeMarchQueues, removeHeroes));
         logDebug(String.format("Resources - Meat: %s (Lv%d), Wood: %s (Lv%d), Coal: %s (Lv%d), Iron: %s (Lv%d)",
                 meatEnabled, meatLevel, woodEnabled, woodLevel, coalEnabled, coalLevel, ironEnabled, ironLevel));
     }
@@ -237,12 +223,6 @@ public class GatherTask extends DelayedTask {
     protected void execute() {
         loadConfiguration();
         resetExecutionState();
-
-        if (!taskEnabled) {
-            logInfo("Gather task is disabled in configuration.");
-            setRecurring(false);
-            return;
-        }
 
         if (enabledGatherTypes.isEmpty()) {
             logInfo("No gather types enabled. Disabling task.");
@@ -811,6 +791,40 @@ public class GatherTask extends DelayedTask {
     // ========== Helper Classes ==========
 
     /**
+     * Enum representing the four gather resource types.
+     */
+    public enum GatherType {
+        MEAT(
+                EnumTemplates.GAME_HOME_SHORTCUTS_MEAT,
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_MEAT),
+        WOOD(
+                EnumTemplates.GAME_HOME_SHORTCUTS_WOOD,
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_WOOD),
+        COAL(
+                EnumTemplates.GAME_HOME_SHORTCUTS_COAL,
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_COAL),
+        IRON(
+                EnumTemplates.GAME_HOME_SHORTCUTS_IRON,
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_IRON);
+
+        private final EnumTemplates template;
+        private final EnumTemplates tile;
+
+        GatherType(EnumTemplates template, EnumTemplates tile) {
+            this.template = template;
+            this.tile = tile;
+        }
+
+        public EnumTemplates getTemplate() {
+            return template;
+        }
+
+        public EnumTemplates getTile() {
+            return tile;
+        }
+    }
+
+    /**
      * Represents a march queue region with search area and time text location.
      */
     private static class MarchQueueRegion {
@@ -855,40 +869,6 @@ public class GatherTask extends DelayedTask {
 
         public LocalDateTime getReturnTime() {
             return returnTime;
-        }
-    }
-
-    /**
-     * Enum representing the four gather resource types.
-     */
-    public enum GatherType {
-        MEAT(
-                EnumTemplates.GAME_HOME_SHORTCUTS_MEAT,
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_MEAT),
-        WOOD(
-                EnumTemplates.GAME_HOME_SHORTCUTS_WOOD,
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_WOOD),
-        COAL(
-                EnumTemplates.GAME_HOME_SHORTCUTS_COAL,
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_COAL),
-        IRON(
-                EnumTemplates.GAME_HOME_SHORTCUTS_IRON,
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_IRON);
-
-        private final EnumTemplates template;
-        private final EnumTemplates tile;
-
-        GatherType(EnumTemplates template, EnumTemplates tile) {
-            this.template = template;
-            this.tile = tile;
-        }
-
-        public EnumTemplates getTemplate() {
-            return template;
-        }
-
-        public EnumTemplates getTile() {
-            return tile;
         }
     }
 }
