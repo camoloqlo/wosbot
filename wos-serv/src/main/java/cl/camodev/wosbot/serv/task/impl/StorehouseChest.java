@@ -295,12 +295,13 @@ public class StorehouseChest extends DelayedTask {
             sleepTask(2000); // Wait for reward details screen
 
             claimStaminaReward();
+            nextStaminaTime = UtilTime.getNextReset();
         } else {
-            logWarning("Stamina reward not found after maximum attempts.");
+            logWarning("Stamina reward not found after maximum attempts. Will retry in 1 hour as fallback.");
+            nextStaminaTime = LocalDateTime.now().plusHours(1);
         }
 
         // Store the next claim time
-        nextStaminaTime = UtilTime.getNextReset();
         profile.setConfig(
                 EnumConfigurationKey.STOREHOUSE_STAMINA_CLAIM_TIME_STRING,
                 nextStaminaTime.toString());
