@@ -384,7 +384,10 @@ public enum EnumTemplates {
     EXPERT_TRAINING_AGNES_BADGE("/templates/experts/agnesBadge.png"),
     EXPERT_TRAINING_ROMULUS_BADGE("/templates/experts/romulusBadge.png"),
     EXPERT_TRAINING_HOLGER_BADGE("/templates/experts/holgerBadge.png"),
+    EXPERT_TRAINING_BALDUR_BADGE("/templates/experts/baldurBadge.png"),
+    EXPERT_TRAINING_FABIAN_BADGE("/templates/experts/fabianBadge.png"),
     EXPERT_TRAINING_LEARN_BUTTON("/templates/experts/learnButton.png"),
+
 	
 	MERCENARY_EVENT_TAB("/templates/mercenary/mercenaryEventTab.png"),
 	MERCENARY_SCOUT_BUTTON("/templates/mercenary/mercenaryEventScout.png"),

@@ -99,7 +99,9 @@ public class ExpertSkillTrainingTask extends DelayedTask {
                 EnumTemplates.EXPERT_TRAINING_CYRILLE_BADGE,
                 EnumTemplates.EXPERT_TRAINING_AGNES_BADGE,
                 EnumTemplates.EXPERT_TRAINING_HOLGER_BADGE,
-                EnumTemplates.EXPERT_TRAINING_ROMULUS_BADGE
+                EnumTemplates.EXPERT_TRAINING_ROMULUS_BADGE,
+                EnumTemplates.EXPERT_TRAINING_BALDUR_BADGE,
+                EnumTemplates.EXPERT_TRAINING_FABIAN_BADGE
         };
 
         for (int i = 0; i < 10; i++) {
@@ -271,6 +273,8 @@ public class ExpertSkillTrainingTask extends DelayedTask {
             case CYRILLE_SKILL_1, CYRILLE_SKILL_2, CYRILLE_SKILL_3, CYRILLE_SKILL_4 -> EXPERTS.CYRILLE;
             case HOLGER_SKILL_1, HOLGER_SKILL_2, HOLGER_SKILL_3, HOLGER_SKILL_4 -> EXPERTS.HOLGER;
             case ROMULUS_SKILL_1, ROMULUS_SKILL_2, ROMULUS_SKILL_3, ROMULUS_SKILL_4 -> EXPERTS.ROMULUS;
+            case BALDUR_SKILL_1, BALDUR_SKILL_2, BALDUR_SKILL_3, BALDUR_SKILL_4 -> EXPERTS.BALDUR;
+            case FABIAN_SKILL_1, FABIAN_SKILL_2, FABIAN_SKILL_3, FABIAN_SKILL_4 -> EXPERTS.FABIAN;
         };
     }
 
@@ -285,19 +289,23 @@ public class ExpertSkillTrainingTask extends DelayedTask {
                     EnumTemplates.EXPERT_TRAINING_HOLGER_BADGE;
             case ROMULUS_SKILL_1, ROMULUS_SKILL_2, ROMULUS_SKILL_3, ROMULUS_SKILL_4 ->
                     EnumTemplates.EXPERT_TRAINING_ROMULUS_BADGE;
+            case BALDUR_SKILL_1, BALDUR_SKILL_2, BALDUR_SKILL_3, BALDUR_SKILL_4 ->
+                    EnumTemplates.EXPERT_TRAINING_BALDUR_BADGE;
+            case FABIAN_SKILL_1, FABIAN_SKILL_2, FABIAN_SKILL_3, FABIAN_SKILL_4 ->
+                    EnumTemplates.EXPERT_TRAINING_FABIAN_BADGE;
         };
 
     }
 
 private DTOArea getSkillArea(ExpertSkillItem skillItem) {
     return switch (skillItem) {
-        case CYRILLE_SKILL_1, AGNES_SKILL_1, HOLGER_SKILL_1, ROMULUS_SKILL_1 ->
+        case CYRILLE_SKILL_1, AGNES_SKILL_1, HOLGER_SKILL_1, ROMULUS_SKILL_1, BALDUR_SKILL_1, FABIAN_SKILL_1 ->
                 new DTOArea(new DTOPoint(62, 1032), new DTOPoint(132, 1102));
-        case CYRILLE_SKILL_2, AGNES_SKILL_2, HOLGER_SKILL_2, ROMULUS_SKILL_2 ->
+        case CYRILLE_SKILL_2, AGNES_SKILL_2, HOLGER_SKILL_2, ROMULUS_SKILL_2, BALDUR_SKILL_2, FABIAN_SKILL_2 ->
                 new DTOArea(new DTOPoint(237, 1032), new DTOPoint(307, 1102));
-        case CYRILLE_SKILL_3, AGNES_SKILL_3, HOLGER_SKILL_3, ROMULUS_SKILL_3 ->
+        case CYRILLE_SKILL_3, AGNES_SKILL_3, HOLGER_SKILL_3, ROMULUS_SKILL_3, BALDUR_SKILL_3, FABIAN_SKILL_3 ->
                 new DTOArea(new DTOPoint(412, 1032), new DTOPoint(482, 1102));
-        case CYRILLE_SKILL_4, AGNES_SKILL_4, HOLGER_SKILL_4, ROMULUS_SKILL_4 ->
+        case CYRILLE_SKILL_4, AGNES_SKILL_4, HOLGER_SKILL_4, ROMULUS_SKILL_4, BALDUR_SKILL_4, FABIAN_SKILL_4 ->
                 new DTOArea(new DTOPoint(587, 1032), new DTOPoint(657, 1102));
     };
 }
@@ -309,6 +317,8 @@ private DTOArea getSkillArea(ExpertSkillItem skillItem) {
             case EXPERT_TRAINING_CYRILLE_BADGE -> EXPERTS.CYRILLE;
             case EXPERT_TRAINING_HOLGER_BADGE -> EXPERTS.HOLGER;
             case EXPERT_TRAINING_ROMULUS_BADGE -> EXPERTS.ROMULUS;
+            case EXPERT_TRAINING_BALDUR_BADGE -> EXPERTS.BALDUR;
+            case EXPERT_TRAINING_FABIAN_BADGE -> EXPERTS.FABIAN;
             default -> null;
         };
     }
@@ -321,7 +331,9 @@ private DTOArea getSkillArea(ExpertSkillItem skillItem) {
                 EnumTemplates.EXPERT_TRAINING_CYRILLE_BADGE,
                 EnumTemplates.EXPERT_TRAINING_AGNES_BADGE,
                 EnumTemplates.EXPERT_TRAINING_ROMULUS_BADGE,
-                EnumTemplates.EXPERT_TRAINING_HOLGER_BADGE
+                EnumTemplates.EXPERT_TRAINING_HOLGER_BADGE,
+                EnumTemplates.EXPERT_TRAINING_BALDUR_BADGE,
+                EnumTemplates.EXPERT_TRAINING_FABIAN_BADGE
         };
 
         for (EnumTemplates badge : expertBadges) {
@@ -405,7 +417,9 @@ private DTOArea getSkillArea(ExpertSkillItem skillItem) {
         CYRILLE(1),
         AGNES(2),
         HOLGER(3),
-        ROMULUS(4);
+        ROMULUS(4),
+        BALDUR(5),
+        FABIAN(6);
 
 
         private final int position;

@@ -27,7 +27,22 @@ public enum ExpertSkillItem implements PrioritizableItem {
     ROMULUS_SKILL_1("romulus_skill_1", "Romulus - Skill 1"),
     ROMULUS_SKILL_2("romulus_skill_2", "Romulus - Skill 2"),
     ROMULUS_SKILL_3("romulus_skill_3", "Romulus - Skill 3"),
-    ROMULUS_SKILL_4("romulus_skill_4", "Romulus - Skill 4");
+    ROMULUS_SKILL_4("romulus_skill_4", "Romulus - Skill 4"),
+
+    // Baldur's skill
+    BALDUR_SKILL_1("baldur_skill_1", "Baldur - Skill 1"),
+    BALDUR_SKILL_2("baldur_skill_2", "Baldur - Skill 2"),
+    BALDUR_SKILL_3("baldur_skill_3", "Baldur - Skill 3"),
+    BALDUR_SKILL_4("baldur_skill_4", "Baldur - Skill 4"),
+
+    // Fabian's skills
+    FABIAN_SKILL_1("fabian_skill_1", "Fabian - Skill 1"),
+    FABIAN_SKILL_2("fabian_skill_2", "Fabian - Skill 2"),
+    FABIAN_SKILL_3("fabian_skill_3", "Fabian - Skill 3"),
+    FABIAN_SKILL_4("fabian_skill_4", "Fabian - Skill 4");
+
+
+    ;
 
     private final String identifier;
     private final String displayName;
