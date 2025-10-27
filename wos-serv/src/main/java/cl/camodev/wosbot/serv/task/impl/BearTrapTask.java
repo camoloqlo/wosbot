@@ -193,6 +193,7 @@ public class BearTrapTask extends DelayedTask {
             }
 
             logInfo("Bear Trap cycle completed successfully");
+            cleanup();
 
         } catch (Exception e) {
             logError("Error during Bear Trap execution: " + e.getMessage());
@@ -200,6 +201,7 @@ public class BearTrapTask extends DelayedTask {
         } finally {
             // Persist next trap anchor regardless of outcome
             try {
+
                 updateNextWindowDateTime();
             } catch (Exception ex) {
                 logWarning("Could not persist next anchor at end of execution: " + ex.getMessage());
