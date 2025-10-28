@@ -15,6 +15,7 @@ import cl.camodev.utiles.time.TimeValidators;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
+import cl.camodev.wosbot.ot.DTOArea;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
@@ -81,19 +82,25 @@ public class PetSkillsTask extends DelayedTask {
     private static final DTOPoint TREASURE_SKILL_BOTTOM_RIGHT = new DTOPoint(320, 490);
 
     // ========== Skill Details UI (overlay on pets menu) ==========
-    private static final DTOPoint COOLDOWN_OCR_TOP_LEFT = new DTOPoint(368, 1075);
-    private static final DTOPoint COOLDOWN_OCR_BOTTOM_RIGHT = new DTOPoint(507, 1105);
+    private static final DTOArea TREASURE_COOLDOWN_OCR_AREA = new DTOArea(
+            new DTOPoint(231, 428),
+            new DTOPoint(330, 470));
+    private static final DTOArea GATHERING_COOLDOWN_OCR_AREA = new DTOArea(
+            new DTOPoint(379, 292),
+            new DTOPoint(474, 314));
+    private static final DTOArea FOOD_COOLDOWN_OCR_AREA = new DTOArea(
+            new DTOPoint(522, 288),
+            new DTOPoint(626, 318));
+    private static final DTOArea STAMINA_COOLDOWN_OCR_AREA = new DTOArea(
+            new DTOPoint(229, 285),
+            new DTOPoint(334, 320));
     private static final DTOPoint SKILL_LEVEL_OCR_TOP_LEFT = new DTOPoint(276, 779);
     private static final DTOPoint SKILL_LEVEL_OCR_BOTTOM_RIGHT = new DTOPoint(363, 811);
 
-    // ========== Retry and Timing Constants ==========
-    private static final int USE_SKILL_TAP_COUNT = 5;
-    private static final int USE_SKILL_TAP_DELAY = 200;
-    private static final int MAX_NAVIGATION_ATTEMPTS = 3;
-    private static final int FALLBACK_RESCHEDULE_MINUTES = 10;
-    private static final int OCR_MAX_RETRIES = 5;
-    private static final long OCR_RETRY_DELAY_MS = 200L;
-    private static final int SKILL_LEVEL_OCR_MAX_RETRIES = 5;
+    // ========== Retry Constants ==========
+    private static final int FALLBACK_RESCHEDULE_MINUTES = 5;
+    private static final int SKILL_LEVEL_OCR_MAX_RETRIES = 3;
+    private static final int OCR_RETRY_DELAY_MS = 200;
 
     // ========== Stamina Calculation Constants ==========
     private static final int STAMINA_BASE_VALUE = 35;
@@ -102,9 +109,9 @@ public class PetSkillsTask extends DelayedTask {
 
     // ========== OCR Settings ==========
     private static final DTOTesseractSettings COOLDOWN_OCR_SETTINGS = DTOTesseractSettings.builder()
-            .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-            .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
             .setAllowedChars("0123456789d:")
+            .setRemoveBackground(true)
+            .setTextColor(new Color(244, 59, 59))
             .build();
 
     private static final DTOTesseractSettings SKILL_LEVEL_OCR_SETTINGS = DTOTesseractSettings.builder()
@@ -297,12 +304,12 @@ public class PetSkillsTask extends DelayedTask {
         if (!petsButton.isFound()) {
             navigationAttempts++;
 
-            if (navigationAttempts >= MAX_NAVIGATION_ATTEMPTS) {
-                logError("Could not find Pets menu after " + MAX_NAVIGATION_ATTEMPTS + " attempts.");
+            if (navigationAttempts >= 3) { // Max navigation attempts
+                logError("Could not find Pets menu after 3 attempts.");
                 return false;
             }
 
-            logWarning("Pets button not found (attempt " + navigationAttempts + "/" + MAX_NAVIGATION_ATTEMPTS + ").");
+            logWarning("Pets button not found (attempt " + navigationAttempts + "/3).");
             return false;
         }
 
@@ -450,8 +457,8 @@ public class PetSkillsTask extends DelayedTask {
         tapRandomPoint(
                 useButton.getPoint(),
                 useButton.getPoint(),
-                USE_SKILL_TAP_COUNT,
-                USE_SKILL_TAP_DELAY);
+                3, // Number of taps
+                100); // Delay between taps in ms
 
         sleepTask(1500); // Wait for skill use animation
 
@@ -475,7 +482,28 @@ public class PetSkillsTask extends DelayedTask {
      * @param skill the skill whose cooldown to read
      */
     private void readAndTrackCooldown(PetSkill skill) {
-        Duration cooldownDuration = readCooldownDuration();
+        Duration cooldownDuration;
+
+        switch (skill) {
+            case STAMINA:
+                cooldownDuration = readSkillCooldown(STAMINA_COOLDOWN_OCR_AREA);
+                break;
+
+            case FOOD:
+                cooldownDuration = readSkillCooldown(FOOD_COOLDOWN_OCR_AREA);
+                break;
+
+            case TREASURE:
+                cooldownDuration = readSkillCooldown(TREASURE_COOLDOWN_OCR_AREA);
+                break;
+
+            case GATHERING:
+                cooldownDuration = readSkillCooldown(GATHERING_COOLDOWN_OCR_AREA);
+                break;
+
+            default:
+                cooldownDuration = null;
+        }
 
         if (cooldownDuration == null) {
             logWarning("Failed to read cooldown for " + skill.name() + ". Using 5 minute fallback cooldown.");
@@ -493,16 +521,17 @@ public class PetSkillsTask extends DelayedTask {
     }
 
     /**
-     * Reads the cooldown duration from the UI using OCR.
+     * Reads the cooldown duration from the UI using OCR for a specific skill area.
      * 
+     * @param area The area containing the cooldown text
      * @return Duration representing the cooldown time, or null if OCR fails
      */
-    private Duration readCooldownDuration() {
+    private Duration readSkillCooldown(DTOArea area) {
         return durationHelper.execute(
-                COOLDOWN_OCR_TOP_LEFT,
-                COOLDOWN_OCR_BOTTOM_RIGHT,
-                OCR_MAX_RETRIES,
-                OCR_RETRY_DELAY_MS,
+                area.topLeft(),
+                area.bottomRight(),
+                5, // Max retries
+                200L, // Retry delay in ms
                 COOLDOWN_OCR_SETTINGS,
                 TimeValidators::isValidTime,
                 TimeConverters::toDuration);
@@ -648,8 +677,7 @@ public class PetSkillsTask extends DelayedTask {
         /** Treasure skill - provides resource rewards */
         TREASURE(TREASURE_SKILL_TOP_LEFT, TREASURE_SKILL_BOTTOM_RIGHT);
 
-        private final DTOPoint topLeft;
-        private final DTOPoint bottomRight;
+        private final DTOArea area;
 
         /**
          * Constructs a PetSkill with screen coordinates.
@@ -658,8 +686,7 @@ public class PetSkillsTask extends DelayedTask {
          * @param bottomRight bottom-right corner of the skill icon region
          */
         PetSkill(DTOPoint topLeft, DTOPoint bottomRight) {
-            this.topLeft = topLeft;
-            this.bottomRight = bottomRight;
+            this.area = new DTOArea(topLeft, bottomRight);
         }
 
         /**
@@ -668,7 +695,7 @@ public class PetSkillsTask extends DelayedTask {
          * @return DTOPoint representing top-left coordinate
          */
         public DTOPoint getTopLeft() {
-            return topLeft;
+            return area.topLeft();
         }
 
         /**
@@ -677,7 +704,7 @@ public class PetSkillsTask extends DelayedTask {
          * @return DTOPoint representing bottom-right coordinate
          */
         public DTOPoint getBottomRight() {
-            return bottomRight;
+            return area.bottomRight();
         }
     }
 }
