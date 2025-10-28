@@ -245,6 +245,7 @@ public enum EnumConfigurationKey {
 	// Example: "Fire Crystals:1:true|VIP Points:2:true|Hero Shards:3:false|Speedups:4:true"
     ALLIANCE_SHOP_ENABLED_BOOL("false", Boolean.class),
 	ALLIANCE_SHOP_PRIORITIES_STRING("", String.class),
+    ALLIANCE_SHOP_MIN_PERCENTAGE_INT("50", Integer.class),
 	ALLIANCE_SHOP_MIN_COINS_TO_ACTIVATE_INT("0", Integer.class),
 	ALLIANCE_SHOP_MIN_COINS_INT("0", Integer.class);
 
