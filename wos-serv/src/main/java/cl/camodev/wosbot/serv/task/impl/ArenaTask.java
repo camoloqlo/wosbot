@@ -45,6 +45,7 @@ public class ArenaTask extends DelayedTask {
     private static final String DEFAULT_ACTIVATION_TIME = "23:55"; // UTC
     private static final int DEFAULT_EXTRA_ATTEMPTS = 0;
     private static final boolean DEFAULT_REFRESH_WITH_GEMS = false;
+    private static final int DEFAULT_PLAYER_STATE = 0;
 
     // ========== Arena Coordinates ==========
     // Arena screen
@@ -56,6 +57,8 @@ public class ArenaTask extends DelayedTask {
     private static final DTOPoint CHALLENGES_LEFT_TOP_LEFT = new DTOPoint(405, 951);
     private static final DTOPoint CHALLENGES_LEFT_BOTTOM_RIGHT = new DTOPoint(439, 986);
     private static final DTOPoint EXTRA_ATTEMPTS_BUTTON = new DTOPoint(467, 965);
+    private static final DTOPoint OPPONENT_STATE_TOP_LEFT = new DTOPoint(181, 378);
+    private static final DTOPoint OPPONENT_STATE_BOTTOM_RIGHT = new DTOPoint(271, 413);
 
     // Opponent list (Y coordinates for 5 opponents)
     private static final int OPPONENT_BASE_Y_FIRST_RUN = 380;
@@ -100,11 +103,14 @@ public class ArenaTask extends DelayedTask {
     private String activationTime;
     private int extraAttempts;
     private boolean refreshWithGems;
+    private int playerState;
+    private TextRecognitionRetrier<String> textHelper;
 
     // ========== Execution State (reset each execution) ==========
     private int attempts;
     private boolean firstRun;
     private int gemRefreshCount;
+    private int currentOpponentPosition;
 
     public ArenaTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
@@ -127,8 +133,15 @@ public class ArenaTask extends DelayedTask {
                 EnumConfigurationKey.ARENA_TASK_REFRESH_WITH_GEMS_BOOL, Boolean.class);
         this.refreshWithGems = (configuredRefresh != null) ? configuredRefresh : DEFAULT_REFRESH_WITH_GEMS;
 
-        logDebug(String.format("Configuration loaded - Time: %s, Extra attempts: %d, Refresh with gems: %s",
-                activationTime, extraAttempts, refreshWithGems));
+        Integer playerState = profile.getConfig(
+                EnumConfigurationKey.ARENA_TASK_PLAYER_STATE_INT, Integer.class);
+        this.playerState = (playerState != null) ? playerState : DEFAULT_PLAYER_STATE;
+
+        this.textHelper = new TextRecognitionRetrier<>(provider);
+
+        logDebug(String.format(
+                "Configuration loaded - Time: %s, Extra attempts: %d, Refresh with gems: %s, Player state: %d",
+                activationTime, extraAttempts, refreshWithGems, playerState));
     }
 
     /**
@@ -139,6 +152,7 @@ public class ArenaTask extends DelayedTask {
         this.attempts = 0;
         this.firstRun = false;
         this.gemRefreshCount = 0;
+        this.currentOpponentPosition = 0;
         logDebug("Execution state reset");
     }
 
@@ -249,12 +263,10 @@ public class ArenaTask extends DelayedTask {
      * @return true if navigation succeeded, false otherwise
      */
     private boolean navigateToArena() {
-        logDebug("Opening event list");
-
         // Open left menu on city section
         openLeftMenuCitySection(true);
 
-        logDebug("Searching for Marksman Camp shortcut");
+        logInfo("Searching for Marksman Camp shortcut");
         DTOImageSearchResult marksmanResult = searchTemplateWithRetries(
                 EnumTemplates.GAME_HOME_SHORTCUTS_MARKSMAN);
 
@@ -263,11 +275,10 @@ public class ArenaTask extends DelayedTask {
             return false;
         }
 
-        logDebug("Opening Marksman Camp");
         tapPoint(marksmanResult.getPoint());
         sleepTask(1000); // Wait for Marksman Camp to load
 
-        logDebug("Entering arena");
+        logInfo("Entering arena");
         tapPoint(ARENA_ICON);
         sleepTask(1000); // Wait for arena screen to load
 
@@ -342,7 +353,6 @@ public class ArenaTask extends DelayedTask {
         logDebug("Reading initial challenge attempts");
 
         DTOTesseractSettings settings = DTOTesseractSettings.builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(91, 112, 147))
@@ -551,13 +561,30 @@ public class ArenaTask extends DelayedTask {
     private void processChallenges() {
         logInfo(String.format("Processing %d challenge attempts", attempts));
 
-        while (attempts > 0) {
-            boolean foundWeakerOpponent = scanAndChallengeWeakerOpponent();
+        boolean inCyclingMode = false; // Track if we're in cycling mode (no weaker opponents found)
 
-            if (!foundWeakerOpponent) {
-                if (!tryRefreshOpponentList()) {
-                    // No refresh available, challenge first opponent to avoid wasting attempts
-                    challengeFirstOpponent();
+        while (attempts > 0) {
+            if (!inCyclingMode) {
+                boolean foundWeakerOpponent = scanAndChallengeWeakerOpponent();
+
+                if (!foundWeakerOpponent) {
+                    if (!tryRefreshOpponentList()) {
+                        inCyclingMode = true; // Enter cycling mode since no weaker opponents and no refresh
+                        boolean wonBattle = challengeNextOpponent();
+                        if (wonBattle) {
+                            // If we won, opponent list refreshed, exit cycling mode to check new opponents
+                            inCyclingMode = false;
+                            logInfo("Battle won. Opponent list refreshed. Checking for weaker opponents in new list.");
+                        }
+                    }
+                }
+            } else {
+                // In cycling mode - directly challenge next opponent
+                boolean wonBattle = challengeNextOpponent();
+                if (wonBattle) {
+                    // If we won, opponent list refreshed, exit cycling mode to check new opponents
+                    inCyclingMode = false;
+                    logInfo("Battle won. Opponent list refreshed. Checking for weaker opponents in new list.");
                 }
             }
         }
@@ -573,6 +600,7 @@ public class ArenaTask extends DelayedTask {
      */
     private boolean scanAndChallengeWeakerOpponent() {
         int baseY = firstRun ? OPPONENT_BASE_Y_FIRST_RUN : OPPONENT_BASE_Y_NORMAL;
+        boolean allSameState = true;
 
         for (int i = 0; i < MAX_OPPONENTS; i++) {
             if (attempts <= 0) {
@@ -580,6 +608,23 @@ public class ArenaTask extends DelayedTask {
             }
 
             int opponentY = baseY + (i * OPPONENT_Y_SPACING);
+            int opponentStateY = OPPONENT_STATE_TOP_LEFT.getY() + (i * OPPONENT_Y_SPACING);
+
+            // If player state is 0 (unconfigured), skip state verification
+            if (playerState != 0) {
+                // Check opponent's state
+                int opponentState = firstRun ? 0 : getOpponentState(opponentStateY);
+                logInfo(String.format("Opponent %d state: %d (our state: %d)", i + 1, opponentState, playerState));
+                sleepTask(300);
+
+                if (opponentState == playerState) {
+                    continue; // Skip opponents from same state
+                }
+                allSameState = false;
+            } else {
+                logDebug("Player state is 0 (unconfigured), skipping state verification");
+                allSameState = false; // Don't force refresh when state checking is disabled
+            }
 
             if (isOpponentWeaker(opponentY, i + 1)) {
                 challengeOpponent(opponentY, i + 1);
@@ -592,6 +637,16 @@ public class ArenaTask extends DelayedTask {
 
                 sleepTask(1000); // Wait before scanning next opponent
                 return true;
+            }
+
+            sleepTask(300); // Wait for details window to close
+        }
+
+        // If all opponents were from the same state, try to refresh
+        if (allSameState) {
+            logInfo("All opponents are from the same state. Attempting list refresh.");
+            if (tryRefreshOpponentList()) {
+                return scanAndChallengeWeakerOpponent(); // Recursively scan new list
             }
         }
 
@@ -634,7 +689,7 @@ public class ArenaTask extends DelayedTask {
         if (isWeaker) {
             logInfo(String.format("Opponent %d has lower power (green text dominant)", opponentNumber));
         } else {
-            logDebug(String.format("Opponent %d has higher power (red text), skipping", opponentNumber));
+            logInfo(String.format("Opponent %d has higher power (red text), skipping", opponentNumber));
         }
 
         return isWeaker;
@@ -656,22 +711,98 @@ public class ArenaTask extends DelayedTask {
     }
 
     /**
-     * Challenges the first opponent in the list regardless of power level.
-     * Used when no refreshes are available and we want to use remaining attempts.
+     * Challenges the next opponent in the cycling sequence regardless of power
+     * level.
+     * If battle is lost, moves to the next opponent. After the last opponent,
+     * cycles back to the first one.
+     * 
+     * @return true if battle was won, false if lost
      */
-    private void challengeFirstOpponent() {
-        logInfo("No suitable opponents found. Challenging first opponent to use remaining attempts.");
-
+    private boolean challengeNextOpponent() {
         int baseY = firstRun ? OPPONENT_BASE_Y_FIRST_RUN : OPPONENT_BASE_Y_NORMAL;
+        int initialPosition = currentOpponentPosition;
+        boolean checkedAllOpponents = false;
 
-        tapPoint(new DTOPoint(OPPONENT_CHALLENGE_BUTTON_X, baseY));
-        sleepTask(2000); // Wait for challenge confirmation screen
+        while (!checkedAllOpponents) {
+            // Calculate Y position for current opponent
+            int opponentY = baseY + (currentOpponentPosition * OPPONENT_Y_SPACING);
+            int opponentStateY = OPPONENT_STATE_TOP_LEFT.getY() + (currentOpponentPosition * OPPONENT_Y_SPACING);
 
-        executeBattleSequence();
-        attempts--;
-        checkBattleResult(); // Don't care about result here
-        firstRun = false;
-        sleepTask(1000); // Wait before next action
+            boolean shouldChallenge = false;
+
+            // Skip state check if player state is unconfigured (0)
+            if (playerState != 0) {
+                // Check opponent's state
+                int opponentState = firstRun ? 0 : getOpponentState(opponentStateY);
+                logInfo(String.format("Opponent %d state in cycling mode: %d (our state: %d)",
+                        currentOpponentPosition + 1, opponentState, playerState));
+                sleepTask(300);
+
+                // Only challenge if from different state
+                shouldChallenge = (opponentState != playerState);
+            } else {
+                logDebug("Player state is 0 (unconfigured), skipping state verification in cycling mode");
+                shouldChallenge = true;
+            }
+
+            if (shouldChallenge) {
+                // Challenge this opponent
+                logInfo(String.format("Challenging opponent %d in cycling mode.",
+                        currentOpponentPosition + 1));
+
+                tapPoint(new DTOPoint(OPPONENT_CHALLENGE_BUTTON_X, opponentY));
+                sleepTask(2000);
+
+                executeBattleSequence();
+                attempts--;
+
+                boolean won = checkBattleResult();
+                if (!won) {
+                    // Move to next opponent in cycle if battle was lost
+                    currentOpponentPosition = (currentOpponentPosition + 1) % MAX_OPPONENTS;
+                    logInfo(String.format("Battle lost. Moving to opponent %d for next attempt.",
+                            currentOpponentPosition + 1));
+                } else {
+                    logInfo("Battle won. Opponent list will refresh for next attempt.");
+                }
+
+                firstRun = false;
+                sleepTask(1000);
+                return won;
+            }
+
+            // Move to next opponent
+            currentOpponentPosition = (currentOpponentPosition + 1) % MAX_OPPONENTS;
+
+            // Check if we've looked at all opponents
+            if (currentOpponentPosition == initialPosition) {
+                // We've checked all opponents and they're all from our state
+                logInfo("All opponents are from the same state in cycling mode. Attempting refresh.");
+                if (tryRefreshOpponentList()) {
+                    // Reset position and check new list
+                    currentOpponentPosition = 0;
+                    return false;
+                }
+                // If refresh failed, challenge current opponent regardless of state
+                logInfo("No refreshes available. Challenging opponent regardless of state.");
+                tapPoint(new DTOPoint(OPPONENT_CHALLENGE_BUTTON_X, opponentY));
+                sleepTask(2000);
+
+                executeBattleSequence();
+                attempts--;
+
+                boolean won = checkBattleResult();
+                if (!won) {
+                    currentOpponentPosition = (currentOpponentPosition + 1) % MAX_OPPONENTS;
+                }
+
+                firstRun = false;
+                sleepTask(1000);
+                return won;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -679,7 +810,7 @@ public class ArenaTask extends DelayedTask {
      * pausing and retreating to skip the animation.
      */
     private void executeBattleSequence() {
-        logDebug("Executing battle sequence (with animation skip)");
+        logInfo("Executing battle sequence (with animation skip)");
 
         tapPoint(BATTLE_START_BUTTON);
         sleepTask(3000); // Wait for battle to start
@@ -697,10 +828,7 @@ public class ArenaTask extends DelayedTask {
      * @return true if victory, false if defeat or unknown
      */
     private boolean checkBattleResult() {
-        TextRecognitionRetrier<String> textHelper = new TextRecognitionRetrier<>(provider);
-
         DTOTesseractSettings textSettings = DTOTesseractSettings.builder()
-                //.setDebug(true)
                 .setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
                 .build();
 
@@ -726,6 +854,41 @@ public class ArenaTask extends DelayedTask {
         sleepTask(1000);
         tapBackButton();
         return false;
+    }
+
+    /**
+     * Reads the state number of a specific opponent.
+     * Adjusts reading coordinates based on the opponent's position in the list.
+     * 
+     * @param opponentY the Y-coordinate of the opponent's row
+     * @return the opponent's state number, or 0 if reading fails
+     */
+    private int getOpponentState(int opponentY) {
+        DTOTesseractSettings settings = DTOTesseractSettings.builder()
+                .setTextColor(Color.white)
+                .setRemoveBackground(true)
+                .setAllowedChars("0123456789M.")
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .build();
+
+        // Calculate state coordinates relative to opponent's position
+        DTOPoint stateTopLeft = new DTOPoint(
+                OPPONENT_STATE_TOP_LEFT.getX(),
+                opponentY);
+
+        DTOPoint stateBottomRight = new DTOPoint(
+                OPPONENT_STATE_BOTTOM_RIGHT.getX(),
+                opponentY + 35); // Height of state region
+
+        Integer opponentState = readNumberValue(stateTopLeft, stateBottomRight, settings);
+
+        if (opponentState == null) {
+            logError("Failed to read opponent state via OCR");
+            return 0;
+        }
+
+        return opponentState;
     }
 
     /**

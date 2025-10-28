@@ -67,13 +67,26 @@
                   <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0">
                      <children>
                         <Label text="Extra attempts: " />
-                        <ComboBox fx:id="comboBoxArenaExtraAttempts" />
+                        <ComboBox fx:id="comboBoxArenaExtraAttempts" promptText="0" />
                      </children>
                   </HBox>
                   <HBox alignment="CENTER_LEFT">
                      <children>
                         <Label text="Activation time (UTC): " />
-                        <TextField fx:id="textFieldArenaActivationHour" prefWidth="60.0" promptText="HH:mm" />
+                        <TextField fx:id="textFieldArenaActivationHour" prefWidth="60.0" promptText="HH:mm">
+                           <font>
+                              <Font size="10.0" />
+                           </font></TextField>
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0">
+                     <children>
+                        <Label text="State: " />
+                        <TextField fx:id="textFieldArenaPlayerState" promptText="e.g. 1234">
+                           <font>
+                              <Font size="10.0" />
+                           </font>
+                        </TextField>
                      </children>
                   </HBox>
                </children>

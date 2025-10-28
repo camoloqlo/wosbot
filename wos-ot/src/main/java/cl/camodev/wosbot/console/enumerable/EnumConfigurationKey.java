@@ -152,6 +152,7 @@ public enum EnumConfigurationKey {
 	ARENA_TASK_BOOL("false", Boolean.class),
 	ARENA_TASK_EXTRA_ATTEMPTS_INT("0", Integer.class),
 	ARENA_TASK_REFRESH_WITH_GEMS_BOOL("false", Boolean.class),
+	ARENA_TASK_PLAYER_STATE_INT("0", Integer.class),
 	
     // ========================================================================
     // SHOPS AND MERCHANTS
