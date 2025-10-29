@@ -21,9 +21,101 @@ import java.util.regex.Pattern;
  */
 public class AllianceMobilizationTask extends DelayedTask {
 
-    private static final Pattern ATTEMPTS_PATTERN = Pattern.compile("(\\d{1,2})\\s*/\\s*(\\d{0,3})");
-    private static final DTOPoint ATTEMPTS_COUNTER_TOP_LEFT = new DTOPoint(168, 528);
-    private static final DTOPoint ATTEMPTS_COUNTER_BOTTOM_RIGHT = new DTOPoint(235, 565);
+    // ========================================================================
+    // CONSTANTS
+    // ========================================================================
+
+    private static final class OCR {
+        static final Pattern ATTEMPTS_PATTERN = Pattern.compile("(\\d{1,2})\\s*/\\s*(\\d{0,3})");
+    }
+
+    private static final class Coords {
+        // Attempts Counter
+        static final DTOPoint ATTEMPTS_COUNTER_TOP_LEFT = new DTOPoint(168, 528);
+        static final DTOPoint ATTEMPTS_COUNTER_BOTTOM_RIGHT = new DTOPoint(235, 565);
+        
+        // Task Interaction
+        static final DTOPoint REFRESH_BUTTON = new DTOPoint(200, 805);
+        static final DTOPoint REFRESH_CONFIRM_BUTTON = new DTOPoint(510, 790);
+        static final DTOPoint ACCEPT_BUTTON = new DTOPoint(500, 805);
+        static final DTOPoint FREE_MISSION_CONFIRM = new DTOPoint(340, 780);
+        static final DTOPoint BACK_BUTTON = new DTOPoint(50, 50);
+        
+        // Alliance Monuments
+        static final DTOPoint[] MONUMENT_CLICKS = {
+            new DTOPoint(366, 1014),
+            new DTOPoint(250, 870),
+            new DTOPoint(366, 1014),
+            new DTOPoint(154, 1002),
+            new DTOPoint(245, 483)
+        };
+        
+        // Free Mission
+        static final DTOPoint FREE_MISSION_EXPECTED = new DTOPoint(256, 527);
+        
+        // Task Availability Timers
+        static final DTOPoint LEFT_TIMER_TOP_LEFT = new DTOPoint(162, 705);
+        static final DTOPoint LEFT_TIMER_BOTTOM_RIGHT = new DTOPoint(280, 743);
+        static final DTOPoint RIGHT_TIMER_TOP_LEFT = new DTOPoint(486, 705);
+        static final DTOPoint RIGHT_TIMER_BOTTOM_RIGHT = new DTOPoint(595, 743);
+        
+        // Cooldown Popup
+        static final DTOPoint COOLDOWN_POPUP_TOP_LEFT = new DTOPoint(295, 571);
+        static final DTOPoint COOLDOWN_POPUP_BOTTOM_RIGHT = new DTOPoint(379, 604);
+        
+        // Navigation
+        static final DTOPoint SWIPE_START = new DTOPoint(100, 158);
+        static final DTOPoint SWIPE_END = new DTOPoint(620, 158);
+    }
+
+    private static final class Offsets {
+        // Points Detection
+        static final int POINTS_X = 112;
+        static final int POINTS_Y = 158;
+        static final int POINTS_WIDTH = 75;
+        static final int POINTS_HEIGHT = 34;
+        
+        // Task Type Detection
+        static final int TASK_TYPE_MAX_DELTA_X = 150;
+        static final int TASK_TYPE_MAX_DELTA_Y = 100;
+        
+        // Running Task Detection
+        static final int RUNNING_TASK_X = -50;
+        static final int RUNNING_TASK_Y = 100;
+        static final int RUNNING_TASK_WIDTH = 300;
+        static final int RUNNING_TASK_HEIGHT = 150;
+        
+        // Free Mission Tolerance
+        static final int FREE_MISSION_TOLERANCE = 50;
+    }
+
+    private static final class Limits {
+        static final int MAX_NAVIGATION_ATTEMPTS = 3;
+        static final int MAX_TAB_SEARCH_SWIPES = 2;
+        static final int MAX_OCR_RETRIES = 3;
+    }
+
+    private static final class Delays {
+        static final int OCR_RETRY_MS = 200;
+        static final int SWIPE_MS = 500;
+        static final int DEFAULT_COOLDOWN_SECONDS = 300; // 5 minutes
+        static final int RESCHEDULE_BUFFER_SECONDS = 5;
+        static final int RESCHEDULE_WAIT_HOURS = 1;
+    }
+
+    private static final class Thresholds {
+        static final int BONUS = 85;
+        static final int TASK_TYPE = 85;
+        static final int RUNNING = 85;
+        static final int COMPLETED = 85;
+        static final int FREE_MISSION = 90;
+        static final int MONUMENTS = 94;
+        static final int NAVIGATION = 90;
+    }
+
+    // ========================================================================
+    // CONSTRUCTOR
+    // ========================================================================
 
     public AllianceMobilizationTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
@@ -33,183 +125,301 @@ public class AllianceMobilizationTask extends DelayedTask {
     protected void execute() {
         logInfo("Alliance Mobilization - Starting task for profile: " + profile.getName());
 
-        // Read Auto Accept configuration
         boolean autoAcceptEnabled = profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_AUTO_ACCEPT_BOOL, Boolean.class);
 
-        // Navigate to the Alliance Mobilization screen
-        if (!navigateToAllianceMobilization()) {
+        if (!navigateWithRetry()) {
             LocalDateTime nextMonday = UtilTime.getNextMondayUtc();
-            logInfo("Failed to navigate. Event may not be active. Retrying on next Monday at " + nextMonday + ".");
+            logInfo("Failed to navigate after " + Limits.MAX_NAVIGATION_ATTEMPTS + " attempts. Event may not be active. Retrying on next Monday at " + nextMonday + ".");
             this.reschedule(nextMonday);
             return;
         }
 
         AttemptStatus attemptStatus = readAttemptsCounter();
-        if (attemptStatus != null) {
-            String totalDisplay = attemptStatus.total() != null && attemptStatus.total() > 0
-                    ? attemptStatus.total().toString()
-                    : "?";
-            logInfo("Detected attempts counter: " + attemptStatus.remaining() + "/" + totalDisplay);
-            if (attemptStatus.remaining() <= 0) {
-                LocalDateTime nextReset = UtilTime.getGameReset();
-                logInfo("No attempts remaining. Rescheduling for next UTC reset at " + nextReset + ".");
-                this.reschedule(nextReset);
-                return;
-            }
-        } else {
-            logWarning("Unable to detect attempts counter. Proceeding with default processing.");
+        if (!validateAttempts(attemptStatus)) {
+            return;
         }
 
-        // Analyze and perform tasks
         boolean rescheduleWasSet = analyzeAndPerformTasks(autoAcceptEnabled);
 
-        // Default reschedule: Check again in 5 minutes if no other reschedule was set
         if (!rescheduleWasSet) {
-            logInfo("No tasks processed. Checking again in 5 minutes.");
-            LocalDateTime nextRun = LocalDateTime.now().plusMinutes(5);
-            this.reschedule(nextRun);
+            logInfo("No tasks processed. Checking again in " + (Delays.DEFAULT_COOLDOWN_SECONDS / 60) + " minutes.");
+            this.reschedule(LocalDateTime.now().plusSeconds(Delays.DEFAULT_COOLDOWN_SECONDS));
         }
 
         logInfo("Alliance Mobilization - Task completed");
     }
 
+    // ========================================================================
+    // NAVIGATION METHODS
+    // ========================================================================
+
+    private boolean navigateWithRetry() {
+        for (int attempt = 1; attempt <= Limits.MAX_NAVIGATION_ATTEMPTS; attempt++) {
+            logInfo("Navigation attempt " + attempt + "/" + Limits.MAX_NAVIGATION_ATTEMPTS);
+            
+            if (navigateToAllianceMobilization()) {
+                return true;
+            }
+            
+            if (attempt < Limits.MAX_NAVIGATION_ATTEMPTS) {
+                logWarning("Navigation failed. Returning to home screen and retrying...");
+                returnToHomeScreen();
+                sleepTask(2000);
+            }
+        }
+        return false;
+    }
+
+    private void returnToHomeScreen() {
+        try {
+            ensureCorrectScreenLocation(EnumStartLocation.HOME);
+        } catch (Exception e) {
+            logWarning("Failed to return to home screen: " + e.getMessage());
+        }
+    }
+
+    private boolean validateAttempts(AttemptStatus attemptStatus) {
+        if (attemptStatus != null) {
+            String totalDisplay = attemptStatus.total() != null && attemptStatus.total() > 0
+                    ? attemptStatus.total().toString()
+                    : "?";
+            logInfo("Detected attempts counter: " + attemptStatus.remaining() + "/" + totalDisplay);
+            
+            if (attemptStatus.remaining() <= 0) {
+                LocalDateTime nextReset = UtilTime.getGameReset();
+                logInfo("No attempts remaining. Rescheduling for next UTC reset at " + nextReset + ".");
+                this.reschedule(nextReset);
+                return false;
+            }
+        } else {
+            logWarning("Unable to detect attempts counter. Proceeding with default processing.");
+        }
+        return true;
+    }
+
     private boolean navigateToAllianceMobilization() {
         logInfo("Navigating to Alliance Mobilization...");
 
-        // Step 1: Click the Events button to open the events screen
+        if (!clickEventsButton()) {
+            return false;
+        }
+
+        return findAndSelectMobilizationTab();
+    }
+
+    private boolean clickEventsButton() {
         logDebug("Searching for Events button on home screen...");
-        DTOImageSearchResult eventsButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.HOME_EVENTS_BUTTON, 90);
+        DTOImageSearchResult eventsButton = emuManager.searchTemplate(
+            EMULATOR_NUMBER, 
+            EnumTemplates.HOME_EVENTS_BUTTON, 
+            Thresholds.NAVIGATION
+        );
+        
         if (!eventsButton.isFound()) {
             logWarning("Events button not found on home screen.");
-                return false;
+            return false;
         }
+        
         logDebug("Events button found at: " + eventsButton.getPoint());
         emuManager.tapAtPoint(EMULATOR_NUMBER, eventsButton.getPoint());
-        sleepTask(2000); // Increased wait time for events screen to load
+        sleepTask(2000);
+        return true;
+    }
 
-        // Step 2: Try to find the event via tabs, similar to JourneyOfLight
+    private boolean findAndSelectMobilizationTab() {
         logDebug("Searching for Alliance Mobilization tabs...");
-        DTOImageSearchResult selectedTab = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ALLIANCE_MOBILIZATION_TAB, 90);
-        DTOImageSearchResult unselectedTab = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ALLIANCE_MOBILIZATION_UNSELECTED_TAB, 90);
+        
+        DTOImageSearchResult selectedTab = searchForMobilizationTab(true);
+        DTOImageSearchResult unselectedTab = searchForMobilizationTab(false);
 
         logDebug("Selected tab found: " + selectedTab.isFound());
         logDebug("Unselected tab found: " + unselectedTab.isFound());
 
         if (selectedTab.isFound()) {
             logInfo("Alliance Mobilization tab is already selected at: " + selectedTab.getPoint());
-        } else if (unselectedTab.isFound()) {
+            return true;
+        }
+        
+        if (unselectedTab.isFound()) {
             logInfo("Found unselected Alliance Mobilization tab at: " + unselectedTab.getPoint() + ", clicking it.");
             emuManager.tapAtPoint(EMULATOR_NUMBER, unselectedTab.getPoint());
             sleepTask(2000);
-        } else {
-            logInfo("Alliance Mobilization tabs not found, swiping to search for them...");
+            return true;
+        }
 
-            // Search for tabs by swiping left to right (shows tabs to the right)
-            boolean tabFound = false;
-            for (int i = 0; i < 2; i++) {
-                logDebug("Tab search attempt " + (i + 1) + "/2");
+        return searchTabsWithSwipe();
+    }
 
-                // Check for tabs after each swipe
-                DTOImageSearchResult selectedTabAfterSwipe = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ALLIANCE_MOBILIZATION_TAB, 90);
-                DTOImageSearchResult unselectedTabAfterSwipe = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.ALLIANCE_MOBILIZATION_UNSELECTED_TAB, 90);
+    private DTOImageSearchResult searchForMobilizationTab(boolean isSelected) {
+        EnumTemplates template = isSelected 
+            ? EnumTemplates.ALLIANCE_MOBILIZATION_TAB 
+            : EnumTemplates.ALLIANCE_MOBILIZATION_UNSELECTED_TAB;
+        return emuManager.searchTemplate(
+            EMULATOR_NUMBER, 
+            template, 
+            Thresholds.NAVIGATION
+        );
+    }
 
-                if (selectedTabAfterSwipe.isFound()) {
-                    logInfo("Found selected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + selectedTabAfterSwipe.getPoint());
-                    tabFound = true;
-                    break;
-                } else if (unselectedTabAfterSwipe.isFound()) {
-                    logInfo("Found unselected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + unselectedTabAfterSwipe.getPoint());
-                    emuManager.tapAtPoint(EMULATOR_NUMBER, unselectedTabAfterSwipe.getPoint());
-                    sleepTask(2000);
-                    tabFound = true;
-                    break;
-                }
+    private boolean searchTabsWithSwipe() {
+        logInfo("Alliance Mobilization tabs not found, swiping to search for them...");
 
-                // Swipe left to right to see more tabs (centered for 720x1280)
-                if (i < 4) {
-                    logDebug("Swiping left to right...");
-                    emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(100, 158), new DTOPoint(620, 158));
-                    sleepTask(500);
-                }
+        for (int i = 0; i < Limits.MAX_TAB_SEARCH_SWIPES; i++) {
+            logDebug("Tab search attempt " + (i + 1) + "/" + Limits.MAX_TAB_SEARCH_SWIPES);
+
+            DTOImageSearchResult selectedTab = searchForMobilizationTab(true);
+            DTOImageSearchResult unselectedTab = searchForMobilizationTab(false);
+
+            if (selectedTab.isFound()) {
+                logInfo("Found selected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + selectedTab.getPoint());
+                return true;
+            }
+            
+            if (unselectedTab.isFound()) {
+                logInfo("Found unselected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + unselectedTab.getPoint());
+                emuManager.tapAtPoint(EMULATOR_NUMBER, unselectedTab.getPoint());
+                sleepTask(2000);
+                return true;
             }
 
-            if (!tabFound) {
-                logWarning("Alliance Mobilization tabs not found after multiple swipes. Event may not be active.");
-                return false;
+            if (i < Limits.MAX_TAB_SEARCH_SWIPES - 1) {
+                logDebug("Swiping left to right...");
+                emuManager.executeSwipe(EMULATOR_NUMBER, Coords.SWIPE_START, Coords.SWIPE_END);
+                sleepTask(Delays.SWIPE_MS);
             }
         }
 
-        logInfo("Successfully navigated to Alliance Mobilization.");
-        return true;
+        logWarning("Alliance Mobilization tabs not found after multiple swipes. Event may not be active.");
+        return false;
     }
+
+    // ========================================================================
+    // TASK ANALYSIS AND CONFIGURATION
+    // ========================================================================
 
     private boolean analyzeAndPerformTasks(boolean autoAcceptEnabled) {
-        // Get user configuration for reward percentage filter
-        String rewardsPercentage = profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_REWARDS_PERCENTAGE_STRING, String.class);
-    int legacyMinimumPoints = profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_INT, Integer.class);
-    int minimumPoints200 = resolveMinimumPointsThreshold(profile, EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_200_INT, legacyMinimumPoints);
-    int minimumPoints120 = resolveMinimumPointsThreshold(profile, EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_120_INT, legacyMinimumPoints);
+        String rewardsPercentage = profile.getConfig(
+            EnumConfigurationKey.ALLIANCE_MOBILIZATION_REWARDS_PERCENTAGE_STRING, 
+            String.class
+        );
+        int legacyMinimumPoints = profile.getConfig(
+            EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_INT, 
+            Integer.class
+        );
+        int minimumPoints200 = resolveMinimumPointsThreshold(
+            profile, 
+            EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_200_INT, 
+            legacyMinimumPoints
+        );
+        int minimumPoints120 = resolveMinimumPointsThreshold(
+            profile, 
+            EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_120_INT, 
+            legacyMinimumPoints
+        );
 
-        logInfo("Searching for tasks (Filter: " + rewardsPercentage + ", Min points 200%: " + minimumPoints200 + ", Min points 120%: " + minimumPoints120 + ", Auto-accept: " + autoAcceptEnabled + ")");
+        logInfo("Searching for tasks (Filter: " + rewardsPercentage + 
+                ", Min points 200%: " + minimumPoints200 + 
+                ", Min points 120%: " + minimumPoints120 + 
+                ", Auto-accept: " + autoAcceptEnabled + ")");
 
-        // Search and process tasks based on bonus percentage
-        // Returns true if a reschedule was set
-        return searchAndProcessTasksByBonus(rewardsPercentage, minimumPoints200, minimumPoints120, autoAcceptEnabled);
+        return searchAndProcessTasksByBonus(
+            rewardsPercentage, 
+            minimumPoints200, 
+            minimumPoints120, 
+            autoAcceptEnabled
+        );
     }
 
+    // ========================================================================
+    // ATTEMPTS COUNTER METHODS
+    // ========================================================================
+
     private AttemptStatus readAttemptsCounter() {
-        for (int attempt = 1; attempt <= 3; attempt++) {
+        for (int attempt = 1; attempt <= Limits.MAX_OCR_RETRIES; attempt++) {
             try {
-                String ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, ATTEMPTS_COUNTER_TOP_LEFT, ATTEMPTS_COUNTER_BOTTOM_RIGHT);
-                debugOCRArea("Attempts counter (attempt " + attempt + ")", ATTEMPTS_COUNTER_TOP_LEFT, ATTEMPTS_COUNTER_BOTTOM_RIGHT, ocrResult);
+                String ocrResult = emuManager.ocrRegionText(
+                    EMULATOR_NUMBER, 
+                    Coords.ATTEMPTS_COUNTER_TOP_LEFT, 
+                    Coords.ATTEMPTS_COUNTER_BOTTOM_RIGHT
+                );
+                debugOCRArea(
+                    "Attempts counter (attempt " + attempt + ")", 
+                    Coords.ATTEMPTS_COUNTER_TOP_LEFT, 
+                    Coords.ATTEMPTS_COUNTER_BOTTOM_RIGHT, 
+                    ocrResult
+                );
 
-                if (ocrResult == null || ocrResult.trim().isEmpty()) {
-                    sleepTask(200);
-                    continue;
-                }
-
-                String normalized = ocrResult
-                        .replace('O', '0')
-                        .replace('o', '0')
-                        .replace('I', '1')
-                        .replace('l', '1')
-                        .replace('|', '1')
-                        .replaceAll("[^0-9/]+", " ")
-                        .trim();
-                Matcher matcher = ATTEMPTS_PATTERN.matcher(normalized);
-                if (matcher.find()) {
-                    int remaining = Integer.parseInt(matcher.group(1));
-                    Integer total = null;
-                    String totalGroup = matcher.group(2);
-                    if (totalGroup != null && !totalGroup.isEmpty()) {
-                        total = Integer.parseInt(totalGroup);
-                        if (total == 0) {
-                            logDebug("OCR attempts counter returned total=0, retrying...");
-                            continue;
-                        }
-                    }
-                    return new AttemptStatus(remaining, total);
-                }
-
-                String condensed = normalized.replaceAll("\\s+", "");
-                if (condensed.startsWith("0/")) {
-                    Integer total = null;
-                    String afterSlash = condensed.substring(2).replaceAll("[^0-9]", "");
-                    if (!afterSlash.isEmpty()) {
-                        total = Integer.parseInt(afterSlash);
-                    }
-                    return new AttemptStatus(0, total);
+                AttemptStatus status = parseAttemptsFromOCR(ocrResult);
+                if (status != null) {
+                    return status;
                 }
             } catch (Exception e) {
                 logDebug("Failed to read attempts counter via OCR (attempt " + attempt + "): " + e.getMessage());
             }
 
-            sleepTask(200);
+            sleepTask(Delays.OCR_RETRY_MS);
         }
 
         logWarning("Unable to capture attempts counter after multiple tries.");
         return null;
     }
+
+    private AttemptStatus parseAttemptsFromOCR(String ocrResult) {
+        if (ocrResult == null || ocrResult.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalized = normalizeOCRText(ocrResult);
+        
+        Matcher matcher = OCR.ATTEMPTS_PATTERN.matcher(normalized);
+        if (matcher.find()) {
+            int remaining = Integer.parseInt(matcher.group(1));
+            Integer total = parseTotalAttempts(matcher.group(2));
+            
+            if (total != null && total == 0) {
+                logDebug("OCR attempts counter returned total=0, retrying...");
+                return null;
+            }
+            return new AttemptStatus(remaining, total);
+        }
+
+        return parseZeroAttemptsFormat(normalized);
+    }
+
+    private String normalizeOCRText(String text) {
+        return text
+            .replace('O', '0')
+            .replace('o', '0')
+            .replace('I', '1')
+            .replace('l', '1')
+            .replace('|', '1')
+            .replaceAll("[^0-9/]+", " ")
+            .trim();
+    }
+
+    private Integer parseTotalAttempts(String totalGroup) {
+        if (totalGroup != null && !totalGroup.isEmpty()) {
+            return Integer.parseInt(totalGroup);
+        }
+        return null;
+    }
+
+    private AttemptStatus parseZeroAttemptsFormat(String normalized) {
+        String condensed = normalized.replaceAll("\\s+", "");
+        if (condensed.startsWith("0/")) {
+            Integer total = null;
+            String afterSlash = condensed.substring(2).replaceAll("[^0-9]", "");
+            if (!afterSlash.isEmpty()) {
+                total = Integer.parseInt(afterSlash);
+            }
+            return new AttemptStatus(0, total);
+        }
+        return null;
+    }
+
+    // ========================================================================
+    // TASK ANALYSIS AND CONFIGURATION
+    // ========================================================================
 
     private int resolveMinimumPointsThreshold(DTOProfiles profile, EnumConfigurationKey key, int fallbackValue) {
         boolean hasExplicitConfig = profile.getConfigs().stream()
@@ -231,9 +441,6 @@ public class AllianceMobilizationTask extends DelayedTask {
         // Check for free mission button
         checkAndUseFreeMission();
 
-        // Check for Alliance Monuments button
-        checkAndUseAllianceMonuments();
-
         // Track the shortest cooldown time from all refreshed tasks
         int shortestCooldownSeconds = Integer.MAX_VALUE;
         boolean rescheduleWasSet = false;
@@ -252,7 +459,11 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         // Check 200% task
         if (search200) {
-            DTOImageSearchResult result200 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.AM_200_PERCENT, 85);
+            DTOImageSearchResult result200 = emuManager.searchTemplate(
+                EMULATOR_NUMBER, 
+                EnumTemplates.AM_200_PERCENT, 
+                Thresholds.BONUS
+            );
             if (result200.isFound() && isTaskAlreadyRunning(result200.getPoint())) {
                 logInfo("Task at 200% is already running");
                 anyTaskRunning = true;
@@ -261,7 +472,12 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         // Check 120% tasks
         if (!anyTaskRunning && search120) {
-            List<DTOImageSearchResult> results120 = emuManager.searchTemplates(EMULATOR_NUMBER, EnumTemplates.AM_120_PERCENT, 85, 2);
+            List<DTOImageSearchResult> results120 = emuManager.searchTemplates(
+                EMULATOR_NUMBER, 
+                EnumTemplates.AM_120_PERCENT, 
+                Thresholds.BONUS, 
+                2
+            );
             if (results120 != null && !results120.isEmpty()) {
                 for (DTOImageSearchResult result120 : results120) {
                     if (isTaskAlreadyRunning(result120.getPoint())) {
@@ -282,8 +498,12 @@ public class AllianceMobilizationTask extends DelayedTask {
         // Search for 200% bonus (only 1 can exist)
         if (search200) {
             logDebug("Searching for 200% bonus task...");
-            DTOImageSearchResult result200 = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.AM_200_PERCENT, 85);
-            debugTemplateSearch("AM_200_PERCENT", result200, 85);
+            DTOImageSearchResult result200 = emuManager.searchTemplate(
+                EMULATOR_NUMBER, 
+                EnumTemplates.AM_200_PERCENT, 
+                Thresholds.BONUS
+            );
+            debugTemplateSearch("AM_200_PERCENT", result200, Thresholds.BONUS);
 
             if (result200.isFound()) {
 
@@ -324,13 +544,18 @@ public class AllianceMobilizationTask extends DelayedTask {
         // Search for 120% bonus tasks (up to 2 can exist)
         if (search120) {
             logDebug("Searching for 120% bonus tasks (max 2 positions)...");
-            List<DTOImageSearchResult> results120 = emuManager.searchTemplates(EMULATOR_NUMBER, EnumTemplates.AM_120_PERCENT, 85, 2);
+            List<DTOImageSearchResult> results120 = emuManager.searchTemplates(
+                EMULATOR_NUMBER, 
+                EnumTemplates.AM_120_PERCENT, 
+                Thresholds.BONUS, 
+                2
+            );
 
             if (results120 != null && !results120.isEmpty()) {
                 logInfo("Found " + results120.size() + " x 120% bonus task(s)");
 
                 for (DTOImageSearchResult result120 : results120) {
-                    debugTemplateSearch("AM_120_PERCENT", result120, 85);
+                    debugTemplateSearch("AM_120_PERCENT", result120, Thresholds.BONUS);
 
                     // Skip this task if it's already running (has timer bar)
                     if (isTaskAlreadyRunning(result120.getPoint())) {
@@ -371,7 +596,7 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         // After processing all tasks, reschedule based on shortest cooldown
         if (shortestCooldownSeconds < Integer.MAX_VALUE) {
-            LocalDateTime nextRun = LocalDateTime.now().plusSeconds(shortestCooldownSeconds + 5);
+            LocalDateTime nextRun = LocalDateTime.now().plusSeconds(shortestCooldownSeconds + Delays.RESCHEDULE_BUFFER_SECONDS);
             this.reschedule(nextRun);
             logInfo("Rescheduling based on shortest cooldown: " + shortestCooldownSeconds + " seconds -> " + nextRun);
             rescheduleWasSet = true;
@@ -387,6 +612,9 @@ public class AllianceMobilizationTask extends DelayedTask {
                 rescheduleWasSet = true;
             }
         }
+
+        // Check for Alliance Monuments button as last step
+        checkAndUseAllianceMonuments();
 
         return rescheduleWasSet;
     }
@@ -415,7 +643,12 @@ public class AllianceMobilizationTask extends DelayedTask {
         // Search for task type icon near the bonus indicator (typically to the left)
         for (EnumTemplates template : taskTypeTemplates) {
             // Search for multiple matches of the same template (max 5)
-            List<DTOImageSearchResult> results = emuManager.searchTemplates(EMULATOR_NUMBER, template, 85, 5);
+            List<DTOImageSearchResult> results = emuManager.searchTemplates(
+                EMULATOR_NUMBER, 
+                template, 
+                Thresholds.TASK_TYPE, 
+                5
+            );
 
             if (results != null && !results.isEmpty()) {
                 // Check each match to find one near the bonus
@@ -428,12 +661,12 @@ public class AllianceMobilizationTask extends DelayedTask {
                             result.getPoint().getY() + ") - Distance from bonus: ΔX=" + deltaX + "px, ΔY=" + deltaY + "px");
 
                     // Task icon should be within reasonable distance (adjust based on UI layout)
-                    if (deltaX < 150 && deltaY < 100) {
+                    if (deltaX < Offsets.TASK_TYPE_MAX_DELTA_X && deltaY < Offsets.TASK_TYPE_MAX_DELTA_Y) {
                         logInfo("✅ Detected task type: " + template.name() + " at " + result.getPoint() +
                                " (ΔX=" + deltaX + "px, ΔY=" + deltaY + "px)");
                         return template;
                     } else {
-                        logDebug("  ❌ Too far from bonus (max: ΔX=150px, ΔY=100px)");
+                        logDebug("  ❌ Too far from bonus (max: ΔX=" + Offsets.TASK_TYPE_MAX_DELTA_X + "px, ΔY=" + Offsets.TASK_TYPE_MAX_DELTA_Y + "px)");
                     }
                 }
             }
@@ -447,16 +680,21 @@ public class AllianceMobilizationTask extends DelayedTask {
         logDebug("Checking if task is already running near: " + bonusLocation);
 
         // Search for AM_Bar_X.png (timer bar with only fixed frame parts, variable progress excluded) below the bonus indicator
-        // The bar appears approximately 150-200px below the bonus icon
-        DTOPoint searchTopLeft = new DTOPoint(bonusLocation.getX() - 50, bonusLocation.getY() + 100);
-        DTOPoint searchBottomRight = new DTOPoint(bonusLocation.getX() + 250, bonusLocation.getY() + 250);
+        DTOPoint searchTopLeft = new DTOPoint(
+            bonusLocation.getX() + Offsets.RUNNING_TASK_X, 
+            bonusLocation.getY() + Offsets.RUNNING_TASK_Y
+        );
+        DTOPoint searchBottomRight = new DTOPoint(
+            searchTopLeft.getX() + Offsets.RUNNING_TASK_WIDTH, 
+            searchTopLeft.getY() + Offsets.RUNNING_TASK_HEIGHT
+        );
 
         DTOImageSearchResult barResult = emuManager.searchTemplate(
             EMULATOR_NUMBER,
             EnumTemplates.AM_BAR_X,
             searchTopLeft,
             searchBottomRight,
-            85
+            Thresholds.RUNNING
         );
 
         if (barResult.isFound()) {
@@ -507,16 +745,6 @@ public class AllianceMobilizationTask extends DelayedTask {
         }
     }
 
-    private static class TaskProcessResult {
-        boolean shouldStop;
-        int cooldownSeconds;
-
-        TaskProcessResult(boolean shouldStop, int cooldownSeconds) {
-            this.shouldStop = shouldStop;
-            this.cooldownSeconds = cooldownSeconds;
-        }
-    }
-
     private TaskProcessResult processTaskWithPoints(DTOPoint bonusLocation, EnumTemplates taskType, boolean isTaskTypeEnabled,
                                       int detectedPoints, int minimumPoints, boolean anyTaskRunning, boolean autoAcceptEnabled,
                                       String currentBonusPercentage, String rewardsPercentage) {
@@ -550,7 +778,7 @@ public class AllianceMobilizationTask extends DelayedTask {
             return new TaskProcessResult(false, cooldown);
         } else if (anyTaskRunning) {
             logInfo("→ Waiting 1h (task good but another task running)");
-            LocalDateTime nextRun = LocalDateTime.now().plusHours(1);
+            LocalDateTime nextRun = LocalDateTime.now().plusHours(Delays.RESCHEDULE_WAIT_HOURS);
             this.reschedule(nextRun);
             return new TaskProcessResult(true, 0);
         } else {
@@ -569,16 +797,15 @@ public class AllianceMobilizationTask extends DelayedTask {
         emuManager.tapAtPoint(EMULATOR_NUMBER, bonusLocation);
         sleepTask(2000);
 
-        DTOPoint refreshButtonLocation = new DTOPoint(200, 805);
-        emuManager.tapAtPoint(EMULATOR_NUMBER, refreshButtonLocation);
+        emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.REFRESH_BUTTON);
         sleepTask(1500);
 
-        DTOPoint timerTopLeft = new DTOPoint(295, 571);
-        DTOPoint timerBottomRight = new DTOPoint(379, 604);
-        int cooldownSeconds = readRefreshCooldownFromPopup(timerTopLeft, timerBottomRight);
+        int cooldownSeconds = readRefreshCooldownFromPopup(
+            Coords.COOLDOWN_POPUP_TOP_LEFT, 
+            Coords.COOLDOWN_POPUP_BOTTOM_RIGHT
+        );
 
-        DTOPoint refreshConfirmButtonLocation = new DTOPoint(510, 790);
-        emuManager.tapAtPoint(EMULATOR_NUMBER, refreshConfirmButtonLocation);
+        emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.REFRESH_CONFIRM_BUTTON);
         sleepTask(1500);
 
         logInfo("  Cooldown: " + cooldownSeconds + "s");
@@ -589,16 +816,17 @@ public class AllianceMobilizationTask extends DelayedTask {
         emuManager.tapAtPoint(EMULATOR_NUMBER, bonusLocation);
         sleepTask(2000);
 
-        DTOPoint acceptButtonLocation = new DTOPoint(500, 805);
-        emuManager.tapAtPoint(EMULATOR_NUMBER, acceptButtonLocation);
+        emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.ACCEPT_BUTTON);
         sleepTask(1500);
     }
 
+    // ========================================================================
+    // OCR AND TIMER READING METHODS
+    // ========================================================================
+
     private int readRefreshCooldownFromPopup(DTOPoint topLeft, DTOPoint bottomRight) {
         logDebug("Reading refresh cooldown from popup: " + topLeft + " to " + bottomRight);
-
-        // Wait a bit for popup to fully render
-        sleepTask(500);
+        sleepTask(Delays.SWIPE_MS);
 
         try {
             String ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, topLeft, bottomRight);
@@ -606,24 +834,21 @@ public class AllianceMobilizationTask extends DelayedTask {
             debugOCRArea("Cooldown popup", topLeft, bottomRight, ocrResult);
 
             if (ocrResult != null && !ocrResult.trim().isEmpty()) {
-                // Parse time format: "5mins!", "10mins", "1min", etc.
                 int seconds = parseTimeToSeconds(ocrResult);
                 if (seconds > 0) {
                     logInfo("✅ Cooldown from popup: " + seconds + " seconds (from: '" + ocrResult + "')");
                     return seconds;
-                } else {
-                    logWarning("OCR returned text but could not parse time: '" + ocrResult + "'");
                 }
+                logWarning("OCR returned text but could not parse time: '" + ocrResult + "'");
             } else {
                 logWarning("OCR returned empty or null result");
             }
         } catch (Exception e) {
             logWarning("Failed to read cooldown from popup: " + e.getMessage());
-            e.printStackTrace();
         }
 
         logWarning("Could not read cooldown from confirmation popup, using default 5 minutes");
-        return 300; // Default 5 minutes if OCR fails
+        return Delays.DEFAULT_COOLDOWN_SECONDS;
     }
 
     private int parseTimeToSeconds(String timeString) {
@@ -722,38 +947,31 @@ public class AllianceMobilizationTask extends DelayedTask {
     private int readPointsNearBonus(DTOPoint bonusLocation) {
         logDebug("Reading points near bonus location: " + bonusLocation);
 
-        // The points are displayed at a specific offset from the bonus indicator
-        // Based on testing: 120% symbol at (83,632) -> points at (195,790) to (270,824)
-        // Offset: X+112px, Y+158px, Width: 75px, Height: 34px
-
-        int offsetX = 112;
-        int offsetY = 158;
-        int width = 75;
-        int height = 34;
-
-        DTOPoint topLeft = new DTOPoint(bonusLocation.getX() + offsetX, bonusLocation.getY() + offsetY);
-        DTOPoint bottomRight = new DTOPoint(topLeft.getX() + width, topLeft.getY() + height);
+        DTOPoint topLeft = new DTOPoint(
+            bonusLocation.getX() + Offsets.POINTS_X, 
+            bonusLocation.getY() + Offsets.POINTS_Y
+        );
+        DTOPoint bottomRight = new DTOPoint(
+            topLeft.getX() + Offsets.POINTS_WIDTH, 
+            topLeft.getY() + Offsets.POINTS_HEIGHT
+        );
 
         logDebug("OCR area for points: " + topLeft + " to " + bottomRight);
 
-        // Retry up to 3 times to read the points
-        int maxRetries = 3;
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+        for (int attempt = 1; attempt <= Limits.MAX_OCR_RETRIES; attempt++) {
             try {
                 String ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, topLeft, bottomRight);
                 debugOCRArea("Points near bonus (attempt " + attempt + ")", topLeft, bottomRight, ocrResult);
 
                 if (ocrResult != null && !ocrResult.trim().isEmpty()) {
-                    // Extract numeric value from OCR result (remove any non-digit characters)
                     String numericValue = ocrResult.replaceAll("[^0-9]", "");
 
                     if (!numericValue.isEmpty()) {
                         int points = Integer.parseInt(numericValue);
                         logInfo("✅ Detected points on overview: " + points + " (attempt " + attempt + ")");
                         return points;
-                    } else {
-                        logWarning("OCR result contains no numeric value: '" + ocrResult + "' (attempt " + attempt + ")");
                     }
+                    logWarning("OCR result contains no numeric value: '" + ocrResult + "' (attempt " + attempt + ")");
                 } else {
                     logWarning("OCR result is empty (attempt " + attempt + ")");
                 }
@@ -761,134 +979,125 @@ public class AllianceMobilizationTask extends DelayedTask {
                 logWarning("Failed to read points via OCR (attempt " + attempt + "): " + e.getMessage());
             }
 
-            // Wait 500ms before retry (except after last attempt)
-            if (attempt < maxRetries) {
-                sleepTask(500);
+            if (attempt < Limits.MAX_OCR_RETRIES) {
+                sleepTask(Delays.SWIPE_MS);
             }
         }
 
-        logWarning("Could not read points near bonus after " + maxRetries + " attempts");
+        logWarning("Could not read points near bonus after " + Limits.MAX_OCR_RETRIES + " attempts");
         return -1;
     }
+
+    // ========================================================================
+    // SPECIAL FEATURES (FREE MISSION & MONUMENTS)
+    // ========================================================================
 
     private void checkAndUseFreeMission() {
         logDebug("Checking for free mission button...");
 
-        // Search for AM_+_1_Free_Mission.png around position (256, 527) with 90% threshold
-        DTOImageSearchResult freeMissionResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.AM_PLUS_1_FREE_MISSION, 90);
+        DTOImageSearchResult freeMissionResult = emuManager.searchTemplate(
+            EMULATOR_NUMBER, 
+            EnumTemplates.AM_PLUS_1_FREE_MISSION, 
+            Thresholds.FREE_MISSION
+        );
 
-        if (freeMissionResult.isFound()) {
-            DTOPoint location = freeMissionResult.getPoint();
-
-            // Verify it's near expected position (256, 527) - allow tolerance of ±50px
-            int deltaX = Math.abs(location.getX() - 256);
-            int deltaY = Math.abs(location.getY() - 527);
-
-            if (deltaX <= 50 && deltaY <= 50) {
-                logInfo("✅ Free mission button found at " + location + " (near expected 256,527) - using it");
-
-                // Click on the free mission button
-                emuManager.tapAtPoint(EMULATOR_NUMBER, location);
-                sleepTask(1500);
-
-                // Second click at coordinates (340, 780)
-                DTOPoint confirmLocation = new DTOPoint(340, 780);
-                logInfo("Clicking confirm at: " + confirmLocation);
-                emuManager.tapAtPoint(EMULATOR_NUMBER, confirmLocation);
-                sleepTask(1500);
-
-                logInfo("✅ Free mission used successfully");
-            } else {
-                logDebug("Free mission button found at " + location + " but too far from expected position (256,527), skipping");
-            }
-        } else {
+        if (!freeMissionResult.isFound()) {
             logDebug("No free mission button found");
+            return;
+        }
+
+        DTOPoint location = freeMissionResult.getPoint();
+        int deltaX = Math.abs(location.getX() - Coords.FREE_MISSION_EXPECTED.getX());
+        int deltaY = Math.abs(location.getY() - Coords.FREE_MISSION_EXPECTED.getY());
+
+        if (deltaX <= Offsets.FREE_MISSION_TOLERANCE && deltaY <= Offsets.FREE_MISSION_TOLERANCE) {
+            logInfo("✅ Free mission button found at " + location + " (near expected position) - using it");
+            emuManager.tapAtPoint(EMULATOR_NUMBER, location);
+            sleepTask(1500);
+
+            logInfo("Clicking confirm at: " + Coords.FREE_MISSION_CONFIRM);
+            emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.FREE_MISSION_CONFIRM);
+            sleepTask(1500);
+
+            logInfo("✅ Free mission used successfully");
+        } else {
+            logDebug("Free mission button found at " + location + 
+                    " but too far from expected position " + Coords.FREE_MISSION_EXPECTED + ", skipping");
         }
     }
 
     private void checkAndUseAllianceMonuments() {
         logDebug("Checking for Alliance Monuments button...");
 
-        // Search for AM_Alliance_Monuments.png in the upper right area with 94% threshold
-        DTOImageSearchResult monumentsResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.AM_ALLIANCE_MONUMENTS, 94);
+        DTOImageSearchResult monumentsResult = emuManager.searchTemplate(
+            EMULATOR_NUMBER, 
+            EnumTemplates.AM_ALLIANCE_MONUMENTS, 
+            Thresholds.MONUMENTS
+        );
 
-        if (monumentsResult.isFound()) {
-            DTOPoint location = monumentsResult.getPoint();
-            logInfo("✅ Alliance Monuments button found at " + location + " - using it");
-
-            // Click on the Alliance Monuments button
-            emuManager.tapAtPoint(EMULATOR_NUMBER, location);
-            sleepTask(1500);
-
-            // First click at coordinates (366, 1014)
-            DTOPoint firstClick = new DTOPoint(366, 1014);
-            logInfo("Clicking first position at: " + firstClick);
-            emuManager.tapAtPoint(EMULATOR_NUMBER, firstClick);
-            sleepTask(1500);
-
-            // Second click at coordinates (250, 870)
-            DTOPoint secondClick = new DTOPoint(250, 870);
-            logInfo("Clicking second position at: " + secondClick);
-            emuManager.tapAtPoint(EMULATOR_NUMBER, secondClick);
-            sleepTask(1000);
-
-            // Third click at coordinates (366, 1014)
-            DTOPoint thirdClick = new DTOPoint(366, 1014);
-            logInfo("Clicking third position at: " + thirdClick);
-            emuManager.tapAtPoint(EMULATOR_NUMBER, thirdClick);
-            sleepTask(500);
-
-            // Fourth click at coordinates (154, 1002)
-            DTOPoint fourthClick = new DTOPoint(154, 1002);
-            logInfo("Clicking fourth position at: " + fourthClick);
-            emuManager.tapAtPoint(EMULATOR_NUMBER, fourthClick);
-            sleepTask(500);
-
-            // Click back button twice to close
-            DTOPoint backButton = new DTOPoint(50, 50);
-            logInfo("Clicking back button (1/2) at: " + backButton);
-            emuManager.tapAtPoint(EMULATOR_NUMBER, backButton);
-            sleepTask(500);
-
-            logInfo("Clicking back button (2/2) at: " + backButton);
-            emuManager.tapAtPoint(EMULATOR_NUMBER, backButton);
-            sleepTask(500);
-
-            logInfo("✅ Alliance Monuments used successfully");
-        } else {
+        if (!monumentsResult.isFound()) {
             logDebug("No Alliance Monuments button found");
+            return;
         }
+
+        DTOPoint location = monumentsResult.getPoint();
+        logInfo("✅ Alliance Monuments button found at " + location + " - using it");
+
+        emuManager.tapAtPoint(EMULATOR_NUMBER, location);
+        sleepTask(1500);
+
+        for (int i = 0; i < Coords.MONUMENT_CLICKS.length; i++) {
+            logInfo("Clicking monument position " + (i + 1) + "/" + Coords.MONUMENT_CLICKS.length + " at: " + Coords.MONUMENT_CLICKS[i]);
+            emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.MONUMENT_CLICKS[i]);
+            sleepTask(i < 2 ? 1000 : 500);
+        }
+
+        // Click back button twice to close
+        for (int i = 1; i <= 2; i++) {
+            logInfo("Clicking back button (" + i + "/2) at: " + Coords.BACK_BUTTON);
+            emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.BACK_BUTTON);
+            sleepTask(Delays.SWIPE_MS);
+        }
+
+        logInfo("✅ Alliance Monuments used successfully");
     }
+
+    // ========================================================================
+    // TASK AVAILABILITY TIMERS
+    // ========================================================================
 
     private int readTaskAvailabilityTimers() {
         logDebug("Reading task availability timers from empty task slots...");
 
-        // Timer positions for the two upper task slots
-        // Left timer: 162,705 to 280,743
-        // Right timer: 486,705 to 595,743
-        DTOPoint leftTimerTopLeft = new DTOPoint(162, 705);
-        DTOPoint leftTimerBottomRight = new DTOPoint(280, 743);
-        DTOPoint rightTimerTopLeft = new DTOPoint(486, 705);
-        DTOPoint rightTimerBottomRight = new DTOPoint(595, 743);
+        int leftTimerSeconds = readTimerFromRegion(
+            Coords.LEFT_TIMER_TOP_LEFT, 
+            Coords.LEFT_TIMER_BOTTOM_RIGHT, 
+            "Left"
+        );
+        int rightTimerSeconds = readTimerFromRegion(
+            Coords.RIGHT_TIMER_TOP_LEFT, 
+            Coords.RIGHT_TIMER_BOTTOM_RIGHT, 
+            "Right"
+        );
 
-        int leftTimerSeconds = readTimerFromRegion(leftTimerTopLeft, leftTimerBottomRight, "Left");
-        int rightTimerSeconds = readTimerFromRegion(rightTimerTopLeft, rightTimerBottomRight, "Right");
-
-        // Return the shorter timer (or 0 if both failed)
         if (leftTimerSeconds > 0 && rightTimerSeconds > 0) {
             int shortestTimer = Math.min(leftTimerSeconds, rightTimerSeconds);
             logInfo("✅ Found task availability timers - using shortest: " + shortestTimer + " seconds");
             return shortestTimer;
-        } else if (leftTimerSeconds > 0) {
+        }
+        
+        if (leftTimerSeconds > 0) {
             logInfo("✅ Found left timer: " + leftTimerSeconds + " seconds");
             return leftTimerSeconds;
-        } else if (rightTimerSeconds > 0) {
+        }
+        
+        if (rightTimerSeconds > 0) {
             logInfo("✅ Found right timer: " + rightTimerSeconds + " seconds");
             return rightTimerSeconds;
-        } else {
-            logDebug("No task availability timers found");
-            return 0;
         }
+
+        logDebug("No task availability timers found");
+        return 0;
     }
 
     private int readTimerFromRegion(DTOPoint topLeft, DTOPoint bottomRight, String timerName) {
@@ -901,9 +1110,8 @@ public class AllianceMobilizationTask extends DelayedTask {
                 if (seconds > 0) {
                     logInfo("✅ " + timerName + " timer: " + ocrResult + " = " + seconds + " seconds");
                     return seconds;
-                } else {
-                    logDebug(timerName + " timer OCR failed to parse: '" + ocrResult + "'");
                 }
+                logDebug(timerName + " timer OCR failed to parse: '" + ocrResult + "'");
             }
         } catch (Exception e) {
             logDebug(timerName + " timer OCR failed: " + e.getMessage());
@@ -911,31 +1119,37 @@ public class AllianceMobilizationTask extends DelayedTask {
         return 0;
     }
 
+    // ========================================================================
+    // COMPLETED TASKS
+    // ========================================================================
+
     private void checkAndCollectCompletedTasks() {
         logDebug("Checking for completed tasks to collect rewards...");
 
-        // Search for AM_Completed.png indicator
-        DTOImageSearchResult completedResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.AM_COMPLETED, 85);
+        DTOImageSearchResult completedResult = emuManager.searchTemplate(
+            EMULATOR_NUMBER, 
+            EnumTemplates.AM_COMPLETED, 
+            Thresholds.COMPLETED
+        );
 
         if (completedResult.isFound()) {
             logInfo("✅ Completed task found at " + completedResult.getPoint() + " - collecting rewards");
-
-            // Click on the completed task
             emuManager.tapAtPoint(EMULATOR_NUMBER, completedResult.getPoint());
             sleepTask(1500);
-
             logInfo("Rewards collected from completed task");
         } else {
             logDebug("No completed tasks found");
         }
     }
 
-    // Helper method to visualize OCR area
+    // ========================================================================
+    // DEBUGGING HELPERS
+    // ========================================================================
+
     private void debugOCRArea(String description, DTOPoint topLeft, DTOPoint bottomRight, String ocrResult) {
         logDebug("[OCR] " + description + " - Region: TL=" + topLeft + ", BR=" + bottomRight + ", Result='" + ocrResult + "'");
     }
 
-    // Helper method to log template search results
     private void debugTemplateSearch(String templateName, DTOImageSearchResult result, int threshold) {
         if (result.isFound()) {
             logInfo("✅ Template FOUND: " + templateName + " at (" +
@@ -946,11 +1160,28 @@ public class AllianceMobilizationTask extends DelayedTask {
         }
     }
 
+    // ========================================================================
+    // OVERRIDES
+    // ========================================================================
 
     @Override
     public EnumStartLocation getRequiredStartLocation() {
         return EnumStartLocation.HOME;
     }
 
+    // ========================================================================
+    // DATA CLASSES
+    // ========================================================================
+
     private record AttemptStatus(int remaining, Integer total) {}
+    
+    private record TaskProcessResult(boolean shouldStop, int cooldownSeconds) {}
 }
+
+
+
+
+
+
+
+
