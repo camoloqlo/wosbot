@@ -133,7 +133,7 @@ public class BearTrapTask extends DelayedTask {
             // Verify we're inside a valid window
             if (!isInsideWindow()) {
                 logWarning("Execute called OUTSIDE valid window. Rescheduling...");
-                reschedule(null);
+                updateNextWindowDateTime();
                 return;
             }
 
@@ -690,20 +690,6 @@ public class BearTrapTask extends DelayedTask {
 
     @Override
     public void reschedule(LocalDateTime newDateTime) {
-        // If a specific time is provided, delegate to parent implementation
-        if (newDateTime != null) {
-            super.reschedule(newDateTime);
-            logInfo("Rescheduled explicitly for (Local): " + newDateTime.format(DATETIME_FORMATTER));
-            // Persist next trap anchor on explicit reschedule
-            try {
-                updateNextWindowDateTime();
-            } catch (Exception ex) {
-                logWarning("Could not persist next anchor on explicit reschedule: " + ex.getMessage());
-            }
-            return;
-        }
-
-        // Otherwise, compute based on current window state
         reloadConfig();
         BearTrapHelper.WindowResult result = getWindowState();
 
