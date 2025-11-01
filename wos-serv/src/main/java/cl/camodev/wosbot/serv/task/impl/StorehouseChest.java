@@ -131,9 +131,6 @@ public class StorehouseChest extends DelayedTask {
 
         if (isTimeToClaimStamina()) {
             processStaminaReward();
-        } else {
-            nextStaminaTime = UtilTime.getNextReset();
-            logInfo("Skipping stamina search until next game reset.");
         }
 
         scheduleToNearestTime();
@@ -266,6 +263,8 @@ public class StorehouseChest extends DelayedTask {
                 if (!timeToClaimAgain) {
                     logDebug("Stamina already claimed. Next claim at: " + nextClaimTime.format(DATETIME_FORMATTER));
                 }
+
+                nextStaminaTime = nextClaimTime;
 
                 return timeToClaimAgain;
             } catch (Exception e) {
