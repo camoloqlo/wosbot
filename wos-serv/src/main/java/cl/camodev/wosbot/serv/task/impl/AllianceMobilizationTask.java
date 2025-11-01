@@ -63,9 +63,9 @@ public class AllianceMobilizationTask extends DelayedTask {
         static final DTOPoint COOLDOWN_POPUP_TOP_LEFT = new DTOPoint(295, 571);
         static final DTOPoint COOLDOWN_POPUP_BOTTOM_RIGHT = new DTOPoint(379, 604);
         
-        // Navigation
-        static final DTOPoint SWIPE_START = new DTOPoint(100, 158);
-        static final DTOPoint SWIPE_END = new DTOPoint(620, 158);
+        // Navigation - Tab Swipe (160px steps)
+        static final DTOPoint SWIPE_SMALL_RIGHT = new DTOPoint(480, 158);  // 160px step right
+        static final DTOPoint SWIPE_SMALL_LEFT = new DTOPoint(320, 158);   // 160px step left
     }
 
     private static final class Offsets {
@@ -91,7 +91,7 @@ public class AllianceMobilizationTask extends DelayedTask {
 
     private static final class Limits {
         static final int MAX_NAVIGATION_ATTEMPTS = 3;
-        static final int MAX_TAB_SEARCH_SWIPES = 2;
+        static final int MAX_TAB_SEARCH_SWIPES = 5;  // More swipes with smaller steps
         static final int MAX_OCR_RETRIES = 3;
     }
 
@@ -264,32 +264,39 @@ public class AllianceMobilizationTask extends DelayedTask {
     private boolean searchTabsWithSwipe() {
         logInfo("Alliance Mobilization tabs not found, swiping to search for them...");
 
+        // Swipe strategy: 3 small steps right, then 2 small steps back left
         for (int i = 0; i < Limits.MAX_TAB_SEARCH_SWIPES; i++) {
             logDebug("Tab search attempt " + (i + 1) + "/" + Limits.MAX_TAB_SEARCH_SWIPES);
 
+            // First 3 swipes: small steps to the right
+            // Last 2 swipes: small steps back to the left
+            if (i < 3) {
+                logDebug("Swiping right (small step " + (i + 1) + "/3)...");
+                emuManager.executeSwipe(EMULATOR_NUMBER, Coords.SWIPE_SMALL_LEFT, Coords.SWIPE_SMALL_RIGHT);
+            } else {
+                logDebug("Swiping left (small step " + (i - 2) + "/2)...");
+                emuManager.executeSwipe(EMULATOR_NUMBER, Coords.SWIPE_SMALL_RIGHT, Coords.SWIPE_SMALL_LEFT);
+            }
+            sleepTask(Delays.SWIPE_MS);
+
+            // Search for tabs after each swipe
             DTOImageSearchResult selectedTab = searchForMobilizationTab(true);
             DTOImageSearchResult unselectedTab = searchForMobilizationTab(false);
 
             if (selectedTab.isFound()) {
-                logInfo("Found selected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + selectedTab.getPoint());
+                logInfo("✅ Found selected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + selectedTab.getPoint());
                 return true;
             }
             
             if (unselectedTab.isFound()) {
-                logInfo("Found unselected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + unselectedTab.getPoint());
+                logInfo("✅ Found unselected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + unselectedTab.getPoint());
                 emuManager.tapAtPoint(EMULATOR_NUMBER, unselectedTab.getPoint());
                 sleepTask(2000);
                 return true;
             }
-
-            if (i < Limits.MAX_TAB_SEARCH_SWIPES - 1) {
-                logDebug("Swiping left to right...");
-                emuManager.executeSwipe(EMULATOR_NUMBER, Coords.SWIPE_START, Coords.SWIPE_END);
-                sleepTask(Delays.SWIPE_MS);
-            }
         }
 
-        logWarning("Alliance Mobilization tabs not found after multiple swipes. Event may not be active.");
+        logWarning("Alliance Mobilization tabs not found after " + Limits.MAX_TAB_SEARCH_SWIPES + " swipes. Event may not be active.");
         return false;
     }
 
@@ -1046,6 +1053,9 @@ public class AllianceMobilizationTask extends DelayedTask {
         emuManager.tapAtPoint(EMULATOR_NUMBER, location);
         sleepTask(1500);
 
+        // Image recognition loop before the 5 fixed clicks
+        processMonumentImageRecognition();
+
         for (int i = 0; i < Coords.MONUMENT_CLICKS.length; i++) {
             logInfo("Clicking monument position " + (i + 1) + "/" + Coords.MONUMENT_CLICKS.length + " at: " + Coords.MONUMENT_CLICKS[i]);
             emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.MONUMENT_CLICKS[i]);
@@ -1060,6 +1070,62 @@ public class AllianceMobilizationTask extends DelayedTask {
         }
 
         logInfo("✅ Alliance Monuments used successfully");
+    }
+
+    private void processMonumentImageRecognition() {
+        // TODO: Add AM_Baldur_Chest1.png, AM_Baldur_Chest2.png, AM_Baldur_Chest3.png to EnumTemplates
+        EnumTemplates[] monumentImages = {
+            // EnumTemplates.AM_BALDUR_CHEST_1,
+            // EnumTemplates.AM_BALDUR_CHEST_2,
+            // EnumTemplates.AM_BALDUR_CHEST_3
+        };
+        
+        // Skip if no images configured
+        if (monumentImages.length == 0) {
+            return;
+        }
+        
+        logInfo("Starting monument image recognition loop...");
+        int clickCount = 0;
+        boolean imageFound;
+        
+        do {
+            imageFound = false;
+            
+            // Search for each of the 3 images
+            for (EnumTemplates imageTemplate : monumentImages) {
+                DTOImageSearchResult imageResult = emuManager.searchTemplate(
+                    EMULATOR_NUMBER,
+                    imageTemplate,
+                    85 // TODO: Adjust threshold if needed
+                );
+                
+                if (imageResult.isFound()) {
+                    imageFound = true;
+                    clickCount++;
+                    DTOPoint imageLocation = imageResult.getPoint();
+                    
+                    logInfo("✅ Monument image found (" + imageTemplate.name() + ") at " + imageLocation + " - clicking (click #" + clickCount + ")");
+                    
+                    // First click
+                    emuManager.tapAtPoint(EMULATOR_NUMBER, imageLocation);
+                    sleepTask(500);
+                    
+                    // Second click on same position
+                    logInfo("Second click on same position");
+                    emuManager.tapAtPoint(EMULATOR_NUMBER, imageLocation);
+                    sleepTask(500);
+                    
+                    // Break inner loop to re-search all images from start
+                    break;
+                }
+            }
+            
+            if (!imageFound) {
+                logInfo("No more monument images found. Proceeding with fixed clicks. Total recognition clicks: " + clickCount);
+            }
+            
+        } while (imageFound);
     }
 
     // ========================================================================
