@@ -91,7 +91,9 @@ public class AllianceMobilizationTask extends DelayedTask {
 
     private static final class Limits {
         static final int MAX_NAVIGATION_ATTEMPTS = 3;
-        static final int MAX_TAB_SEARCH_SWIPES = 5;  // More swipes with smaller steps
+        static final int NUM_TAB_SWIPES_RIGHT = 3;
+        static final int NUM_TAB_SWIPES_LEFT = 2;
+        static final int MAX_TAB_SEARCH_SWIPES = NUM_TAB_SWIPES_RIGHT + NUM_TAB_SWIPES_LEFT;  // 3 right, 2 left
         static final int MAX_OCR_RETRIES = 3;
     }
 
@@ -264,17 +266,17 @@ public class AllianceMobilizationTask extends DelayedTask {
     private boolean searchTabsWithSwipe() {
         logInfo("Alliance Mobilization tabs not found, swiping to search for them...");
 
-        // Swipe strategy: 3 small steps right, then 2 small steps back left
+        // Swipe strategy: NUM_TAB_SWIPES_RIGHT steps right, then NUM_TAB_SWIPES_LEFT steps back left
         for (int i = 0; i < Limits.MAX_TAB_SEARCH_SWIPES; i++) {
             logDebug("Tab search attempt " + (i + 1) + "/" + Limits.MAX_TAB_SEARCH_SWIPES);
 
-            // First 3 swipes: small steps to the right
-            // Last 2 swipes: small steps back to the left
-            if (i < 3) {
-                logDebug("Swiping right (small step " + (i + 1) + "/3)...");
+            // First NUM_TAB_SWIPES_RIGHT swipes: small steps to the right
+            // Last NUM_TAB_SWIPES_LEFT swipes: small steps back to the left
+            if (i < Limits.NUM_TAB_SWIPES_RIGHT) {
+                logDebug("Swiping right (step " + (i + 1) + "/" + Limits.NUM_TAB_SWIPES_RIGHT + ")...");
                 emuManager.executeSwipe(EMULATOR_NUMBER, Coords.SWIPE_SMALL_LEFT, Coords.SWIPE_SMALL_RIGHT);
             } else {
-                logDebug("Swiping left (small step " + (i - 2) + "/2)...");
+                logDebug("Swiping left (step " + (i - Limits.NUM_TAB_SWIPES_RIGHT + 1) + "/" + Limits.NUM_TAB_SWIPES_LEFT + ")...");
                 emuManager.executeSwipe(EMULATOR_NUMBER, Coords.SWIPE_SMALL_RIGHT, Coords.SWIPE_SMALL_LEFT);
             }
             sleepTask(Delays.SWIPE_MS);
