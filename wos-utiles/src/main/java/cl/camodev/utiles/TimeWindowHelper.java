@@ -1,6 +1,5 @@
 package cl.camodev.utiles;
 
-import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -14,7 +13,8 @@ import java.time.temporal.ChronoUnit;
  * - INSIDE the active window
  * - AFTER the active window
  *
- * Subclasses must implement the specific logic for calculating window boundaries.
+ * Subclasses must implement the specific logic for calculating window
+ * boundaries.
  */
 public abstract class TimeWindowHelper {
 
@@ -22,9 +22,9 @@ public abstract class TimeWindowHelper {
      * Possible states relative to a time window.
      */
     public enum WindowState {
-        BEFORE,   // Before the current cycle's window
-        INSIDE,   // Inside the execution window
-        AFTER     // After the current cycle's window
+        BEFORE, // Before the current cycle's window
+        INSIDE, // Inside the execution window
+        AFTER // After the current cycle's window
     }
 
     /**
@@ -44,8 +44,7 @@ public abstract class TimeWindowHelper {
                 Instant currentWindowEnd,
                 Instant nextWindowStart,
                 long minutesUntilNextWindow,
-                int currentWindowDurationMinutes
-        ) {
+                int currentWindowDurationMinutes) {
             this.state = state;
             this.currentWindowStart = currentWindowStart;
             this.currentWindowEnd = currentWindowEnd;
@@ -54,12 +53,29 @@ public abstract class TimeWindowHelper {
             this.currentWindowDurationMinutes = currentWindowDurationMinutes;
         }
 
-        public WindowState getState() { return state; }
-        public Instant getCurrentWindowStart() { return currentWindowStart; }
-        public Instant getCurrentWindowEnd() { return currentWindowEnd; }
-        public Instant getNextWindowStart() { return nextWindowStart; }
-        public long getMinutesUntilNextWindow() { return minutesUntilNextWindow; }
-        public int getCurrentWindowDurationMinutes() { return currentWindowDurationMinutes; }
+        public WindowState getState() {
+            return state;
+        }
+
+        public Instant getCurrentWindowStart() {
+            return currentWindowStart;
+        }
+
+        public Instant getCurrentWindowEnd() {
+            return currentWindowEnd;
+        }
+
+        public Instant getNextWindowStart() {
+            return nextWindowStart;
+        }
+
+        public long getMinutesUntilNextWindow() {
+            return minutesUntilNextWindow;
+        }
+
+        public int getCurrentWindowDurationMinutes() {
+            return currentWindowDurationMinutes;
+        }
 
         @Override
         public String toString() {
@@ -80,10 +96,10 @@ public abstract class TimeWindowHelper {
     /**
      * Determines the current state relative to the time window.
      *
-     * @param now Current instant
-     * @param currentStart Start of current window
-     * @param currentEnd End of current window (inclusive)
-     * @param nextStart Start of next window
+     * @param now                   Current instant
+     * @param currentStart          Start of current window
+     * @param currentEnd            End of current window (inclusive)
+     * @param nextStart             Start of next window
      * @param windowDurationMinutes Duration of the window in minutes
      * @return WindowResult with state and timing information
      */
@@ -92,8 +108,7 @@ public abstract class TimeWindowHelper {
             Instant currentStart,
             Instant currentEnd,
             Instant nextStart,
-            int windowDurationMinutes
-    ) {
+            int windowDurationMinutes) {
         WindowState state;
         long minutesUntilNext;
 
@@ -115,8 +130,7 @@ public abstract class TimeWindowHelper {
                 currentEnd,
                 nextStart,
                 minutesUntilNext,
-                windowDurationMinutes
-        );
+                windowDurationMinutes);
     }
 
     /**
@@ -148,7 +162,7 @@ public abstract class TimeWindowHelper {
     /**
      * Validates that input parameters are positive.
      *
-     * @param value The value to validate
+     * @param value         The value to validate
      * @param parameterName Name of the parameter for error message
      * @throws IllegalArgumentException if value <= 0
      */
@@ -161,7 +175,7 @@ public abstract class TimeWindowHelper {
     /**
      * Validates that input parameters are non-negative.
      *
-     * @param value The value to validate
+     * @param value         The value to validate
      * @param parameterName Name of the parameter for error message
      * @throws IllegalArgumentException if value < 0
      */
@@ -171,4 +185,3 @@ public abstract class TimeWindowHelper {
         }
     }
 }
-

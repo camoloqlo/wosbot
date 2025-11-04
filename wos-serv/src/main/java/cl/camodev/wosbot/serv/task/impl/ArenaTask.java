@@ -570,12 +570,18 @@ public class ArenaTask extends DelayedTask {
                 if (!foundWeakerOpponent) {
                     if (!tryRefreshOpponentList()) {
                         inCyclingMode = true; // Enter cycling mode since no weaker opponents and no refresh
+                        currentOpponentPosition = 0; // Start cycling from the beginning
+                        logInfo("Entering cycling mode. Starting from opponent 1.");
                         boolean wonBattle = challengeNextOpponent();
                         if (wonBattle) {
                             // If we won, opponent list refreshed, exit cycling mode to check new opponents
                             inCyclingMode = false;
+                            currentOpponentPosition = 0; // Reset position for new scan
                             logInfo("Battle won. Opponent list refreshed. Checking for weaker opponents in new list.");
                         }
+                    } else {
+                        currentOpponentPosition = 0; // Reset position after refresh
+                        logInfo("List refreshed. Rescanning from opponent 1.");
                     }
                 }
             } else {
@@ -584,6 +590,7 @@ public class ArenaTask extends DelayedTask {
                 if (wonBattle) {
                     // If we won, opponent list refreshed, exit cycling mode to check new opponents
                     inCyclingMode = false;
+                    currentOpponentPosition = 0; // Reset position for new scan
                     logInfo("Battle won. Opponent list refreshed. Checking for weaker opponents in new list.");
                 }
             }
@@ -595,6 +602,8 @@ public class ArenaTask extends DelayedTask {
     /**
      * Scans the opponent list from top to bottom and challenges the first
      * opponent with predominantly green power text (indicating lower power).
+     * Skips opponents that have already been challenged and lost to in this
+     * execution.
      * 
      * @return true if a weaker opponent was found and challenged, false otherwise
      */
@@ -633,10 +642,18 @@ public class ArenaTask extends DelayedTask {
                 boolean victory = checkBattleResult();
                 if (victory) {
                     firstRun = false; // After first victory, UI changes
+                    // Victory refreshes the list, so we can continue scanning from the start
+                    sleepTask(1000);
+                    return true;
+                } else {
+                    // Lost the battle - update currentOpponentPosition to continue from next
+                    // opponent
+                    currentOpponentPosition = (i + 1) % MAX_OPPONENTS;
+                    logInfo(String.format("Battle lost. Next scan will start from opponent %d",
+                            currentOpponentPosition + 1));
+                    sleepTask(1000);
+                    return true; // Still return true because we did challenge someone
                 }
-
-                sleepTask(1000); // Wait before scanning next opponent
-                return true;
             }
 
             sleepTask(300); // Wait for details window to close
@@ -646,6 +663,7 @@ public class ArenaTask extends DelayedTask {
         if (allSameState) {
             logInfo("All opponents are from the same state. Attempting list refresh.");
             if (tryRefreshOpponentList()) {
+                currentOpponentPosition = 0; // Reset position after refresh
                 return scanAndChallengeWeakerOpponent(); // Recursively scan new list
             }
         }
@@ -713,96 +731,104 @@ public class ArenaTask extends DelayedTask {
     /**
      * Challenges the next opponent in the cycling sequence regardless of power
      * level.
-     * If battle is lost, moves to the next opponent. After the last opponent,
-     * cycles back to the first one.
+     * Handles state filtering and automatically moves to the next opponent after a
+     * loss.
      * 
-     * @return true if battle was won, false if lost
+     * @return true if battle was won (list will refresh), false if lost (continue
+     *         cycling)
      */
     private boolean challengeNextOpponent() {
         int baseY = firstRun ? OPPONENT_BASE_Y_FIRST_RUN : OPPONENT_BASE_Y_NORMAL;
-        int initialPosition = currentOpponentPosition;
-        boolean checkedAllOpponents = false;
+        int checkedOpponents = 0; // Track how many opponents we've checked
 
-        while (!checkedAllOpponents) {
-            // Calculate Y position for current opponent
+        logInfo(String.format("Cycling mode: starting from opponent %d", currentOpponentPosition + 1));
+
+        // Try up to MAX_OPPONENTS times to find a suitable opponent
+        while (checkedOpponents < MAX_OPPONENTS) {
             int opponentY = baseY + (currentOpponentPosition * OPPONENT_Y_SPACING);
             int opponentStateY = OPPONENT_STATE_TOP_LEFT.getY() + (currentOpponentPosition * OPPONENT_Y_SPACING);
 
+            // Check if this opponent is from a different state (or skip check if
+            // playerState is 0)
             boolean shouldChallenge = false;
 
-            // Skip state check if player state is unconfigured (0)
             if (playerState != 0) {
-                // Check opponent's state
                 int opponentState = firstRun ? 0 : getOpponentState(opponentStateY);
-                logInfo(String.format("Opponent %d state in cycling mode: %d (our state: %d)",
+                logInfo(String.format("Opponent %d state: %d (our state: %d)",
                         currentOpponentPosition + 1, opponentState, playerState));
                 sleepTask(300);
 
-                // Only challenge if from different state
                 shouldChallenge = (opponentState != playerState);
             } else {
-                logDebug("Player state is 0 (unconfigured), skipping state verification in cycling mode");
+                logDebug("Player state is 0 (unconfigured), challenging any opponent");
                 shouldChallenge = true;
             }
 
             if (shouldChallenge) {
-                // Challenge this opponent
-                logInfo(String.format("Challenging opponent %d in cycling mode.",
-                        currentOpponentPosition + 1));
+                // Found a suitable opponent - challenge them
+                logInfo(String.format("Challenging opponent %d in cycling mode", currentOpponentPosition + 1));
 
                 tapPoint(new DTOPoint(OPPONENT_CHALLENGE_BUTTON_X, opponentY));
-                sleepTask(2000);
+                sleepTask(2000); // Wait for challenge screen
 
                 executeBattleSequence();
                 attempts--;
 
                 boolean won = checkBattleResult();
-                if (!won) {
-                    // Move to next opponent in cycle if battle was lost
-                    currentOpponentPosition = (currentOpponentPosition + 1) % MAX_OPPONENTS;
-                    logInfo(String.format("Battle lost. Moving to opponent %d for next attempt.",
-                            currentOpponentPosition + 1));
-                } else {
-                    logInfo("Battle won. Opponent list will refresh for next attempt.");
-                }
-
                 firstRun = false;
                 sleepTask(1000);
-                return won;
-            }
 
-            // Move to next opponent
-            currentOpponentPosition = (currentOpponentPosition + 1) % MAX_OPPONENTS;
-
-            // Check if we've looked at all opponents
-            if (currentOpponentPosition == initialPosition) {
-                // We've checked all opponents and they're all from our state
-                logInfo("All opponents are from the same state in cycling mode. Attempting refresh.");
-                if (tryRefreshOpponentList()) {
-                    // Reset position and check new list
-                    currentOpponentPosition = 0;
+                if (won) {
+                    logInfo("Battle won. Opponent list will refresh.");
+                    // Don't increment position - let processChallenges reset it
+                    return true;
+                } else {
+                    // Lost - move to next opponent for next attempt
+                    logInfo(String.format("Battle lost against opponent %d", currentOpponentPosition + 1));
+                    currentOpponentPosition = (currentOpponentPosition + 1) % MAX_OPPONENTS;
+                    logInfo(String.format("Next cycling position: opponent %d", currentOpponentPosition + 1));
                     return false;
                 }
-                // If refresh failed, challenge current opponent regardless of state
-                logInfo("No refreshes available. Challenging opponent regardless of state.");
-                tapPoint(new DTOPoint(OPPONENT_CHALLENGE_BUTTON_X, opponentY));
-                sleepTask(2000);
-
-                executeBattleSequence();
-                attempts--;
-
-                boolean won = checkBattleResult();
-                if (!won) {
-                    currentOpponentPosition = (currentOpponentPosition + 1) % MAX_OPPONENTS;
-                }
-
-                firstRun = false;
-                sleepTask(1000);
-                return won;
             }
+
+            // This opponent is from our state, try the next one
+            logDebug(String.format("Opponent %d is from our state, skipping", currentOpponentPosition + 1));
+            currentOpponentPosition = (currentOpponentPosition + 1) % MAX_OPPONENTS;
+            checkedOpponents++;
         }
 
-        return false;
+        // We've checked all opponents and they're all from our state
+        logInfo("All opponents are from the same state in cycling mode. Attempting refresh.");
+
+        if (tryRefreshOpponentList()) {
+            currentOpponentPosition = 0; // Reset after successful refresh
+            logInfo("Refresh successful. Will rescan opponents.");
+            return false; // Return to processChallenges to handle the refresh
+        }
+
+        // No refresh available and all opponents are from our state
+        // Challenge the current opponent anyway as a last resort
+        logWarning("No refreshes available. Challenging opponent regardless of state.");
+
+        int opponentY = baseY + (currentOpponentPosition * OPPONENT_Y_SPACING);
+        tapPoint(new DTOPoint(OPPONENT_CHALLENGE_BUTTON_X, opponentY));
+        sleepTask(2000);
+
+        executeBattleSequence();
+        attempts--;
+
+        boolean won = checkBattleResult();
+        firstRun = false;
+        sleepTask(1000);
+
+        if (!won) {
+            currentOpponentPosition = (currentOpponentPosition + 1) % MAX_OPPONENTS;
+            logInfo(String.format("Battle lost. Next position: opponent %d", currentOpponentPosition + 1));
+        } else {
+            logInfo("Battle won. Opponent list will refresh.");
+        }
+
+        return won;
     }
 
     /**
