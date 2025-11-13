@@ -131,9 +131,10 @@ public enum EnumConfigurationKey {
 	LIFE_ESSENCE_BUY_WEEKLY_SCROLL_BOOL("true", Boolean.class),
 	LIFE_ESSENCE_CONSECUTIVE_FAILURES_INT("0", Integer.class),
 	LIFE_ESSENCE_NEXT_SCROLL_TIME_STRING("", String.class),
+	PET_SKILLS_BOOL("false", Boolean.class),
 	PET_SKILL_STAMINA_BOOL("false", Boolean.class),
 	PET_SKILL_FOOD_BOOL("false", Boolean.class),
-	PET_SKILL_TRESURE_BOOL("false", Boolean.class),
+	PET_SKILL_TREASURE_BOOL("false", Boolean.class),
 	PET_SKILL_GATHERING_BOOL("false", Boolean.class),
 	PET_PERSONAL_TREASURE_BOOL("false", Boolean.class),
 	
@@ -152,6 +153,7 @@ public enum EnumConfigurationKey {
 	ARENA_TASK_BOOL("false", Boolean.class),
 	ARENA_TASK_EXTRA_ATTEMPTS_INT("0", Integer.class),
 	ARENA_TASK_REFRESH_WITH_GEMS_BOOL("false", Boolean.class),
+	ARENA_TASK_PLAYER_STATE_INT("0", Integer.class),
 	
     // ========================================================================
     // SHOPS AND MERCHANTS
@@ -244,6 +246,7 @@ public enum EnumConfigurationKey {
 	// Example: "Fire Crystals:1:true|VIP Points:2:true|Hero Shards:3:false|Speedups:4:true"
     ALLIANCE_SHOP_ENABLED_BOOL("false", Boolean.class),
 	ALLIANCE_SHOP_PRIORITIES_STRING("", String.class),
+    ALLIANCE_SHOP_MIN_PERCENTAGE_INT("50", Integer.class),
 	ALLIANCE_SHOP_MIN_COINS_TO_ACTIVATE_INT("0", Integer.class),
 	ALLIANCE_SHOP_MIN_COINS_INT("0", Integer.class);
 

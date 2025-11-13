@@ -37,10 +37,7 @@ public enum TpDailyTaskEnum {
     ALLIANCE_CHAMPIONSHIP(49, "Alliance Championship", EnumConfigurationKey.ALLIANCE_CHAMPIONSHIP_BOOL),
     BEAR_TRAP(48, "Bear Trap Event",          EnumConfigurationKey.BEAR_TRAP_EVENT_BOOL),
 
-	PET_SKILL_STAMINA(51, "Pet Skill Stamina",     EnumConfigurationKey.PET_SKILL_STAMINA_BOOL),
-	PET_SKILL_FOOD(52, "Pet Skill Food",           EnumConfigurationKey.PET_SKILL_FOOD_BOOL),
-	PET_SKILL_TREASURE(53, "Pet Skill Treasure",   EnumConfigurationKey.PET_SKILL_TRESURE_BOOL),
-	PET_SKILL_GATHERING(54, "Pet Skill Gathering", EnumConfigurationKey.PET_SKILL_GATHERING_BOOL),
+	PET_SKILLS(51, "Pet Skills",     EnumConfigurationKey.PET_SKILLS_BOOL),
 
 	TRAINING_TROOPS(60, "Training",     EnumConfigurationKey.TRAIN_BOOL),
 

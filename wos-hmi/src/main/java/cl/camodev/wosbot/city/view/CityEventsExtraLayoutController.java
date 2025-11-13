@@ -43,6 +43,8 @@ public class CityEventsExtraLayoutController extends AbstractProfileController {
 	@FXML
 	private TextField textFieldArenaActivationHour;
 	@FXML
+	private TextField textFieldArenaPlayerState;
+	@FXML
 	private ComboBox<Integer> comboBoxArenaExtraAttempts;
 	@FXML
 	private Label labelDateTimeError;
@@ -64,6 +66,7 @@ public class CityEventsExtraLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkBoxArena, EnumConfigurationKey.ARENA_TASK_BOOL);
 		checkBoxMappings.put(checkBoxArenaRefreshWithGems, EnumConfigurationKey.ARENA_TASK_REFRESH_WITH_GEMS_BOOL);
 		textFieldMappings.put(textFieldArenaActivationHour, EnumConfigurationKey.ARENA_TASK_ACTIVATION_TIME_STRING);
+		textFieldMappings.put(textFieldArenaPlayerState, EnumConfigurationKey.ARENA_TASK_PLAYER_STATE_INT);
 
 		// Set up date/time validation for textFieldScheduleDateTime
 		textFieldArenaActivationHour.textProperty().addListener((obs, oldVal, newVal) -> {

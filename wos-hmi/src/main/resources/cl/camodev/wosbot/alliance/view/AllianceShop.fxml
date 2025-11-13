@@ -4,6 +4,7 @@
 <?import javafx.scene.layout.*?>
 <?import cl.camodev.wosbot.common.view.PriorityListView?>
 
+<?import javafx.collections.FXCollections?>
 <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="550.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
     <children>
         <ScrollPane fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER" style="-fx-background-color: transparent; -fx-background: transparent;" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308">
@@ -42,6 +43,14 @@
                                                         <Label style="-fx-text-fill: #e5e5e5;" text="Minimum Alliance Coins to Save:" />
                                                         <TextField fx:id="minCoinsTextField" prefWidth="100" promptText="0" />
                                                         <Label style="-fx-text-fill: #888;" text="coins" />
+                                                    </children>
+                                                </HBox>
+
+                                                <HBox spacing="10" alignment="CENTER_LEFT">
+                                                    <children>
+                                                        <Label style="-fx-text-fill: #e5e5e5;" text="Minimum Discount Percentage to Purchase:" />
+                                                        <ComboBox fx:id="minPercentageComboBox" prefWidth="100"/>
+                                                        <Label style="-fx-text-fill: #888;" text="\%" />
                                                     </children>
                                                 </HBox>
                                             </children>

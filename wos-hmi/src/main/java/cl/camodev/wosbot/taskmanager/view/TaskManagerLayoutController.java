@@ -74,6 +74,16 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 	private TextField txtFilterTaskName;
 
 	@FXML
+	private Button btnToggleView;
+	
+	@FXML
+	private javafx.scene.layout.VBox ganttViewContainer;
+	
+	private boolean showingGanttView = false;
+	private Node ganttViewNode = null;
+	private TaskGanttOverviewController ganttViewController = null;
+
+	@FXML
 	public void initialize() {
 		ServProfiles.getServices().addProfileDataChangeListener(this);
 		loadProfiles();
@@ -82,6 +92,67 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 		Timeline ticker = new Timeline(new KeyFrame(Duration.seconds(1), evt -> updateTimeValues()));
 		ticker.setCycleCount(Animation.INDEFINITE);
 		ticker.play();
+	}
+	
+	@FXML
+	private void handleToggleView() {
+		showingGanttView = !showingGanttView;
+		
+		if (showingGanttView) {
+			// Show Gantt view
+			showGanttView();
+			btnToggleView.setText("📋 Table View");
+		} else {
+			// Show standard table view
+			showTableView();
+			btnToggleView.setText("📊 Timeline View");
+		}
+	}
+	
+	private void showGanttView() {
+		// Hide table view
+		tabPaneProfiles.setVisible(false);
+		tabPaneProfiles.setManaged(false);
+		
+		// Load and show Gantt view if not already loaded
+		if (ganttViewNode == null) {
+			try {
+				javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+					getClass().getResource("/cl/camodev/wosbot/taskmanager/view/TaskGanttOverview.fxml")
+				);
+				ganttViewNode = loader.load();
+				ganttViewController = loader.getController();
+			} catch (java.io.IOException e) {
+				e.printStackTrace();
+				// If loading fails, revert to table view
+				showTableView();
+				showingGanttView = false;
+				btnToggleView.setText("📊 Timeline View");
+				return;
+			}
+		}
+		if (ganttViewController != null && txtFilterTaskName != null) {
+			ganttViewController.setTaskFilter(txtFilterTaskName.getText());
+		}
+		
+		// Add to container if not already there
+		if (!ganttViewContainer.getChildren().contains(ganttViewNode)) {
+			ganttViewContainer.getChildren().clear();
+			ganttViewContainer.getChildren().add(ganttViewNode);
+		}
+		
+		ganttViewContainer.setVisible(true);
+		ganttViewContainer.setManaged(true);
+	}
+	
+	private void showTableView() {
+		// Hide Gantt view
+		ganttViewContainer.setVisible(false);
+		ganttViewContainer.setManaged(false);
+		
+		// Show table view
+		tabPaneProfiles.setVisible(true);
+		tabPaneProfiles.setManaged(true);
 	}
 
 	private void setupFilterListener() {
@@ -103,6 +174,10 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 				return task.getTaskName().toLowerCase().contains(filter);
 			});
 		});
+
+		if (ganttViewController != null) {
+			ganttViewController.setTaskFilter(filterText);
+		}
 	}
 
 	// Method to update time-dependent values and trigger reordering

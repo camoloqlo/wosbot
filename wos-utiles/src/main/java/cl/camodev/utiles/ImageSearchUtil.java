@@ -369,6 +369,9 @@ public class ImageSearchUtil {
         Mat imagenROI = null;
         Mat resultado = null;
 
+		String[] templatePaths = templateResourcePath.split("/");
+		String templateName = templatePaths[templatePaths.length - 1];
+
         try {
             // Convert raw image data directly to OpenCV Mat
             long conversionStartTime = System.currentTimeMillis();
@@ -475,8 +478,8 @@ public class ImageSearchUtil {
             long totalTime = System.currentTimeMillis() - startTime;
 
             if (matchPercentage < thresholdPercentage) {
-                logger.info("=== Template Search Completed === Total: {} ms, Match: {}% (BELOW threshold)",
-                    totalTime, String.format("%.2f", matchPercentage));
+                logger.info("=== Template Search Completed === Template: {}, Total: {} ms, Match: {}% (BELOW threshold)",
+                    templateName, totalTime, String.format("%.2f", matchPercentage));
                 return new DTOImageSearchResult(false, null, matchPercentage);
             }
 
@@ -485,8 +488,8 @@ public class ImageSearchUtil {
             double centerX = matchLoc.x + roi.x + (template.cols() / 2.0);
             double centerY = matchLoc.y + roi.y + (template.rows() / 2.0);
 
-            logger.info("=== Template Search Completed === Total: {} ms, Match: {}%, Position: ({},{})",
-                totalTime, String.format("%.2f", matchPercentage), (int)centerX, (int)centerY);
+            logger.info("=== Template Search Completed === Template: {}, Total: {} ms, Match: {}%, Position: ({},{})",
+                templateName, totalTime, String.format("%.2f", matchPercentage), (int)centerX, (int)centerY);
 
             return new DTOImageSearchResult(true, new DTOPoint((int) centerX, (int) centerY), matchPercentage);
 
