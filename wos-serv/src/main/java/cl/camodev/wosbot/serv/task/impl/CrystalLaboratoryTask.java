@@ -17,203 +17,675 @@ import java.util.regex.Pattern;
 import static cl.camodev.wosbot.console.enumerable.EnumConfigurationKey.*;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.*;
 
+/**
+ * Task responsible for managing Crystal Laboratory operations.
+ * 
+ * <p>
+ * This task handles:
+ * <ul>
+ * <li>Claiming available Fire Crystals (FC)</li>
+ * <li>Purchasing discounted daily Refined Fire Crystals (RFC)</li>
+ * <li>Weekly RFC refinement to reach configured targets (Mondays only)</li>
+ * </ul>
+ * 
+ * <p>
+ * <b>Weekly RFC Strategy:</b>
+ * On Mondays, the task checks if enough FC is available to reach the weekly
+ * RFC refinement target. If sufficient FC is available, it performs bulk
+ * refinements.
+ * If insufficient, it reschedules to check again in 2 hours.
+ * 
+ * <p>
+ * <b>RFC Cost Tiers:</b>
+ * RFC refinement costs increase with refinement level:
+ * <ul>
+ * <li>Refines 1-20: 20 FC each</li>
+ * <li>Refines 21-40: 50 FC each</li>
+ * <li>Refines 41-60: 100 FC each</li>
+ * <li>Refines 61-80: 130 FC each</li>
+ * <li>Refines 81-100: 160 FC each</li>
+ * </ul>
+ */
 public class CrystalLaboratoryTask extends DelayedTask {
 
-    private static final int MAX_CONSECUTIVE_FAILED_CLAIMS = 5;
-    private static final int CLAIM_DELAY_MS = 100;
-    private static final Pattern FC_PATTERN = Pattern.compile("(\\d{1,3}(?:[.,]\\d{3})*|\\d+)");
+    // ===============================
+    // CONSTANTS
+    // ===============================
 
+    private static final int MAX_CONSECUTIVE_FAILED_CLAIMS = 3;
+    private static final int MAX_OCR_RETRIES = 5;
+    private static final int NAVIGATION_RETRY_MINUTES = 5;
+    private static final int INSUFFICIENT_FC_RETRY_HOURS = 2;
+
+    // RFC tier costs (FC required per refinement at each tier)
+    private static final int RFC_COST_TIER_1 = 20; // Refines 1-20
+    private static final int RFC_COST_TIER_2 = 50; // Refines 21-40
+    private static final int RFC_COST_TIER_3 = 100; // Refines 41-60
+    private static final int RFC_COST_TIER_4 = 130; // Refines 61-80
+    private static final int RFC_COST_TIER_5 = 160; // Refines 81-100
+
+    // RFC tier boundaries
+    private static final int RFC_TIER_1_MAX = 20;
+    private static final int RFC_TIER_2_MAX = 40;
+    private static final int RFC_TIER_3_MAX = 60;
+    private static final int RFC_TIER_4_MAX = 80;
+    private static final int RFC_TIER_5_MAX = 100;
+
+    // Screen coordinates
+    private static final DTOPoint SWIPE_START = new DTOPoint(710, 950);
+    private static final DTOPoint SWIPE_END = new DTOPoint(510, 810);
+
+    /** Backup navigation coordinate for Crystal Lab FC button */
+    private static final DTOPoint CRYSTAL_LAB_FC_FALLBACK = new DTOPoint(281, 697);
+
+    // OCR regions
+    private static final DTOPoint CURRENT_FC_TOP_LEFT = new DTOPoint(590, 21);
+    private static final DTOPoint CURRENT_FC_BOTTOM_RIGHT = new DTOPoint(700, 60);
+
+    private static final DTOPoint CURRENT_RFC_TOP_LEFT = new DTOPoint(170, 1078);
+    private static final DTOPoint CURRENT_RFC_BOTTOM_RIGHT = new DTOPoint(512, 1106);
+
+    /** Pattern for extracting numbers with optional thousand separators */
+    private static final Pattern NUMBER_PATTERN = Pattern.compile("(\\d{1,3}(?:[.,]\\d{3})*|\\d+)");
+
+    // ===============================
+    // FIELDS
+    // ===============================
+
+    private boolean useDiscountedDailyRFC;
+    private int weeklyRFCTarget;
+
+    // ===============================
+    // CONSTRUCTOR
+    // ===============================
+
+    /**
+     * Constructs a new CrystalLaboratoryTask.
+     * 
+     * @param profile     The game profile this task operates on
+     * @param tpDailyTask The task type enum from the daily task registry
+     */
     public CrystalLaboratoryTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
         super(profile, tpDailyTask);
     }
 
+    // ===============================
+    // CONFIGURATION
+    // ===============================
+
     /**
-     * OCR with retry logic
+     * Loads task configuration from the profile.
+     * 
+     * <p>
+     * Configuration loaded:
+     * <ul>
+     * <li><b>BOOL_CRYSTAL_LAB_DAILY_DISCOUNTED_RFC:</b> Whether to purchase
+     * discounted daily RFC</li>
+     * <li><b>INT_WEEKLY_RFC:</b> Target number of RFC refinements per week</li>
+     * </ul>
      */
-    private int extractNumberWithOCR(DTOPoint start, DTOPoint end, String description, int maxRetries) {
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            logInfo("Retrieving " + description + " via OCR, attempt " + attempt + "/" + maxRetries);
-            try {
-                String ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, start, end);
-                Matcher matcher = FC_PATTERN.matcher(ocrResult);
-                if (matcher.find()) {
-                    String normalized = matcher.group(1).replaceAll("[.,]", "");
-                    return Integer.parseInt(normalized);
-                }
-            } catch (Exception e) {
-                logWarning("OCR attempt " + attempt + " threw an exception: " + e.getMessage());
-                if (attempt < maxRetries) {
-                    sleepTask(1000);
-                }
-            }
-        }
-        logInfo("Failed to retrieve " + description + " via OCR after " + maxRetries + " attempts");
-        return -1;
+    protected void loadConfiguration() {
+        this.useDiscountedDailyRFC = profile.getConfig(
+                BOOL_CRYSTAL_LAB_DAILY_DISCOUNTED_RFC,
+                Boolean.class);
+
+        this.weeklyRFCTarget = profile.getConfig(INT_WEEKLY_RFC, Integer.class);
+
+        logInfo(String.format("Configuration loaded - Discounted RFC: %s, Weekly target: %d",
+                useDiscountedDailyRFC, weeklyRFCTarget));
     }
 
-    private int calculateFCNeeded(int current, int target) {
-        int total = 0;
-        for (int refine = current + 1; refine <= target; refine++) {
-            if (refine <= 20)
-                total += 20;
-            else if (refine <= 40)
-                total += 50;
-            else if (refine <= 60)
-                total += 100;
-            else if (refine <= 80)
-                total += 130;
-            else if (refine <= 100)
-                total += 160;
-        }
-        return total;
-    }
+    // ===============================
+    // MAIN EXECUTION
+    // ===============================
 
+    /**
+     * Main execution method for the Crystal Laboratory task.
+     * 
+     * <p>
+     * <b>Execution Flow:</b>
+     * <ol>
+     * <li>Navigate to Crystal Laboratory</li>
+     * <li>Claim available Fire Crystals</li>
+     * <li>Purchase discounted daily RFC if enabled</li>
+     * <li>Process weekly RFC refinements (Mondays only)</li>
+     * <li>Reschedule to next game reset</li>
+     * </ol>
+     * 
+     * <p>
+     * Navigation or OCR failures trigger retry in
+     * {@value #NAVIGATION_RETRY_MINUTES} minutes.
+     * Insufficient FC for weekly target triggers retry in
+     * {@value #INSUFFICIENT_FC_RETRY_HOURS} hours.
+     */
     @Override
     protected void execute() {
-        final boolean useDiscountedDailyRFC = profile.getConfig(BOOL_CRYSTAL_LAB_DAILY_DISCOUNTED_RFC, Boolean.class);
+        logInfo("Starting Crystal Laboratory task");
+        loadConfiguration();
 
-        logInfo("Navigating to Crystal Laboratory");
-
-        // Open left menu on city section
-        openLeftMenuCitySection(true);
-
-        // Search for troops button
-        DTOImageSearchResult troopsResult = searchTemplateWithRetries(GAME_HOME_SHORTCUTS_LANCER);
-        if (!troopsResult.isFound()) {
-            logInfo("Could not locate troops button. Skipping crystal lab tasks.");
+        if (!navigateToCrystalLaboratory()) {
+            reschedule(LocalDateTime.now().plusMinutes(NAVIGATION_RETRY_MINUTES));
             return;
         }
 
-        tapPoint(troopsResult.getPoint());
-        sleepTask(1000);
-        swipe(new DTOPoint(710, 950), new DTOPoint(510, 810));
-        sleepTask(2000);
+        claimAllCrystals();
 
-        // Search for crystal lab FC button (with extended retries)
-        DTOImageSearchResult crystalLabResult = searchTemplateWithRetries(CRYSTAL_LAB_FC_BUTTON);
-
-        // Backup method if primary search fails
-        if (crystalLabResult.isFound()) {
-            tapPoint(crystalLabResult.getPoint());
-            sleepTask(1000);
-        } else {
-            tapPoint(new DTOPoint(281, 697));
-            sleepTask(1000);
-            crystalLabResult = searchTemplateWithRetries(VALIDATION_CRYSTAL_LAB_UI);
-            if (crystalLabResult.isFound()) {
-                logInfo("Crystal Lab UI validated using backup method");
-            } else {
-                logInfo("Could not locate Crystal Lab after all attempts. Skipping crystal lab tasks.");
-                return;
-            }
-        }
-
-        // Claim crystals
-        claimCrystals();
-
-        // Handle discounted RFC
         if (useDiscountedDailyRFC) {
-            handleDiscountedRFC();
+            purchaseDiscountedRFC();
 
-            // Weekly RFC processing (Mondays only)
-            if (LocalDateTime.now(Clock.systemUTC()).getDayOfWeek() == DayOfWeek.MONDAY) {
-                processWeeklyRFC();
+            if (isMonday()) {
+                WeeklyRFCResult result = processWeeklyRFC();
+
+                if (result == WeeklyRFCResult.INSUFFICIENT_FC) {
+                    // Override default reschedule - check again in 2 hours
+                    reschedule(LocalDateTime.now().plusHours(INSUFFICIENT_FC_RETRY_HOURS));
+                    return;
+                }
             }
         }
 
+        // Default reschedule: next game reset (daily execution)
         reschedule(UtilTime.getGameReset());
     }
 
-    private void claimCrystals() {
+    // ===============================
+    // NAVIGATION
+    // ===============================
+
+    /**
+     * Navigates to the Crystal Laboratory interface.
+     * 
+     * <p>
+     * <b>Navigation Strategy:</b>
+     * <ol>
+     * <li>Open left menu city section</li>
+     * <li>Find and tap troops button (Lancer shortcut)</li>
+     * <li>Swipe to reveal Crystal Lab</li>
+     * <li>Search for Crystal Lab FC button</li>
+     * <li>If not found, use fallback coordinate</li>
+     * <li>Validate arrival with UI template</li>
+     * </ol>
+     * 
+     * @return true if navigation successful, false otherwise
+     */
+    private boolean navigateToCrystalLaboratory() {
+        logInfo("Navigating to Crystal Laboratory");
+
+        openLeftMenuCitySection(true);
+
+        if (!findAndTapTroopsButton()) {
+            return false;
+        }
+
+        swipeToCrystalLab();
+
+        return openCrystalLabInterface();
+    }
+
+    /**
+     * Finds and taps the troops button in the left menu.
+     * 
+     * @return true if button found and tapped, false otherwise
+     */
+    private boolean findAndTapTroopsButton() {
+        DTOImageSearchResult troopsResult = searchTemplateWithRetries(GAME_HOME_SHORTCUTS_LANCER);
+
+        if (!troopsResult.isFound()) {
+            logWarning("Could not locate troops button. Navigation failed.");
+            return false;
+        }
+
+        tapPoint(troopsResult.getPoint());
+        sleepTask(1000); // Wait for troops menu to open
+        return true;
+    }
+
+    /**
+     * Swipes down to reveal the Crystal Laboratory section.
+     */
+    private void swipeToCrystalLab() {
+        swipe(SWIPE_START, SWIPE_END);
+        sleepTask(2000); // Wait for swipe animation and UI to stabilize
+    }
+
+    /**
+     * Opens the Crystal Lab interface with fallback navigation.
+     * 
+     * <p>
+     * Primary method: Search for FC button template.
+     * Fallback method: Tap known coordinate and validate UI.
+     * 
+     * @return true if interface opened successfully, false otherwise
+     */
+    private boolean openCrystalLabInterface() {
+        DTOImageSearchResult crystalLabResult = searchTemplateWithRetries(CRYSTAL_LAB_FC_BUTTON);
+
+        if (crystalLabResult.isFound()) {
+            tapPoint(crystalLabResult.getPoint());
+            sleepTask(1000); // Wait for Crystal Lab to open
+            return true;
+        }
+
+        return attemptFallbackNavigation();
+    }
+
+    /**
+     * Attempts fallback navigation using hardcoded coordinate.
+     * 
+     * <p>
+     * This fallback exists because the FC button appearance can vary
+     * depending on whether crystals have been claimed.
+     * 
+     * @return true if validation succeeds, false otherwise
+     */
+    private boolean attemptFallbackNavigation() {
+        logInfo("Primary navigation failed. Attempting fallback method.");
+
+        tapPoint(CRYSTAL_LAB_FC_FALLBACK);
+        sleepTask(1000); // Wait for interface to open
+
+        DTOImageSearchResult validationResult = searchTemplateWithRetries(VALIDATION_CRYSTAL_LAB_UI);
+
+        if (validationResult.isFound()) {
+            logInfo("Crystal Lab UI validated using fallback method");
+            return true;
+        }
+
+        logWarning("Could not locate Crystal Lab after all navigation attempts.");
+        return false;
+    }
+
+    // ===============================
+    // CRYSTAL CLAIMING
+    // ===============================
+
+    /**
+     * Claims all available Fire Crystals.
+     * 
+     * <p>
+     * Continuously searches for and taps the refine/claim button until
+     * either no more claims are available or we hit the consecutive failure limit.
+     * 
+     * <p>
+     * The consecutive failure threshold handles:
+     * <ul>
+     * <li>OCR instability during claim animations</li>
+     * <li>Temporary button disappearance during UI updates</li>
+     * <li>Flicker during rapid claiming</li>
+     * </ul>
+     */
+    private void claimAllCrystals() {
         DTOImageSearchResult claimResult = searchTemplateWithRetries(CRYSTAL_LAB_REFINE_BUTTON);
+
         if (!claimResult.isFound()) {
             logInfo("No crystals available to claim.");
             return;
         }
 
         logInfo("Starting crystal claiming process");
-        int consecutiveFailedClaims = 0;
+        executeCrystalClaimLoop(claimResult);
+    }
 
-        while (claimResult.isFound() && consecutiveFailedClaims < MAX_CONSECUTIVE_FAILED_CLAIMS) {
-            logInfo("Claiming crystal...");
-            emuManager.tapAtRandomPoint(EMULATOR_NUMBER, claimResult.getPoint(), claimResult.getPoint());
-            sleepTask(CLAIM_DELAY_MS);
+    /**
+     * Executes the crystal claiming loop with failure tolerance.
+     * 
+     * @param initialClaimResult Initial search result for the claim button
+     */
+    private void executeCrystalClaimLoop(DTOImageSearchResult initialClaimResult) {
+        DTOImageSearchResult claimResult = initialClaimResult;
+        int consecutiveFailures = 0;
+
+        while (claimResult.isFound() && consecutiveFailures < MAX_CONSECUTIVE_FAILED_CLAIMS) {
+            logDebug("Claiming crystal...");
+
+            tapRandomPoint(claimResult.getPoint(), claimResult.getPoint());
+            sleepTask(100); // Brief pause for claim animation
 
             claimResult = searchTemplateWithRetries(CRYSTAL_LAB_REFINE_BUTTON);
+
             if (!claimResult.isFound()) {
-                consecutiveFailedClaims++;
-                logDebug("Failed to find next claim button. Consecutive failures: " + consecutiveFailedClaims + "/"
-                        + MAX_CONSECUTIVE_FAILED_CLAIMS);
+                consecutiveFailures++;
+                logDebug("Claim button not found. Consecutive failures: " +
+                        consecutiveFailures + "/" + MAX_CONSECUTIVE_FAILED_CLAIMS);
             } else {
-                consecutiveFailedClaims = 0;
+                consecutiveFailures = 0; // Reset on success
             }
         }
 
-        if (consecutiveFailedClaims >= MAX_CONSECUTIVE_FAILED_CLAIMS) {
-            logInfo("Exiting claim loop - all crystals likely claimed.");
+        logClaimLoopResult(consecutiveFailures);
+    }
+
+    /**
+     * Logs the result of the crystal claiming loop.
+     * 
+     * @param consecutiveFailures Number of consecutive failures at loop exit
+     */
+    private void logClaimLoopResult(int consecutiveFailures) {
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILED_CLAIMS) {
+            logInfo("Crystal claiming completed - no more claims available.");
         } else {
-            logInfo("Crystal claiming process completed successfully.");
+            logInfo("Crystal claiming process finished successfully.");
         }
     }
 
-    private void handleDiscountedRFC() {
-        DTOImageSearchResult discountedResult = searchTemplateWithRetries(CRYSTAL_LAB_DAILY_DISCOUNTED_RFC);
+    // ===============================
+    // DISCOUNTED RFC
+    // ===============================
+
+    /**
+     * Purchases the discounted daily Refined Fire Crystal if available.
+     * 
+     * <p>
+     * The game offers a 50% discounted RFC once per day. This method
+     * checks for availability and purchases it automatically.
+     */
+    private void purchaseDiscountedRFC() {
+        DTOImageSearchResult discountedResult = searchTemplateWithRetries(
+                CRYSTAL_LAB_DAILY_DISCOUNTED_RFC);
+
         if (!discountedResult.isFound()) {
             logInfo("No discounted RFC available today.");
             return;
         }
 
-        logInfo("50% discounted RFC available. Attempting to claim it now.");
-        DTOImageSearchResult refineResult = searchTemplateWithRetries(CRYSTAL_LAB_RFC_REFINE_BUTTON);
+        logInfo("50% discounted RFC available. Attempting to purchase.");
+        executeDiscountedRFCPurchase();
+    }
+
+    /**
+     * Executes the discounted RFC purchase by tapping the refine button.
+     */
+    private void executeDiscountedRFCPurchase() {
+        DTOImageSearchResult refineResult = searchTemplateWithRetries(
+                CRYSTAL_LAB_RFC_REFINE_BUTTON);
+
         if (refineResult.isFound()) {
             tapPoint(refineResult.getPoint());
-            sleepTask(500);
-            logInfo("Discounted RFC claimed successfully.");
+            sleepTask(500); // Wait for purchase to process
+            logInfo("Discounted RFC purchased successfully.");
         } else {
-            logInfo("Could not find RFC refine button.");
+            logWarning("Could not find RFC refine button for discounted purchase.");
         }
     }
 
-    private void processWeeklyRFC() {
-        int currentFC = extractNumberWithOCR(new DTOPoint(590, 21), new DTOPoint(700, 60), "current FC", 5);
-        if (currentFC == -1)
-            return;
+    // ===============================
+    // WEEKLY RFC PROCESSING
+    // ===============================
 
-        int currentRFC = extractNumberWithOCR(new DTOPoint(170, 1078), new DTOPoint(512, 1106), "current refined FC",
-                5);
-        if (currentRFC == -1)
-            return;
+    /**
+     * Processes weekly RFC refinements to reach the configured target.
+     * 
+     * <p>
+     * This method:
+     * <ol>
+     * <li>Extracts current FC and RFC counts via OCR</li>
+     * <li>Calculates FC needed to reach weekly target</li>
+     * <li>Checks if sufficient FC is available</li>
+     * <li>Performs bulk refinements if possible</li>
+     * </ol>
+     * 
+     * @return Result indicating whether refinements were done, target reached,
+     *         insufficient FC, or OCR failed
+     */
+    private WeeklyRFCResult processWeeklyRFC() {
+        logInfo("Processing weekly RFC refinements (Monday check)");
 
-        int targetRefines = profile.getConfig(INT_WEEKLY_RFC, Integer.class);
-        int neededFC = calculateFCNeeded(currentRFC, targetRefines);
-
-        logInfo("Current FC: " + currentFC + ", Current refined FC: " + currentRFC +
-                ", FC needed to reach " + targetRefines + " refines: " + neededFC);
-
-        if (currentRFC >= targetRefines) {
-            logInfo("Target of " + targetRefines + " refines already reached. No further RFC needed today.");
-            reschedule(UtilTime.getGameReset());
-            return;
+        Integer currentFC = extractCurrentFC();
+        if (currentFC == null) {
+            return WeeklyRFCResult.OCR_FAILED;
         }
+
+        Integer currentRFC = extractCurrentRFC();
+        if (currentRFC == null) {
+            return WeeklyRFCResult.OCR_FAILED;
+        }
+
+        return processRFCRefinements(currentFC, currentRFC);
+    }
+
+    /**
+     * Extracts the current FC count via OCR.
+     * 
+     * @return Current FC count, or null if extraction failed
+     */
+    private Integer extractCurrentFC() {
+        int fc = extractNumberWithOCR(
+                CURRENT_FC_TOP_LEFT,
+                CURRENT_FC_BOTTOM_RIGHT,
+                "current FC");
+
+        return fc == -1 ? null : fc;
+    }
+
+    /**
+     * Extracts the current RFC refinement count via OCR.
+     * 
+     * @return Current RFC count, or null if extraction failed
+     */
+    private Integer extractCurrentRFC() {
+        int rfc = extractNumberWithOCR(
+                CURRENT_RFC_TOP_LEFT,
+                CURRENT_RFC_BOTTOM_RIGHT,
+                "current refined FC");
+
+        return rfc == -1 ? null : rfc;
+    }
+
+    /**
+     * Processes RFC refinements based on current resources and target.
+     * 
+     * @param currentFC  Available Fire Crystals
+     * @param currentRFC Current RFC refinement level
+     * @return Result of the refinement process
+     */
+    private WeeklyRFCResult processRFCRefinements(int currentFC, int currentRFC) {
+        if (currentRFC >= weeklyRFCTarget) {
+            logInfo(String.format("Weekly target (%d) already reached. Current: %d",
+                    weeklyRFCTarget, currentRFC));
+            return WeeklyRFCResult.TARGET_REACHED;
+        }
+
+        int neededFC = calculateFCNeeded(currentRFC, weeklyRFCTarget);
+
+        logInfo(String.format("FC Analysis - Available: %d, Current RFC: %d, Target: %d, Needed: %d",
+                currentFC, currentRFC, weeklyRFCTarget, neededFC));
 
         if (neededFC > currentFC) {
-            logInfo("Insufficient FC to reach " + targetRefines + " refines. Needed: " + neededFC + ", Available: "
-                    + currentFC);
-            reschedule(LocalDateTime.now().plusHours(2));
-            return;
+            logInfo(String.format("Insufficient FC. Need %d more FC to reach target.",
+                    neededFC - currentFC));
+            return WeeklyRFCResult.INSUFFICIENT_FC;
         }
 
-        logInfo("Sufficient FC available to reach " + targetRefines + " refines. Proceeding with RFC.");
-        int refinesToDo = targetRefines - currentRFC;
+        performBulkRefinements(currentRFC);
+        return WeeklyRFCResult.REFINEMENTS_DONE;
+    }
 
-        DTOImageSearchResult refineResult = searchTemplateWithRetries(CRYSTAL_LAB_RFC_REFINE_BUTTON);
+    /**
+     * Performs bulk RFC refinements to reach the weekly target.
+     * 
+     * @param currentRFC Current RFC refinement level
+     */
+    private void performBulkRefinements(int currentRFC) {
+        int refinesToDo = weeklyRFCTarget - currentRFC;
+
+        logInfo(String.format("Sufficient FC available. Performing %d refinements.", refinesToDo));
+
+        DTOImageSearchResult refineResult = searchTemplateWithRetries(
+                CRYSTAL_LAB_RFC_REFINE_BUTTON);
+
         if (refineResult.isFound()) {
             tapRandomPoint(refineResult.getPoint(), refineResult.getPoint(), refinesToDo, 500);
+            logInfo("Bulk refinements completed.");
+        } else {
+            logWarning("Could not find RFC refine button for bulk refinements.");
         }
     }
 
+    // ===============================
+    // OCR EXTRACTION
+    // ===============================
+
+    /**
+     * Extracts a number from a screen region using OCR with retry logic.
+     * 
+     * <p>
+     * This method handles numbers with optional thousand separators
+     * (commas or periods) and normalizes them before parsing.
+     * 
+     * <p>
+     * Example formats handled:
+     * <ul>
+     * <li>"1,234" → 1234</li>
+     * <li>"1.234" → 1234</li>
+     * <li>"1234" → 1234</li>
+     * </ul>
+     * 
+     * @param topLeft     Top-left corner of OCR region
+     * @param bottomRight Bottom-right corner of OCR region
+     * @param description Description for logging purposes
+     * @return Extracted number, or -1 if extraction failed
+     */
+    private int extractNumberWithOCR(DTOPoint topLeft, DTOPoint bottomRight, String description) {
+        for (int attempt = 1; attempt <= MAX_OCR_RETRIES; attempt++) {
+            logDebug("Extracting " + description + " via OCR (attempt " +
+                    attempt + "/" + MAX_OCR_RETRIES + ")");
+
+            try {
+                String ocrResult = OCRWithRetries(topLeft, bottomRight, 1);
+                Integer number = parseNumberFromOCR(ocrResult);
+
+                if (number != null) {
+                    logInfo(description + ": " + number);
+                    return number;
+                }
+
+            } catch (Exception e) {
+                logWarning("OCR attempt " + attempt + " threw exception: " + e.getMessage());
+            }
+
+            if (attempt < MAX_OCR_RETRIES) {
+                sleepTask(1000); // Wait before retry
+            }
+        }
+
+        logWarning("Failed to extract " + description + " after " + MAX_OCR_RETRIES + " attempts");
+        return -1;
+    }
+
+    /**
+     * Parses a number from OCR text, handling thousand separators.
+     * 
+     * @param ocrText Raw OCR text
+     * @return Parsed integer, or null if parsing failed
+     */
+    private Integer parseNumberFromOCR(String ocrText) {
+        Matcher matcher = NUMBER_PATTERN.matcher(ocrText);
+
+        if (!matcher.find()) {
+            return null;
+        }
+
+        try {
+            String normalized = matcher.group(1).replaceAll("[.,]", "");
+            return Integer.parseInt(normalized);
+        } catch (NumberFormatException e) {
+            logWarning("Failed to parse number from: " + ocrText);
+            return null;
+        }
+    }
+
+    // ===============================
+    // RFC COST CALCULATION
+    // ===============================
+
+    /**
+     * Calculates the total FC needed to refine from current level to target level.
+     * 
+     * <p>
+     * RFC refinement costs increase with level according to tier boundaries:
+     * <ul>
+     * <li>Refines 1-20: {@value #RFC_COST_TIER_1} FC each</li>
+     * <li>Refines 21-40: {@value #RFC_COST_TIER_2} FC each</li>
+     * <li>Refines 41-60: {@value #RFC_COST_TIER_3} FC each</li>
+     * <li>Refines 61-80: {@value #RFC_COST_TIER_4} FC each</li>
+     * <li>Refines 81-100: {@value #RFC_COST_TIER_5} FC each</li>
+     * </ul>
+     * 
+     * @param currentLevel Current RFC refinement level
+     * @param targetLevel  Target RFC refinement level
+     * @return Total FC needed to reach target from current level
+     */
+    private int calculateFCNeeded(int currentLevel, int targetLevel) {
+        int totalFC = 0;
+
+        for (int refine = currentLevel + 1; refine <= targetLevel; refine++) {
+            totalFC += getRefinementCost(refine);
+        }
+
+        return totalFC;
+    }
+
+    /**
+     * Gets the FC cost for a specific refinement level.
+     * 
+     * @param refineLevel The refinement level to check
+     * @return FC cost for that refinement
+     */
+    private int getRefinementCost(int refineLevel) {
+        if (refineLevel <= RFC_TIER_1_MAX) {
+            return RFC_COST_TIER_1;
+        } else if (refineLevel <= RFC_TIER_2_MAX) {
+            return RFC_COST_TIER_2;
+        } else if (refineLevel <= RFC_TIER_3_MAX) {
+            return RFC_COST_TIER_3;
+        } else if (refineLevel <= RFC_TIER_4_MAX) {
+            return RFC_COST_TIER_4;
+        } else if (refineLevel <= RFC_TIER_5_MAX) {
+            return RFC_COST_TIER_5;
+        }
+
+        // For levels beyond 100, use highest tier cost
+        return RFC_COST_TIER_5;
+    }
+
+    // ===============================
+    // UTILITY METHODS
+    // ===============================
+
+    /**
+     * Checks if today is Monday (UTC time).
+     * 
+     * @return true if today is Monday, false otherwise
+     */
+    private boolean isMonday() {
+        return LocalDateTime.now(Clock.systemUTC()).getDayOfWeek() == DayOfWeek.MONDAY;
+    }
+
+    // ===============================
+    // TASK FRAMEWORK OVERRIDES
+    // ===============================
+
+    /**
+     * Specifies the required starting screen location for this task.
+     * 
+     * @return HOME as the required start location
+     */
     @Override
     protected EnumStartLocation getRequiredStartLocation() {
         return EnumStartLocation.HOME;
+    }
+
+    // ===============================
+    // INNER CLASSES
+    // ===============================
+
+    /**
+     * Enumeration of possible weekly RFC processing results.
+     */
+    private enum WeeklyRFCResult {
+        REFINEMENTS_DONE,
+        TARGET_REACHED,
+        INSUFFICIENT_FC,
+        OCR_FAILED
     }
 }
