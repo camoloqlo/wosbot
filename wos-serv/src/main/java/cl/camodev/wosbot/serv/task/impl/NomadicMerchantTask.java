@@ -41,7 +41,7 @@ public class NomadicMerchantTask extends DelayedTask {
 
         // Tap on shop button and wait for shop to load
         logInfo("Navigating to the shop.");
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, shopButtonResult.getPoint(), shopButtonResult.getPoint());
+        tapRandomPoint(shopButtonResult.getPoint(), shopButtonResult.getPoint());
         sleepTask(2000);
 
 
@@ -124,7 +124,7 @@ public class NomadicMerchantTask extends DelayedTask {
 
             if (dailyRefreshResult.isFound()) {
                 logInfo("Daily refresh is available. Using it now.");
-                emuManager.tapAtRandomPoint(EMULATOR_NUMBER, dailyRefreshResult.getPoint(), dailyRefreshResult.getPoint());
+                tapRandomPoint(dailyRefreshResult.getPoint(), dailyRefreshResult.getPoint());
                 sleepTask(2000); // Wait longer for refresh to complete
                 // Continue the main loop to check for new items after refresh
             } else {

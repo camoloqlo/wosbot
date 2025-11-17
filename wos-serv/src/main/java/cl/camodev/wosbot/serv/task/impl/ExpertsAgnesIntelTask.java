@@ -27,7 +27,7 @@ public class ExpertsAgnesIntelTask extends DelayedTask {
             DTOImageSearchResult agnes = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.AGNES_CLAIM_INTEL, 80);
             if (agnes.isFound()) {
                 logInfo("Agnes icon found. Claiming intel.");
-                emuManager.tapAtPoint(EMULATOR_NUMBER, agnes.getPoint());
+                tapPoint(agnes.getPoint());
                 sleepTask(1000);
                 LocalDateTime nextReset = UtilTime.getGameReset(); // Reschedule for next reset
                 this.reschedule(nextReset);

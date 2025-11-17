@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import cl.camodev.utiles.UtilTime;
+import cl.camodev.utiles.time.TimeConverters;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
@@ -76,7 +77,7 @@ public class JourneyofLightTask extends DelayedTask {
 
             LocalDateTime nextQueueDateTime = LocalDateTime.now().plusHours(1000);
             try {
-                nextQueueDateTime = UtilTime.parseTime(nextQueueTime);
+                nextQueueDateTime = TimeConverters.toLocalDateTime(nextQueueTime);
             } catch (Exception e) {
                 logWarning("Failed to parse next queue time for queue: " + e.getMessage().strip());
             }

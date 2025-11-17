@@ -47,7 +47,7 @@ public class ExpertsRomulusTroopsTask extends DelayedTask {
             DTOImageSearchResult troopChoice = emuManager.searchTemplate(EMULATOR_NUMBER, troopTemplate,
                     90);
             if (troopChoice.isFound()) {
-                emuManager.tapAtPoint(EMULATOR_NUMBER, troopChoice.getPoint());
+                tapPoint(troopChoice.getPoint());
                 sleepTask(1000);
                 tapBackButton();
                 sleepTask(500);
@@ -59,7 +59,7 @@ public class ExpertsRomulusTroopsTask extends DelayedTask {
                             EnumTemplates.ROMULUS_CLAIM_TROOPS_BUTTON, new DTOPoint(180, 351), new DTOPoint(443, 600), 80);
                     if (claimButton.isFound()) {
                         logInfo("Claiming " + troopType + " from Romulus. Rescheduling for next reset.");
-                        emuManager.tapAtPoint(EMULATOR_NUMBER, claimButton.getPoint());
+                        tapPoint(claimButton.getPoint());
                         sleepTask(1000);
                         LocalDateTime nextReset = UtilTime.getGameReset();
                         this.reschedule(nextReset);

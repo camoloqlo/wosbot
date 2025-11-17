@@ -61,7 +61,7 @@ public class MysteryShopTask extends DelayedTask {
 		}
 
 		// Tap on shop button
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, shopButtonResult.getPoint(), shopButtonResult.getPoint());
+		tapRandomPoint(shopButtonResult.getPoint(), shopButtonResult.getPoint());
 		sleepTask(1000);
 
 		// STEP 2: Search for mystery shop within the shop menu
@@ -80,7 +80,7 @@ public class MysteryShopTask extends DelayedTask {
 		}
 
 		// Tap on mystery shop
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, mysteryShopResult.getPoint(), mysteryShopResult.getPoint());
+		tapRandomPoint(mysteryShopResult.getPoint(), mysteryShopResult.getPoint());
 		sleepTask(1000);
         logInfo("Successfully navigated to the Mystery Shop.");
 		return true;
@@ -197,11 +197,11 @@ public class MysteryShopTask extends DelayedTask {
 			// If found, claim the reward
 			if (freeRewardResult.isFound()) {
 				// Tap on the free reward
-				emuManager.tapAtRandomPoint(EMULATOR_NUMBER, freeRewardResult.getPoint(), freeRewardResult.getPoint());
+				tapRandomPoint(freeRewardResult.getPoint(), freeRewardResult.getPoint());
 				sleepTask(400);
 
 				// Confirm the claim (tap on confirm button or area)
-				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(360, 830));
+				tapPoint(new DTOPoint(360, 830));
 				sleepTask(300);
 
 				logInfo("A free reward has been claimed.");
@@ -230,7 +230,7 @@ public class MysteryShopTask extends DelayedTask {
 
 		if (dailyRefreshResult.isFound()) {
 			// Tap on daily refresh
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, dailyRefreshResult.getPoint(), dailyRefreshResult.getPoint());
+			tapRandomPoint(dailyRefreshResult.getPoint(), dailyRefreshResult.getPoint());
 			sleepTask(1000);
 
 			logInfo("Daily refresh used successfully");
@@ -315,11 +315,11 @@ public class MysteryShopTask extends DelayedTask {
 				}
 
 				// Tap on the hero widget buy button
-				emuManager.tapAtPoint(EMULATOR_NUMBER, heroWidgetResult.getPoint());
+				tapPoint(heroWidgetResult.getPoint());
 				sleepTask(600);
 
 				// Confirm the purchase (tap on confirm button or area)
-				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(360, 830));
+				tapPoint(new DTOPoint(360, 830));
 				sleepTask(600);
 
 				logInfo("250 Hero Widget found and purchased on attempt " + purchaseAttempt + ".");
@@ -362,11 +362,11 @@ public class MysteryShopTask extends DelayedTask {
 			// If found, purchase the item
 			if (buyButtonResult.isFound()) {
 				// Tap on the buy button
-				emuManager.tapAtRandomPoint(EMULATOR_NUMBER, buyButtonResult.getPoint(), buyButtonResult.getPoint());
+				tapRandomPoint(buyButtonResult.getPoint(), buyButtonResult.getPoint());
 				sleepTask(600);
 
 				// Confirm the purchase (tap on confirm button or area)
-				emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(360, 830));
+				tapPoint(new DTOPoint(360, 830));
 				sleepTask(600);
 
 				logInfo(itemName + " has been purchased.");

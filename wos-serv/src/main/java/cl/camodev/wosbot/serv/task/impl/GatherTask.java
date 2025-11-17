@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.utiles.number.NumberConverters;
 import cl.camodev.utiles.number.NumberValidators;
+import cl.camodev.utiles.time.TimeConverters;
 import cl.camodev.wosbot.almac.entity.DailyTask;
 import cl.camodev.wosbot.almac.repo.DailyTaskRepository;
 import cl.camodev.wosbot.almac.repo.IDailyTaskRepository;
@@ -437,7 +438,7 @@ public class GatherTask extends DelayedTask {
 
         try {
             logDebug("Time OCR result: '" + timeText + "'");
-            LocalDateTime returnTime = UtilTime.parseTime(timeText);
+            LocalDateTime returnTime = TimeConverters.toLocalDateTime(timeText);
             return returnTime;
         } catch (Exception e) {
             logError("Failed to parse march return time: " + e.getMessage());
@@ -762,8 +763,8 @@ public class GatherTask extends DelayedTask {
             reschedule(LocalDateTime.now().plusMinutes(5));
         } else {
             logInfo(String.format("Rescheduling gather task for: %s",
-                    earliestRescheduleTime.format(DATETIME_FORMATTER)));
-            reschedule(earliestRescheduleTime);
+                    earliestRescheduleTime.plusMinutes(5).format(DATETIME_FORMATTER)));
+            reschedule(earliestRescheduleTime.plusMinutes(5));
         }
     }
 

@@ -30,7 +30,7 @@ public class ExpertsRomulusTagTask extends DelayedTask {
                     EnumTemplates.ROMULUS_CLAIM_TAG_BUTTON, 80);
             if (claimButton.isFound()) {
                 logInfo("Claiming loyalty tags from Romulus. Rescheduling for next reset.");
-                emuManager.tapAtPoint(EMULATOR_NUMBER, claimButton.getPoint());
+                tapPoint(claimButton.getPoint());
                 sleepTask(1000);
                 LocalDateTime nextReset = UtilTime.getGameReset(); // Reschedule for next reset
                 this.reschedule(nextReset);
@@ -56,9 +56,9 @@ public class ExpertsRomulusTagTask extends DelayedTask {
         DTOImageSearchResult researchCenter = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER, 90);
 
 		if (researchCenter.isFound()) {
-			emuManager.tapAtPoint(EMULATOR_NUMBER, researchCenter.getPoint());
+			tapPoint(researchCenter.getPoint());
 			sleepTask(500);
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(488, 410), new DTOPoint(550, 450));
+			tapRandomPoint(new DTOPoint(488, 410), new DTOPoint(550, 450));
 			sleepTask(500);
         } else {
 			logWarning("Research Center shortcut not found. Rescheduling for 5 minutes.");

@@ -35,27 +35,27 @@ public class PetAdventureChestTask extends DelayedTask {
 		DTOImageSearchResult petsResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_PETS,  90);
 		if (petsResult.isFound()) {
 			logInfo("Pets button found. Tapping to open.");
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, petsResult.getPoint(), petsResult.getPoint());
+			tapRandomPoint(petsResult.getPoint(), petsResult.getPoint());
 			sleepTask(3000);
 
 			DTOImageSearchResult beastCageResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_BEAST_CAGE, 90);
 			if (beastCageResult.isFound()) {
-				emuManager.tapAtPoint(EMULATOR_NUMBER, beastCageResult.getPoint());
+				tapPoint(beastCageResult.getPoint());
 				sleepTask(500);
-				emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(547, 1150), new DTOPoint(650, 1210));
+				tapRandomPoint(new DTOPoint(547, 1150), new DTOPoint(650, 1210));
 
 				for (int i = 0; i < 10; i++) {
 					logDebug("Searching for completed chests to claim.");
 					DTOImageSearchResult doneChest = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_CHEST_COMPLETED, 90);
 					if (doneChest.isFound()) {
-						emuManager.tapAtRandomPoint(EMULATOR_NUMBER, doneChest.getPoint(), doneChest.getPoint());
+						tapRandomPoint(doneChest.getPoint(), doneChest.getPoint());
 						sleepTask(500);
-						emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(270, 735), new DTOPoint(450, 760), 20, 100);
+						tapRandomPoint(new DTOPoint(270, 735), new DTOPoint(450, 760), 20, 100);
 
 						DTOImageSearchResult share = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_CHEST_SHARE,  90);
 						if (share.isFound()) {
 							logInfo("Sharing the completed chest with the alliance.");
-							emuManager.tapAtRandomPoint(EMULATOR_NUMBER, share.getPoint(), share.getPoint());
+							tapRandomPoint(share.getPoint(), share.getPoint());
 							sleepTask(500);
 						}
 						tapBackButton();
@@ -80,19 +80,19 @@ public class PetAdventureChestTask extends DelayedTask {
 
 								logInfo("Found chest: " + enumTemplates + ". Attempting to start adventure.");
 
-								emuManager.tapAtRandomPoint(EMULATOR_NUMBER, result.getPoint(), result.getPoint());
+								tapRandomPoint(result.getPoint(), result.getPoint());
 								sleepTask(500);
 
 								DTOImageSearchResult chestSelect = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_CHEST_SELECT,  90);
 
 								if (chestSelect.isFound()) {
-									emuManager.tapAtPoint(EMULATOR_NUMBER, chestSelect.getPoint());
+									tapPoint(chestSelect.getPoint());
 									sleepTask(500);
 
 									DTOImageSearchResult chestStart = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_CHEST_START,  90);
 
 									if (chestStart.isFound()) {
-										emuManager.tapAtPoint(EMULATOR_NUMBER, chestStart.getPoint());
+										tapPoint(chestStart.getPoint());
 										sleepTask(500);
 
 										tapBackButton();

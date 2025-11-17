@@ -137,8 +137,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
      * Navigates to the city view screen
      */
     private void navigateToCityView() {
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, LEFT_MENU.topLeft(), LEFT_MENU.bottomRight(), 1, 1000);
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, LEFT_MENU_CITY_TAB.topLeft(), LEFT_MENU_CITY_TAB.bottomRight(), 1,
+        tapRandomPoint(LEFT_MENU.topLeft(), LEFT_MENU.bottomRight(), 1, 1000);
+        tapRandomPoint(LEFT_MENU_CITY_TAB.topLeft(), LEFT_MENU_CITY_TAB.bottomRight(), 1,
                 1000);
     }
 
@@ -356,14 +356,14 @@ public class UpgradeBuildingsTask extends DelayedTask {
         }
 
         // Tap upgrade button
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, upgradeButton.getPoint(), upgradeButton.getPoint());
+        tapRandomPoint(upgradeButton.getPoint(), upgradeButton.getPoint());
         sleepTask(1000);
 
         // Check if resources need replenishing
         refillResourcesIfNeeded();
 
         // Confirm upgrade
-        emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(489, 1034), new DTOPoint(500, 1050));
+        tapRandomPoint(new DTOPoint(489, 1034), new DTOPoint(500, 1050));
 
         // Try to request help
         requestHelp();
@@ -412,15 +412,15 @@ public class UpgradeBuildingsTask extends DelayedTask {
         DTOImageSearchResult result;
         while ((result = emuManager.searchTemplate(EMULATOR_NUMBER, GAME_HOME_SHORTCUTS_OBTAIN, 90)).isFound()) {
             logInfo("Refilling resources for the upgrade...");
-            emuManager.tapAtRandomPoint(EMULATOR_NUMBER, result.getPoint(), result.getPoint());
+            tapRandomPoint(result.getPoint(), result.getPoint());
             sleepTask(500);
 
             // Click replenish button
-            emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(358, 1135));
+            tapPoint(new DTOPoint(358, 1135));
             sleepTask(300);
 
             // Confirm replenish
-            emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(511, 1056));
+            tapPoint(new DTOPoint(511, 1056));
             sleepTask(1000);
         }
     }

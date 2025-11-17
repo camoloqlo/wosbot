@@ -55,7 +55,7 @@ public class AllianceChestTask extends DelayedTask {
 	 */
 	private boolean navigateToAllianceScreen() {
 		logInfo("Navigating to alliance screen");
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(493, 1187), new DTOPoint(561, 1240));
+		tapRandomPoint(new DTOPoint(493, 1187), new DTOPoint(561, 1240));
 		sleepTask(3000);
 
 		// Verify we're on the alliance screen by checking for the alliance chest button
@@ -77,7 +77,7 @@ public class AllianceChestTask extends DelayedTask {
 			return false;
 		}
 
-		emuManager.tapAtPoint(EMULATOR_NUMBER, allianceChestResult.getPoint());
+		tapPoint(allianceChestResult.getPoint());
 		sleepTask(TAB_CHANGE_WAIT_TIME);
 		return true;
 	}
@@ -87,11 +87,11 @@ public class AllianceChestTask extends DelayedTask {
 	 */
 	private void collectLootChests() {
 		logInfo("Claiming loot chests.");
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(56, 375), new DTOPoint(320, 420));
+		tapRandomPoint(new DTOPoint(56, 375), new DTOPoint(320, 420));
 		sleepTask(TAB_CHANGE_WAIT_TIME);
 
 		// Tap "Claim All" button
-		emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(360, 1204));
+		tapPoint(new DTOPoint(360, 1204));
 		sleepTask(CLAIM_WAIT_TIME);
 
 		// Close the result window if it appears
@@ -104,7 +104,7 @@ public class AllianceChestTask extends DelayedTask {
 	 */
 	private void collectAllianceGifts() {
 		logInfo("Opening alliance gifts section.");
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(410, 375), new DTOPoint(626, 420));
+		tapRandomPoint(new DTOPoint(410, 375), new DTOPoint(626, 420));
 		sleepTask(TAB_CHANGE_WAIT_TIME);
 
 		// First try to use "Claim All" button
@@ -113,7 +113,7 @@ public class AllianceChestTask extends DelayedTask {
 
 		if (claimAllButton.isFound()) {
 			logInfo("'Claim All' button found. Claiming all gifts.");
-			emuManager.tapAtPoint(EMULATOR_NUMBER, claimAllButton.getPoint());
+			tapPoint(claimAllButton.getPoint());
 			sleepTask(CLAIM_WAIT_TIME);
 
 			// Close the result window
@@ -141,7 +141,7 @@ public class AllianceChestTask extends DelayedTask {
 
 			if (claimButton.isFound()) {
 				logDebug("Claiming individual gift #" + (giftsClaimed + 1));
-				emuManager.tapAtPoint(EMULATOR_NUMBER, claimButton.getPoint());
+				tapPoint(claimButton.getPoint());
 				sleepTask(CLAIM_WAIT_TIME);
 				giftsClaimed++;
 				consecutiveFailures = 0; // Reset failure counter on success
@@ -174,7 +174,7 @@ public class AllianceChestTask extends DelayedTask {
 
 		if (honorChestEnabled) {
 			logInfo("Claiming honor chest.");
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(320, 200), new DTOPoint(400, 250));
+			tapRandomPoint(new DTOPoint(320, 200), new DTOPoint(400, 250));
 			sleepTask(TAB_CHANGE_WAIT_TIME);
 
 			// Close the honor chest window
@@ -190,7 +190,7 @@ public class AllianceChestTask extends DelayedTask {
 	private void closePopupIfPresent() {
 		// Tap the close button twice with a small delay between taps to handle multiple
 		// windows
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(578, 1180), new DTOPoint(641, 1200), 2, 200);
+		tapRandomPoint(new DTOPoint(578, 1180), new DTOPoint(641, 1200), 2, 200);
 		sleepTask(SHORT_WAIT_TIME);
 	}
 

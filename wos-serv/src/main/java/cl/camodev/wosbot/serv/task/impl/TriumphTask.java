@@ -34,7 +34,7 @@ public class TriumphTask extends DelayedTask {
 		
 		// Navigate to alliance menu
 		logInfo("Tapping alliance button at bottom of screen");
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(493, 1187), new DTOPoint(561, 1240));
+		tapRandomPoint(new DTOPoint(493, 1187), new DTOPoint(561, 1240));
 		sleepTask(3000);
 
 		// Search for the Triumph button
@@ -42,7 +42,7 @@ public class TriumphTask extends DelayedTask {
 				EnumTemplates.ALLIANCE_TRIUMPH_BUTTON, 90);
 		if (result.isFound()) {
 			logInfo("Alliance Triumph button found. Tapping to open the menu.");
-			emuManager.tapAtPoint(EMULATOR_NUMBER, result.getPoint());
+			tapPoint(result.getPoint());
 			sleepTask(2000);
 
 			logInfo("Checking daily Triumph rewards status");
@@ -61,7 +61,7 @@ public class TriumphTask extends DelayedTask {
 				        
 				if (result.isFound()) {
 					logInfo("Daily Triumph rewards are available - claiming now");
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, result.getPoint(), result.getPoint(), 10, 50);
+					tapRandomPoint(result.getPoint(), result.getPoint(), 10, 50);
 					sleepTask(1000); // Add delay after claiming to ensure UI updates
 					logInfo("Daily rewards claimed successfully");
 					reschedule(UtilTime.getGameReset());
@@ -88,7 +88,7 @@ public class TriumphTask extends DelayedTask {
 
 			if (result.isFound()) {
 				logInfo("Weekly Triumph rewards are available - claiming now");
-				emuManager.tapAtPoint(EMULATOR_NUMBER, result.getPoint());
+				tapPoint(result.getPoint());
 				sleepTask(1500); // Increased delay to ensure reward animation completes
 				tapBackButton();
 				logInfo("Weekly Triumph claimed successfully");

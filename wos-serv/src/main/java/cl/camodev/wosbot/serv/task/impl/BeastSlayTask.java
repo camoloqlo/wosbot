@@ -40,10 +40,10 @@ public class BeastSlayTask extends DelayedTask {
 	protected void execute() {
 
 		// go to profile to see stamina
-		emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(50, 50));
+		tapPoint(new DTOPoint(50, 50));
 		sleepTask(500);
 		// go to stamina menu
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(220, 1100), new DTOPoint(250, 1125));
+		tapRandomPoint(new DTOPoint(220, 1100), new DTOPoint(250, 1125));
 		sleepTask(2000);
 		// ocr the stamina 350,270 490,300
 
@@ -71,11 +71,11 @@ public class BeastSlayTask extends DelayedTask {
 
 		try {
 			// go to profile
-			emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(50, 50));
+			tapPoint(new DTOPoint(50, 50));
 			sleepTask(1000);
 
 			// go to queue menu
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(210, 1190), new DTOPoint(330, 1250));
+			tapRandomPoint(new DTOPoint(210, 1190), new DTOPoint(330, 1250));
 			sleepTask(1000);
 
 			String queueText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(280, 230), new DTOPoint(340, 252));
@@ -122,26 +122,26 @@ public class BeastSlayTask extends DelayedTask {
 
 					sleepTask(6000);
 					// go to the beast
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(25, 850), new DTOPoint(67, 898));
+					tapRandomPoint(new DTOPoint(25, 850), new DTOPoint(67, 898));
 					sleepTask(1000);
 
 					emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(20, 910), new DTOPoint(70, 915));
 					sleepTask(1000);
 					// beast button
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(70, 880), new DTOPoint(120, 930));
+					tapRandomPoint(new DTOPoint(70, 880), new DTOPoint(120, 930));
 					sleepTask(1000);
 					// go to level 1
 					emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(180, 1050), new DTOPoint(1, 1050));
 
 					// select beast level
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(470, 1040), new DTOPoint(500, 1070), beastLevel - 1, 100);
+					tapRandomPoint(new DTOPoint(470, 1040), new DTOPoint(500, 1070), beastLevel - 1, 100);
 					sleepTask(1000);
 					// click search
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(301, 1200), new DTOPoint(412, 1229));
+					tapRandomPoint(new DTOPoint(301, 1200), new DTOPoint(412, 1229));
 					sleepTask(6000);
 
 					// click attack
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(270, 600), new DTOPoint(460, 630));
+					tapRandomPoint(new DTOPoint(270, 600), new DTOPoint(460, 630));
 					sleepTask(6000);
 
 					try {
@@ -153,7 +153,7 @@ public class BeastSlayTask extends DelayedTask {
 						timeText = timeText.trim().replaceAll("[^0-9:]", ""); // Only keep numbers and ":"
 
 						// attack
-						emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(450, 1183), new DTOPoint(640, 1240));
+						tapRandomPoint(new DTOPoint(450, 1183), new DTOPoint(640, 1240));
 
 						stamina -= 10;
 						availableQueues--;

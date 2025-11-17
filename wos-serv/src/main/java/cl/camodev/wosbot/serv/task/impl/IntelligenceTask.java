@@ -8,6 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import cl.camodev.utiles.UtilTime;
+import cl.camodev.utiles.time.TimeConverters;
 import cl.camodev.wosbot.almac.entity.DailyTask;
 import cl.camodev.wosbot.almac.repo.DailyTaskRepository;
 import cl.camodev.wosbot.almac.repo.IDailyTaskRepository;
@@ -305,7 +306,7 @@ public class IntelligenceTask extends DelayedTask {
 		logInfo("No intel items found. Attempting to read the cooldown timer.");
 		try {
 			String rescheduleTimeStr = OCRWithRetries(new DTOPoint(120, 110), new DTOPoint(600, 146));
-			LocalDateTime rescheduleTime = UtilTime.parseTime(rescheduleTimeStr);
+			LocalDateTime rescheduleTime = TimeConverters.toLocalDateTime(rescheduleTimeStr);
 			reschedule(rescheduleTime);
 			tapBackButton();
 			autoJoinDisabledForIntel = false;

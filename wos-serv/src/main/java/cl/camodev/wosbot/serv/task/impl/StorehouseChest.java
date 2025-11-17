@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.utiles.number.NumberConverters;
 import cl.camodev.utiles.number.NumberValidators;
+import cl.camodev.utiles.time.TimeConverters;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -239,7 +240,7 @@ public class StorehouseChest extends DelayedTask {
 
         try {
             logDebug("Chest timer OCR: '" + timerText + "'");
-            LocalDateTime nextTime = UtilTime.parseTime(timerText);
+            LocalDateTime nextTime = TimeConverters.toLocalDateTime(timerText);
 
             // Subtract 3 seconds buffer
             return nextTime.minusSeconds(FALLBACK_TIMER_SECONDS);
@@ -363,7 +364,7 @@ public class StorehouseChest extends DelayedTask {
                 return LocalDateTime.now().plusHours(ONE_HOUR_MINUTES / ONE_HOUR_MINUTES);
             }
 
-            LocalDateTime parsedTime = UtilTime.parseTime(timerText);
+            LocalDateTime parsedTime = TimeConverters.toLocalDateTime(timerText);
 
             // Validate timer is reasonable
             long secondsDiff = Duration.between(LocalDateTime.now(), parsedTime).getSeconds();

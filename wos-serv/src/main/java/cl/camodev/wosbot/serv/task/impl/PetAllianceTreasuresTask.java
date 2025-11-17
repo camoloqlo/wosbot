@@ -35,23 +35,23 @@ public class PetAllianceTreasuresTask extends DelayedTask {
 		DTOImageSearchResult petsResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_PETS,  90);
 		if (petsResult.isFound()) {
 			logInfo("Pets button found. Tapping to open.");
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, petsResult.getPoint(), petsResult.getPoint());
+			tapRandomPoint(petsResult.getPoint(), petsResult.getPoint());
 			sleepTask(3000);
 
 			DTOImageSearchResult beastCageResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_BEAST_CAGE,  90);
 			if (beastCageResult.isFound()) {
-				emuManager.tapAtRandomPoint(EMULATOR_NUMBER, beastCageResult.getPoint(), beastCageResult.getPoint());
+				tapRandomPoint(beastCageResult.getPoint(), beastCageResult.getPoint());
 				sleepTask(500);
-				emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(547, 1150), new DTOPoint(650, 1210));
+				tapRandomPoint(new DTOPoint(547, 1150), new DTOPoint(650, 1210));
 				sleepTask(500);
 
-				emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(612, 1184), new DTOPoint(653, 1211));
+				tapRandomPoint(new DTOPoint(612, 1184), new DTOPoint(653, 1211));
 				sleepTask(500);
 
 				DTOImageSearchResult claimButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_BEAST_ALLIANCE_CLAIM,  90);
 				if (claimButton.isFound()) {
 					logInfo("Claim button found. Tapping to claim the treasure.");
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, claimButton.getPoint(), claimButton.getPoint());
+					tapRandomPoint(claimButton.getPoint(), claimButton.getPoint());
 					this.reschedule(UtilTime.getGameReset());
 					logInfo("Alliance treasure claimed. Rescheduling for the next game reset.");
 					tapBackButton();

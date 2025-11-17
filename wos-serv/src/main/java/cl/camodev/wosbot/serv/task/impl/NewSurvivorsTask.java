@@ -27,17 +27,17 @@ public class NewSurvivorsTask extends DelayedTask {
         logInfo("Searching for the 'New Survivors' notification.");
         DTOImageSearchResult newSurvivors = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_NEW_SURVIVORS,  90);
         if (newSurvivors.isFound()) {
-            emuManager.tapAtPoint(EMULATOR_NUMBER, newSurvivors.getPoint());
+            tapPoint(newSurvivors.getPoint());
             sleepTask(1000);
             //I need to accept the survivors then check if there's empty spots in the buildings
             logInfo("New survivors found. Welcoming them in.");
             DTOImageSearchResult welcomeIn = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_NEW_SURVIVORS_WELCOME_IN,  90);
             if (welcomeIn.isFound()) {
-                emuManager.tapAtPoint(EMULATOR_NUMBER, welcomeIn.getPoint());
+                tapPoint(welcomeIn.getPoint());
                 logInfo("Waiting briefly before reassigning survivors to buildings.");
                 sleepTask(10000);
 
-                emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(309,20));
+                tapPoint(new DTOPoint(309,20));
                 sleepTask(300);
 
                 //reset scroll (just in case)

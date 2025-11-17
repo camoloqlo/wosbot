@@ -67,7 +67,7 @@ public class ChiefOrderTask extends DelayedTask {
 
 		if (chiefOrderMenuButton.isFound()) {
 			logInfo("Chief Order menu button found. Tapping to open menu.");
-			emuManager.tapAtPoint(EMULATOR_NUMBER, chiefOrderMenuButton.getPoint());
+			tapPoint(chiefOrderMenuButton.getPoint());
 			sleepTask(2000);
 
 		// Wait 1.5 seconds before searching for the Chief Order type button (may not be visible immediately)
@@ -80,7 +80,7 @@ public class ChiefOrderTask extends DelayedTask {
 
 			if (specificOrderButton.isFound()) {
 				logInfo(chiefOrderType.getDescription() + " button found. Tapping to activate.");
-				emuManager.tapAtPoint(EMULATOR_NUMBER, specificOrderButton.getPoint());
+				tapPoint(specificOrderButton.getPoint());
 				sleepTask(1500);
 
 			// Wait 1.5 seconds before searching for the Enact button (chiefOrderEnactButton.png)
@@ -91,7 +91,7 @@ public class ChiefOrderTask extends DelayedTask {
 				DTOImageSearchResult enactButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.CHIEF_ORDER_ENACT_BUTTON, 90);
 				if (enactButton.isFound()) {
 					logInfo("Chief Order Enact button found. Tapping to enact order.");
-					emuManager.tapAtPoint(EMULATOR_NUMBER, enactButton.getPoint());
+					tapPoint(enactButton.getPoint());
 					sleepTask(1000);
 				} else {
 					logWarning("Chief Order Enact button not found. Skipping enact.");

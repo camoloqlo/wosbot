@@ -40,7 +40,7 @@ public class MyriadBazaarEventTask extends DelayedTask {
         }
         logInfo("Myriad Bazaar is active, claiming free rewards");
         //wait for the event window to open
-        emuManager.tapAtPoint(EMULATOR_NUMBER, bazaarIcon.getPoint());
+        tapPoint(bazaarIcon.getPoint());
         sleepTask(2000);
 
         //define area to search for free rewards
@@ -53,7 +53,7 @@ public class MyriadBazaarEventTask extends DelayedTask {
         while (true) {
             if (freeReward != null && freeReward.isFound()) {
                 logInfo("Claiming free rewards");
-                emuManager.tapAtPoint(EMULATOR_NUMBER, freeReward.getPoint());
+                tapPoint(freeReward.getPoint());
                 sleepTask(1000);
                 failCount = 0;
             } else {
