@@ -12,14 +12,13 @@ public class Main {
 		try {
 			// Silence logback's internal status messages
 			System.setProperty("logback.statusListenerClass", "ch.qos.logback.core.status.NopStatusListener");
-			
-			// Initialize Log4j configuration
-			configureLog4j();
+
+			suppressJavaFXWarnings();
 
 			logger.info("Starting WosBot application");
 			logger.info("Logging configured. Check target/log/bot.log for detailed logs.");
 			logger.info("Profile-specific logs will be created in target/log/profile_*.log files");
-			
+
 			// Add shutdown hook to close log files
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 				logger.info("Application shutting down, closing log files...");
@@ -36,24 +35,16 @@ public class Main {
 		}
 	}
 
-	/**
-	 * Configure Log4j programmatically
-	 */
-	private static void configureLog4j() {
-		try {
-			// Configure java.util.logging to suppress JavaFX warnings directly
-			java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
-			rootLogger.setLevel(java.util.logging.Level.WARNING);
-			
-			// Set specific loggers to SEVERE level
-			java.util.logging.Logger.getLogger("javafx").setLevel(java.util.logging.Level.SEVERE);
-			java.util.logging.Logger.getLogger("com.sun.javafx").setLevel(java.util.logging.Level.SEVERE);
-			java.util.logging.Logger.getLogger("javax.swing").setLevel(java.util.logging.Level.SEVERE);
-			
-			logger.info("Log4j configuration loaded successfully");
-		} catch (Exception e) {
-			System.err.println("Failed to configure Log4j: " + e.getMessage());
-			e.printStackTrace();
-		}
+	private static void suppressJavaFXWarnings() {
+		// Configure java.util.logging to suppress JavaFX warnings
+		java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
+		rootLogger.setLevel(java.util.logging.Level.WARNING);
+
+		// Set specific loggers to SEVERE level
+		java.util.logging.Logger.getLogger("javafx").setLevel(java.util.logging.Level.SEVERE);
+		java.util.logging.Logger.getLogger("com.sun.javafx").setLevel(java.util.logging.Level.SEVERE);
+		java.util.logging.Logger.getLogger("javax.swing").setLevel(java.util.logging.Level.SEVERE);
+
+		logger.info("JavaFX warnings suppressed");
 	}
 }
