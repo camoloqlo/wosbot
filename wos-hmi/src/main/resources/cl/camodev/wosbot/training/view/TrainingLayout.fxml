@@ -38,7 +38,7 @@
                                                 <CheckBox fx:id="checkBoxTrainMarksman" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Train Marksmen" GridPane.columnIndex="1" GridPane.rowIndex="0" />
                                                 <CheckBox fx:id="checkBoxTrainLancers" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Train Lancers" GridPane.columnIndex="0" GridPane.rowIndex="1" />
                                                 <CheckBox fx:id="checkBoxUseResources" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Use Resources to fill" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                                                <!-- <CheckBox fx:id="checkBoxTrainPrioritizePromotion" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Prioritize Troop Promotion" GridPane.columnIndex="0" GridPane.rowIndex="2" /> -->
+                                                <CheckBox fx:id="checkBoxTrainPrioritizePromotion" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Prioritize Troop Promotion" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                                                 <CheckBox fx:id="checkBoxAppointMinister" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Appoint Minister of Education" GridPane.columnIndex="0" GridPane.rowIndex="2" />
                                             </children>
                                         </GridPane>
