@@ -115,7 +115,7 @@ public class VipTask extends DelayedTask {
 
 		if (!openVipMenu()) {
 			logWarning("Failed to open VIP menu.");
-			reschedule(UtilTime.getGameReset());
+			scheduleNextExecution();
 			return;
 		}
 
@@ -129,8 +129,40 @@ public class VipTask extends DelayedTask {
 
 		closeVipMenu();
 
+		scheduleNextExecution();
 		logInfo("VIP task completed successfully.");
-		reschedule(UtilTime.getGameReset());
+	}
+
+	/**
+	 * Schedules the next execution of the VIP task.
+	 * 
+	 * <p>
+	 * The task is scheduled to run at the earliest of two possible times:
+	 * <ul>
+	 * <li>Next game reset - For claiming daily VIP rewards</li>
+	 * <li>Next monthly VIP buy time - If VIP buying is enabled and a buy time is set</li>
+	 * </ul>
+	 */
+	private void scheduleNextExecution() {
+		LocalDateTime nextGameReset = UtilTime.getGameReset();
+		LocalDateTime nextExecutionTime = nextGameReset;
+
+		if (buyMonthlyVip && nextMonthlyVipBuyTime != null) {
+			// If monthly VIP buy is enabled and we have a next buy time
+			if (nextMonthlyVipBuyTime.isBefore(nextGameReset)) {
+				nextExecutionTime = nextMonthlyVipBuyTime;
+				logInfo("Next execution scheduled for monthly VIP buy at: " + 
+					nextMonthlyVipBuyTime.format(DATETIME_FORMATTER));
+			} else {
+				logInfo("Next execution scheduled for game reset at: " + 
+					nextGameReset.format(DATETIME_FORMATTER));
+			}
+		} else {
+			logInfo("Next execution scheduled for game reset at: " + 
+				nextGameReset.format(DATETIME_FORMATTER));
+		}
+
+		reschedule(nextExecutionTime);
 	}
 
 	/**
@@ -258,6 +290,7 @@ public class VipTask extends DelayedTask {
 
 		LocalDateTime calculatedExpirationTime = LocalDateTime.now().plus(expirationTime);
 		logDebug("OCR result: '" + UtilTime.localDateTimeToDDHHMMSS(calculatedExpirationTime) + "'");
+		nextMonthlyVipBuyTime = calculatedExpirationTime;
 
 		// Store the expiration time in ISO format
 		profile.setConfig(
