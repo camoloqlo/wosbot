@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 import cl.camodev.utiles.UtilTime;
+import cl.camodev.utiles.time.TimeConverters;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -80,7 +81,7 @@ public class TundraTruckEventTask extends DelayedTask {
 
 	// Retry limits
 	private static final int MAX_NAVIGATION_ATTEMPTS = 2;
-	private static final int MAX_SWIPE_ATTEMPTS = 5;
+	private static final int MAX_SWIPE_ATTEMPTS = 10;
 	private static final int MAX_REFRESH_ATTEMPTS = 10;
 	private static final int INITIAL_SWIPE_COUNT = 3;
 	private static final int POPUP_CLOSE_TAPS = 5;
@@ -693,7 +694,7 @@ public class TundraTruckEventTask extends DelayedTask {
 			logDebug(side + " truck time OCR: '" + text + "'");
 
 			// Use UtilTime to parse
-			LocalDateTime returnTime = UtilTime.parseTime(text);
+			LocalDateTime returnTime = TimeConverters.toLocalDateTime(text);
 			logInfo(side + " truck returns at: " + returnTime);
 			return Optional.of(returnTime);
 

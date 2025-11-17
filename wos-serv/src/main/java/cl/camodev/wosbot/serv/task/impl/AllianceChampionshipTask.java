@@ -74,7 +74,7 @@ public class AllianceChampionshipTask extends DelayedTask {
     private static final DTOPoint EVENT_SWIPE_BACK_END = new DTOPoint(500, 128);
 
     // ========== Championship Tab Search Constants ==========
-    private static final int CHAMPIONSHIP_TAB_MAX_ATTEMPTS = 5;
+    private static final int CHAMPIONSHIP_TAB_MAX_ATTEMPTS = 10;
     private static final int CHAMPIONSHIP_TAB_ENTRY_TAPS = 5;
 
     // ========== Troop Input Field Coordinates ==========

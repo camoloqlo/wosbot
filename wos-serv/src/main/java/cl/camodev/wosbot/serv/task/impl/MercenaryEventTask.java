@@ -256,7 +256,7 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         int attempts = 0;
-        while (attempts < 5) {
+        while (attempts < 10) {
             result = searchTemplateWithRetries(EnumTemplates.MERCENARY_EVENT_TAB, 90, 1);
 
             if (result.isFound()) {
