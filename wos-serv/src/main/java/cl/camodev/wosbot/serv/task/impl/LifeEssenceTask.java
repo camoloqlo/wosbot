@@ -94,6 +94,7 @@ public class LifeEssenceTask extends DelayedTask {
                 EnumTemplates.ISLAND_LIKE_BUTTON,
                 new DTOPoint(634, 718),
                 new DTOPoint(700,774),
+                95,
                 3,
                 100);
         if (likeButton.isFound()) {

@@ -133,7 +133,7 @@ public class BearTrapTask extends DelayedTask {
             // Verify we're inside a valid window
             if (!isInsideWindow()) {
                 logWarning("Execute called OUTSIDE valid window. Rescheduling...");
-                reschedule(null);
+                updateNextWindowDateTime();
                 return;
             }
 
@@ -193,6 +193,7 @@ public class BearTrapTask extends DelayedTask {
             }
 
             logInfo("Bear Trap cycle completed successfully");
+            cleanup();
 
         } catch (Exception e) {
             logError("Error during Bear Trap execution: " + e.getMessage());
@@ -200,6 +201,7 @@ public class BearTrapTask extends DelayedTask {
         } finally {
             // Persist next trap anchor regardless of outcome
             try {
+
                 updateNextWindowDateTime();
             } catch (Exception ex) {
                 logWarning("Could not persist next anchor at end of execution: " + ex.getMessage());
@@ -607,8 +609,8 @@ public class BearTrapTask extends DelayedTask {
                     maxRetries,
                     delayMs,
                     null,
-                    TimeValidators::isHHmmss,
-                    TimeConverters::hhmmssToDuration);
+                    TimeValidators::isValidTime,
+                    TimeConverters::toDuration);
 
             if (marchingTime != null) {
                 // Calculate rally duration: 5 minutes + (march time * 2) - 1 second buffer
@@ -688,20 +690,6 @@ public class BearTrapTask extends DelayedTask {
 
     @Override
     public void reschedule(LocalDateTime newDateTime) {
-        // If a specific time is provided, delegate to parent implementation
-        if (newDateTime != null) {
-            super.reschedule(newDateTime);
-            logInfo("Rescheduled explicitly for (Local): " + newDateTime.format(DATETIME_FORMATTER));
-            // Persist next trap anchor on explicit reschedule
-            try {
-                updateNextWindowDateTime();
-            } catch (Exception ex) {
-                logWarning("Could not persist next anchor on explicit reschedule: " + ex.getMessage());
-            }
-            return;
-        }
-
-        // Otherwise, compute based on current window state
         reloadConfig();
         BearTrapHelper.WindowResult result = getWindowState();
 

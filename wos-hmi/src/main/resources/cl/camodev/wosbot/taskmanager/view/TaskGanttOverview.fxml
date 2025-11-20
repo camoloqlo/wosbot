@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Rectangle?>
+
+<VBox spacing="16" style="-fx-background-color: #1e1e1e; -fx-padding: 24;" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cl.camodev.wosbot.taskmanager.view.TaskGanttOverviewController">
+    <!-- Title, Legend and View Toggle -->
+    <HBox spacing="20" style="-fx-padding: 0 0 12 0;" alignment="CENTER_LEFT">
+        <children>
+            <Label text="📊 Task Timeline" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #ffb347;" />
+
+            <!-- Legend -->
+            <HBox spacing="15" alignment="CENTER_LEFT">
+                <children>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <Rectangle width="16" height="16" style="-fx-fill: #FF9800; -fx-stroke: #fff200; -fx-stroke-width: 2; -fx-arc-width: 3; -fx-arc-height: 3;" />
+                        <Label text="Running" style="-fx-text-fill: #cccccc; -fx-font-size: 11;" />
+                    </HBox>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <Rectangle width="16" height="16" style="-fx-fill: #4CAF50; -fx-arc-width: 3; -fx-arc-height: 3;" />
+                        <Label text="Ready" style="-fx-text-fill: #cccccc; -fx-font-size: 11;" />
+                    </HBox>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <Rectangle width="16" height="16" style="-fx-fill: #47d9ff; -fx-arc-width: 3; -fx-arc-height: 3;" />
+                        <Label text="Scheduled" style="-fx-text-fill: #cccccc; -fx-font-size: 11;" />
+                    </HBox>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <Rectangle width="16" height="16" style="-fx-fill: #616161; -fx-stroke: #8a8a8a; -fx-stroke-width: 1; -fx-arc-width: 3; -fx-arc-height: 3;" />
+                        <Label text="Inactive" style="-fx-text-fill: #cccccc; -fx-font-size: 11;" />
+                    </HBox>
+                </children>
+            </HBox>
+
+            <Region HBox.hgrow="ALWAYS" />
+
+            <!-- View Toggle -->
+            <HBox spacing="8" alignment="CENTER_RIGHT">
+                <ToggleButton fx:id="toggleInactiveTasksButton" text="Hide inactive" style="-fx-font-size: 11; -fx-background-color: #3a3a3a; -fx-text-fill: #cccccc; -fx-padding: 4 12;" onAction="#toggleInactiveTasks" />
+                <Label text="View:" style="-fx-text-fill: #cccccc; -fx-font-size: 11;" />
+                <ToggleButton fx:id="toggleViewButton" text="2 Hours" style="-fx-font-size: 11; -fx-background-color: #3a3a3a; -fx-text-fill: #ffb347; -fx-padding: 4 12;" onAction="#toggleTimeView" />
+            </HBox>
+        </children>
+    </HBox>
+
+    <!-- Header: Time Axis (dynamically generated) -->
+    <HBox fx:id="timeAxisContainer" spacing="0" style="-fx-padding: 0 0 8 0;" alignment="CENTER_LEFT">
+        <children>
+            <Label text="Account" style="-fx-font-weight: bold; -fx-text-fill: #ffb347; -fx-pref-width: 128; -fx-font-size: 12;" />
+            <HBox fx:id="timeAxisHeader" spacing="0" alignment="CENTER_LEFT" />
+        </children>
+    </HBox>
+
+    <!-- Scrollable task list -->
+    <ScrollPane fx:id="scrollPane" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" style="-fx-background-color: transparent; -fx-padding: 0;" VBox.vgrow="ALWAYS">
+        <content>
+            <VBox fx:id="vboxAccounts" spacing="0" style="-fx-background-color: transparent;" />
+        </content>
+    </ScrollPane>
+</VBox>

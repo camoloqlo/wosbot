@@ -21,6 +21,7 @@ import cl.camodev.wosbot.serv.impl.ServProfiles;
 import cl.camodev.wosbot.serv.impl.ServScheduler;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.ocr.BotTextRecognitionProvider;
+import cl.camodev.wosbot.serv.task.helper.NavigationHelper;
 import cl.camodev.wosbot.serv.task.impl.ArenaTask;
 import cl.camodev.wosbot.serv.task.impl.BearTrapTask;
 import cl.camodev.wosbot.serv.task.impl.InitializeTask;
@@ -56,6 +57,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     protected BotTextRecognitionProvider provider;
     protected TextRecognitionRetrier<Integer> integerHelper;
     protected TextRecognitionRetrier<Duration> durationHelper;
+    protected NavigationHelper navigationHelper;
     protected boolean shouldUpdateConfig;
 
     // Time format
@@ -74,6 +76,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
         this.provider = new BotTextRecognitionProvider(emuManager, EMULATOR_NUMBER);
         this.integerHelper = new TextRecognitionRetrier<>(provider);
         this.durationHelper = new TextRecognitionRetrier<>(provider);
+        this.navigationHelper = new NavigationHelper(emuManager, EMULATOR_NUMBER);
     }
 
     protected Object getDistinctKey() {

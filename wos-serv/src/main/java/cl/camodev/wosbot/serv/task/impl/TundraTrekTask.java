@@ -46,8 +46,8 @@ public class TundraTrekTask extends DelayedTask {
                     3,
                     200L,
                     null,
-                    TimeValidators::isHHmmss,
-                    TimeConverters::hhmmssToDuration);
+                    TimeValidators::isValidTime,
+                    TimeConverters::toDuration);
                 LocalDateTime nextRewardTime = LocalDateTime.now().plus(nextRewardTimeDuration);
                 reschedule(nextRewardTime);
                 logInfo("Successfully parsed the next reward time. Rescheduling the task for: " + nextRewardTime.format(DATETIME_FORMATTER));

@@ -16,8 +16,12 @@ import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.TaskQueue;
 
 import static cl.camodev.wosbot.console.enumerable.EnumConfigurationKey.ALLIANCE_SHOP_ENABLED_BOOL;
+import static cl.camodev.wosbot.serv.task.helper.NavigationHelper.AllianceMenu.TECH;
 
 public class AllianceTechTask extends DelayedTask {
+
+    //config
+    private Integer offsetMinutes;
 	
 	public AllianceTechTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
@@ -25,31 +29,22 @@ public class AllianceTechTask extends DelayedTask {
 	
 	@Override
 	protected void execute() {
-		
 		logInfo("Starting alliance tech task.");
-		
-		Integer minutes = profile.getConfig(EnumConfigurationKey.ALLIANCE_TECH_OFFSET_INT, Integer.class);
 
-		// Go to the alliance tech section
-		tapRandomPoint(new DTOPoint(493, 1187), new DTOPoint(561, 1240));
-		sleepTask(3000);
+        reloadConfiguration();
 
-		DTOImageSearchResult menuResult = searchTemplateWithRetries(EnumTemplates.ALLIANCE_TECH_BUTTON, 90, 3);
-		if (!menuResult.isFound()) {
-			logWarning("Alliance tech button not found. Rescheduling to run again in " + minutes + " minutes.");
-			reschedule(LocalDateTime.now().plusMinutes(minutes));
+		if (!navigationHelper.navigateToAllianceMenu(TECH)) {
+			logWarning("Alliance tech button not found. Rescheduling to run again in " + offsetMinutes + " minutes.");
+			reschedule(LocalDateTime.now().plusMinutes(offsetMinutes));
 			return;
 		}
-
-		tapPoint(menuResult.getPoint());
-		sleepTask(500);
 
 		// Search for thumbs up button
 		DTOImageSearchResult thumbsUpResult = searchTemplateWithRetries(EnumTemplates.ALLIANCE_TECH_THUMB_UP, 90, 3);
 
 		if (!thumbsUpResult.isFound()) {
-			logWarning("Thumbs-up button not found. Rescheduling to run again in " + minutes + " minutes.");
-			reschedule(LocalDateTime.now().plusMinutes(minutes));
+			logWarning("Thumbs-up button not found. Rescheduling to run again in " + offsetMinutes + " minutes.");
+			reschedule(LocalDateTime.now().plusMinutes(offsetMinutes));
 			return;
 		}
 
@@ -99,10 +94,14 @@ public class AllianceTechTask extends DelayedTask {
 		tapBackButton();
 		tapBackButton();
 
-		reschedule(LocalDateTime.now().plusMinutes(minutes));
-		logInfo("Alliance tech task completed. Rescheduling to run again in " + minutes + " minutes.");
+		reschedule(LocalDateTime.now().plusMinutes(offsetMinutes));
+		logInfo("Alliance tech task completed. Rescheduling to run again in " + offsetMinutes + " minutes.");
 
 	}
+
+    private void reloadConfiguration() {
+        offsetMinutes = profile.getConfig(EnumConfigurationKey.ALLIANCE_TECH_OFFSET_INT, Integer.class);
+    }
 
 	@Override
 	public boolean provideDailyMissionProgress() {
