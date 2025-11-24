@@ -1,6 +1,5 @@
 package cl.camodev.wosbot.emulator;
 
-import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;
@@ -812,7 +811,6 @@ public abstract class Emulator {
 	 * @throws InterruptedException if interrupted while waiting
 	 */
 	protected IDevice getCachedDevice(String emulatorNumber) throws InterruptedException {
-		String serial = getDeviceSerial(emulatorNumber);
 		long currentTime = System.currentTimeMillis();
 
 		// Check if we have a cached device and it's still valid
