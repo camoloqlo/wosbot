@@ -6,12 +6,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import cl.camodev.utiles.UtilTime;
-import cl.camodev.utiles.number.NumberConverters;
-import cl.camodev.utiles.number.NumberValidators;
+import cl.camodev.utiles.ocr.TextRecognitionRetrier;
 import cl.camodev.utiles.time.TimeConverters;
+import cl.camodev.utiles.time.TimeValidators;
 import cl.camodev.wosbot.almac.entity.DailyTask;
 import cl.camodev.wosbot.almac.repo.DailyTaskRepository;
 import cl.camodev.wosbot.almac.repo.IDailyTaskRepository;
@@ -19,11 +18,13 @@ import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
+import cl.camodev.wosbot.ot.DTOArea;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 /**
  * Unified task for managing all gathering operations (Meat, Wood, Coal, Iron).
@@ -86,8 +87,8 @@ public class GatherTask extends DelayedTask {
     private static final DTOPoint RESOURCE_TAB_SWIPE_END = new DTOPoint(40, 913);
 
     // ========== Resource Level Selection ==========
-    private static final DTOPoint LEVEL_DISPLAY_TOP_LEFT = new DTOPoint(588, 1040);
-    private static final DTOPoint LEVEL_DISPLAY_BOTTOM_RIGHT = new DTOPoint(628, 1066);
+    private static final DTOPoint LEVEL_DISPLAY_TOP_LEFT = new DTOPoint(78, 991);
+    private static final DTOPoint LEVEL_DISPLAY_BOTTOM_RIGHT = new DTOPoint(474, 1028);
     private static final DTOPoint LEVEL_SLIDER_SWIPE_START = new DTOPoint(435, 1052);
     private static final DTOPoint LEVEL_SLIDER_SWIPE_END = new DTOPoint(40, 1052);
     private static final DTOPoint LEVEL_INCREMENT_BUTTON_TOP_LEFT = new DTOPoint(470, 1040);
@@ -114,6 +115,7 @@ public class GatherTask extends DelayedTask {
     private boolean intelSmartProcessing;
     private boolean intelEnabled;
     private boolean gatherSpeedEnabled;
+    private TextRecognitionRetrier<LocalDateTime> textHelper;
 
     // Per-resource configurations
     private boolean meatEnabled;
@@ -195,6 +197,9 @@ public class GatherTask extends DelayedTask {
         Integer configuredIronLevel = profile.getConfig(
                 EnumConfigurationKey.GATHER_IRON_LEVEL_INT, Integer.class);
         this.ironLevel = (configuredIronLevel != null) ? configuredIronLevel : DEFAULT_RESOURCE_LEVEL;
+
+        // Text recognition helper
+        this.textHelper = new TextRecognitionRetrier<>(provider);
 
         logDebug(String.format("Configuration loaded - Active queues: %d, Remove heroes: %s",
                 activeMarchQueues, removeHeroes));
@@ -357,12 +362,13 @@ public class GatherTask extends DelayedTask {
         int maxQueueIndex = Math.min(activeMarchQueues - 1, MARCH_QUEUES.length - 1);
         DTOPoint searchBottomRight = new DTOPoint(415, MARCH_QUEUES[maxQueueIndex].bottomRight.getY());
 
-        DTOImageSearchResult resource = searchTemplateRegionWithRetries(
+        DTOImageSearchResult resource = templateSearchHelper.searchTemplate(
                 gatherType.getTemplate(),
-                MARCH_QUEUES[0].topLeft,
-                searchBottomRight,
-                3,
-                3);
+                SearchConfig.builder()
+                        .withArea(new DTOArea(MARCH_QUEUES[0].topLeft, searchBottomRight))
+                        .withMaxAttempts(3)
+                        .withDelay(3)
+                        .build());
 
         if (!resource.isFound()) {
             return ActiveMarchResult.notActive();
@@ -429,21 +435,22 @@ public class GatherTask extends DelayedTask {
                 .setAllowedChars("0123456789:")
                 .build();
 
-        String timeText = OCRWithRetries(timeTopLeft, timeBottomRight, 3, settings);
+        LocalDateTime cooldown = textHelper.execute(
+                timeTopLeft,
+                timeBottomRight,
+                3,
+                200L,
+                settings,
+                TimeValidators::isValidTime,
+                TimeConverters::toLocalDateTime);
 
-        if (timeText == null || timeText.isEmpty()) {
+        if (cooldown == null) {
             logWarning("OCR returned empty time text");
             return null;
         }
 
-        try {
-            logDebug("Time OCR result: '" + timeText + "'");
-            LocalDateTime returnTime = TimeConverters.toLocalDateTime(timeText);
-            return returnTime;
-        } catch (Exception e) {
-            logError("Failed to parse march return time: " + e.getMessage());
-            return null;
-        }
+        logDebug("Time OCR result: '" + UtilTime.localDateTimeToDDHHMMSS(cooldown) + "'");
+        return cooldown;
     }
 
     /**
@@ -456,7 +463,7 @@ public class GatherTask extends DelayedTask {
         }
 
         if (!selectResourceTile(gatherType)) {
-            updateRescheduleTime(LocalDateTime.now().plusMinutes(15));
+            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
             return;
         }
 
@@ -475,7 +482,7 @@ public class GatherTask extends DelayedTask {
 
         if (!deployMarch(gatherType)) {
             tapBackButton();
-            updateRescheduleTime(LocalDateTime.now().plusMinutes(1));
+            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
             return;
         }
 
@@ -506,7 +513,9 @@ public class GatherTask extends DelayedTask {
         logDebug(String.format("Searching for %s tile", gatherType.name()));
 
         for (int attempt = 0; attempt < MAX_RESOURCE_TAB_SWIPE_ATTEMPTS; attempt++) {
-            DTOImageSearchResult tile = searchTemplateWithRetries(gatherType.getTile());
+            DTOImageSearchResult tile = templateSearchHelper.searchTemplate(
+                    gatherType.getTile(),
+                    SearchConfig.builder().build());
 
             if (tile.isFound()) {
                 logInfo(String.format("%s tile found", gatherType.name()));
@@ -605,19 +614,12 @@ public class GatherTask extends DelayedTask {
     private Integer readCurrentResourceLevel() {
         DTOTesseractSettings settings = DTOTesseractSettings.builder()
                 .setAllowedChars("0123456789")
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 .setRemoveBackground(true)
-                .setTextColor(new Color(71, 106, 143))
+                .setTextColor(new Color(255, 255, 255))
+                .setDebug(true)
                 .build();
 
-        Integer level = integerHelper.execute(
-                LEVEL_DISPLAY_TOP_LEFT,
-                LEVEL_DISPLAY_BOTTOM_RIGHT,
-                5,
-                200L,
-                settings,
-                text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
-                text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
+        Integer level = readNumberValue(LEVEL_DISPLAY_TOP_LEFT, LEVEL_DISPLAY_BOTTOM_RIGHT, settings);
 
         if (level != null) {
             logDebug("Current level detected: " + level);
@@ -641,8 +643,9 @@ public class GatherTask extends DelayedTask {
      * Ensures the level lock checkbox is checked.
      */
     private void ensureLevelLocked() {
-        DTOImageSearchResult tick = searchTemplateWithRetries(
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_TICK);
+        DTOImageSearchResult tick = templateSearchHelper.searchTemplate(
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_TICK,
+                SearchConfig.builder().build());
 
         if (!tick.isFound()) {
             logDebug("Level not locked, tapping lock button");
@@ -668,8 +671,9 @@ public class GatherTask extends DelayedTask {
      */
     private boolean deployMarch(GatherType gatherType) {
         // Find and tap the Gather button on the map
-        DTOImageSearchResult gatherButton = searchTemplateWithRetries(
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_GATHER);
+        DTOImageSearchResult gatherButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_GATHER,
+                SearchConfig.builder().build());
 
         if (!gatherButton.isFound()) {
             logWarning("Gather button not found. Tile may be occupied.");
@@ -680,14 +684,29 @@ public class GatherTask extends DelayedTask {
         tapPoint(gatherButton.getPoint());
         sleepTask(1000); // Wait for march configuration screen
 
+        // Check if preferred gather hero is present
+        DTOImageSearchResult gatherHero = templateSearchHelper.searchTemplate(
+                gatherType.getPreferredHero(),
+                SearchConfig.builder()
+                        .withCoordinates(new DTOPoint(51, 231), new DTOPoint(295, 649))
+                        .build());
+
+        if (!gatherHero.isFound()) {
+            logWarning(String.format("Preferred gather hero for %s not found", gatherType.name()));
+            return false;
+        }
+
+        logInfo(gatherType.name() + " hero found");
+
         // Remove heroes if configured
         if (removeHeroes) {
             removeDefaultHeroes();
         }
 
         // Deploy the march
-        DTOImageSearchResult deployButton = searchTemplateWithRetries(
-                EnumTemplates.GATHER_DEPLOY_BUTTON);
+        DTOImageSearchResult deployButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.GATHER_DEPLOY_BUTTON,
+                SearchConfig.builder().build());
 
         if (!deployButton.isFound()) {
             logError("Deploy button not found");
@@ -699,8 +718,9 @@ public class GatherTask extends DelayedTask {
         sleepTask(1000); // Wait for deployment confirmation
 
         // Check if tile is already being gathered
-        DTOImageSearchResult alreadyMarching = searchTemplateWithRetries(
-                EnumTemplates.TROOPS_ALREADY_MARCHING);
+        DTOImageSearchResult alreadyMarching = templateSearchHelper.searchTemplate(
+                EnumTemplates.TROOPS_ALREADY_MARCHING,
+                SearchConfig.builder().build());
 
         if (alreadyMarching.isFound()) {
             logWarning("Tile already being gathered by another player");
@@ -719,11 +739,13 @@ public class GatherTask extends DelayedTask {
     private void removeDefaultHeroes() {
         logDebug("Removing default heroes from march");
 
-        List<DTOImageSearchResult> removeButtons = searchTemplatesWithRetries(
+        List<DTOImageSearchResult> removeButtons = templateSearchHelper.searchTemplates(
                 EnumTemplates.RALLY_REMOVE_HERO_BUTTON,
-                90,
-                3,
-                3);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxResults(3)
+                        .withMaxAttempts(3)
+                        .build());
 
         if (removeButtons.isEmpty()) {
             logWarning("No hero remove buttons found");
@@ -786,23 +808,29 @@ public class GatherTask extends DelayedTask {
     public enum GatherType {
         MEAT(
                 EnumTemplates.GAME_HOME_SHORTCUTS_MEAT,
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_MEAT),
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_MEAT,
+                EnumTemplates.GATHER_MEAT_HERO),
         WOOD(
                 EnumTemplates.GAME_HOME_SHORTCUTS_WOOD,
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_WOOD),
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_WOOD,
+                EnumTemplates.GATHER_WOOD_HERO),
         COAL(
                 EnumTemplates.GAME_HOME_SHORTCUTS_COAL,
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_COAL),
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_COAL,
+                EnumTemplates.GATHER_COAL_HERO),
         IRON(
                 EnumTemplates.GAME_HOME_SHORTCUTS_IRON,
-                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_IRON);
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_IRON,
+                EnumTemplates.GATHER_IRON_HERO);
 
         private final EnumTemplates template;
         private final EnumTemplates tile;
+        private final EnumTemplates preferredHero;
 
-        GatherType(EnumTemplates template, EnumTemplates tile) {
+        GatherType(EnumTemplates template, EnumTemplates tile, EnumTemplates preferredHero) {
             this.template = template;
             this.tile = tile;
+            this.preferredHero = preferredHero;
         }
 
         public EnumTemplates getTemplate() {
@@ -811,6 +839,10 @@ public class GatherTask extends DelayedTask {
 
         public EnumTemplates getTile() {
             return tile;
+        }
+
+        public EnumTemplates getPreferredHero() {
+            return preferredHero;
         }
     }
 

@@ -71,6 +71,10 @@ public enum EnumTemplates {
 	GAME_HOME_SHORTCUTS_FARM_GATHER("/templates/shortcuts/farmGather.png"),
 	
 	GATHER_DEPLOY_BUTTON("/templates/shortcuts/gatherDeploy.png"),
+	GATHER_MEAT_HERO("/templates/gathering/meatHero.png"),
+	GATHER_WOOD_HERO("/templates/gathering/woodHero.png"),
+	GATHER_COAL_HERO("/templates/gathering/coalHero.png"),
+	GATHER_IRON_HERO("/templates/gathering/ironHero.png"),
 
     // ========================================================================
     // BUILDING INTERACTIONS
