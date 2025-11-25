@@ -4,8 +4,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
-import cl.camodev.utiles.AllianceChampionshipHelper;
-import cl.camodev.utiles.TimeWindowHelper;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -15,6 +13,9 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.AllianceChampionshipHelper;
+import cl.camodev.wosbot.serv.task.helper.TimeWindowHelper;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.*;
 
@@ -325,11 +326,13 @@ public class AllianceChampionshipTask extends DelayedTask {
      * @return true if Events menu opened successfully, false otherwise
      */
     private boolean openEventsMenu() {
-        DTOImageSearchResult eventsButton = searchTemplateWithRetries(
+        DTOImageSearchResult eventsButton = templateSearchHelper.searchTemplate(
                 HOME_EVENTS_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES,
-                200);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .withDelay(200L)
+                        .build());
 
         if (!eventsButton.isFound()) {
             logWarning("Events button not found on home screen");
@@ -373,10 +376,12 @@ public class AllianceChampionshipTask extends DelayedTask {
         DTOImageSearchResult result = null;
 
         for (int attempt = 0; attempt < CHAMPIONSHIP_TAB_MAX_ATTEMPTS; attempt++) {
-            result = searchTemplateWithRetries(
+            result = templateSearchHelper.searchTemplate(
                     ALLIANCE_CHAMPIONSHIP_TAB,
-                    90,
-                    QUICK_TEMPLATE_SEARCH_RETRIES);
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(QUICK_TEMPLATE_SEARCH_RETRIES)
+                            .build());
 
             if (result.isFound()) {
                 logInfo("Successfully found Alliance Championship event");
@@ -419,11 +424,13 @@ public class AllianceChampionshipTask extends DelayedTask {
      * @return DeploymentStatus enum or null if status cannot be determined
      */
     private DeploymentStatus checkDeploymentStatus() {
-        DTOImageSearchResult troopsButton = searchTemplateWithRetries(
+        DTOImageSearchResult troopsButton = templateSearchHelper.searchTemplate(
                 ALLIANCE_CHAMPIONSHIP_TROOPS_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES,
-                200);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .withDelay(200L)
+                        .build());
 
         if (troopsButton.isFound()) {
             logInfo("Active deployment found");
@@ -434,11 +441,13 @@ public class AllianceChampionshipTask extends DelayedTask {
             return DeploymentStatus.EXISTING_DEPLOYMENT;
         }
 
-        DTOImageSearchResult registerButton = searchTemplateWithRetries(
+        DTOImageSearchResult registerButton = templateSearchHelper.searchTemplate(
                 ALLIANCE_CHAMPIONSHIP_REGISTER_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES,
-                200);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .withDelay(200L)
+                        .build());
 
         if (registerButton.isFound()) {
             logInfo("No active deployment found");
@@ -546,11 +555,13 @@ public class AllianceChampionshipTask extends DelayedTask {
      * @return true if position handling successful, false otherwise
      */
     private boolean handlePositionSwitching(DTOArea deploymentArea) {
-        DTOImageSearchResult switchLine = searchTemplateWithRetries(
+        DTOImageSearchResult switchLine = templateSearchHelper.searchTemplate(
                 ALLIANCE_CHAMPIONSHIP_SWITCH_LINE_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES,
-                100);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .withDelay(100L)
+                        .build());
 
         if (switchLine.isFound()) {
             logInfo("Current deployment position does not match desired. Switching position.");
@@ -579,11 +590,13 @@ public class AllianceChampionshipTask extends DelayedTask {
 
         String buttonName = isUpdate ? "Update" : "Dispatch";
 
-        DTOImageSearchResult configButton = searchTemplateWithRetries(
+        DTOImageSearchResult configButton = templateSearchHelper.searchTemplate(
                 buttonTemplate,
-                90,
-                TEMPLATE_SEARCH_RETRIES,
-                100);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .withDelay(100L)
+                        .build());
 
         if (!configButton.isFound()) {
             logWarning(buttonName + " button not found. Cannot proceed with deployment.");

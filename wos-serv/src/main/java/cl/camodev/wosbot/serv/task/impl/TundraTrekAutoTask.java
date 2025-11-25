@@ -8,6 +8,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.LocalDateTime;
 import java.time.Duration;
@@ -49,13 +50,6 @@ public class TundraTrekAutoTask extends DelayedTask {
     // Timeout durations
     private static final Duration STAGNATION_TIMEOUT = Duration.ofMinutes(1);
     private static final Duration NO_PARSE_TIMEOUT = Duration.ofMinutes(3);
-
-    // Image matching thresholds
-    private static final int BUTTON_MATCH_THRESHOLD = 85;
-    private static final int MENU_MATCH_THRESHOLD = 90;
-
-    // Retry configuration
-    private static final int TEMPLATE_SEARCH_RETRIES = 3;
 
     public TundraTrekAutoTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
@@ -106,10 +100,9 @@ public class TundraTrekAutoTask extends DelayedTask {
         sleepTask(1300);
 
         // Search for Tundra Trek icon with retries
-        DTOImageSearchResult tundraIcon = searchTemplateWithRetries(
+        DTOImageSearchResult tundraIcon = templateSearchHelper.searchTemplate(
                 EnumTemplates.LEFT_MENU_TUNDRA_TREK_BUTTON,
-                MENU_MATCH_THRESHOLD,
-                TEMPLATE_SEARCH_RETRIES);
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
 
         if (!tundraIcon.isFound()) {
             logWarning("Tundra Trek icon not found. Verify template exists: templates/leftmenu/tundraTrek.png");
@@ -219,10 +212,9 @@ public class TundraTrekAutoTask extends DelayedTask {
      * Try to click Auto button directly and verify it opened via checkbox
      */
     private boolean tryDirectAutoButton() {
-        DTOImageSearchResult autoBtn = searchTemplateWithRetries(
+        DTOImageSearchResult autoBtn = templateSearchHelper.searchTemplate(
                 EnumTemplates.TUNDRA_TREK_AUTO_BUTTON,
-                BUTTON_MATCH_THRESHOLD,
-                2);
+                SearchConfigConstants.SINGLE_WITH_2_RETRIES);
 
         if (!autoBtn.isFound()) {
             return false;
@@ -246,10 +238,9 @@ public class TundraTrekAutoTask extends DelayedTask {
      * Try Blue button sequence: Click Blue → Upper screen click → Try Auto
      */
     private boolean tryBlueButtonSequence() {
-        DTOImageSearchResult blueBtn = searchTemplateWithRetries(
+        DTOImageSearchResult blueBtn = templateSearchHelper.searchTemplate(
                 EnumTemplates.TUNDRA_TREK_BLUE_BUTTON,
-                BUTTON_MATCH_THRESHOLD,
-                2);
+                SearchConfigConstants.SINGLE_WITH_2_RETRIES);
 
         if (!blueBtn.isFound()) {
             logDebug("Blue button not found");
@@ -279,10 +270,9 @@ public class TundraTrekAutoTask extends DelayedTask {
      * Try Skip button sequence: Double-tap Skip → Try Auto
      */
     private boolean trySkipButtonSequence() {
-        DTOImageSearchResult skipBtn = searchTemplateWithRetries(
+        DTOImageSearchResult skipBtn = templateSearchHelper.searchTemplate(
                 EnumTemplates.TUNDRA_TREK_SKIP_BUTTON,
-                BUTTON_MATCH_THRESHOLD,
-                2);
+                SearchConfigConstants.SINGLE_WITH_2_RETRIES);
 
         if (!skipBtn.isFound()) {
             logDebug("Skip button not found");
@@ -314,10 +304,9 @@ public class TundraTrekAutoTask extends DelayedTask {
      */
     private boolean isCheckboxVisible() {
         // Check for active checkbox
-        DTOImageSearchResult activeCheck = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult activeCheck = templateSearchHelper.searchTemplate(
                 EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE,
-                BUTTON_MATCH_THRESHOLD);
+                SearchConfigConstants.HIGH_SENSITIVITY);
 
         if (activeCheck.isFound()) {
             logDebug("Active checkbox found");
@@ -325,10 +314,9 @@ public class TundraTrekAutoTask extends DelayedTask {
         }
 
         // Check for inactive checkbox
-        DTOImageSearchResult inactiveCheck = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult inactiveCheck = templateSearchHelper.searchTemplate(
                 EnumTemplates.TUNDRA_TREK_CHECK_INACTIVE,
-                BUTTON_MATCH_THRESHOLD);
+                SearchConfigConstants.HIGH_SENSITIVITY);
 
         if (inactiveCheck.isFound()) {
             logDebug("Inactive checkbox found");
@@ -343,10 +331,9 @@ public class TundraTrekAutoTask extends DelayedTask {
      * Attempt to click the Bag button
      */
     private boolean clickBagButton() {
-        DTOImageSearchResult bagBtn = searchTemplateWithRetries(
+        DTOImageSearchResult bagBtn = templateSearchHelper.searchTemplate(
                 EnumTemplates.TUNDRA_TREK_BAG_BUTTON,
-                BUTTON_MATCH_THRESHOLD,
-                TEMPLATE_SEARCH_RETRIES);
+                SearchConfigConstants.HIGH_SENSITIVITY);
 
         if (!bagBtn.isFound()) {
             logDebug("Bag button not found (optional button)");
@@ -370,10 +357,9 @@ public class TundraTrekAutoTask extends DelayedTask {
      */
     private boolean ensureCheckboxActive() {
         // Check if already active
-        DTOImageSearchResult activeCheck = searchTemplateWithRetries(
+        DTOImageSearchResult activeCheck = templateSearchHelper.searchTemplate(
                 EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE,
-                BUTTON_MATCH_THRESHOLD,
-                2);
+                SearchConfigConstants.SINGLE_WITH_2_RETRIES);
 
         if (activeCheck.isFound()) {
             logDebug("Checkbox already active");
@@ -381,10 +367,9 @@ public class TundraTrekAutoTask extends DelayedTask {
         }
 
         // Find and click inactive checkbox
-        DTOImageSearchResult inactiveCheck = searchTemplateWithRetries(
+        DTOImageSearchResult inactiveCheck = templateSearchHelper.searchTemplate(
                 EnumTemplates.TUNDRA_TREK_CHECK_INACTIVE,
-                BUTTON_MATCH_THRESHOLD,
-                2);
+                SearchConfigConstants.SINGLE_WITH_2_RETRIES);
 
         if (!inactiveCheck.isFound()) {
             logWarning("Checkbox not found (neither active nor inactive)");
@@ -396,10 +381,9 @@ public class TundraTrekAutoTask extends DelayedTask {
         sleepTask(500);
 
         // Verify activation
-        activeCheck = searchTemplateWithRetries(
+        activeCheck = templateSearchHelper.searchTemplate(
                 EnumTemplates.TUNDRA_TREK_CHECK_ACTIVE,
-                BUTTON_MATCH_THRESHOLD,
-                2);
+                SearchConfigConstants.SINGLE_WITH_2_RETRIES);
 
         if (activeCheck.isFound()) {
             logDebug("Checkbox successfully activated");

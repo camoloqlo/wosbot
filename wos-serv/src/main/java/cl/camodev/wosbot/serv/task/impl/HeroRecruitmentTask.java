@@ -12,6 +12,7 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -53,9 +54,6 @@ public class HeroRecruitmentTask extends DelayedTask {
 
     /** Retry delay when OCR or navigation fails (minutes) */
     private static final int OCR_FAILURE_RETRY_MINUTES = 5;
-
-    /** Template matching threshold for claim button detection */
-    private static final int CLAIM_SEARCH_THRESHOLD = 95;
 
     /** Maximum OCR retry attempts for time extraction */
     private static final int MAX_OCR_RETRIES = 3;
@@ -275,12 +273,14 @@ public class HeroRecruitmentTask extends DelayedTask {
             DTOPoint claimMin,
             DTOPoint claimMax) {
 
-        DTOImageSearchResult claimResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult claimResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.HERO_RECRUIT_CLAIM,
-                searchMin,
-                searchMax,
-                CLAIM_SEARCH_THRESHOLD);
+                TemplateSearchHelper.SearchConfig.builder()
+                        .withMaxAttempts(1)
+                        .withThreshold(95)
+                        .withDelay(300L)
+                        .withCoordinates(searchMin, searchMax)
+                        .build());
 
         if (claimResult.isFound()) {
             logInfo(type + " recruitment reward available. Claiming now.");

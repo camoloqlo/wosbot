@@ -9,6 +9,7 @@ import cl.camodev.wosbot.console.enumerable.ExpertSkillItem;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.*;
 import cl.camodev.wosbot.serv.task.DelayedTask;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -28,11 +29,10 @@ public class ExpertSkillTrainingTask extends DelayedTask {
     protected void execute() {
         logInfo("Starting Expert Skill Training task.");
 
-        //Get priority list configuration
+        // Get priority list configuration
         List<DTOPriorityItem> enabledPriorities = PriorityItemUtil.getEnabledPriorities(
                 profile,
-                EnumConfigurationKey.EXPERT_SKILL_TRAINING_PRIORITIES_STRING
-        );
+                EnumConfigurationKey.EXPERT_SKILL_TRAINING_PRIORITIES_STRING);
 
         if (enabledPriorities.isEmpty()) {
             logWarning("No enabled priorities found for expert skill training. Disabling task.");
@@ -48,13 +48,15 @@ public class ExpertSkillTrainingTask extends DelayedTask {
         for (int attempt = 1; attempt <= maxScrollAttempts; attempt++) {
             swipe(new DTOPoint(255, 477), new DTOPoint(255, 400));
             sleepTask(500);
-            trainingExpertButton = searchTemplateWithRetries(EnumTemplates.LEFT_MENU_EXPERT_TRAINING_BUTTON);
-            if (trainingExpertButton.isFound()){
+            trainingExpertButton = templateSearchHelper.searchTemplate(
+                    EnumTemplates.LEFT_MENU_EXPERT_TRAINING_BUTTON,
+                    SearchConfig.builder().build());
+            if (trainingExpertButton.isFound()) {
                 break;
             }
 
         }
-        if (!trainingExpertButton.isFound()){
+        if (!trainingExpertButton.isFound()) {
             logInfo("No training expert found, ending task.");
             reschedule(LocalDateTime.now().plusMinutes(10));
             return;
@@ -62,38 +64,42 @@ public class ExpertSkillTrainingTask extends DelayedTask {
         tapPoint(trainingExpertButton.getPoint());
         sleepTask(2000);
 
-
-        DTOImageSearchResult speedUpButton = searchTemplateWithRetries(EnumTemplates.EXPERT_TRAINING_SPEEDUP_ICON);
-        if (speedUpButton.isFound()){
-            //if im here means that there's a skill being trained, get training time and reschedule
-            tapRandomPoint(speedUpButton.getPoint(),speedUpButton.getPoint(),1,500);
+        DTOImageSearchResult speedUpButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.EXPERT_TRAINING_SPEEDUP_ICON,
+                SearchConfig.builder().build());
+        if (speedUpButton.isFound()) {
+            // if im here means that there's a skill being trained, get training time and
+            // reschedule
+            tapRandomPoint(speedUpButton.getPoint(), speedUpButton.getPoint(), 1, 500);
             Duration trainingTime = durationHelper.execute(
-                    new DTOPoint(292,284),
-                    new DTOPoint(432,314),
+                    new DTOPoint(292, 284),
+                    new DTOPoint(432, 314),
                     5,
                     300,
                     null,
                     TimeValidators::isValidTime,
                     TimeConverters::toDuration);
-            if (trainingTime==null){
+            if (trainingTime == null) {
                 return;
             }
-            logInfo("A skill is currently being trained. Rescheduling task to run after training completes in " + trainingTime.toMinutes() + " minutes.");
+            logInfo("A skill is currently being trained. Rescheduling task to run after training completes in "
+                    + trainingTime.toMinutes() + " minutes.");
             reschedule(LocalDateTime.now().plus(trainingTime));
             return;
         }
-        //scroll down to normalize position
+        // scroll down to normalize position
         for (int i = 0; i < 2; i++) {
-            emuManager.executeSwipe(EMULATOR_NUMBER,new DTOPoint(358,1000),new DTOPoint(258,100));
+            emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(358, 1000), new DTOPoint(258, 100));
         }
 
-        //enter on cyrille
-        tapRandomPoint( new DTOPoint(151,414),new DTOPoint(227,465),3,1000);
+        // enter on cyrille
+        tapRandomPoint(new DTOPoint(151, 414), new DTOPoint(227, 465), 3, 1000);
 
         // map the available experts to not over loop on experts that we don't have
         HashMap<EXPERTS, Boolean> expertAvailabilityMap = new HashMap<>();
         List<EXPERTS> expertsOrderList = new ArrayList<>(); // To keep track of the order of detected experts
-        //search all expert badges to know which experts we have, we must search 1 by 1 then cling on change expert button (right arrow)
+        // search all expert badges to know which experts we have, we must search 1 by 1
+        // then cling on change expert button (right arrow)
 
         EnumTemplates[] expertBadges = {
                 EnumTemplates.EXPERT_TRAINING_CYRILLE_BADGE,
@@ -108,7 +114,12 @@ public class ExpertSkillTrainingTask extends DelayedTask {
             Optional<BadgeSearchResult> foundResult = Arrays.stream(expertBadges)
                     .parallel()
                     .map(expertBadge -> {
-                        DTOImageSearchResult badge = searchTemplateWithRetries(expertBadge, 90, 2);
+                        DTOImageSearchResult badge = templateSearchHelper.searchTemplate(
+                                expertBadge,
+                                SearchConfig.builder()
+                                        .withThreshold(90)
+                                        .withMaxAttempts(2)
+                                        .build());
                         EXPERTS expert = getExpertFromTemplate(expertBadge);
                         return new BadgeSearchResult(badge, expert, expertBadge);
                     })
@@ -140,7 +151,7 @@ public class ExpertSkillTrainingTask extends DelayedTask {
             return;
         }
 
-        //print expert availability map
+        // print expert availability map
         for (EnumTemplates expertBadge : expertBadges) {
             EXPERTS expert = getExpertFromTemplate(expertBadge);
             if (expertAvailabilityMap.getOrDefault(expert, false)) {
@@ -151,13 +162,13 @@ public class ExpertSkillTrainingTask extends DelayedTask {
         }
 
         // switch to skills tab
-        tapRandomPoint(new DTOPoint(500,1232), new DTOPoint(570,1251),1,500);
+        tapRandomPoint(new DTOPoint(500, 1232), new DTOPoint(570, 1251), 1, 500);
 
         // 3. Iterate through priorities and train skills
         EXPERTS currentExpert = null; // Track the current expert to avoid unnecessary navigation
 
         for (DTOPriorityItem priorityItem : enabledPriorities) {
-            //check if the expert related is available
+            // check if the expert related is available
             ExpertSkillItem skillItem = ExpertSkillItem.valueOf(priorityItem.getIdentifier().toUpperCase());
             EXPERTS expert = getExpertFromEnum(skillItem);
 
@@ -196,12 +207,18 @@ public class ExpertSkillTrainingTask extends DelayedTask {
                     logInfo("Already at expert: " + expert);
                 }
 
-                //Verify we're on the correct expert by checking the badge
+                // Verify we're on the correct expert by checking the badge
                 EnumTemplates expertBadgeTemplate = getExpertTemplate(skillItem);
-                DTOImageSearchResult expertBadgeResult = searchTemplateWithRetries(expertBadgeTemplate, 90, 2);
+                DTOImageSearchResult expertBadgeResult = templateSearchHelper.searchTemplate(
+                        expertBadgeTemplate,
+                        SearchConfig.builder()
+                                .withThreshold(90)
+                                .withMaxAttempts(2)
+                                .build());
 
                 if (!expertBadgeResult.isFound()) {
-                    logWarning("Could not verify navigation to expert: " + expert + ". Badge not found. Skipping skill: " + priorityItem.getName());
+                    logWarning("Could not verify navigation to expert: " + expert
+                            + ". Badge not found. Skipping skill: " + priorityItem.getName());
                     continue;
                 }
 
@@ -211,10 +228,15 @@ public class ExpertSkillTrainingTask extends DelayedTask {
             }
 
             DTOArea skillArea = getSkillArea(skillItem);
-            tapRandomPoint(skillArea.topLeft(), skillArea.bottomRight(),1,300);
+            tapRandomPoint(skillArea.topLeft(), skillArea.bottomRight(), 1, 300);
 
-            //check if skill is maxed or locked
-            DTOImageSearchResult learnResult = searchTemplateWithRetries(EnumTemplates.EXPERT_TRAINING_LEARN_BUTTON, 90, 3);
+            // check if skill is maxed or locked
+            DTOImageSearchResult learnResult = templateSearchHelper.searchTemplate(
+                    EnumTemplates.EXPERT_TRAINING_LEARN_BUTTON,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(3)
+                            .build());
 
             if (!learnResult.isFound()) {
                 logInfo("Skill " + priorityItem.getName() + " is either maxed or locked. Skipping.");
@@ -224,42 +246,54 @@ public class ExpertSkillTrainingTask extends DelayedTask {
             tapPoint(learnResult.getPoint());
             sleepTask(500);
 
-            // check if the skill have pending points to learn, lets search the learn button again
-            learnResult = searchTemplateWithRetries(EnumTemplates.EXPERT_TRAINING_LEARN_BUTTON, 90, 3);
+            // check if the skill have pending points to learn, lets search the learn button
+            // again
+            learnResult = templateSearchHelper.searchTemplate(
+                    EnumTemplates.EXPERT_TRAINING_LEARN_BUTTON,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(3)
+                            .build());
             if (learnResult.isFound()) {
-               logInfo("Skill " + priorityItem.getName() + " has no available skill points to learn. Skipping.");
-               tapRandomPoint(new DTOPoint(360,33), new DTOPoint(374,44),3,300);
+                logInfo("Skill " + priorityItem.getName() + " has no available skill points to learn. Skipping.");
+                tapRandomPoint(new DTOPoint(360, 33), new DTOPoint(374, 44), 3, 300);
                 continue;
             }
 
-            // we must try with the times in decreasing order to not waste time 23h -> 10h -> 2h -> 10m (if 10 also fails, use it as last resort)
+            // we must try with the times in decreasing order to not waste time 23h -> 10h
+            // -> 2h -> 10m (if 10 also fails, use it as last resort)
             List<LearningTime> timesDescending = List.of(
                     LearningTime.TIME_23_00_00,
                     LearningTime.TIME_10_00_00,
                     LearningTime.TIME_02_00_00,
-                    LearningTime.TIME_00_10_00
-            );
+                    LearningTime.TIME_00_10_00);
 
             for (LearningTime learningTime : timesDescending) {
                 DTOArea timeCheckboxArea = getLearningTimeCheckbox(learningTime);
-                tapRandomPoint(timeCheckboxArea.topLeft(), timeCheckboxArea.bottomRight(),1,300);
-                tapRandomPoint(new DTOPoint(474,888), new DTOPoint(579,910),1,400);
-                //check if the pop-up disappeared, that mean it was successful
+                tapRandomPoint(timeCheckboxArea.topLeft(), timeCheckboxArea.bottomRight(), 1, 300);
+                tapRandomPoint(new DTOPoint(474, 888), new DTOPoint(579, 910), 1, 400);
+                // check if the pop-up disappeared, that mean it was successful
 
-                DTOImageSearchResult badgeResult = searchTemplateWithRetries(getExpertTemplate(skillItem), 90, 3);
+                DTOImageSearchResult badgeResult = templateSearchHelper.searchTemplate(
+                        getExpertTemplate(skillItem),
+                        SearchConfig.builder()
+                                .withThreshold(90)
+                                .withMaxAttempts(3)
+                                .build());
 
                 if (badgeResult.isFound()) {
-                    logInfo("Successfully started training for skill: " + priorityItem.getName() + " with duration: " + learningTime.label());
+                    logInfo("Successfully started training for skill: " + priorityItem.getName() + " with duration: "
+                            + learningTime.label());
                     this.reschedule(LocalDateTime.now().plus(learningTime.duration())); // add 1 minute buffer
                     tapBackButton();
                     tapBackButton();
                     return;
-                }else{
-                    tapRandomPoint(new DTOPoint(284,329), new DTOPoint(452,359),1,300);
+                } else {
+                    tapRandomPoint(new DTOPoint(284, 329), new DTOPoint(452, 359), 1, 300);
                     if (learningTime.equals(LearningTime.TIME_00_10_00)) {
                         logInfo("All time options failed, but skill training did not start. Forcing 10 minutes option as last resort.");
-                        tapRandomPoint(timeCheckboxArea.topLeft(), timeCheckboxArea.bottomRight(),1,400);
-                        tapRandomPoint(new DTOPoint(454,777), new DTOPoint(573,800),1,400);
+                        tapRandomPoint(timeCheckboxArea.topLeft(), timeCheckboxArea.bottomRight(), 1, 400);
+                        tapRandomPoint(new DTOPoint(454, 777), new DTOPoint(573, 800), 1, 400);
                         return;
                     }
                 }
@@ -282,33 +316,33 @@ public class ExpertSkillTrainingTask extends DelayedTask {
 
         return switch (expertSkillItem) {
             case AGNES_SKILL_1, AGNES_SKILL_2, AGNES_SKILL_3, AGNES_SKILL_4 ->
-                    EnumTemplates.EXPERT_TRAINING_AGNES_BADGE;
+                EnumTemplates.EXPERT_TRAINING_AGNES_BADGE;
             case CYRILLE_SKILL_1, CYRILLE_SKILL_2, CYRILLE_SKILL_3, CYRILLE_SKILL_4 ->
-                    EnumTemplates.EXPERT_TRAINING_CYRILLE_BADGE;
+                EnumTemplates.EXPERT_TRAINING_CYRILLE_BADGE;
             case HOLGER_SKILL_1, HOLGER_SKILL_2, HOLGER_SKILL_3, HOLGER_SKILL_4 ->
-                    EnumTemplates.EXPERT_TRAINING_HOLGER_BADGE;
+                EnumTemplates.EXPERT_TRAINING_HOLGER_BADGE;
             case ROMULUS_SKILL_1, ROMULUS_SKILL_2, ROMULUS_SKILL_3, ROMULUS_SKILL_4 ->
-                    EnumTemplates.EXPERT_TRAINING_ROMULUS_BADGE;
+                EnumTemplates.EXPERT_TRAINING_ROMULUS_BADGE;
             case BALDUR_SKILL_1, BALDUR_SKILL_2, BALDUR_SKILL_3, BALDUR_SKILL_4 ->
-                    EnumTemplates.EXPERT_TRAINING_BALDUR_BADGE;
+                EnumTemplates.EXPERT_TRAINING_BALDUR_BADGE;
             case FABIAN_SKILL_1, FABIAN_SKILL_2, FABIAN_SKILL_3, FABIAN_SKILL_4 ->
-                    EnumTemplates.EXPERT_TRAINING_FABIAN_BADGE;
+                EnumTemplates.EXPERT_TRAINING_FABIAN_BADGE;
         };
 
     }
 
-private DTOArea getSkillArea(ExpertSkillItem skillItem) {
-    return switch (skillItem) {
-        case CYRILLE_SKILL_1, AGNES_SKILL_1, HOLGER_SKILL_1, ROMULUS_SKILL_1, BALDUR_SKILL_1, FABIAN_SKILL_1 ->
+    private DTOArea getSkillArea(ExpertSkillItem skillItem) {
+        return switch (skillItem) {
+            case CYRILLE_SKILL_1, AGNES_SKILL_1, HOLGER_SKILL_1, ROMULUS_SKILL_1, BALDUR_SKILL_1, FABIAN_SKILL_1 ->
                 new DTOArea(new DTOPoint(62, 1032), new DTOPoint(132, 1102));
-        case CYRILLE_SKILL_2, AGNES_SKILL_2, HOLGER_SKILL_2, ROMULUS_SKILL_2, BALDUR_SKILL_2, FABIAN_SKILL_2 ->
+            case CYRILLE_SKILL_2, AGNES_SKILL_2, HOLGER_SKILL_2, ROMULUS_SKILL_2, BALDUR_SKILL_2, FABIAN_SKILL_2 ->
                 new DTOArea(new DTOPoint(237, 1032), new DTOPoint(307, 1102));
-        case CYRILLE_SKILL_3, AGNES_SKILL_3, HOLGER_SKILL_3, ROMULUS_SKILL_3, BALDUR_SKILL_3, FABIAN_SKILL_3 ->
+            case CYRILLE_SKILL_3, AGNES_SKILL_3, HOLGER_SKILL_3, ROMULUS_SKILL_3, BALDUR_SKILL_3, FABIAN_SKILL_3 ->
                 new DTOArea(new DTOPoint(412, 1032), new DTOPoint(482, 1102));
-        case CYRILLE_SKILL_4, AGNES_SKILL_4, HOLGER_SKILL_4, ROMULUS_SKILL_4, BALDUR_SKILL_4, FABIAN_SKILL_4 ->
+            case CYRILLE_SKILL_4, AGNES_SKILL_4, HOLGER_SKILL_4, ROMULUS_SKILL_4, BALDUR_SKILL_4, FABIAN_SKILL_4 ->
                 new DTOArea(new DTOPoint(587, 1032), new DTOPoint(657, 1102));
-    };
-}
+        };
+    }
 
     private EXPERTS getExpertFromTemplate(EnumTemplates template) {
 
@@ -337,23 +371,18 @@ private DTOArea getSkillArea(ExpertSkillItem skillItem) {
         };
 
         for (EnumTemplates badge : expertBadges) {
-            DTOImageSearchResult result = searchTemplateWithRetries(badge, 90, 1);
+            DTOImageSearchResult result = templateSearchHelper.searchTemplate(
+                    badge,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(1)
+                            .build());
             if (result.isFound()) {
                 return getExpertFromTemplate(badge);
             }
         }
 
         return null; // Could not detect current expert
-    }
-
-    /**
-     * Get a list of available experts in order based on the availability map
-     */
-    private List<EXPERTS> getAvailableExpertsInOrder(HashMap<EXPERTS, Boolean> availabilityMap) {
-        return Arrays.stream(EXPERTS.values())
-                .filter(expert -> availabilityMap.getOrDefault(expert, false))
-                .sorted(Comparator.comparingInt(EXPERTS::getPosition))
-                .toList();
     }
 
     /**
@@ -421,18 +450,12 @@ private DTOArea getSkillArea(ExpertSkillItem skillItem) {
         BALDUR(5),
         FABIAN(6);
 
-
-        private final int position;
-
         EXPERTS(int position) {
-            this.position = position;
-        }
-
-        public int getPosition() {
-            return position;
+            // position not used but kept for potential future use
         }
     }
-    record BadgeSearchResult(DTOImageSearchResult badge, EXPERTS expert, EnumTemplates template) {}
 
+    record BadgeSearchResult(DTOImageSearchResult badge, EXPERTS expert, EnumTemplates template) {
+    }
 
 }

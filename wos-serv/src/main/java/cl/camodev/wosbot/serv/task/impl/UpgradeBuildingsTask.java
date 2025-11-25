@@ -6,6 +6,8 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.*;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
+
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -16,8 +18,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import static cl.camodev.ButtonContants.*;
-import static cl.camodev.LeftMenuTextSettings.*;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.BUILDING_BUTTON_INFO;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.BUILDING_BUTTON_SPEED;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.BUILDING_BUTTON_TRAIN;
@@ -26,6 +26,8 @@ import static cl.camodev.wosbot.console.enumerable.EnumTemplates.BUILDING_SURVIV
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.GAME_HOME_SHORTCUTS_HELP_REQUEST;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.GAME_HOME_SHORTCUTS_HELP_REQUEST1;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.GAME_HOME_SHORTCUTS_OBTAIN;
+import static cl.camodev.wosbot.serv.task.constants.ButtonConstants.*;
+import static cl.camodev.wosbot.serv.task.constants.LeftMenuTextSettings.*;
 
 public class UpgradeBuildingsTask extends DelayedTask {
 
@@ -278,7 +280,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
         sleepTask(500);
 
         // Check for survivor building or city building
-        DTOImageSearchResult lowBuilding = searchTemplateWithRetries(BUILDING_BUTTON_INFO, 90, 5, 100);
+        DTOImageSearchResult lowBuilding = templateSearchHelper.searchTemplate(BUILDING_BUTTON_INFO,
+                SearchConfigConstants.RESILIENT);
 
         if (lowBuilding.isFound()) {
             // Survivor building flow
@@ -288,7 +291,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
         } else {
             // Try to find city building
             tapRandomPoint(new DTOPoint(338, 799), new DTOPoint(353, 807), 3, 100);
-            DTOImageSearchResult upgradeButton = searchTemplateWithRetries(BUILDING_BUTTON_UPGRADE, 90, 5, 100);
+            DTOImageSearchResult upgradeButton = templateSearchHelper.searchTemplate(BUILDING_BUTTON_UPGRADE,
+                    SearchConfigConstants.RESILIENT);
 
             if (upgradeButton.isFound()) {
                 processCityBuilding();
@@ -307,12 +311,14 @@ public class UpgradeBuildingsTask extends DelayedTask {
      *         otherwise
      */
     private LocalDateTime processTroopBuilding() {
-        DTOImageSearchResult train = emuManager.searchTemplate(EMULATOR_NUMBER, BUILDING_BUTTON_TRAIN, 90);
+        DTOImageSearchResult train = templateSearchHelper.searchTemplate(BUILDING_BUTTON_TRAIN,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (train.isFound()) {
             logInfo("A troop training building was found. Rescheduling the task until the training is complete.");
 
-            DTOImageSearchResult speedupButton = emuManager.searchTemplate(EMULATOR_NUMBER, BUILDING_BUTTON_SPEED, 90);
+            DTOImageSearchResult speedupButton = templateSearchHelper.searchTemplate(BUILDING_BUTTON_SPEED,
+                    SearchConfigConstants.DEFAULT_SINGLE);
 
             if (speedupButton.isFound()) {
                 tapRandomPoint(speedupButton.getPoint(), speedupButton.getPoint(), 1, 500);
@@ -347,7 +353,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
         logInfo("Handling City Building");
 
         // Try to find upgrade button
-        DTOImageSearchResult upgradeButton = searchTemplateWithRetries(BUILDING_BUTTON_UPGRADE, 90, 5, 100);
+        DTOImageSearchResult upgradeButton = templateSearchHelper.searchTemplate(BUILDING_BUTTON_UPGRADE,
+                SearchConfigConstants.RESILIENT);
 
         if (!upgradeButton.isFound()) {
             logWarning("Upgrade button not found");
@@ -379,7 +386,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
         int limit = 100;
         DTOImageSearchResult survivorUpgrade;
 
-        while (!(survivorUpgrade = searchTemplateWithRetries(BUILDING_SURVIVOR_BUTTON_UPGRADE, 90, 2, 10)).isFound()) {
+        while (!(survivorUpgrade = templateSearchHelper.searchTemplate(BUILDING_SURVIVOR_BUTTON_UPGRADE,
+                SearchConfigConstants.SINGLE_WITH_2_RETRIES)).isFound()) {
             tapRandomPoint(new DTOPoint(560, 640), new DTOPoint(650, 690), 1, 200);
             limit--;
             if (limit <= 0) {
@@ -397,7 +405,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
         tapRandomPoint(new DTOPoint(450, 1190), new DTOPoint(600, 1230), 1, 1000);
 
         // Try to request help
-        DTOImageSearchResult helpButton = searchTemplateWithRetries(GAME_HOME_SHORTCUTS_HELP_REQUEST, 90, 10, 10);
+        DTOImageSearchResult helpButton = templateSearchHelper.searchTemplate(GAME_HOME_SHORTCUTS_HELP_REQUEST,
+                SearchConfigConstants.RESILIENT);
         if (helpButton.isFound()) {
             tapRandomPoint(helpButton.getPoint(), helpButton.getPoint(), 1, 1000);
             sleepTask(500);
@@ -410,7 +419,8 @@ public class UpgradeBuildingsTask extends DelayedTask {
      */
     private void refillResourcesIfNeeded() {
         DTOImageSearchResult result;
-        while ((result = emuManager.searchTemplate(EMULATOR_NUMBER, GAME_HOME_SHORTCUTS_OBTAIN, 90)).isFound()) {
+        while ((result = templateSearchHelper.searchTemplate(GAME_HOME_SHORTCUTS_OBTAIN,
+                SearchConfigConstants.DEFAULT_SINGLE)).isFound()) {
             logInfo("Refilling resources for the upgrade...");
             tapRandomPoint(result.getPoint(), result.getPoint());
             sleepTask(500);
@@ -431,10 +441,12 @@ public class UpgradeBuildingsTask extends DelayedTask {
     private void requestHelp() {
         // Search for help buttons in parallel
         CompletableFuture<DTOImageSearchResult> helpFuture = CompletableFuture
-                .supplyAsync(() -> searchTemplateWithRetries(GAME_HOME_SHORTCUTS_HELP_REQUEST, 90, 10, 10));
+                .supplyAsync(() -> templateSearchHelper.searchTemplate(GAME_HOME_SHORTCUTS_HELP_REQUEST,
+                        SearchConfigConstants.RESILIENT));
 
         CompletableFuture<DTOImageSearchResult> help1Future = CompletableFuture
-                .supplyAsync(() -> searchTemplateWithRetries(GAME_HOME_SHORTCUTS_HELP_REQUEST1, 90, 10, 10));
+                .supplyAsync(() -> templateSearchHelper.searchTemplate(GAME_HOME_SHORTCUTS_HELP_REQUEST1,
+                        SearchConfigConstants.RESILIENT));
 
         CompletableFuture.allOf(helpFuture, help1Future).join();
 

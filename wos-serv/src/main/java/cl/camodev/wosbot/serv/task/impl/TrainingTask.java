@@ -11,6 +11,7 @@ import cl.camodev.wosbot.ot.*;
 import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.awt.*;
 import java.time.*;
@@ -19,9 +20,9 @@ import java.util.*;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static cl.camodev.LeftMenuTextSettings.*;
 import static cl.camodev.wosbot.console.enumerable.EnumConfigurationKey.*;
 import static cl.camodev.wosbot.console.enumerable.EnumTemplates.*;
+import static cl.camodev.wosbot.serv.task.constants.LeftMenuTextSettings.*;
 
 /**
  * Task responsible for managing automated troop training across multiple troop
@@ -121,7 +122,6 @@ public class TrainingTask extends DelayedTask {
     private static final int UPGRADING_RESCHEDULE_MINUTES = 10;
     private static final int TRAINING_BUTTON_RETRY_MINUTES = 5;
     private static final int MINISTRY_PROTECTION_WINDOW_MINUTES = 30;
-    private static final int TROOP_LEVEL_SEARCH_THRESHOLD = 98;
     private static final int MAX_SUNFIRE_TAB_SWIPES = 3;
     private static final int TAB_RESET_SWIPES = 2;
 
@@ -496,11 +496,14 @@ public class TrainingTask extends DelayedTask {
 
         for (DTOTesseractSettings settings : settingsToTry) {
             try {
-                String text = OCRWithRetries(
+                String text = stringHelper.execute(
                         queueArea.topLeft(),
                         queueArea.bottomRight(),
                         1,
-                        settings);
+                        300L,
+                        settings,
+                        s -> !s.isEmpty(),
+                        s -> s);
 
                 if (text != null && !text.trim().isEmpty()) {
                     String lowerText = text.trim().toLowerCase();
@@ -751,7 +754,9 @@ public class TrainingTask extends DelayedTask {
 
         dismissPopups();
 
-        DTOImageSearchResult sunfireCastle = searchTemplateWithRetries(EVENTS_SUNFIRE_TAB);
+        DTOImageSearchResult sunfireCastle = templateSearchHelper.searchTemplate(
+                EVENTS_SUNFIRE_TAB,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (sunfireCastle.isFound()) {
             tapRandomPoint(sunfireCastle.getPoint(), sunfireCastle.getPoint(), 1, 500);
@@ -767,7 +772,9 @@ public class TrainingTask extends DelayedTask {
      * @return true if button found and clicked, false otherwise
      */
     private boolean clickEventsButton() {
-        DTOImageSearchResult eventsButton = searchTemplateWithRetries(HOME_EVENTS_BUTTON);
+        DTOImageSearchResult eventsButton = templateSearchHelper.searchTemplate(
+                HOME_EVENTS_BUTTON,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!eventsButton.isFound()) {
             logWarning("Events button not found");
@@ -804,7 +811,9 @@ public class TrainingTask extends DelayedTask {
         resetTabPosition();
 
         for (int attempt = 0; attempt < MAX_SUNFIRE_TAB_SWIPES; attempt++) {
-            DTOImageSearchResult sunfireCastle = searchTemplateWithRetries(EVENTS_SUNFIRE_TAB);
+            DTOImageSearchResult sunfireCastle = templateSearchHelper.searchTemplate(
+                    EVENTS_SUNFIRE_TAB,
+                    SearchConfigConstants.DEFAULT_SINGLE);
 
             if (sunfireCastle.isFound()) {
                 tapRandomPoint(sunfireCastle.getPoint(), sunfireCastle.getPoint(), 1, 500);
@@ -843,7 +852,9 @@ public class TrainingTask extends DelayedTask {
         tapRandomPoint(MINISTRY_DETAILS_MIN, MINISTRY_DETAILS_MAX, 1, 300);
         tapRandomPoint(MINISTRY_MORE_DETAILS_MIN, MINISTRY_MORE_DETAILS_MAX, 1, 300);
 
-        DTOImageSearchResult applyButton = searchTemplateWithRetries(SUNFIRE_MINISTRY_APPLY_BUTTON);
+        DTOImageSearchResult applyButton = templateSearchHelper.searchTemplate(
+                SUNFIRE_MINISTRY_APPLY_BUTTON,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (applyButton.isFound()) {
             logInfo("Applying for ministry appointment");
@@ -994,7 +1005,9 @@ public class TrainingTask extends DelayedTask {
      * @return true if interface opened successfully, false otherwise
      */
     private boolean openTrainingInterface() {
-        DTOImageSearchResult trainingButton = searchTemplateWithRetries(BUILDING_BUTTON_TRAIN);
+        DTOImageSearchResult trainingButton = templateSearchHelper.searchTemplate(
+                BUILDING_BUTTON_TRAIN,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!trainingButton.isFound()) {
             return false;
@@ -1141,7 +1154,6 @@ public class TrainingTask extends DelayedTask {
                 200L,
                 DTOTesseractSettings.builder()
                         .setAllowedChars("0123456789")
-                        .setDebug(true)
                         .build(),
                 TimeValidators::isValidTime,
                 TimeConverters::toDuration);
@@ -1160,7 +1172,6 @@ public class TrainingTask extends DelayedTask {
                 200L,
                 DTOTesseractSettings.builder()
                         .setAllowedChars("0123456789")
-                        .setDebug(true)
                         .build(),
                 text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
                 text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
@@ -1353,10 +1364,9 @@ public class TrainingTask extends DelayedTask {
         logDebug("Searching for max level among " + templates.size() + " templates.");
 
         for (EnumTemplates template : templates) {
-            DTOImageSearchResult troop = searchTemplateWithRetries(
+            DTOImageSearchResult troop = templateSearchHelper.searchTemplate(
                     template,
-                    TROOP_LEVEL_SEARCH_THRESHOLD,
-                    3);
+                    SearchConfigConstants.STRICT_MATCHING);
 
             if (troop.isFound()) {
                 int level = extractLevelFromTemplateName(template.name());
@@ -1439,16 +1449,17 @@ public class TrainingTask extends DelayedTask {
         logDebug("Attempting promotion for: " + template.name());
 
         for (int attempt = 1; attempt <= MAX_TEMPLATE_SEARCH_ATTEMPTS; attempt++) {
-            DTOImageSearchResult troop = searchTemplateWithRetries(
+            DTOImageSearchResult troop = templateSearchHelper.searchTemplate(
                     template,
-                    TROOP_LEVEL_SEARCH_THRESHOLD,
-                    1);
+                    SearchConfigConstants.DEFAULT_SINGLE);
 
             if (troop.isFound()) {
                 tapPoint(troop.getPoint());
                 sleepTask(500); // Wait for details
 
-                DTOImageSearchResult promoteButton = searchTemplateWithRetries(TRAINING_TROOP_PROMOTE);
+                DTOImageSearchResult promoteButton = templateSearchHelper.searchTemplate(
+                        TRAINING_TROOP_PROMOTE,
+                        SearchConfigConstants.DEFAULT_SINGLE);
 
                 if (promoteButton.isFound()) {
                     return executePromotion(template, promoteButton);
@@ -1496,10 +1507,9 @@ public class TrainingTask extends DelayedTask {
         List<EnumTemplates> templates = getTroopsTemplates(troopType);
         resetTroopListToEnd();
         for (EnumTemplates template : templates) {
-            DTOImageSearchResult troop = searchTemplateWithRetries(
+            DTOImageSearchResult troop = templateSearchHelper.searchTemplate(
                     template,
-                    TROOP_LEVEL_SEARCH_THRESHOLD,
-                    3);
+                    SearchConfigConstants.STRICT_MATCHING);
 
             if (troop.isFound()) {
                 tapPoint(troop.getPoint());
@@ -1520,7 +1530,9 @@ public class TrainingTask extends DelayedTask {
      */
     private void clickTrainButton() {
         selectHighestTroopLevel(troopTypeBeingTrained);
-        DTOImageSearchResult trainButton = searchTemplateWithRetries(TRAINING_TRAIN_BUTTON);
+        DTOImageSearchResult trainButton = templateSearchHelper.searchTemplate(
+                TRAINING_TRAIN_BUTTON,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (trainButton.isFound()) {
             tapRandomPoint(trainButton.getPoint(), trainButton.getPoint(), 1, 500);
@@ -1538,7 +1550,6 @@ public class TrainingTask extends DelayedTask {
                     200L,
                     DTOTesseractSettings.builder()
                             .setAllowedChars("0123456789")
-                            .setDebug(true)
                             .build(),
                     TimeValidators::isValidTime,
                     TimeConverters::toDuration);
@@ -1578,7 +1589,6 @@ public class TrainingTask extends DelayedTask {
                     200L,
                     DTOTesseractSettings.builder()
                             .setAllowedChars("0123456789")
-                            .setDebug(true)
                             .build(),
                     TimeValidators::isValidTime,
                     TimeConverters::toDuration);

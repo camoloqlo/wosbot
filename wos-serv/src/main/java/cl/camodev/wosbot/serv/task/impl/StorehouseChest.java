@@ -8,7 +8,9 @@ import java.util.regex.Pattern;
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.utiles.number.NumberConverters;
 import cl.camodev.utiles.number.NumberValidators;
+import cl.camodev.utiles.ocr.TextRecognitionRetrier;
 import cl.camodev.utiles.time.TimeConverters;
+import cl.camodev.utiles.time.TimeValidators;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -19,6 +21,7 @@ import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 /**
  * Task responsible for claiming rewards from the Storehouse.
@@ -63,13 +66,9 @@ public class StorehouseChest extends DelayedTask {
     private static final DTOPoint FALLBACK_TIMER_BOTTOM_RIGHT = new DTOPoint(430, 666);
 
     // ========== Constants ==========
-    private static final int CHEST_SEARCH_MAX_ATTEMPTS = 5;
-    private static final int STAMINA_SEARCH_MAX_ATTEMPTS = 5;
-    private static final int TIMER_OCR_MAX_ATTEMPTS = 5;
-    private static final int FALLBACK_TIMER_SECONDS = 3;
+    private static final int TIMER_OCR_MAX_ATTEMPTS = 3;
     private static final int MAX_TIMER_SECONDS = 7200; // 2 hours
     private static final int FALLBACK_RESCHEDULE_MINUTES = 5;
-    private static final int ONE_HOUR_MINUTES = 60;
     private static final int BASE_STOREHOUSE_STAMINA = 120;
     private static final int SCROLL_ATTEMPT_COUNT = 2;
     private static final int SCROLL_REPEAT_DELAY = 300;
@@ -85,6 +84,7 @@ public class StorehouseChest extends DelayedTask {
 
     // ========== Configuration (loaded in loadConfiguration()) ==========
     private String storedStaminaTime;
+    private TextRecognitionRetrier<LocalDateTime> textHelper;
 
     // ========== Execution State (reset each execution) ==========
     private LocalDateTime nextChestTime;
@@ -102,6 +102,8 @@ public class StorehouseChest extends DelayedTask {
         String storedStaminaTime = profile.getConfig(
                 EnumConfigurationKey.STOREHOUSE_STAMINA_CLAIM_TIME_STRING, String.class);
         this.storedStaminaTime = storedStaminaTime;
+
+        this.textHelper = new TextRecognitionRetrier<>(provider);
 
         logDebug(String.format("Configuration loaded - Stored stamina time: %s", storedStaminaTime));
     }
@@ -147,8 +149,9 @@ public class StorehouseChest extends DelayedTask {
 
         openLeftMenuCitySection(true);
 
-        DTOImageSearchResult researchCenter = searchTemplateWithRetries(
-                EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER);
+        DTOImageSearchResult researchCenter = templateSearchHelper.searchTemplate(
+                EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!researchCenter.isFound()) {
             logError("Research Center shortcut not found.");
@@ -163,6 +166,8 @@ public class StorehouseChest extends DelayedTask {
         logDebug("Tapping on Storehouse to navigate");
         tapRandomPoint(STOREHOUSE_LOCATION_TOP_LEFT, STOREHOUSE_LOCATION_BOTTOM_RIGHT);
         sleepTask(1000);
+
+        tapBackButton();
 
         return true;
     }
@@ -205,10 +210,9 @@ public class StorehouseChest extends DelayedTask {
      * Searches for chest templates with retries.
      */
     private DTOImageSearchResult searchForChest() {
-        DTOImageSearchResult chest = searchTemplateWithRetries(
+        DTOImageSearchResult chest = templateSearchHelper.searchTemplate(
                 EnumTemplates.STOREHOUSE_CHEST,
-                90,
-                CHEST_SEARCH_MAX_ATTEMPTS);
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
 
         if (chest.isFound()) {
             logDebug("Storehouse chest found");
@@ -216,10 +220,9 @@ public class StorehouseChest extends DelayedTask {
         }
 
         // Try alternative chest template
-        return searchTemplateWithRetries(
+        return templateSearchHelper.searchTemplate(
                 EnumTemplates.STOREHOUSE_CHEST_2,
-                90,
-                CHEST_SEARCH_MAX_ATTEMPTS);
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
     }
 
     /**
@@ -228,26 +231,31 @@ public class StorehouseChest extends DelayedTask {
     private LocalDateTime readChestTimer() {
         logDebug("Reading chest timer via OCR");
 
-        String timerText = OCRWithRetries(
+        DTOTesseractSettings settings = DTOTesseractSettings.builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setRemoveBackground(true)
+                .setTextColor(new Color(255, 255, 255))
+                .setAllowedChars("0123456789:")
+                .build();
+
+        LocalDateTime cooldown = textHelper.execute(
                 CHEST_TIMER_TOP_LEFT,
                 CHEST_TIMER_BOTTOM_RIGHT,
-                TIMER_OCR_MAX_ATTEMPTS);
+                TIMER_OCR_MAX_ATTEMPTS,
+                200L,
+                settings,
+                TimeValidators::isValidTime,
+                TimeConverters::toLocalDateTime);
 
-        if (timerText == null || timerText.isEmpty()) {
-            logWarning("Chest timer OCR returned empty result.");
+        if (cooldown == null) {
+            logWarning("OCR returned empty time text");
             return null;
         }
 
-        try {
-            logDebug("Chest timer OCR: '" + timerText + "'");
-            LocalDateTime nextTime = TimeConverters.toLocalDateTime(timerText);
+        logDebug("Time OCR result: '" + UtilTime.localDateTimeToDDHHMMSS(cooldown) + "'");
 
-            // Subtract 3 seconds buffer
-            return nextTime.minusSeconds(FALLBACK_TIMER_SECONDS);
-        } catch (Exception e) {
-            logError("Failed to parse chest timer: " + e.getMessage());
-            return null;
-        }
+        return cooldown;
     }
 
     /**
@@ -284,10 +292,9 @@ public class StorehouseChest extends DelayedTask {
     private void processStaminaReward() {
         logInfo("Searching for Storehouse stamina reward.");
 
-        DTOImageSearchResult stamina = searchTemplateWithRetries(
+        DTOImageSearchResult stamina = templateSearchHelper.searchTemplate(
                 EnumTemplates.STOREHOUSE_STAMINA,
-                90,
-                STAMINA_SEARCH_MAX_ATTEMPTS);
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
 
         if (stamina.isFound()) {
             logInfo("Stamina reward found. Claiming.");
@@ -345,40 +352,39 @@ public class StorehouseChest extends DelayedTask {
     private LocalDateTime readFallbackTimer() {
         logDebug("Attempting fallback timer reading.");
 
-        String timerText = OCRWithRetries(
+        DTOTesseractSettings settings = DTOTesseractSettings.builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setRemoveBackground(true)
+                .setTextColor(new Color(255, 255, 255))
+                .setAllowedChars("0123456789:")
+                .build();
+
+        LocalDateTime cooldown = textHelper.execute(
                 FALLBACK_TIMER_TOP_LEFT,
                 FALLBACK_TIMER_BOTTOM_RIGHT,
-                TIMER_OCR_MAX_ATTEMPTS);
+                TIMER_OCR_MAX_ATTEMPTS,
+                200L,
+                settings,
+                TimeValidators::isValidTime,
+                TimeConverters::toLocalDateTime);
 
-        if (timerText == null || timerText.isEmpty()) {
-            logWarning("Fallback timer OCR returned empty.");
+        if (cooldown == null) {
+            logWarning("OCR returned empty time text");
             return null;
         }
 
-        try {
-            logDebug("Fallback timer OCR: '" + timerText + "'");
+        logDebug("Time OCR result: '" + UtilTime.localDateTimeToDDHHMMSS(cooldown) + "'");
 
-            // Check if timer contains days (indicates very long wait)
-            if (timerText.toLowerCase().contains("d")) {
-                logWarning("Timer contains days indicator, using 1 hour fallback.");
-                return LocalDateTime.now().plusHours(ONE_HOUR_MINUTES / ONE_HOUR_MINUTES);
-            }
+        // Validate timer is reasonable
+        long secondsDiff = Duration.between(LocalDateTime.now(), cooldown).getSeconds();
 
-            LocalDateTime parsedTime = TimeConverters.toLocalDateTime(timerText);
-
-            // Validate timer is reasonable
-            long secondsDiff = Duration.between(LocalDateTime.now(), parsedTime).getSeconds();
-
-            if (secondsDiff > MAX_TIMER_SECONDS) {
-                logWarning(String.format("Timer exceeds 2 hours (%d min), using 1 hour fallback.", secondsDiff / 60));
-                return LocalDateTime.now().plusHours(ONE_HOUR_MINUTES / ONE_HOUR_MINUTES);
-            }
-
-            return parsedTime.minusSeconds(FALLBACK_TIMER_SECONDS);
-        } catch (Exception e) {
-            logError("Failed to parse fallback timer: " + e.getMessage());
-            return null;
+        if (secondsDiff > MAX_TIMER_SECONDS) {
+            logWarning(String.format("Timer exceeds 2 hours (%d min), using 1 hour fallback.", secondsDiff / 60));
+            return LocalDateTime.now().plusHours(1);
         }
+
+        return cooldown;
     }
 
     /**

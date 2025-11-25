@@ -8,6 +8,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 public class PetAllianceTreasuresTask extends DelayedTask {
 
@@ -25,20 +26,23 @@ public class PetAllianceTreasuresTask extends DelayedTask {
 	@Override
 	protected void execute() {
 		if (attempts >= 3) {
-			logWarning("Could not find the Pet Alliance Treasures menu after multiple attempts. Removing task from scheduler.");
+			logWarning(
+					"Could not find the Pet Alliance Treasures menu after multiple attempts. Removing task from scheduler.");
 			this.setRecurring(false);
 			return;
 		}
 
 		logInfo("Navigating to the Beast Cage to claim Alliance Treasures.");
 
-		DTOImageSearchResult petsResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.GAME_HOME_PETS,  90);
+		DTOImageSearchResult petsResult = templateSearchHelper.searchTemplate(EnumTemplates.GAME_HOME_PETS,
+				SearchConfigConstants.DEFAULT_SINGLE);
 		if (petsResult.isFound()) {
 			logInfo("Pets button found. Tapping to open.");
 			tapRandomPoint(petsResult.getPoint(), petsResult.getPoint());
 			sleepTask(3000);
 
-			DTOImageSearchResult beastCageResult = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_BEAST_CAGE,  90);
+			DTOImageSearchResult beastCageResult = templateSearchHelper.searchTemplate(
+					EnumTemplates.PETS_BEAST_CAGE, SearchConfigConstants.DEFAULT_SINGLE);
 			if (beastCageResult.isFound()) {
 				tapRandomPoint(beastCageResult.getPoint(), beastCageResult.getPoint());
 				sleepTask(500);
@@ -48,7 +52,8 @@ public class PetAllianceTreasuresTask extends DelayedTask {
 				tapRandomPoint(new DTOPoint(612, 1184), new DTOPoint(653, 1211));
 				sleepTask(500);
 
-				DTOImageSearchResult claimButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.PETS_BEAST_ALLIANCE_CLAIM,  90);
+				DTOImageSearchResult claimButton = templateSearchHelper.searchTemplate(
+						EnumTemplates.PETS_BEAST_ALLIANCE_CLAIM, SearchConfigConstants.DEFAULT_SINGLE);
 				if (claimButton.isFound()) {
 					logInfo("Claim button found. Tapping to claim the treasure.");
 					tapRandomPoint(claimButton.getPoint(), claimButton.getPoint());

@@ -7,6 +7,7 @@ import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper;
 
 import java.time.LocalDateTime;
 
@@ -24,7 +25,13 @@ public class ExpertsAgnesIntelTask extends DelayedTask {
         boolean claimed = false;
         for (int i = 0; i < 10; i++) {
             logDebug("Searching for Agnes icon (Attempt " + (i + 1) + "/10).");
-            DTOImageSearchResult agnes = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.AGNES_CLAIM_INTEL, 80);
+            DTOImageSearchResult agnes = templateSearchHelper.searchTemplate(
+                    EnumTemplates.AGNES_CLAIM_INTEL,
+                    TemplateSearchHelper.SearchConfig.builder()
+                            .withMaxAttempts(1)
+                            .withThreshold(80)
+                            .withDelay(300L)
+                            .build());
             if (agnes.isFound()) {
                 logInfo("Agnes icon found. Claiming intel.");
                 tapPoint(agnes.getPoint());
@@ -38,7 +45,8 @@ public class ExpertsAgnesIntelTask extends DelayedTask {
         }
 
         if (!claimed) {
-            logWarning("Could not find Agnes icon for extra intel after 10 attempts. Assuming already claimed. Rescheduling for next reset.");
+            logWarning(
+                    "Could not find Agnes icon for extra intel after 10 attempts. Assuming already claimed. Rescheduling for next reset.");
             LocalDateTime nextReset = UtilTime.getGameReset();
             this.reschedule(nextReset);
         }

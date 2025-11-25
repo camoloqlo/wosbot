@@ -8,6 +8,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -36,7 +37,6 @@ public class DailyLabyrinthTask extends DelayedTask {
     private static final int SCROLL_DELAY = 1300;
     private static final int LABYRINTH_LOAD_DELAY = 2000;
     private static final int BATTLE_COMPLETION_DELAY = 3000;
-    private static final int TEMPLATE_SEARCH_THRESHOLD = 90;
 
     // =========================== CONSTRUCTOR ===========================
 
@@ -82,7 +82,9 @@ public class DailyLabyrinthTask extends DelayedTask {
     // =========================== NAVIGATION METHODS ===========================
 
     /**
-     * Opens the side menu, switches to city tab, scrolls down and searches for labyrinth
+     * Opens the side menu, switches to city tab, scrolls down and searches for
+     * labyrinth
+     * 
      * @return true if navigation was successful, false otherwise
      */
     private boolean navigateToLabyrinthMenu() {
@@ -96,12 +98,9 @@ public class DailyLabyrinthTask extends DelayedTask {
         sleepTask(SCROLL_DELAY);
 
         // Search for labyrinth in menu
-        DTOImageSearchResult labyrinthResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult labyrinthResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.LEFT_MENU_LABYRINTH_BUTTON,
-                TEMPLATE_SEARCH_THRESHOLD
-        );
-
+                SearchConfigConstants.DEFAULT_SINGLE);
         if (labyrinthResult.isFound()) {
             tapPoint(labyrinthResult.getPoint());
             sleepTask(LABYRINTH_LOAD_DELAY);
@@ -140,18 +139,16 @@ public class DailyLabyrinthTask extends DelayedTask {
 
     /**
      * Executes a specific dungeon challenge
+     * 
      * @param dungeonNumber the dungeon number to challenge
      * @return true if challenge was completed successfully
      */
     private boolean executeDungeonChallenge(int dungeonNumber) {
         logInfo("Attempting to execute challenge for dungeon " + dungeonNumber + ".");
 
-        DTOImageSearchResult labyrinthResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult labyrinthResult = templateSearchHelper.searchTemplate(
                 getDungeonTemplate(dungeonNumber),
-                TEMPLATE_SEARCH_THRESHOLD
-        );
-
+                SearchConfigConstants.DEFAULT_SINGLE);
         if (!labyrinthResult.isFound()) {
             logWarning("Dungeon " + dungeonNumber + " is not available today.");
             return false;
@@ -180,12 +177,9 @@ public class DailyLabyrinthTask extends DelayedTask {
     private boolean attemptQuickChallenge(int dungeonNumber) {
         tapPoint(new DTOPoint(700, 1200));
         sleepTask(100);
-        DTOImageSearchResult quickChallengeResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult quickChallengeResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.LABYRINTH_QUICK_CHALLENGE,
-                TEMPLATE_SEARCH_THRESHOLD
-        );
-
+                SearchConfigConstants.DEFAULT_SINGLE);
         if (quickChallengeResult.isFound()) {
             logInfo("'Quick Challenge' is available for dungeon " + dungeonNumber + ".");
             tapPoint(quickChallengeResult.getPoint());
@@ -205,12 +199,9 @@ public class DailyLabyrinthTask extends DelayedTask {
      * Attempts to execute a raid challenge
      */
     private boolean attemptRaidChallenge(int dungeonNumber) {
-        DTOImageSearchResult raidResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult raidResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.LABYRINTH_RAID_CHALLENGE,
-                TEMPLATE_SEARCH_THRESHOLD
-        );
-
+                SearchConfigConstants.DEFAULT_SINGLE);
         if (raidResult.isFound()) {
             logInfo("'Raid Challenge' is available for dungeon " + dungeonNumber + ".");
             tapPoint(raidResult.getPoint());
@@ -228,12 +219,9 @@ public class DailyLabyrinthTask extends DelayedTask {
      * Attempts to execute a normal challenge
      */
     private boolean attemptNormalChallenge(int dungeonNumber) {
-        DTOImageSearchResult normalChallengeResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult normalChallengeResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.LABYRINTH_NORMAL_CHALLENGE,
-                TEMPLATE_SEARCH_THRESHOLD
-        );
-
+                SearchConfigConstants.DEFAULT_SINGLE);
         if (!normalChallengeResult.isFound()) {
             logWarning("No 'Normal Challenge' button found for dungeon " + dungeonNumber + ".");
             return false;
@@ -243,12 +231,9 @@ public class DailyLabyrinthTask extends DelayedTask {
         sleepTask(300);
 
         // Try quick deploy first
-        DTOImageSearchResult quickDeployResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult quickDeployResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.LABYRINTH_QUICK_DEPLOY,
-                TEMPLATE_SEARCH_THRESHOLD
-        );
-
+                SearchConfigConstants.DEFAULT_SINGLE);
         if (quickDeployResult.isFound()) {
             logInfo("'Quick Deploy' button found. Deploying for dungeon " + dungeonNumber + ".");
             tapPoint(quickDeployResult.getPoint());
@@ -256,12 +241,9 @@ public class DailyLabyrinthTask extends DelayedTask {
         }
 
         // Deploy troops
-        DTOImageSearchResult deployResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult deployResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.LABYRINTH_DEPLOY,
-                TEMPLATE_SEARCH_THRESHOLD
-        );
-
+                SearchConfigConstants.DEFAULT_SINGLE);
         if (deployResult.isFound()) {
             logInfo("'Deploy' button found. Deploying troops for dungeon " + dungeonNumber + ".");
             tapPoint(deployResult.getPoint());
@@ -281,6 +263,7 @@ public class DailyLabyrinthTask extends DelayedTask {
 
     /**
      * Returns the list of available dungeons based on the day of the week
+     * 
      * @param dayOfWeek the current day of the week
      * @return list of available dungeon numbers
      */
@@ -305,6 +288,7 @@ public class DailyLabyrinthTask extends DelayedTask {
 
     /**
      * Returns the appropriate template for each dungeon number
+     * 
      * @param dungeonNumber the dungeon number (1-6)
      * @return the corresponding template enum
      */
@@ -325,6 +309,7 @@ public class DailyLabyrinthTask extends DelayedTask {
 
     /**
      * Reschedules the task for one hour later with a reason
+     * 
      * @param reason the reason for rescheduling
      */
     private void rescheduleOneHourLater(String reason) {
@@ -332,6 +317,5 @@ public class DailyLabyrinthTask extends DelayedTask {
         logWarning(reason + ". Rescheduling task for one hour later.");
         this.reschedule(nextExecution);
     }
-
 
 }

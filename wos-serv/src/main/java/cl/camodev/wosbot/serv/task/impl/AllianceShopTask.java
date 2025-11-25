@@ -9,6 +9,7 @@ import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.serv.task.DelayedTask;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 import java.awt.*;
 import java.util.List;
@@ -149,8 +150,6 @@ public class AllianceShopTask extends DelayedTask {
     // ========================================================================
 
     private static final int THRESHOLD_SHOP_BUTTON = 90;
-    private static final int THRESHOLD_SOLD_OUT = 90;
-    private static final int THRESHOLD_ITEM_SEARCH = 90;
     private static final int DISCOUNT_TOLERANCE = 4;
     private static final int DEFAULT_QUANTITY = 1;
 
@@ -301,10 +300,12 @@ public class AllianceShopTask extends DelayedTask {
         tapRandomPoint(ALLIANCE_BUTTON_TOP_LEFT, ALLIANCE_BUTTON_BOTTOM_RIGHT);
         sleepTask(3000); // Wait for Alliance menu to open
 
-        DTOImageSearchResult shopButton = searchTemplateWithRetries(
+        DTOImageSearchResult shopButton = templateSearchHelper.searchTemplate(
                 EnumTemplates.ALLIANCE_SHOP_BUTTON,
-                THRESHOLD_SHOP_BUTTON,
-                RETRIES_SHOP_BUTTON);
+                SearchConfig.builder()
+                        .withThreshold(THRESHOLD_SHOP_BUTTON)
+                        .withMaxAttempts(RETRIES_SHOP_BUTTON)
+                        .build());
 
         if (!shopButton.isFound()) {
             logWarning("Could not find Alliance Shop button");
@@ -415,10 +416,12 @@ public class AllianceShopTask extends DelayedTask {
      * calculations throughout the task.
      */
     private void detectExpertUnlock() {
-        DTOImageSearchResult expertIcon = searchTemplateWithRetries(
+        DTOImageSearchResult expertIcon = templateSearchHelper.searchTemplate(
                 EnumTemplates.ALLIANCE_SHOP_EXPERT_ICON,
-                90,
-                3);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
 
         if (expertIcon.isFound()) {
             expertUnlocked = true;
@@ -634,12 +637,13 @@ public class AllianceShopTask extends DelayedTask {
      * @return true if sold out, false if available
      */
     private boolean isSoldOut(DTOArea cardCoords, AllianceShopItem shopItem) {
-        DTOImageSearchResult soldOutResult = searchTemplateRegionWithRetries(
+        DTOImageSearchResult soldOutResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.ALLIANCE_SHOP_SOLD_OUT,
-                cardCoords.topLeft(),
-                cardCoords.bottomRight(),
-                RETRIES_SOLD_OUT,
-                100); // 100ms delay
+                SearchConfig.builder()
+                        .withMaxAttempts(RETRIES_SOLD_OUT)
+                        .withDelay(100L)
+                        .withArea(cardCoords)
+                        .build());
 
         if (soldOutResult.isFound()) {
             logInfo("Item " + shopItem.getDisplayName() + " is sold out");
@@ -993,6 +997,10 @@ public class AllianceShopTask extends DelayedTask {
         switch (tab) {
             case WEEKLY -> tapRandomPoint(WEEKLY_TAB_TOP_LEFT, WEEKLY_TAB_BOTTOM_RIGHT, 3, 200);
             case DAILY -> tapRandomPoint(DAILY_TAB_TOP_LEFT, DAILY_TAB_BOTTOM_RIGHT, 3, 200);
+            case BOTH -> {
+                // Items in BOTH tabs are available on both, no need to switch
+                logDebug("Item available in both tabs");
+            }
         }
         sleepTask(1500); // Wait for tab content to load
     }
@@ -1099,12 +1107,13 @@ public class AllianceShopTask extends DelayedTask {
         for (int i = 1; i <= MAX_CARD_POSITIONS; i++) {
             DTOArea area = getItemArea(i);
 
-            DTOImageSearchResult searchResult = searchTemplateRegionWithRetries(
+            DTOImageSearchResult searchResult = templateSearchHelper.searchTemplate(
                     template,
-                    area.topLeft(),
-                    area.bottomRight(),
-                    RETRIES_ITEM_SEARCH,
-                    200); // 200ms delay
+                    SearchConfig.builder()
+                            .withMaxAttempts(RETRIES_ITEM_SEARCH)
+                            .withDelay(200L)
+                            .withArea(area)
+                            .build());
 
             if (searchResult.isFound()) {
                 logDebug("Found " + template.name() + " at card position " + i);

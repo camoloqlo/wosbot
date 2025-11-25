@@ -15,6 +15,7 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 /**
  * Task responsible for managing VIP benefits and purchases.
@@ -140,7 +141,8 @@ public class VipTask extends DelayedTask {
 	 * The task is scheduled to run at the earliest of two possible times:
 	 * <ul>
 	 * <li>Next game reset - For claiming daily VIP rewards</li>
-	 * <li>Next monthly VIP buy time - If VIP buying is enabled and a buy time is set</li>
+	 * <li>Next monthly VIP buy time - If VIP buying is enabled and a buy time is
+	 * set</li>
 	 * </ul>
 	 */
 	private void scheduleNextExecution() {
@@ -151,15 +153,15 @@ public class VipTask extends DelayedTask {
 			// If monthly VIP buy is enabled and we have a next buy time
 			if (nextMonthlyVipBuyTime.isBefore(nextGameReset)) {
 				nextExecutionTime = nextMonthlyVipBuyTime;
-				logInfo("Next execution scheduled for monthly VIP buy at: " + 
-					nextMonthlyVipBuyTime.format(DATETIME_FORMATTER));
+				logInfo("Next execution scheduled for monthly VIP buy at: " +
+						nextMonthlyVipBuyTime.format(DATETIME_FORMATTER));
 			} else {
-				logInfo("Next execution scheduled for game reset at: " + 
-					nextGameReset.format(DATETIME_FORMATTER));
+				logInfo("Next execution scheduled for game reset at: " +
+						nextGameReset.format(DATETIME_FORMATTER));
 			}
 		} else {
-			logInfo("Next execution scheduled for game reset at: " + 
-				nextGameReset.format(DATETIME_FORMATTER));
+			logInfo("Next execution scheduled for game reset at: " +
+					nextGameReset.format(DATETIME_FORMATTER));
 		}
 
 		reschedule(nextExecutionTime);
@@ -176,7 +178,9 @@ public class VipTask extends DelayedTask {
 		tapRandomPoint(VIP_MENU_BUTTON_TOP_LEFT, VIP_MENU_BUTTON_BOTTOM_RIGHT);
 		sleepTask(1000); // Wait for VIP menu to load
 
-		DTOImageSearchResult vipMenu = searchTemplateWithRetries(EnumTemplates.VIP_MENU);
+		DTOImageSearchResult vipMenu = templateSearchHelper.searchTemplate(
+				EnumTemplates.VIP_MENU,
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (!vipMenu.isFound()) {
 			return false;
@@ -213,8 +217,9 @@ public class VipTask extends DelayedTask {
 		logDebug("Cooldown expired or not set. Checking VIP status.");
 
 		// Check if VIP needs to be purchased
-		DTOImageSearchResult unlockButton = searchTemplateWithRetries(
-				EnumTemplates.VIP_UNLOCK_BUTTON);
+		DTOImageSearchResult unlockButton = templateSearchHelper.searchTemplate(
+				EnumTemplates.VIP_UNLOCK_BUTTON,
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (unlockButton.isFound()) {
 			// VIP is not active, purchase it

@@ -9,13 +9,16 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper;
 
 import java.time.LocalDateTime;
 
 public class NomadicMerchantTask extends DelayedTask {
 
-    private final EnumTemplates[] TEMPLATES = {EnumTemplates.NOMADIC_MERCHANT_COAL, EnumTemplates.NOMADIC_MERCHANT_MEAT, EnumTemplates.NOMADIC_MERCHANT_STONE, EnumTemplates.NOMADIC_MERCHANT_WOOD};
-
+    private final EnumTemplates[] TEMPLATES = { EnumTemplates.NOMADIC_MERCHANT_COAL,
+            EnumTemplates.NOMADIC_MERCHANT_MEAT, EnumTemplates.NOMADIC_MERCHANT_STONE,
+            EnumTemplates.NOMADIC_MERCHANT_WOOD };
 
     public NomadicMerchantTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
         super(profile, tpDailyTask);
@@ -26,11 +29,9 @@ public class NomadicMerchantTask extends DelayedTask {
         logInfo("Starting the Nomadic Merchant task.");
 
         // STEP 1: Navigate to shop - Search for the bottom bar shop button
-        DTOImageSearchResult shopButtonResult = emuManager.searchTemplate(
-                EMULATOR_NUMBER,
+        DTOImageSearchResult shopButtonResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.GAME_HOME_BOTTOM_BAR_SHOP_BUTTON,
-                90
-        );
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!shopButtonResult.isFound()) {
             logWarning("Shop button not found on the main screen. Rescheduling for 1 hour.");
@@ -43,7 +44,6 @@ public class NomadicMerchantTask extends DelayedTask {
         logInfo("Navigating to the shop.");
         tapRandomPoint(shopButtonResult.getPoint(), shopButtonResult.getPoint());
         sleepTask(2000);
-
 
         // STEP 2: Main loop to handle all nomadic merchant operations
         boolean continueOperations = true;
@@ -58,13 +58,14 @@ public class NomadicMerchantTask extends DelayedTask {
 
                 // Iterate through each resource template
                 for (EnumTemplates template : TEMPLATES) {
-                    DTOImageSearchResult result = emuManager.searchTemplate(
-                            EMULATOR_NUMBER,
+                    DTOImageSearchResult result = templateSearchHelper.searchTemplate(
                             template,
-                            new DTOPoint(25,412),
-                            new DTOPoint(690,1200),
-                            90
-                    );
+                            TemplateSearchHelper.SearchConfig.builder()
+                                    .withMaxAttempts(1)
+                                    .withThreshold(90)
+                                    .withDelay(300L)
+                                    .withCoordinates(new DTOPoint(25, 412), new DTOPoint(690, 1200))
+                                    .build());
 
                     if (result.isFound()) {
                         logInfo("Found resource: " + template.name() + ". Purchasing it.");
@@ -77,18 +78,17 @@ public class NomadicMerchantTask extends DelayedTask {
             }
 
             // PHASE 2: Check if VIP purchase is enabled and search for VIP templates
-            boolean vipBuyEnabled = profile.getConfig(EnumConfigurationKey.BOOL_NOMADIC_MERCHANT_VIP_POINTS, Boolean.class);
+            boolean vipBuyEnabled = profile.getConfig(EnumConfigurationKey.BOOL_NOMADIC_MERCHANT_VIP_POINTS,
+                    Boolean.class);
             boolean foundVipTemplate = false;
 
             if (vipBuyEnabled) {
                 logInfo("VIP purchase is enabled. Searching for VIP points to buy.");
 
                 // Search for VIP template in the entire screen
-                DTOImageSearchResult vipResult = emuManager.searchTemplate(
-                        EMULATOR_NUMBER,
+                DTOImageSearchResult vipResult = templateSearchHelper.searchTemplate(
                         EnumTemplates.NOMADIC_MERCHANT_VIP,
-                        90
-                );
+                        SearchConfigConstants.DEFAULT_SINGLE);
 
                 if (vipResult.isFound()) {
                     logInfo("Found VIP points. Purchasing with gems.");
@@ -116,11 +116,9 @@ public class NomadicMerchantTask extends DelayedTask {
 
             // PHASE 4: Check for daily refresh button if no resources or VIP were found
             logInfo("No more resources or VIP points found. Checking for daily refresh.");
-            DTOImageSearchResult dailyRefreshResult = emuManager.searchTemplate(
-                    EMULATOR_NUMBER,
+            DTOImageSearchResult dailyRefreshResult = templateSearchHelper.searchTemplate(
                     EnumTemplates.MYSTERY_SHOP_DAILY_REFRESH,
-                    90
-            );
+                    SearchConfigConstants.DEFAULT_SINGLE);
 
             if (dailyRefreshResult.isFound()) {
                 logInfo("Daily refresh is available. Using it now.");

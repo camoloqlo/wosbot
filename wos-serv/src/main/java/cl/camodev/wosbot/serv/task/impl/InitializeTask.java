@@ -9,6 +9,7 @@ import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 /**
  * Initialize task that starts the bot and prepares the game for automation.
@@ -225,13 +226,17 @@ public class InitializeTask extends DelayedTask {
 	 * @return true if home or world screen is found, false otherwise
 	 */
 	private boolean searchForHomeScreen() {
-		DTOImageSearchResult home = searchTemplateWithRetries(
+		DTOImageSearchResult home = templateSearchHelper.searchTemplate(
 				EnumTemplates.GAME_HOME_FURNACE,
-				1);
+				SearchConfig.builder()
+						.withMaxAttempts(1)
+						.build());
 
-		DTOImageSearchResult world = searchTemplateWithRetries(
+		DTOImageSearchResult world = templateSearchHelper.searchTemplate(
 				EnumTemplates.GAME_HOME_WORLD,
-				1);
+				SearchConfig.builder()
+						.withMaxAttempts(1)
+						.build());
 
 		return home.isFound() || world.isFound();
 	}
@@ -247,9 +252,11 @@ public class InitializeTask extends DelayedTask {
 	 * @throws ProfileInReconnectStateException if reconnect popup is found
 	 */
 	private void checkForReconnectState() {
-		DTOImageSearchResult reconnect = searchTemplateWithRetries(
+		DTOImageSearchResult reconnect = templateSearchHelper.searchTemplate(
 				EnumTemplates.GAME_HOME_RECONNECT,
-				2);
+				SearchConfig.builder()
+						.withMaxAttempts(2)
+						.build());
 
 		if (reconnect.isFound()) {
 			throw new ProfileInReconnectStateException(

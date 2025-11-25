@@ -10,6 +10,7 @@ import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 public class AllianceChestTask extends DelayedTask {
 
@@ -59,8 +60,9 @@ public class AllianceChestTask extends DelayedTask {
 		sleepTask(3000);
 
 		// Verify we're on the alliance screen by checking for the alliance chest button
-		DTOImageSearchResult allianceVerification = emuManager.searchTemplate(EMULATOR_NUMBER,
-				EnumTemplates.ALLIANCE_CHEST_BUTTON, 90);
+		DTOImageSearchResult allianceVerification = templateSearchHelper.searchTemplate(
+				EnumTemplates.ALLIANCE_CHEST_BUTTON,
+				SearchConfigConstants.DEFAULT_SINGLE);
 		return allianceVerification.isFound();
 	}
 
@@ -70,8 +72,9 @@ public class AllianceChestTask extends DelayedTask {
 	 * @return true if successful, false otherwise
 	 */
 	private boolean openAllianceChestScreen() {
-		DTOImageSearchResult allianceChestResult = emuManager.searchTemplate(EMULATOR_NUMBER,
-				EnumTemplates.ALLIANCE_CHEST_BUTTON, 90);
+		DTOImageSearchResult allianceChestResult = templateSearchHelper.searchTemplate(
+				EnumTemplates.ALLIANCE_CHEST_BUTTON,
+				SearchConfigConstants.DEFAULT_SINGLE);
 		if (!allianceChestResult.isFound()) {
 			logWarning("Alliance chest button not found.");
 			return false;
@@ -108,8 +111,9 @@ public class AllianceChestTask extends DelayedTask {
 		sleepTask(TAB_CHANGE_WAIT_TIME);
 
 		// First try to use "Claim All" button
-		DTOImageSearchResult claimAllButton = emuManager.searchTemplate(EMULATOR_NUMBER,
-				EnumTemplates.ALLIANCE_CHEST_CLAIM_ALL_BUTTON, 90);
+		DTOImageSearchResult claimAllButton = templateSearchHelper.searchTemplate(
+				EnumTemplates.ALLIANCE_CHEST_CLAIM_ALL_BUTTON,
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (claimAllButton.isFound()) {
 			logInfo("'Claim All' button found. Claiming all gifts.");
@@ -136,8 +140,9 @@ public class AllianceChestTask extends DelayedTask {
 
 		// Continue claiming gifts until no more are found
 		while (consecutiveFailures < maxConsecutiveFailures) {
-			DTOImageSearchResult claimButton = emuManager.searchTemplate(EMULATOR_NUMBER,
-					EnumTemplates.ALLIANCE_CHEST_CLAIM_BUTTON, 90);
+			DTOImageSearchResult claimButton = templateSearchHelper.searchTemplate(
+					EnumTemplates.ALLIANCE_CHEST_CLAIM_BUTTON,
+					SearchConfigConstants.DEFAULT_SINGLE);
 
 			if (claimButton.isFound()) {
 				logDebug("Claiming individual gift #" + (giftsClaimed + 1));
@@ -222,7 +227,8 @@ public class AllianceChestTask extends DelayedTask {
 	private void scheduleNextRun() {
 		int offsetMinutes = profile.getConfig(EnumConfigurationKey.ALLIANCE_CHESTS_OFFSET_INT, Integer.class);
 		LocalDateTime nextExecutionTime = LocalDateTime.now().plusMinutes(offsetMinutes);
-		nextExecutionTime = nextExecutionTime.isAfter(UtilTime.getGameReset()) ? UtilTime.getGameReset() : nextExecutionTime;
+		nextExecutionTime = nextExecutionTime.isAfter(UtilTime.getGameReset()) ? UtilTime.getGameReset()
+				: nextExecutionTime;
 		reschedule(nextExecutionTime);
 		logInfo("Alliance chest task completed. Next run at: " + nextExecutionTime.format(DATETIME_FORMATTER));
 	}

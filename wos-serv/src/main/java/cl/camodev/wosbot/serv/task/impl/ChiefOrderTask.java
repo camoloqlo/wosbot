@@ -8,6 +8,7 @@ import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 public class ChiefOrderTask extends DelayedTask {
 
@@ -55,40 +56,46 @@ public class ChiefOrderTask extends DelayedTask {
 
 	@Override
 	protected void execute() {
-		logInfo("Starting chief order task: " + chiefOrderType.getDescription() + 
+		logInfo("Starting chief order task: " + chiefOrderType.getDescription() +
 				" (Cooldown: " + chiefOrderType.getCooldownHours() + " hours)");
 
-	// Navigate to Chief Order menu (always start from HOME screen)
-	logInfo("Looking for Chief Order menu access button.");
-        
-	// First, look for the main Chief Order menu button
-		DTOImageSearchResult chiefOrderMenuButton = emuManager.searchTemplate(EMULATOR_NUMBER, 
-				EnumTemplates.CHIEF_ORDER_MENU_BUTTON, 90);
+		// Navigate to Chief Order menu (always start from HOME screen)
+		logInfo("Looking for Chief Order menu access button.");
+
+		// First, look for the main Chief Order menu button
+		DTOImageSearchResult chiefOrderMenuButton = templateSearchHelper.searchTemplate(
+				EnumTemplates.CHIEF_ORDER_MENU_BUTTON,
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (chiefOrderMenuButton.isFound()) {
 			logInfo("Chief Order menu button found. Tapping to open menu.");
 			tapPoint(chiefOrderMenuButton.getPoint());
 			sleepTask(2000);
 
-		// Wait 1.5 seconds before searching for the Chief Order type button (may not be visible immediately)
+			// Wait 1.5 seconds before searching for the Chief Order type button (may not be
+			// visible immediately)
 			sleepTask(1500);
 
-		// Now search for the specific Chief Order type
-		logInfo("Searching for Chief Order type: " + chiefOrderType.getDescription());
-			DTOImageSearchResult specificOrderButton = emuManager.searchTemplate(EMULATOR_NUMBER, 
-					chiefOrderType.getTemplate(), 90);
+			// Now search for the specific Chief Order type
+			logInfo("Searching for Chief Order type: " + chiefOrderType.getDescription());
+			DTOImageSearchResult specificOrderButton = templateSearchHelper.searchTemplate(
+					chiefOrderType.getTemplate(),
+					SearchConfigConstants.DEFAULT_SINGLE);
 
 			if (specificOrderButton.isFound()) {
 				logInfo(chiefOrderType.getDescription() + " button found. Tapping to activate.");
 				tapPoint(specificOrderButton.getPoint());
 				sleepTask(1500);
 
-			// Wait 1.5 seconds before searching for the Enact button (chiefOrderEnactButton.png)
+				// Wait 1.5 seconds before searching for the Enact button
+				// (chiefOrderEnactButton.png)
 				sleepTask(1500);
 
-			// Search for the Enact button and tap if found
-			logInfo("Searching for Chief Order Enact button.");
-				DTOImageSearchResult enactButton = emuManager.searchTemplate(EMULATOR_NUMBER, EnumTemplates.CHIEF_ORDER_ENACT_BUTTON, 90);
+				// Search for the Enact button and tap if found
+				logInfo("Searching for Chief Order Enact button.");
+				DTOImageSearchResult enactButton = templateSearchHelper.searchTemplate(
+						EnumTemplates.CHIEF_ORDER_ENACT_BUTTON,
+						SearchConfigConstants.DEFAULT_SINGLE);
 				if (enactButton.isFound()) {
 					logInfo("Chief Order Enact button found. Tapping to enact order.");
 					tapPoint(enactButton.getPoint());
@@ -96,17 +103,17 @@ public class ChiefOrderTask extends DelayedTask {
 				} else {
 					logWarning("Chief Order Enact button not found. Skipping enact.");
 				}
-				
-			// Navigate back after Enact
-			tapBackButton();
-			sleepTask(5000);
-				
+
+				// Navigate back after Enact
+				tapBackButton();
+				sleepTask(5000);
+
 				logInfo(chiefOrderType.getDescription() + " activated successfully. " +
 						"Rescheduling in " + chiefOrderType.getCooldownHours() + " hours.");
-				
+
 				// Reschedule based on cooldown
 				this.reschedule(LocalDateTime.now().plusHours(chiefOrderType.getCooldownHours()));
-				
+
 			} else {
 				logWarning(chiefOrderType.getDescription() + " button not found or currently on cooldown.");
 				// Reschedule for shorter retry interval (6 hours) when not available
@@ -114,8 +121,8 @@ public class ChiefOrderTask extends DelayedTask {
 				this.reschedule(LocalDateTime.now().plusHours(6));
 			}
 
-		// Navigate back to main screen
-		tapBackButton();
+			// Navigate back to main screen
+			tapBackButton();
 		} else {
 			logError("Chief Order menu button not found. Unable to access Chief Orders.");
 			// Reschedule for retry in 10 minutes when menu not accessible

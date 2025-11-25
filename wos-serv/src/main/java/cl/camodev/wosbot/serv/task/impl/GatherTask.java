@@ -616,7 +616,6 @@ public class GatherTask extends DelayedTask {
                 .setAllowedChars("0123456789")
                 .setRemoveBackground(true)
                 .setTextColor(new Color(255, 255, 255))
-                .setDebug(true)
                 .build();
 
         Integer level = readNumberValue(LEVEL_DISPLAY_TOP_LEFT, LEVEL_DISPLAY_BOTTOM_RIGHT, settings);

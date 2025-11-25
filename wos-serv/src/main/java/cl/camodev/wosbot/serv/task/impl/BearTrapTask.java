@@ -1,6 +1,5 @@
 package cl.camodev.wosbot.serv.task.impl;
 
-import cl.camodev.utiles.BearTrapHelper;
 import cl.camodev.utiles.UtilRally;
 import cl.camodev.utiles.number.NumberConverters;
 import cl.camodev.utiles.number.NumberValidators;
@@ -16,6 +15,8 @@ import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.ocr.BotTextRecognitionProvider;
 import cl.camodev.wosbot.serv.task.*;
+import cl.camodev.wosbot.serv.task.helper.BearTrapHelper;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 import java.awt.*;
 import java.time.*;
@@ -621,10 +622,12 @@ public class BearTrapTask extends DelayedTask {
         int freeMarches = checkFreeMarches();
 
         if (freeMarches > 0) {
-            DTOImageSearchResult warButton = searchTemplateWithRetries(
+            DTOImageSearchResult warButton = templateSearchHelper.searchTemplate(
                     GAME_HOME_WAR,
-                    90,
-                    TEMPLATE_SEARCH_RETRIES);
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                            .build());
 
             if (warButton.isFound()) {
                 logInfo("Entering war section to check for rallies");
@@ -696,10 +699,12 @@ public class BearTrapTask extends DelayedTask {
      * @param freeMarches number of free march slots available (unused but logged)
      */
     private void handleJoinRallies(int freeMarches) {
-        DTOImageSearchResult plusIcon = searchTemplateWithRetries(
+        DTOImageSearchResult plusIcon = templateSearchHelper.searchTemplate(
                 BEAR_JOIN_PLUS_ICON,
-                90,
-                2);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(2)
+                        .build());
 
         if (!plusIcon.isFound()) {
             logWarning("No joinable rallies found (plus icon not present)");
@@ -716,10 +721,12 @@ public class BearTrapTask extends DelayedTask {
         tapRandomPoint(flagPoint, flagPoint, 1, 0);
         sleepTask(300); // Wait for deploy button
 
-        DTOImageSearchResult deploy = searchTemplateWithRetries(
+        DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(
                 BEAR_DEPLOY_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .build());
 
         if (!deploy.isFound()) {
             logWarning("Deploy button not found after selecting flag.");
@@ -784,10 +791,12 @@ public class BearTrapTask extends DelayedTask {
         tapRandomPoint(BEAR_CENTER_POINT, BEAR_CENTER_POINT, 1, 200);
         sleepTask(500); // Wait for bear selection
 
-        DTOImageSearchResult rallyButton = searchTemplateWithRetries(
+        DTOImageSearchResult rallyButton = templateSearchHelper.searchTemplate(
                 BEAR_RALLY_BUTTON,
-                80,
-                TEMPLATE_SEARCH_RETRIES_MAX);
+                SearchConfig.builder()
+                        .withThreshold(80)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES_MAX)
+                        .build());
 
         if (!rallyButton.isFound()) {
             logError("Rally button not found!");
@@ -799,10 +808,12 @@ public class BearTrapTask extends DelayedTask {
         tapRandomPoint(rallyButton.getPoint(), rallyButton.getPoint(), 1, 200);
         sleepTask(500); // Wait for rally menu
 
-        DTOImageSearchResult holdRallyButton = searchTemplateWithRetries(
+        DTOImageSearchResult holdRallyButton = templateSearchHelper.searchTemplate(
                 RALLY_HOLD_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES_MAX);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES_MAX)
+                        .build());
 
         if (!holdRallyButton.isFound()) {
             logError("Hold Rally button not found!");
@@ -825,10 +836,12 @@ public class BearTrapTask extends DelayedTask {
             return 0;
         }
 
-        DTOImageSearchResult deploy = searchTemplateWithRetries(
+        DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(
                 BEAR_DEPLOY_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .build());
 
         if (!deploy.isFound()) {
             logWarning("Deploy button not found after selecting flag.");
@@ -921,9 +934,11 @@ public class BearTrapTask extends DelayedTask {
         tapRandomPoint(ALLIANCE_BUTTON_TL, ALLIANCE_BUTTON_BR);
         sleepTask(3000); // Wait for alliance menu
 
-        DTOImageSearchResult territoryButton = searchTemplateWithRetries(
+        DTOImageSearchResult territoryButton = templateSearchHelper.searchTemplate(
                 ALLIANCE_TERRITORY_BUTTON,
-                1);
+                SearchConfig.builder()
+                        .withMaxAttempts(1)
+                        .build());
 
         if (!territoryButton.isFound()) {
             logError("Territory button not found to go to bear trap");
@@ -979,10 +994,12 @@ public class BearTrapTask extends DelayedTask {
      * </ol>
      */
     private void enablePets() {
-        DTOImageSearchResult petsButton = searchTemplateWithRetries(
+        DTOImageSearchResult petsButton = templateSearchHelper.searchTemplate(
                 GAME_HOME_PETS,
-                90,
-                TEMPLATE_SEARCH_RETRIES_EXTENDED);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES_EXTENDED)
+                        .build());
 
         if (!petsButton.isFound()) {
             logError("Pets button not found to enable pets");
@@ -1065,20 +1082,26 @@ public class BearTrapTask extends DelayedTask {
      * @return MarchStatus object containing status of all indicators
      */
     private MarchStatus checkMarchStatus() {
-        DTOImageSearchResult returningArrow = searchTemplateWithRetries(
+        DTOImageSearchResult returningArrow = templateSearchHelper.searchTemplate(
                 MARCHES_AREA_RECALL_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .build());
 
-        DTOImageSearchResult marchView = searchTemplateWithRetries(
+        DTOImageSearchResult marchView = templateSearchHelper.searchTemplate(
                 MARCHES_AREA_VIEW_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .build());
 
-        DTOImageSearchResult marchSpeedup = searchTemplateWithRetries(
+        DTOImageSearchResult marchSpeedup = templateSearchHelper.searchTemplate(
                 MARCHES_AREA_SPEEDUP_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .build());
 
         return new MarchStatus(
                 returningArrow != null && returningArrow.isFound(),
@@ -1092,10 +1115,12 @@ public class BearTrapTask extends DelayedTask {
     private void recallMarch() {
         logInfo("Returning arrow found - attempting to tap recall button");
 
-        DTOImageSearchResult recallButton = searchTemplateWithRetries(
+        DTOImageSearchResult recallButton = templateSearchHelper.searchTemplate(
                 MARCHES_AREA_RECALL_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                        .build());
 
         if (recallButton.isFound()) {
             tapRandomPoint(recallButton.getPoint(), recallButton.getPoint(), 1, 300);
@@ -1123,10 +1148,12 @@ public class BearTrapTask extends DelayedTask {
         tapRandomPoint(ALLIANCE_BUTTON_TL, ALLIANCE_BUTTON_BR);
         sleepTask(3000); // Wait for alliance menu
 
-        DTOImageSearchResult warButton = searchTemplateWithRetries(
+        DTOImageSearchResult warButton = templateSearchHelper.searchTemplate(
                 ALLIANCE_WAR_BUTTON,
-                90,
-                TEMPLATE_SEARCH_RETRIES_EXTENDED);
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES_EXTENDED)
+                        .build());
 
         if (!warButton.isFound()) {
             logError("Alliance War button not found to disable autojoin");

@@ -12,10 +12,12 @@ import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
-
-import static cl.camodev.LeftMenuTextSettings.WHITE_SETTINGS;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper;
+import java.awt.Color;
 
 /**
  * Task responsible for managing bank deposit operations.
@@ -59,9 +61,6 @@ public class BankTask extends DelayedTask {
 	// ===============================
 	// CONSTANTS
 	// ===============================
-
-	/** Template matching threshold for UI element detection */
-	private static final int TEMPLATE_SEARCH_THRESHOLD = 90;
 
 	/** Retry delay when navigation or operations fail (minutes) */
 	private static final int OPERATION_FAILURE_RETRY_MINUTES = 5;
@@ -203,10 +202,9 @@ public class BankTask extends DelayedTask {
 	 * @return true if button found and tapped, false otherwise
 	 */
 	private boolean findAndTapDealsButton() {
-		DTOImageSearchResult dealsResult = emuManager.searchTemplate(
-				EMULATOR_NUMBER,
+		DTOImageSearchResult dealsResult = templateSearchHelper.searchTemplate(
 				EnumTemplates.HOME_DEALS_BUTTON,
-				TEMPLATE_SEARCH_THRESHOLD);
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (!dealsResult.isFound()) {
 			logWarning("Deals button not found");
@@ -241,10 +239,9 @@ public class BankTask extends DelayedTask {
 	 * @return true if bank option found and tapped, false otherwise
 	 */
 	private boolean findAndTapBankOption() {
-		DTOImageSearchResult bankResult = emuManager.searchTemplate(
-				EMULATOR_NUMBER,
+		DTOImageSearchResult bankResult = templateSearchHelper.searchTemplate(
 				EnumTemplates.EVENTS_DEALS_BANK,
-				TEMPLATE_SEARCH_THRESHOLD);
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (!bankResult.isFound()) {
 			logWarning("Bank option not found in deals menu");
@@ -294,10 +291,9 @@ public class BankTask extends DelayedTask {
 	 * @return Search result for withdraw button
 	 */
 	private DTOImageSearchResult checkWithdrawAvailability() {
-		return emuManager.searchTemplate(
-				EMULATOR_NUMBER,
+		return templateSearchHelper.searchTemplate(
 				EnumTemplates.EVENTS_DEALS_BANK_WITHDRAW,
-				TEMPLATE_SEARCH_THRESHOLD);
+				SearchConfigConstants.DEFAULT_SINGLE);
 	}
 
 	/**
@@ -354,10 +350,9 @@ public class BankTask extends DelayedTask {
 	 * </ol>
 	 */
 	private void withdrawDeposit() {
-		DTOImageSearchResult withdrawResult = emuManager.searchTemplate(
-				EMULATOR_NUMBER,
+		DTOImageSearchResult withdrawResult = templateSearchHelper.searchTemplate(
 				EnumTemplates.EVENTS_DEALS_BANK_WITHDRAW,
-				TEMPLATE_SEARCH_THRESHOLD);
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (withdrawResult.isFound()) {
 			tapRandomPoint(withdrawResult.getPoint(), withdrawResult.getPoint());
@@ -443,12 +438,14 @@ public class BankTask extends DelayedTask {
 	 * @return Search result for deposit button
 	 */
 	private DTOImageSearchResult searchForDepositOption(DepositConfig config) {
-		return emuManager.searchTemplate(
-				EMULATOR_NUMBER,
+		return templateSearchHelper.searchTemplate(
 				EnumTemplates.EVENTS_DEALS_BANK_DEPOSIT,
-				config.searchMin,
-				config.searchMax,
-				TEMPLATE_SEARCH_THRESHOLD);
+				TemplateSearchHelper.SearchConfig.builder()
+						.withMaxAttempts(1)
+						.withThreshold(90)
+						.withDelay(300L)
+						.withCoordinates(config.searchMin, config.searchMax)
+						.build());
 	}
 
 	/**
@@ -499,10 +496,9 @@ public class BankTask extends DelayedTask {
 	 * @return true if active deposit found, false otherwise
 	 */
 	private boolean hasActiveDeposit() {
-		DTOImageSearchResult activeDepositResult = emuManager.searchTemplate(
-				EMULATOR_NUMBER,
+		DTOImageSearchResult activeDepositResult = templateSearchHelper.searchTemplate(
 				EnumTemplates.EVENTS_DEALS_BANK_INDEPOSIT,
-				TEMPLATE_SEARCH_THRESHOLD);
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		return activeDepositResult.isFound();
 	}
@@ -540,10 +536,9 @@ public class BankTask extends DelayedTask {
 	 * Taps on the active deposit to reveal remaining time.
 	 */
 	private void tapActiveDeposit() {
-		DTOImageSearchResult activeDepositResult = emuManager.searchTemplate(
-				EMULATOR_NUMBER,
+		DTOImageSearchResult activeDepositResult = templateSearchHelper.searchTemplate(
 				EnumTemplates.EVENTS_DEALS_BANK_INDEPOSIT,
-				TEMPLATE_SEARCH_THRESHOLD);
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (activeDepositResult.isFound()) {
 			tapPoint(activeDepositResult.getPoint());
@@ -574,7 +569,11 @@ public class BankTask extends DelayedTask {
 				TIME_OCR_BOTTOM_RIGHT,
 				MAX_OCR_RETRIES,
 				OCR_RETRY_DELAY_MS,
-				WHITE_SETTINGS,
+				DTOTesseractSettings.builder()
+                        .setRemoveBackground(true)
+                        .setTextColor(new Color(255, 255, 255))
+                        .setAllowedChars("0123456789:d")
+                        .build(),
 				TimeValidators::isValidTime,
 				TimeConverters::toLocalDateTime);
 
