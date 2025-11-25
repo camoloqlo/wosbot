@@ -1,110 +1,227 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import cl.camodev.utiles.UtilTime;
+import cl.camodev.utiles.ocr.TextRecognitionRetrier;
+import cl.camodev.utiles.time.TimeConverters;
+import cl.camodev.utiles.time.TimeValidators;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.ot.DTOTesseractSettings;
+import cl.camodev.wosbot.ot.DTOArea;
+import cl.camodev.wosbot.serv.ocr.BotTextRecognitionProvider;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
+import java.awt.Color;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Task responsible for Alliance Mobilization.
- * It will use OCR and image recognition to select and perform tasks.
+ * Alliance Mobilization Task - Manages automated participation in Alliance
+ * Mobilization events.
+ * 
+ * <p>
+ * This task handles:
+ * <ul>
+ * <li>Automatic navigation to Alliance Mobilization event screen</li>
+ * <li>Detection and acceptance of tasks based on configurable filters:
+ * <ul>
+ * <li>Bonus percentage (200%, 120%, Both, Any)</li>
+ * <li>Minimum points threshold (separate for 200% and 120%)</li>
+ * <li>Task type enable/disable flags (14 different task types)</li>
+ * </ul>
+ * </li>
+ * <li>Automatic task refresh when criteria not met</li>
+ * <li>Collection of completed task rewards</li>
+ * <li>Free mission bonus claims</li>
+ * <li>Alliance Monuments interaction</li>
+ * <li>Intelligent rescheduling based on:
+ * <ul>
+ * <li>Task refresh cooldowns</li>
+ * <li>Task availability timers</li>
+ * <li>Attempts counter (daily reset)</li>
+ * <li>Event availability (weekly Monday reset)</li>
+ * </ul>
+ * </li>
+ * </ul>
+ * 
+ * <p>
+ * <b>Task Selection Logic:</b>
+ * <ol>
+ * <li>Read remaining attempts counter</li>
+ * <li>Check for completed tasks and collect rewards</li>
+ * <li>Check for free mission bonus</li>
+ * <li>For each available task:
+ * <ul>
+ * <li>Detect bonus percentage (200% or 120%)</li>
+ * <li>Read points value via OCR</li>
+ * <li>Detect task type via image recognition</li>
+ * <li>Check if task type is enabled in config</li>
+ * <li>Compare points against minimum threshold</li>
+ * <li>Decision: Accept, Refresh, or Wait</li>
+ * </ul>
+ * </li>
+ * <li>Check Alliance Monuments</li>
+ * </ol>
+ * 
+ * <p>
+ * <b>Rescheduling Strategy:</b>
+ * <ul>
+ * <li>If task refreshed: Reschedule for refresh cooldown + 5s buffer</li>
+ * <li>If good task found but another running: Wait 1 hour</li>
+ * <li>If no tasks available: Check availability timers, reschedule
+ * accordingly</li>
+ * <li>If no attempts remaining: Reschedule for daily reset</li>
+ * <li>If event not active: Reschedule for next Monday</li>
+ * <li>Default fallback: 5 minutes</li>
+ * </ul>
+ * 
+ * <p>
+ * <b>Configuration:</b>
+ * <ul>
+ * <li>Auto-accept enabled/disabled (user can accept manually if disabled)</li>
+ * <li>Rewards percentage filter: "200%", "120%", "Both", "Any"</li>
+ * <li>Minimum points for 200% tasks</li>
+ * <li>Minimum points for 120% tasks</li>
+ * <li>14 task type enable/disable flags</li>
+ * </ul>
+ * 
+ * <p>
+ * <b>Note:</b> Only one task can run at a time. If a task is already running,
+ * other tasks will be refreshed to get better options, and the task will wait
+ * for the running task to complete.
  */
 public class AllianceMobilizationTask extends DelayedTask {
 
     // ========================================================================
-    // CONSTANTS
+    // CONSTANTS - OCR Patterns
     // ========================================================================
 
+    /**
+     * OCR-related patterns and configurations.
+     */
     private static final class OCR {
+        /** Pattern to match attempts counter format: "X / Y" or "X/Y" */
         static final Pattern ATTEMPTS_PATTERN = Pattern.compile("(\\d{1,2})\\s*/\\s*(\\d{0,3})");
     }
 
+    // ========================================================================
+    // CONSTANTS - Screen Coordinates
+    // ========================================================================
+
+    /**
+     * Fixed screen coordinates for UI elements.
+     * All coordinates are specific to the Alliance Mobilization screen layout.
+     */
     private static final class Coords {
-        // Attempts Counter
+        // Attempts Counter (top of screen)
         static final DTOPoint ATTEMPTS_COUNTER_TOP_LEFT = new DTOPoint(168, 528);
         static final DTOPoint ATTEMPTS_COUNTER_BOTTOM_RIGHT = new DTOPoint(235, 565);
-        
-        // Task Interaction
+
+        // Task Interaction Buttons
         static final DTOPoint REFRESH_BUTTON = new DTOPoint(200, 805);
         static final DTOPoint REFRESH_CONFIRM_BUTTON = new DTOPoint(510, 790);
         static final DTOPoint ACCEPT_BUTTON = new DTOPoint(500, 805);
         static final DTOPoint FREE_MISSION_CONFIRM = new DTOPoint(340, 780);
         static final DTOPoint BACK_BUTTON = new DTOPoint(50, 50);
-        
-        // Alliance Monuments
+
+        // Alliance Monuments Click Sequence
         static final DTOPoint[] MONUMENT_CLICKS = {
-            new DTOPoint(366, 1014),
-            new DTOPoint(250, 870),
-            new DTOPoint(366, 1014),
-            new DTOPoint(154, 1002),
-            new DTOPoint(245, 483)
+                new DTOPoint(366, 1014),
+                new DTOPoint(250, 870),
+                new DTOPoint(366, 1014),
+                new DTOPoint(154, 1002),
+                new DTOPoint(245, 483)
         };
-        
-        // Free Mission
+
+        // Free Mission Expected Location
         static final DTOPoint FREE_MISSION_EXPECTED = new DTOPoint(256, 527);
-        
-        // Task Availability Timers
+
+        // Task Availability Timers (when no tasks available)
         static final DTOPoint LEFT_TIMER_TOP_LEFT = new DTOPoint(162, 705);
         static final DTOPoint LEFT_TIMER_BOTTOM_RIGHT = new DTOPoint(280, 743);
         static final DTOPoint RIGHT_TIMER_TOP_LEFT = new DTOPoint(486, 705);
         static final DTOPoint RIGHT_TIMER_BOTTOM_RIGHT = new DTOPoint(595, 743);
-        
-        // Cooldown Popup
-        static final DTOPoint COOLDOWN_POPUP_TOP_LEFT = new DTOPoint(295, 571);
-        static final DTOPoint COOLDOWN_POPUP_BOTTOM_RIGHT = new DTOPoint(379, 604);
-        
+
         // Navigation - Tab Swipe (160px steps)
-        static final DTOPoint SWIPE_SMALL_RIGHT = new DTOPoint(480, 158);  // 160px step right
-        static final DTOPoint SWIPE_SMALL_LEFT = new DTOPoint(320, 158);   // 160px step left
+        static final DTOPoint SWIPE_SMALL_RIGHT = new DTOPoint(480, 158);
+        static final DTOPoint SWIPE_SMALL_LEFT = new DTOPoint(320, 158);
     }
 
+    // ========================================================================
+    // CONSTANTS - Offsets for Detection
+    // ========================================================================
+
+    /**
+     * Relative offsets for detecting UI elements near reference points.
+     */
     private static final class Offsets {
-        // Points Detection
+        // Points Detection (relative to bonus indicator)
         static final int POINTS_X = 112;
         static final int POINTS_Y = 158;
         static final int POINTS_WIDTH = 75;
         static final int POINTS_HEIGHT = 34;
-        
-        // Task Type Detection
+
+        // Task Type Detection (proximity to bonus)
         static final int TASK_TYPE_MAX_DELTA_X = 150;
         static final int TASK_TYPE_MAX_DELTA_Y = 100;
-        
-        // Running Task Detection
+
+        // Running Task Detection (timer bar below bonus)
         static final int RUNNING_TASK_X = -50;
         static final int RUNNING_TASK_Y = 100;
         static final int RUNNING_TASK_WIDTH = 300;
         static final int RUNNING_TASK_HEIGHT = 150;
-        
-        // Free Mission Tolerance
+
+        // Free Mission Position Tolerance
         static final int FREE_MISSION_TOLERANCE = 50;
     }
 
+    // ========================================================================
+    // CONSTANTS - Limits and Retry Counts
+    // ========================================================================
+
+    /**
+     * Maximum retry counts and search limits.
+     */
     private static final class Limits {
         static final int MAX_NAVIGATION_ATTEMPTS = 3;
         static final int NUM_TAB_SWIPES_RIGHT = 3;
         static final int NUM_TAB_SWIPES_LEFT = 2;
-        static final int MAX_TAB_SEARCH_SWIPES = NUM_TAB_SWIPES_RIGHT + NUM_TAB_SWIPES_LEFT;  // 3 right, 2 left
-        static final int MAX_OCR_RETRIES = 3;
+        static final int MAX_TAB_SEARCH_SWIPES = NUM_TAB_SWIPES_RIGHT + NUM_TAB_SWIPES_LEFT;
+        static final int MAX_TEMPLATE_SEARCH_RESULTS_TASK_TYPE = 5;
+        static final int MAX_TEMPLATE_SEARCH_RESULTS_120 = 2;
+        static final int MONUMENT_BACK_CLICKS_COUNT = 2;
     }
 
+    // ========================================================================
+    // CONSTANTS - Timing and Delays
+    // ========================================================================
+
+    /**
+     * Timing constants for rescheduling and delays.
+     */
     private static final class Delays {
-        static final int OCR_RETRY_MS = 200;
-        static final int SWIPE_MS = 500;
         static final int DEFAULT_COOLDOWN_SECONDS = 300; // 5 minutes
         static final int RESCHEDULE_BUFFER_SECONDS = 5;
         static final int RESCHEDULE_WAIT_HOURS = 1;
     }
 
+    // ========================================================================
+    // CONSTANTS - Template Match Thresholds
+    // ========================================================================
+
+    /**
+     * Image matching thresholds (0-100).
+     * Higher values require stricter matches.
+     */
     private static final class Thresholds {
         static final int BONUS = 85;
         static final int TASK_TYPE = 85;
@@ -116,81 +233,295 @@ public class AllianceMobilizationTask extends DelayedTask {
     }
 
     // ========================================================================
-    // CONSTRUCTOR
+    // CONSTANTS - Default Configuration Values
     // ========================================================================
 
+    /**
+     * Default configuration values when user config is not set.
+     */
+    private static final class Defaults {
+        static final boolean AUTO_ACCEPT = false;
+        static final String REWARDS_PERCENTAGE = "Any";
+        static final int MINIMUM_POINTS = 0;
+        static final boolean TASK_TYPE_ENABLED = false;
+    }
+
+    // ========================================================================
+    // Configuration Fields (loaded in loadConfiguration())
+    // ========================================================================
+
+    private boolean autoAcceptEnabled;
+    private String rewardsPercentage;
+    private int minimumPoints200;
+    private int minimumPoints120;
+
+    // Task type enable flags (14 types)
+    private boolean buildSpeedupsEnabled;
+    private boolean buyPackageEnabled;
+    private boolean chiefGearCharmEnabled;
+    private boolean chiefGearScoreEnabled;
+    private boolean defeatBeastsEnabled;
+    private boolean fireCrystalEnabled;
+    private boolean gatherResourcesEnabled;
+    private boolean heroGearStoneEnabled;
+    private boolean mythicShardEnabled;
+    private boolean rallyEnabled;
+    private boolean trainTroopsEnabled;
+    private boolean trainingSpeedupsEnabled;
+    private boolean useGemsEnabled;
+    private boolean useSpeedupsEnabled;
+
+    // ========================================================================
+    // OCR Helpers
+    // ========================================================================
+
+    private TextRecognitionRetrier<Duration> durationHelper;
+
+    /**
+     * Constructs a new AllianceMobilizationTask.
+     *
+     * @param profile the profile this task belongs to
+     * @param tpTask  the task type enum
+     */
     public AllianceMobilizationTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         super(profile, tpTask);
     }
 
+    /**
+     * Initializes OCR helpers after EMULATOR_NUMBER is available.
+     * Called at the start of execute() to ensure proper initialization.
+     */
+    private void initializeOCRHelpers() {
+        BotTextRecognitionProvider provider = new BotTextRecognitionProvider(emuManager, EMULATOR_NUMBER);
+        this.durationHelper = new TextRecognitionRetrier<>(provider);
+    }
+
+    /**
+     * Loads task configuration from the profile.
+     * This must be called from execute() to ensure configuration is current.
+     * 
+     * <p>
+     * Loads:
+     * <ul>
+     * <li>Auto-accept flag (default: false)</li>
+     * <li>Rewards percentage filter (default: "Any")</li>
+     * <li>Minimum points for 200% tasks</li>
+     * <li>Minimum points for 120% tasks</li>
+     * <li>14 task type enable/disable flags (all default: false)</li>
+     * </ul>
+     */
+    private void loadConfiguration() {
+        this.autoAcceptEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_AUTO_ACCEPT_BOOL,
+                Defaults.AUTO_ACCEPT);
+
+        this.rewardsPercentage = getConfigString(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_REWARDS_PERCENTAGE_STRING,
+                Defaults.REWARDS_PERCENTAGE);
+
+        // Load minimum points with legacy migration
+        this.minimumPoints200 = getConfigInt(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_200_INT,
+                Defaults.MINIMUM_POINTS);
+
+        this.minimumPoints120 = getConfigInt(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_120_INT,
+                Defaults.MINIMUM_POINTS);
+
+        // Load all task type flags
+        loadTaskTypeFlags();
+
+        logDebug(String.format(
+                "Configuration loaded - Auto-accept: %s, Filter: %s, Min 200%%: %d, Min 120%%: %d",
+                autoAcceptEnabled, rewardsPercentage, minimumPoints200, minimumPoints120));
+    }
+
+    /**
+     * Loads all 14 task type enable/disable flags from configuration.
+     */
+    private void loadTaskTypeFlags() {
+        this.buildSpeedupsEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_BUILD_SPEEDUPS_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.buyPackageEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_BUY_PACKAGE_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.chiefGearCharmEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_CHIEF_GEAR_CHARM_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.chiefGearScoreEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_CHIEF_GEAR_SCORE_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.defeatBeastsEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_DEFEAT_BEASTS_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.fireCrystalEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_FIRE_CRYSTAL_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.gatherResourcesEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_GATHER_RESOURCES_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.heroGearStoneEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_HERO_GEAR_STONE_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.mythicShardEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_MYTHIC_SHARD_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.rallyEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_RALLY_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.trainTroopsEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_TRAIN_TROOPS_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.trainingSpeedupsEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_TRAINING_SPEEDUPS_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.useGemsEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_USE_GEMS_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+
+        this.useSpeedupsEnabled = getConfigBoolean(
+                EnumConfigurationKey.ALLIANCE_MOBILIZATION_USE_SPEEDUPS_BOOL,
+                Defaults.TASK_TYPE_ENABLED);
+    }
+
+    /**
+     * Helper method to safely retrieve boolean configuration values.
+     * 
+     * @param key          the configuration key to retrieve
+     * @param defaultValue the default value if configuration is not set
+     * @return the configured boolean value or default if not set
+     */
+    private boolean getConfigBoolean(EnumConfigurationKey key, boolean defaultValue) {
+        Boolean value = profile.getConfig(key, Boolean.class);
+        return (value != null) ? value : defaultValue;
+    }
+
+    /**
+     * Helper method to safely retrieve integer configuration values.
+     * 
+     * @param key          the configuration key to retrieve
+     * @param defaultValue the default value if configuration is not set
+     * @return the configured integer value or default if not set
+     */
+    private int getConfigInt(EnumConfigurationKey key, int defaultValue) {
+        Integer value = profile.getConfig(key, Integer.class);
+        return (value != null) ? value : defaultValue;
+    }
+
+    /**
+     * Helper method to safely retrieve string configuration values.
+     * 
+     * @param key          the configuration key to retrieve
+     * @param defaultValue the default value if configuration is not set
+     * @return the configured string value or default if not set
+     */
+    private String getConfigString(EnumConfigurationKey key, String defaultValue) {
+        String value = profile.getConfig(key, String.class);
+        return (value != null && !value.trim().isEmpty()) ? value : defaultValue;
+    }
+
+    /**
+     * Main execution method for Alliance Mobilization task.
+     * 
+     * <p>
+     * <b>Execution Flow:</b>
+     * <ol>
+     * <li>Initialize OCR helpers</li>
+     * <li>Load configuration</li>
+     * <li>Navigate to Alliance Mobilization event (with retry)</li>
+     * <li>Read attempts counter</li>
+     * <li>Validate attempts remaining</li>
+     * <li>Search and process tasks based on filters</li>
+     * <li>Fallback reschedule if no specific reschedule was set</li>
+     * </ol>
+     * 
+     * <p>
+     * <b>Fallback Reschedule Pattern:</b>
+     * If no specific reschedule time was determined during task processing
+     * (e.g., no tasks found, no cooldowns read), the task will automatically
+     * reschedule for 5 minutes as a safety mechanism to keep checking.
+     * This ensures the task always reschedules even if all detection fails.
+     */
     @Override
     protected void execute() {
-        logInfo("Alliance Mobilization - Starting task for profile: " + profile.getName());
+        initializeOCRHelpers();
+        loadConfiguration();
 
-        boolean autoAcceptEnabled = profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_AUTO_ACCEPT_BOOL, Boolean.class);
+        logInfo("Starting Alliance Mobilization task execution");
 
         if (!navigateWithRetry()) {
-            LocalDateTime nextMonday = UtilTime.getNextMondayUtc();
-            logInfo("Failed to navigate after " + Limits.MAX_NAVIGATION_ATTEMPTS + " attempts. Event may not be active. Retrying on next Monday at " + nextMonday + ".");
-            this.reschedule(nextMonday);
+            handleNavigationFailure();
             return;
         }
 
         AttemptStatus attemptStatus = readAttemptsCounter();
-        if (!validateAttempts(attemptStatus)) {
+
+        if (!validateAttemptsRemaining(attemptStatus)) {
             return;
         }
 
-        boolean rescheduleWasSet = analyzeAndPerformTasks(autoAcceptEnabled);
+        boolean rescheduleWasSet = searchAndProcessAllTasks();
 
         if (!rescheduleWasSet) {
-            logInfo("No tasks processed. Checking again in " + (Delays.DEFAULT_COOLDOWN_SECONDS / 60) + " minutes.");
-            this.reschedule(LocalDateTime.now().plusSeconds(Delays.DEFAULT_COOLDOWN_SECONDS));
+            applyFallbackReschedule();
         }
 
         logInfo("Alliance Mobilization - Task completed");
     }
 
-    // ========================================================================
-    // NAVIGATION METHODS
-    // ========================================================================
-
-    private boolean navigateWithRetry() {
-        for (int attempt = 1; attempt <= Limits.MAX_NAVIGATION_ATTEMPTS; attempt++) {
-            logInfo("Navigation attempt " + attempt + "/" + Limits.MAX_NAVIGATION_ATTEMPTS);
-            
-            if (navigateToAllianceMobilization()) {
-                return true;
-            }
-            
-            if (attempt < Limits.MAX_NAVIGATION_ATTEMPTS) {
-                logWarning("Navigation failed. Returning to home screen and retrying...");
-                returnToHomeScreen();
-                sleepTask(2000);
-            }
-        }
-        return false;
+    /**
+     * Handles navigation failure by rescheduling for next Monday.
+     * Event may not be active, so wait for next weekly reset.
+     * 
+     * <p>
+     * Alliance Mobilization is a weekly event that typically starts
+     * on Monday. If navigation fails after all retries, we assume the
+     * event is not currently active.
+     */
+    private void handleNavigationFailure() {
+        LocalDateTime nextMonday = UtilTime.getNextMondayUtc();
+        logInfo("Failed to navigate after " + Limits.MAX_NAVIGATION_ATTEMPTS +
+                " attempts. Event may not be active. Retrying on next Monday at " + nextMonday + ".");
+        reschedule(nextMonday);
     }
 
-    private void returnToHomeScreen() {
-        try {
-            ensureCorrectScreenLocation(EnumStartLocation.HOME);
-        } catch (Exception e) {
-            logWarning("Failed to return to home screen: " + e.getMessage());
-        }
-    }
-
-    private boolean validateAttempts(AttemptStatus attemptStatus) {
+    /**
+     * Validates that attempts remain for task processing.
+     * 
+     * <p>
+     * If no attempts remain, reschedules for daily game reset (00:00 UTC).
+     * If attempts counter couldn't be read, proceeds with default processing
+     * to avoid blocking the task unnecessarily.
+     * 
+     * @param attemptStatus the attempt status read from screen, or null if OCR
+     *                      failed
+     * @return true if attempts remain or status unknown, false if no attempts
+     *         remain
+     */
+    private boolean validateAttemptsRemaining(AttemptStatus attemptStatus) {
         if (attemptStatus != null) {
             String totalDisplay = attemptStatus.total() != null && attemptStatus.total() > 0
                     ? attemptStatus.total().toString()
                     : "?";
             logInfo("Detected attempts counter: " + attemptStatus.remaining() + "/" + totalDisplay);
-            
+
             if (attemptStatus.remaining() <= 0) {
                 LocalDateTime nextReset = UtilTime.getGameReset();
                 logInfo("No attempts remaining. Rescheduling for next UTC reset at " + nextReset + ".");
-                this.reschedule(nextReset);
+                reschedule(nextReset);
                 return false;
             }
         } else {
@@ -199,6 +530,81 @@ public class AllianceMobilizationTask extends DelayedTask {
         return true;
     }
 
+    /**
+     * Applies fallback reschedule when no specific reschedule was determined.
+     * 
+     * <p>
+     * This is the safety mechanism that ensures the task always reschedules
+     * even if no tasks were found, no cooldowns were read, or no specific
+     * timing could be determined. Without this, the task could become "dead"
+     * and never execute again.
+     */
+    private void applyFallbackReschedule() {
+        logInfo("No tasks processed. Checking again in " + (Delays.DEFAULT_COOLDOWN_SECONDS / 60) + " minutes.");
+        reschedule(LocalDateTime.now().plusSeconds(Delays.DEFAULT_COOLDOWN_SECONDS));
+    }
+
+    // ========================================================================
+    // NAVIGATION METHODS
+    // ========================================================================
+
+    /**
+     * Navigates to Alliance Mobilization with retry logic.
+     * 
+     * <p>
+     * Attempts navigation up to MAX_NAVIGATION_ATTEMPTS times.
+     * Returns to home screen between attempts to reset UI state.
+     * 
+     * @return true if navigation successful, false after max retries exhausted
+     */
+    private boolean navigateWithRetry() {
+        for (int attempt = 1; attempt <= Limits.MAX_NAVIGATION_ATTEMPTS; attempt++) {
+            logInfo("Navigation attempt " + attempt + "/" + Limits.MAX_NAVIGATION_ATTEMPTS);
+
+            if (navigateToAllianceMobilization()) {
+                return true;
+            }
+
+            if (attempt < Limits.MAX_NAVIGATION_ATTEMPTS) {
+                logWarning("Navigation failed. Returning to home screen and retrying...");
+                returnToHomeScreen();
+                sleepTask(2000); // Wait for UI to stabilize before retry
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns to home screen for navigation retry.
+     * Uses exception handling as home navigation may fail if already home.
+     * 
+     * <p>
+     * This method is intentionally fault-tolerant. If returning to home
+     * fails (e.g., already on home screen), we log and continue rather than
+     * aborting the entire task.
+     */
+    private void returnToHomeScreen() {
+        try {
+            ensureCorrectScreenLocation(EnumStartLocation.HOME);
+        } catch (Exception e) {
+            logWarning("Failed to return to home screen: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Navigates to the Alliance Mobilization event screen.
+     * 
+     * <p>
+     * <b>Navigation Steps:</b>
+     * <ol>
+     * <li>Click Events button on home screen</li>
+     * <li>Search for Alliance Mobilization tab (selected or unselected)</li>
+     * <li>If not found, swipe through tabs to find it</li>
+     * <li>Click tab if found</li>
+     * </ol>
+     * 
+     * @return true if successfully navigated to event screen, false otherwise
+     */
     private boolean navigateToAllianceMobilization() {
         logInfo("Navigating to Alliance Mobilization...");
 
@@ -209,28 +615,58 @@ public class AllianceMobilizationTask extends DelayedTask {
         return findAndSelectMobilizationTab();
     }
 
+    /**
+     * Clicks the Events button on home screen.
+     * 
+     * <p>
+     * The Events button opens the events carousel where Alliance
+     * Mobilization and other timed events are displayed.
+     * 
+     * @return true if button found and clicked successfully, false otherwise
+     */
     private boolean clickEventsButton() {
         logDebug("Searching for Events button on home screen...");
-        DTOImageSearchResult eventsButton = emuManager.searchTemplate(
-            EMULATOR_NUMBER, 
-            EnumTemplates.HOME_EVENTS_BUTTON, 
-            Thresholds.NAVIGATION
-        );
-        
+
+        DTOImageSearchResult eventsButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.HOME_EVENTS_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(Thresholds.NAVIGATION)
+                        .withMaxAttempts(1)
+                        .build());
+
         if (!eventsButton.isFound()) {
             logWarning("Events button not found on home screen.");
             return false;
         }
-        
+
         logDebug("Events button found at: " + eventsButton.getPoint());
-        emuManager.tapAtPoint(EMULATOR_NUMBER, eventsButton.getPoint());
-        sleepTask(2000);
+        tapPoint(eventsButton.getPoint());
+        sleepTask(2000); // Wait for Events menu animation to complete
+
         return true;
     }
 
+    /**
+     * Finds and selects the Alliance Mobilization tab.
+     * 
+     * <p>
+     * <b>Search Strategy:</b>
+     * <ol>
+     * <li>Check if tab is already selected (green/active state)</li>
+     * <li>Check if tab is visible but unselected (gray/inactive state)</li>
+     * <li>If not visible, swipe through tabs to find it</li>
+     * </ol>
+     * 
+     * <p>
+     * The tab has two visual states: selected (actively displayed event)
+     * and unselected (available but not currently shown). We need to detect
+     * both to determine whether to click or if we're already there.
+     * 
+     * @return true if tab found and selected, false if not found after all searches
+     */
     private boolean findAndSelectMobilizationTab() {
         logDebug("Searching for Alliance Mobilization tabs...");
-        
+
         DTOImageSearchResult selectedTab = searchForMobilizationTab(true);
         DTOImageSearchResult unselectedTab = searchForMobilizationTab(false);
 
@@ -241,152 +677,184 @@ public class AllianceMobilizationTask extends DelayedTask {
             logInfo("Alliance Mobilization tab is already selected at: " + selectedTab.getPoint());
             return true;
         }
-        
+
         if (unselectedTab.isFound()) {
             logInfo("Found unselected Alliance Mobilization tab at: " + unselectedTab.getPoint() + ", clicking it.");
-            emuManager.tapAtPoint(EMULATOR_NUMBER, unselectedTab.getPoint());
-            sleepTask(2000);
+            tapPoint(unselectedTab.getPoint());
+            sleepTask(2000); // Wait for tab to become active and content to load
             return true;
         }
 
         return searchTabsWithSwipe();
     }
 
+    /**
+     * Searches for Alliance Mobilization tab in specific state (selected or
+     * unselected).
+     * 
+     * @param isSelected true to search for selected (active) tab, false for
+     *                   unselected (inactive)
+     * @return search result for the appropriate tab template
+     */
     private DTOImageSearchResult searchForMobilizationTab(boolean isSelected) {
-        EnumTemplates template = isSelected 
-            ? EnumTemplates.ALLIANCE_MOBILIZATION_TAB 
-            : EnumTemplates.ALLIANCE_MOBILIZATION_UNSELECTED_TAB;
-        return emuManager.searchTemplate(
-            EMULATOR_NUMBER, 
-            template, 
-            Thresholds.NAVIGATION
-        );
+        EnumTemplates template = isSelected
+                ? EnumTemplates.ALLIANCE_MOBILIZATION_TAB
+                : EnumTemplates.ALLIANCE_MOBILIZATION_UNSELECTED_TAB;
+
+        return templateSearchHelper.searchTemplate(
+                template,
+                SearchConfig.builder()
+                        .withThreshold(Thresholds.NAVIGATION)
+                        .withMaxAttempts(1)
+                        .build());
     }
 
+    /**
+     * Searches for Alliance Mobilization tab by swiping through event tabs.
+     * 
+     * <p>
+     * <b>Swipe Strategy:</b>
+     * <ul>
+     * <li>3 swipes right (160px steps) - moves through tabs to the right</li>
+     * <li>2 swipes left (160px steps back) - returns partway to cover missed
+     * tabs</li>
+     * <li>Search after each swipe for immediate detection</li>
+     * </ul>
+     * 
+     * <p>
+     * This bi-directional swipe pattern covers most of the tab carousel
+     * without excessive swiping. The 160px step size moves exactly one tab
+     * position per swipe.
+     * 
+     * @return true if tab found during swipe sequence, false after all swipes
+     *         exhausted
+     */
     private boolean searchTabsWithSwipe() {
         logInfo("Alliance Mobilization tabs not found, swiping to search for them...");
 
-        // Swipe strategy: NUM_TAB_SWIPES_RIGHT steps right, then NUM_TAB_SWIPES_LEFT steps back left
         for (int i = 0; i < Limits.MAX_TAB_SEARCH_SWIPES; i++) {
             logDebug("Tab search attempt " + (i + 1) + "/" + Limits.MAX_TAB_SEARCH_SWIPES);
 
-            // First NUM_TAB_SWIPES_RIGHT swipes: small steps to the right
-            // Last NUM_TAB_SWIPES_LEFT swipes: small steps back to the left
-            if (i < Limits.NUM_TAB_SWIPES_RIGHT) {
-                logDebug("Swiping right (step " + (i + 1) + "/" + Limits.NUM_TAB_SWIPES_RIGHT + ")...");
-                emuManager.executeSwipe(EMULATOR_NUMBER, Coords.SWIPE_SMALL_LEFT, Coords.SWIPE_SMALL_RIGHT);
-            } else {
-                logDebug("Swiping left (step " + (i - Limits.NUM_TAB_SWIPES_RIGHT + 1) + "/" + Limits.NUM_TAB_SWIPES_LEFT + ")...");
-                emuManager.executeSwipe(EMULATOR_NUMBER, Coords.SWIPE_SMALL_RIGHT, Coords.SWIPE_SMALL_LEFT);
-            }
-            sleepTask(Delays.SWIPE_MS);
+            performTabSwipe(i);
+            sleepTask(500); // Wait for swipe animation to complete
 
-            // Search for tabs after each swipe
             DTOImageSearchResult selectedTab = searchForMobilizationTab(true);
             DTOImageSearchResult unselectedTab = searchForMobilizationTab(false);
 
             if (selectedTab.isFound()) {
-                logInfo("✅ Found selected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + selectedTab.getPoint());
+                logInfo("Found selected Alliance Mobilization tab after swipe " + (i + 1) + " at: " +
+                        selectedTab.getPoint());
                 return true;
             }
-            
+
             if (unselectedTab.isFound()) {
-                logInfo("✅ Found unselected Alliance Mobilization tab after swipe " + (i + 1) + " at: " + unselectedTab.getPoint());
-                emuManager.tapAtPoint(EMULATOR_NUMBER, unselectedTab.getPoint());
-                sleepTask(2000);
+                logInfo("Found unselected Alliance Mobilization tab after swipe " + (i + 1) + " at: " +
+                        unselectedTab.getPoint());
+                tapPoint(unselectedTab.getPoint());
+                sleepTask(2000); // Wait for tab selection and content load
                 return true;
             }
         }
 
-        logWarning("Alliance Mobilization tabs not found after " + Limits.MAX_TAB_SEARCH_SWIPES + " swipes. Event may not be active.");
+        logWarning("Alliance Mobilization tabs not found after " + Limits.MAX_TAB_SEARCH_SWIPES +
+                " swipes. Event may not be active.");
         return false;
     }
 
-    // ========================================================================
-    // TASK ANALYSIS AND CONFIGURATION
-    // ========================================================================
-
-    private boolean analyzeAndPerformTasks(boolean autoAcceptEnabled) {
-        String rewardsPercentage = profile.getConfig(
-            EnumConfigurationKey.ALLIANCE_MOBILIZATION_REWARDS_PERCENTAGE_STRING, 
-            String.class
-        );
-        int legacyMinimumPoints = profile.getConfig(
-            EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_INT, 
-            Integer.class
-        );
-        int minimumPoints200 = resolveMinimumPointsThreshold(
-            profile, 
-            EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_200_INT, 
-            legacyMinimumPoints
-        );
-        int minimumPoints120 = resolveMinimumPointsThreshold(
-            profile, 
-            EnumConfigurationKey.ALLIANCE_MOBILIZATION_MINIMUM_POINTS_120_INT, 
-            legacyMinimumPoints
-        );
-
-        logInfo("Searching for tasks (Filter: " + rewardsPercentage + 
-                ", Min points 200%: " + minimumPoints200 + 
-                ", Min points 120%: " + minimumPoints120 + 
-                ", Auto-accept: " + autoAcceptEnabled + ")");
-
-        return searchAndProcessTasksByBonus(
-            rewardsPercentage, 
-            minimumPoints200, 
-            minimumPoints120, 
-            autoAcceptEnabled
-        );
+    /**
+     * Performs a single tab swipe based on swipe index.
+     * 
+     * <p>
+     * First 3 swipes go right, next 2 go left.
+     * This creates a search pattern that covers the carousel efficiently.
+     * 
+     * @param swipeIndex the current swipe index (0-based)
+     */
+    private void performTabSwipe(int swipeIndex) {
+        if (swipeIndex < Limits.NUM_TAB_SWIPES_RIGHT) {
+            logDebug("Swiping right (step " + (swipeIndex + 1) + "/" + Limits.NUM_TAB_SWIPES_RIGHT + ")...");
+            swipe(Coords.SWIPE_SMALL_LEFT, Coords.SWIPE_SMALL_RIGHT);
+        } else {
+            int leftStep = swipeIndex - Limits.NUM_TAB_SWIPES_RIGHT + 1;
+            logDebug("Swiping left (step " + leftStep + "/" + Limits.NUM_TAB_SWIPES_LEFT + ")...");
+            swipe(Coords.SWIPE_SMALL_RIGHT, Coords.SWIPE_SMALL_LEFT);
+        }
     }
 
     // ========================================================================
     // ATTEMPTS COUNTER METHODS
     // ========================================================================
 
+    /**
+     * Reads the attempts counter from the screen using OCR.
+     * 
+     * <p>
+     * The counter shows remaining attempts in format "X / Y" or "X/Y".
+     * For example: "5 / 10" means 5 remaining out of 10 total.
+     * 
+     * <p>
+     * <b>OCR Corrections Applied:</b>
+     * <ul>
+     * <li>O/o → 0 (common OCR misread)</li>
+     * <li>I/l/| → 1 (common OCR misread)</li>
+     * <li>Removes non-numeric characters except /</li>
+     * <li>Handles spacing variations</li>
+     * </ul>
+     * 
+     * @return AttemptStatus with remaining and total attempts, or null if OCR fails
+     */
     private AttemptStatus readAttemptsCounter() {
-        for (int attempt = 1; attempt <= Limits.MAX_OCR_RETRIES; attempt++) {
-            try {
-                String ocrResult = emuManager.ocrRegionText(
-                    EMULATOR_NUMBER, 
-                    Coords.ATTEMPTS_COUNTER_TOP_LEFT, 
-                    Coords.ATTEMPTS_COUNTER_BOTTOM_RIGHT
-                );
-                debugOCRArea(
-                    "Attempts counter (attempt " + attempt + ")", 
-                    Coords.ATTEMPTS_COUNTER_TOP_LEFT, 
-                    Coords.ATTEMPTS_COUNTER_BOTTOM_RIGHT, 
-                    ocrResult
-                );
+        String ocrResult = stringHelper.execute(
+                Coords.ATTEMPTS_COUNTER_TOP_LEFT,
+                Coords.ATTEMPTS_COUNTER_BOTTOM_RIGHT,
+                1,
+                300L,
+                null,
+                s -> !s.isEmpty(),
+                s -> s);
 
-                AttemptStatus status = parseAttemptsFromOCR(ocrResult);
-                if (status != null) {
-                    return status;
-                }
-            } catch (Exception e) {
-                logDebug("Failed to read attempts counter via OCR (attempt " + attempt + "): " + e.getMessage());
-            }
+        logDebug("Attempts counter OCR result: '" + ocrResult + "'");
 
-            sleepTask(Delays.OCR_RETRY_MS);
-        }
-
-        logWarning("Unable to capture attempts counter after multiple tries.");
-        return null;
+        return parseAttemptsFromOCR(ocrResult);
     }
 
+    /**
+     * Parses attempts counter from OCR text.
+     * 
+     * <p>
+     * <b>Handles formats:</b>
+     * <ul>
+     * <li>"5 / 10" or "5/10" → remaining=5, total=10</li>
+     * <li>"0 / 10" or "0/10" → remaining=0, total=10</li>
+     * <li>"5 /" or "5/" → remaining=5, total=null (unknown total)</li>
+     * </ul>
+     * 
+     * <p>
+     * <b>Validation:</b>
+     * <ul>
+     * <li>Returns null if OCR result is empty or invalid</li>
+     * <li>Returns null if total=0 (clearly wrong, retry)</li>
+     * <li>Allows null total (meaning unknown but remaining is valid)</li>
+     * </ul>
+     * 
+     * @param ocrResult the raw OCR text from screen
+     * @return AttemptStatus or null if parsing fails
+     */
     private AttemptStatus parseAttemptsFromOCR(String ocrResult) {
         if (ocrResult == null || ocrResult.trim().isEmpty()) {
             return null;
         }
 
         String normalized = normalizeOCRText(ocrResult);
-        
+
         Matcher matcher = OCR.ATTEMPTS_PATTERN.matcher(normalized);
         if (matcher.find()) {
             int remaining = Integer.parseInt(matcher.group(1));
             Integer total = parseTotalAttempts(matcher.group(2));
-            
+
+            // Reject clearly wrong totals (0 is impossible)
             if (total != null && total == 0) {
-                logDebug("OCR attempts counter returned total=0, retrying...");
+                logDebug("OCR attempts counter returned total=0, treating as invalid");
                 return null;
             }
             return new AttemptStatus(remaining, total);
@@ -395,17 +863,37 @@ public class AllianceMobilizationTask extends DelayedTask {
         return parseZeroAttemptsFormat(normalized);
     }
 
+    /**
+     * Normalizes OCR text by fixing common OCR errors.
+     * 
+     * <p>
+     * Common OCR errors with numbers:
+     * <ul>
+     * <li>Letter O confused with zero</li>
+     * <li>Letter I, l, or pipe confused with one</li>
+     * <li>Extra spacing or punctuation</li>
+     * </ul>
+     * 
+     * @param text the raw OCR text
+     * @return normalized text with common corrections applied
+     */
     private String normalizeOCRText(String text) {
         return text
-            .replace('O', '0')
-            .replace('o', '0')
-            .replace('I', '1')
-            .replace('l', '1')
-            .replace('|', '1')
-            .replaceAll("[^0-9/]+", " ")
-            .trim();
+                .replace('O', '0')
+                .replace('o', '0')
+                .replace('I', '1')
+                .replace('l', '1')
+                .replace('|', '1')
+                .replaceAll("[^0-9/]+", " ")
+                .trim();
     }
 
+    /**
+     * Parses total attempts from the matched regex group.
+     * 
+     * @param totalGroup the regex group containing total attempts (may be empty)
+     * @return total attempts as Integer, or null if empty
+     */
     private Integer parseTotalAttempts(String totalGroup) {
         if (totalGroup != null && !totalGroup.isEmpty()) {
             return Integer.parseInt(totalGroup);
@@ -413,6 +901,16 @@ public class AllianceMobilizationTask extends DelayedTask {
         return null;
     }
 
+    /**
+     * Attempts to parse zero attempts format ("0/X").
+     * 
+     * <p>
+     * This handles the special case where remaining is zero,
+     * which is important for determining when to reschedule.
+     * 
+     * @param normalized the normalized OCR text
+     * @return AttemptStatus with 0 remaining, or null if format doesn't match
+     */
     private AttemptStatus parseZeroAttemptsFormat(String normalized) {
         String condensed = normalized.replaceAll("\\s+", "");
         if (condensed.startsWith("0/")) {
@@ -427,255 +925,722 @@ public class AllianceMobilizationTask extends DelayedTask {
     }
 
     // ========================================================================
-    // TASK ANALYSIS AND CONFIGURATION
+    // TASK SEARCH AND PROCESSING - MAIN ORCHESTRATOR
     // ========================================================================
 
-    private int resolveMinimumPointsThreshold(DTOProfiles profile, EnumConfigurationKey key, int fallbackValue) {
-        boolean hasExplicitConfig = profile.getConfigs().stream()
-            .anyMatch(cfg -> cfg.getConfigurationName().equalsIgnoreCase(key.name()));
+    /**
+     * Searches for and processes all available tasks based on configuration.
+     * 
+     * <p>
+     * This is the main orchestrator that coordinates the entire task
+     * selection and processing workflow.
+     * 
+     * <p>
+     * <b>Orchestration Flow:</b>
+     * <ol>
+     * <li>Check and collect completed tasks (rewards)</li>
+     * <li>Check and use free mission bonus (+1 attempt)</li>
+     * <li>Determine which bonus levels to search based on filter</li>
+     * <li>Check if any task is already running (only 1 allowed)</li>
+     * <li>Process 200% tasks if applicable</li>
+     * <li>Process 120% tasks if applicable</li>
+     * <li>Check task availability timers if no tasks found</li>
+     * <li>Check and use Alliance Monuments (bonus rewards)</li>
+     * </ol>
+     * 
+     * <p>
+     * <b>Important Constraint:</b> Only ONE task can run at a time.
+     * If a task is running, other tasks will be refreshed but not accepted,
+     * and this method will reschedule to check again later.
+     * 
+     * @return true if a specific reschedule time was set, false for fallback
+     *         reschedule
+     */
+    private boolean searchAndProcessAllTasks() {
+        logInfo("Searching for tasks (Filter: " + rewardsPercentage +
+                ", Min points 200%: " + minimumPoints200 +
+                ", Min points 120%: " + minimumPoints120 +
+                ", Auto-accept: " + autoAcceptEnabled + ")");
 
-        if (hasExplicitConfig) {
-            return profile.getConfig(key, Integer.class);
-        }
-
-        profile.setConfig(key, fallbackValue);
-        setShouldUpdateConfig(true);
-        return fallbackValue;
-    }
-
-    private boolean searchAndProcessTasksByBonus(String rewardsPercentage, int minimumPoints200, int minimumPoints120, boolean autoAcceptEnabled) {
-        // First, check for completed tasks to collect rewards
         checkAndCollectCompletedTasks();
-
-        // Check for free mission button
         checkAndUseFreeMission();
 
-        // Track the shortest cooldown time from all refreshed tasks
-        int shortestCooldownSeconds = Integer.MAX_VALUE;
-        boolean rescheduleWasSet = false;
-
-    // Determine which templates to search for based on user selection
-    boolean accept200 = rewardsPercentage.equals("200%") || rewardsPercentage.equals("Both") || rewardsPercentage.equals("Any");
-    boolean accept120 = rewardsPercentage.equals("120%") || rewardsPercentage.equals("Both") || rewardsPercentage.equals("Any");
-
-    // Always inspect both bonus levels so non-selected ones can be refreshed
-    boolean search200 = accept200 || rewardsPercentage.equals("120%");
-    boolean search120 = accept120 || rewardsPercentage.equals("200%");
-
-        // First check if ANY task is already running - only one task can run at a time
-        // If a task is running, we can still refresh other tasks but cannot accept them
-        boolean anyTaskRunning = false;
-
-        // Check 200% task
-        if (search200) {
-            DTOImageSearchResult result200 = emuManager.searchTemplate(
-                EMULATOR_NUMBER, 
-                EnumTemplates.AM_200_PERCENT, 
-                Thresholds.BONUS
-            );
-            if (result200.isFound() && isTaskAlreadyRunning(result200.getPoint())) {
-                logInfo("Task at 200% is already running");
-                anyTaskRunning = true;
-            }
-        }
-
-        // Check 120% tasks
-        if (!anyTaskRunning && search120) {
-            List<DTOImageSearchResult> results120 = emuManager.searchTemplates(
-                EMULATOR_NUMBER, 
-                EnumTemplates.AM_120_PERCENT, 
-                Thresholds.BONUS, 
-                2
-            );
-            if (results120 != null && !results120.isEmpty()) {
-                for (DTOImageSearchResult result120 : results120) {
-                    if (isTaskAlreadyRunning(result120.getPoint())) {
-                        logInfo("Task at 120% (" + result120.getPoint() + ") is already running");
-                        anyTaskRunning = true;
-                        break;
-                    }
-                }
-            }
-        }
+        TaskSearchFilters filters = determineTaskSearchFilters();
+        boolean anyTaskRunning = checkForRunningTasks(filters);
 
         if (anyTaskRunning) {
             logInfo("A task is already running - only one task can run at a time");
             logInfo("Other tasks will be refreshed to get better options");
         }
 
-        // Search for available tasks to accept or refresh (if another task is running, treat all as disabled)
-        // Search for 200% bonus (only 1 can exist)
-        if (search200) {
-            logDebug("Searching for 200% bonus task...");
-            DTOImageSearchResult result200 = emuManager.searchTemplate(
-                EMULATOR_NUMBER, 
-                EnumTemplates.AM_200_PERCENT, 
-                Thresholds.BONUS
-            );
-            debugTemplateSearch("AM_200_PERCENT", result200, Thresholds.BONUS);
+        int shortestCooldownSeconds = Integer.MAX_VALUE;
+        boolean rescheduleWasSet = false;
 
-            if (result200.isFound()) {
+        if (filters.search200) {
+            TaskProcessingResult result = process200PercentTask(
+                    filters.accept200,
+                    anyTaskRunning,
+                    shortestCooldownSeconds);
 
-                // Skip this task if it's already running (has timer bar)
-                if (isTaskAlreadyRunning(result200.getPoint())) {
-                    logInfo("Task at 200% is already running - skipping this one");
-                    // Don't return yet, check if there are 120% tasks available
-                } else {
-                    // Read points from overview screen BEFORE clicking
-                    int detectedPoints = readPointsNearBonus(result200.getPoint());
-                    if (detectedPoints < 0) {
-                        logWarning("Could not read points for 200% task - skipping");
-                        // Continue to check 120% tasks
-                    } else {
-                        // Check task type near the bonus indicator
-                        EnumTemplates taskType = detectTaskTypeNearBonus(result200.getPoint());
-                        if (taskType != null) {
-                            logInfo("Task type detected: " + taskType.name());
-                            boolean isEnabled = isTaskTypeEnabled(taskType);
-
-                            // Decide what to do based on task criteria
-                            TaskProcessResult result = processTaskWithPoints(result200.getPoint(), taskType, isEnabled, detectedPoints, minimumPoints200, anyTaskRunning, autoAcceptEnabled, "200%", rewardsPercentage);
-                            if (result.cooldownSeconds > 0 && result.cooldownSeconds < shortestCooldownSeconds) {
-                                shortestCooldownSeconds = result.cooldownSeconds;
-                            }
-                            if (result.shouldStop) {
-                                return true; // Stop checking if we're waiting, reschedule was set
-                            }
-                            // Otherwise continue to check 120% tasks
-                        } else {
-                            logInfo("Task type not detected");
-                        }
-                    }
-                }
+            shortestCooldownSeconds = result.shortestCooldown;
+            if (result.shouldStopProcessing) {
+                return true; // Specific reschedule already set (e.g., waiting for running task)
             }
         }
 
-        // Search for 120% bonus tasks (up to 2 can exist)
-        if (search120) {
-            logDebug("Searching for 120% bonus tasks (max 2 positions)...");
-            List<DTOImageSearchResult> results120 = emuManager.searchTemplates(
-                EMULATOR_NUMBER, 
-                EnumTemplates.AM_120_PERCENT, 
-                Thresholds.BONUS, 
-                2
-            );
+        if (filters.search120) {
+            TaskProcessingResult result = process120PercentTasks(
+                    filters.accept120,
+                    anyTaskRunning,
+                    shortestCooldownSeconds);
 
-            if (results120 != null && !results120.isEmpty()) {
-                logInfo("Found " + results120.size() + " x 120% bonus task(s)");
-
-                for (DTOImageSearchResult result120 : results120) {
-                    debugTemplateSearch("AM_120_PERCENT", result120, Thresholds.BONUS);
-
-                    // Skip this task if it's already running (has timer bar)
-                    if (isTaskAlreadyRunning(result120.getPoint())) {
-                        logInfo("Task at 120% (" + result120.getPoint() + ") is already running - skipping this one");
-                        continue; // Skip to next 120% task
-                    }
-
-                    // Read points from overview screen BEFORE clicking
-                    int detectedPoints = readPointsNearBonus(result120.getPoint());
-                    if (detectedPoints < 0) {
-                        logWarning("Could not read points for 120% task - skipping");
-                        continue; // Try next 120% task
-                    }
-
-                    // Check task type near the bonus indicator
-                    EnumTemplates taskType = detectTaskTypeNearBonus(result120.getPoint());
-                    if (taskType != null) {
-                        logInfo("Task type detected: " + taskType.name());
-                        boolean isEnabled = isTaskTypeEnabled(taskType);
-
-                        // Decide what to do based on task criteria
-                        TaskProcessResult result = processTaskWithPoints(result120.getPoint(), taskType, isEnabled, detectedPoints, minimumPoints120, anyTaskRunning, autoAcceptEnabled, "120%", rewardsPercentage);
-                        if (result.cooldownSeconds > 0 && result.cooldownSeconds < shortestCooldownSeconds) {
-                            shortestCooldownSeconds = result.cooldownSeconds;
-                        }
-                        if (result.shouldStop) {
-                            return true; // Stop checking if we're waiting, reschedule was set
-                        }
-                        // Otherwise continue to check next 120% task
-                    } else {
-                        logInfo("Task type not detected at " + result120.getPoint());
-                    }
-                }
-            } else {
-                logDebug("No 120% bonus tasks found");
+            shortestCooldownSeconds = result.shortestCooldown;
+            if (result.shouldStopProcessing) {
+                return true; // Specific reschedule already set
             }
         }
 
-        // After processing all tasks, reschedule based on shortest cooldown
         if (shortestCooldownSeconds < Integer.MAX_VALUE) {
-            LocalDateTime nextRun = LocalDateTime.now().plusSeconds(shortestCooldownSeconds + Delays.RESCHEDULE_BUFFER_SECONDS);
-            this.reschedule(nextRun);
-            logInfo("Rescheduling based on shortest cooldown: " + shortestCooldownSeconds + " seconds -> " + nextRun);
+            rescheduleForShortestCooldown(shortestCooldownSeconds);
             rescheduleWasSet = true;
         }
 
-        // If no tasks were found/processed, check for task availability timers
         if (!rescheduleWasSet) {
-            int timerSeconds = readTaskAvailabilityTimers();
-            if (timerSeconds > 0) {
-                LocalDateTime nextRun = LocalDateTime.now().plusSeconds(timerSeconds + 10);
-                this.reschedule(nextRun);
-                logInfo("Next check in " + (timerSeconds / 60) + "min (task availability timer)");
-                rescheduleWasSet = true;
-            }
+            rescheduleWasSet = checkTaskAvailabilityTimersAndReschedule();
         }
 
-        // Check for Alliance Monuments button as last step
         checkAndUseAllianceMonuments();
 
         return rescheduleWasSet;
     }
 
+    /**
+     * Determines which tasks to search and accept based on rewards percentage
+     * filter.
+     * 
+     * <p>
+     * <b>Filter Logic:</b>
+     * <ul>
+     * <li>"200%" → Accept 200%, search and refresh 120%</li>
+     * <li>"120%" → Accept 120%, search and refresh 200%</li>
+     * <li>"Both" → Accept both 200% and 120%</li>
+     * <li>"Any" → Accept whichever is found first</li>
+     * </ul>
+     * 
+     * <p>
+     * <b>Why search non-accepted types?</b>
+     * Even if we won't accept a certain bonus level, we still search for it
+     * so we can refresh those tasks to cycle toward better options.
+     * 
+     * @return TaskSearchFilters indicating which tasks to search and which to
+     *         accept
+     */
+    private TaskSearchFilters determineTaskSearchFilters() {
+        boolean accept200 = rewardsPercentage.equals("200%") ||
+                rewardsPercentage.equals("Both") ||
+                rewardsPercentage.equals("Any");
+
+        boolean accept120 = rewardsPercentage.equals("120%") ||
+                rewardsPercentage.equals("Both") ||
+                rewardsPercentage.equals("Any");
+
+        // Always search both levels to enable refreshing
+        boolean search200 = accept200 || rewardsPercentage.equals("120%");
+        boolean search120 = accept120 || rewardsPercentage.equals("200%");
+
+        return new TaskSearchFilters(search200, search120, accept200, accept120);
+    }
+
+    /**
+     * Checks if any task is currently running.
+     * 
+     * <p>
+     * Searches for timer bars below bonus indicators to detect running tasks.
+     * The game only allows one mobilization task to run at a time.
+     * 
+     * <p>
+     * This check is performed early to avoid unnecessary processing
+     * if we already know we can't accept any tasks.
+     * 
+     * @param filters which tasks to check
+     * @return true if any task is running, false if all slots are available
+     */
+    private boolean checkForRunningTasks(TaskSearchFilters filters) {
+        if (filters.search200) {
+            DTOImageSearchResult result200 = templateSearchHelper.searchTemplate(
+                    EnumTemplates.AM_200_PERCENT,
+                    SearchConfig.builder()
+                            .withThreshold(Thresholds.BONUS)
+                            .withMaxAttempts(1)
+                            .build());
+
+            if (result200.isFound() && isTaskAlreadyRunning(result200.getPoint())) {
+                logInfo("Task at 200% is already running");
+                return true;
+            }
+        }
+
+        if (filters.search120) {
+            List<DTOImageSearchResult> results120 = templateSearchHelper.searchTemplates(
+                    EnumTemplates.AM_120_PERCENT,
+                    SearchConfig.builder()
+                            .withThreshold(Thresholds.BONUS)
+                            .withMaxAttempts(3)
+                            .withMaxResults(Limits.MAX_TEMPLATE_SEARCH_RESULTS_120)
+                            .build());
+
+            if (results120 != null && !results120.isEmpty()) {
+                for (DTOImageSearchResult result120 : results120) {
+                    if (isTaskAlreadyRunning(result120.getPoint())) {
+                        logInfo("Task at 120% (" + result120.getPoint() + ") is already running");
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Reschedules based on the shortest cooldown found from refreshed tasks.
+     * 
+     * <p>
+     * When tasks are refreshed, the game shows a cooldown timer indicating
+     * when they can be refreshed again. We reschedule for the shortest cooldown
+     * plus a small buffer to ensure the cooldown has expired.
+     * 
+     * @param shortestCooldownSeconds the shortest cooldown in seconds from all
+     *                                refreshed tasks
+     */
+    private void rescheduleForShortestCooldown(int shortestCooldownSeconds) {
+        LocalDateTime nextRun = LocalDateTime.now()
+                .plusSeconds(shortestCooldownSeconds + Delays.RESCHEDULE_BUFFER_SECONDS);
+
+        reschedule(nextRun);
+        logInfo("Rescheduling based on shortest cooldown: " + shortestCooldownSeconds + " seconds -> " + nextRun);
+    }
+
+    /**
+     * Checks task availability timers and reschedules if found.
+     * 
+     * <p>
+     * When no tasks are available, the game shows timers indicating
+     * when new tasks will appear. This allows us to reschedule precisely
+     * instead of using the default 5-minute fallback.
+     * 
+     * @return true if timer found and rescheduled, false if no timers detected
+     */
+    private boolean checkTaskAvailabilityTimersAndReschedule() {
+        int timerSeconds = readTaskAvailabilityTimers();
+
+        if (timerSeconds > 0) {
+            LocalDateTime nextRun = LocalDateTime.now().plusSeconds(timerSeconds + 10); // +10s buffer
+            reschedule(nextRun);
+            logInfo("Next check in " + (timerSeconds / 60) + "min (task availability timer)");
+            return true;
+        }
+
+        return false;
+    }
+
+    // ========================================================================
+    // TASK PROCESSING - 200% TASKS
+    // ========================================================================
+
+    /**
+     * Processes 200% bonus task if found.
+     * 
+     * <p>
+     * Only one 200% task can exist at a time. This is the highest
+     * bonus tier and is generally preferred if points meet minimum.
+     * 
+     * @param shouldAccept            whether to accept this task type based on
+     *                                filter
+     * @param anyTaskRunning          whether another task is already running
+     * @param currentShortestCooldown current shortest cooldown tracker
+     * @return TaskProcessingResult with updated cooldown and stop flag
+     */
+    private TaskProcessingResult process200PercentTask(
+            boolean shouldAccept,
+            boolean anyTaskRunning,
+            int currentShortestCooldown) {
+
+        logDebug("Searching for 200% bonus task...");
+
+        DTOImageSearchResult result200 = templateSearchHelper.searchTemplate(
+                EnumTemplates.AM_200_PERCENT,
+                SearchConfig.builder()
+                        .withThreshold(Thresholds.BONUS)
+                        .withMaxAttempts(1)
+                        .build());
+
+        if (!result200.isFound()) {
+            logDebug("No 200% bonus task found");
+            return new TaskProcessingResult(false, currentShortestCooldown);
+        }
+
+        if (isTaskAlreadyRunning(result200.getPoint())) {
+            logInfo("Task at 200% is already running - skipping this one");
+            return new TaskProcessingResult(false, currentShortestCooldown);
+        }
+
+        return processIndividualTask(
+                result200.getPoint(),
+                shouldAccept,
+                anyTaskRunning,
+                minimumPoints200,
+                currentShortestCooldown,
+                "200%");
+    }
+
+    // ========================================================================
+    // TASK PROCESSING - 120% TASKS
+    // ========================================================================
+
+    /**
+     * Processes up to 2 available 120% bonus tasks.
+     * 
+     * <p>
+     * The game can show up to 2 tasks with 120% bonus simultaneously.
+     * We process each one independently based on points and task type.
+     * 
+     * @param shouldAccept            whether to accept this task type based on
+     *                                filter
+     * @param anyTaskRunning          whether another task is already running
+     * @param currentShortestCooldown current shortest cooldown tracker
+     * @return TaskProcessingResult with updated cooldown and stop flag
+     */
+    private TaskProcessingResult process120PercentTasks(
+            boolean shouldAccept,
+            boolean anyTaskRunning,
+            int currentShortestCooldown) {
+
+        logDebug("Searching for 120% bonus tasks (max 2 positions)...");
+
+        List<DTOImageSearchResult> results120 = templateSearchHelper.searchTemplates(
+                EnumTemplates.AM_120_PERCENT,
+                SearchConfig.builder()
+                        .withThreshold(Thresholds.BONUS)
+                        .withMaxAttempts(3)
+                        .withMaxResults(Limits.MAX_TEMPLATE_SEARCH_RESULTS_120)
+                        .build());
+
+        if (results120 == null || results120.isEmpty()) {
+            logDebug("No 120% bonus tasks found");
+            return new TaskProcessingResult(false, currentShortestCooldown);
+        }
+
+        logInfo("Found " + results120.size() + " x 120% bonus task(s)");
+
+        int shortestCooldown = currentShortestCooldown;
+
+        for (DTOImageSearchResult result120 : results120) {
+            if (isTaskAlreadyRunning(result120.getPoint())) {
+                logInfo("Task at 120% (" + result120.getPoint() + ") is already running - skipping this one");
+                continue; // Check next 120% task
+            }
+
+            TaskProcessingResult result = processIndividualTask(
+                    result120.getPoint(),
+                    shouldAccept,
+                    anyTaskRunning,
+                    minimumPoints120,
+                    shortestCooldown,
+                    "120%");
+
+            shortestCooldown = result.shortestCooldown;
+
+            if (result.shouldStopProcessing) {
+                return result; // Stop processing remaining tasks
+            }
+        }
+
+        return new TaskProcessingResult(false, shortestCooldown);
+    }
+
+    // ========================================================================
+    // TASK PROCESSING - INDIVIDUAL TASK
+    // ========================================================================
+
+    /**
+     * Processes a single task: reads points, detects type, makes decision.
+     * 
+     * <p>
+     * <b>Processing Flow:</b>
+     * <ol>
+     * <li>Read points via OCR from overview screen</li>
+     * <li>Skip if OCR fails (continue to next task)</li>
+     * <li>Detect task type via image recognition</li>
+     * <li>Skip if detection fails</li>
+     * <li>Check if task type is enabled in config</li>
+     * <li>Make decision: Accept, Refresh, or Wait</li>
+     * </ol>
+     * 
+     * @param bonusLocation           location of the bonus indicator on screen
+     * @param shouldAcceptBonusLevel  whether this bonus level should be accepted
+     *                                (from filter)
+     * @param anyTaskRunning          whether another task is running
+     * @param minimumPoints           minimum points threshold for this bonus level
+     * @param currentShortestCooldown current shortest cooldown tracker
+     * @param bonusPercentage         bonus percentage string for logging (e.g.,
+     *                                "200%")
+     * @return TaskProcessingResult with updated cooldown and stop flag
+     */
+    private TaskProcessingResult processIndividualTask(
+            DTOPoint bonusLocation,
+            boolean shouldAcceptBonusLevel,
+            boolean anyTaskRunning,
+            int minimumPoints,
+            int currentShortestCooldown,
+            String bonusPercentage) {
+
+        int detectedPoints = readPointsNearBonus(bonusLocation);
+
+        if (detectedPoints < 0) {
+            logWarning("Could not read points for " + bonusPercentage + " task - skipping");
+            return new TaskProcessingResult(false, currentShortestCooldown);
+        }
+
+        EnumTemplates taskType = detectTaskTypeNearBonus(bonusLocation);
+
+        if (taskType == null) {
+            logInfo("Task type not detected at " + bonusLocation);
+            return new TaskProcessingResult(false, currentShortestCooldown);
+        }
+
+        logInfo("Task type detected: " + taskType.name());
+        boolean isEnabled = isTaskTypeEnabled(taskType);
+
+        return makeTaskDecision(
+                bonusLocation,
+                taskType,
+                isEnabled,
+                detectedPoints,
+                minimumPoints,
+                shouldAcceptBonusLevel,
+                anyTaskRunning,
+                currentShortestCooldown,
+                bonusPercentage);
+    }
+
+    // ========================================================================
+    // TASK DECISION LOGIC
+    // ========================================================================
+
+    /**
+     * Makes the final decision on what to do with a task based on all criteria.
+     * 
+     * <p>
+     * <b>Decision Matrix:</b>
+     * <table border="1">
+     * <tr>
+     * <th>Condition</th>
+     * <th>Action</th>
+     * <th>Reason</th>
+     * </tr>
+     * <tr>
+     * <td>Wrong bonus level</td>
+     * <td>Refresh</td>
+     * <td>Filter mismatch (e.g., want 200% but got 120%)</td>
+     * </tr>
+     * <tr>
+     * <td>Task type disabled</td>
+     * <td>Refresh</td>
+     * <td>User doesn't want this task type</td>
+     * </tr>
+     * <tr>
+     * <td>Points below minimum</td>
+     * <td>Refresh</td>
+     * <td>Rewards too low</td>
+     * </tr>
+     * <tr>
+     * <td>Good task + another running</td>
+     * <td>Wait 1 hour</td>
+     * <td>Can't accept (only 1 task at a time)</td>
+     * </tr>
+     * <tr>
+     * <td>Good task + auto-accept on</td>
+     * <td>Accept</td>
+     * <td>All criteria met, auto-accept enabled</td>
+     * </tr>
+     * <tr>
+     * <td>Good task + auto-accept off</td>
+     * <td>Skip</td>
+     * <td>Wait for manual acceptance</td>
+     * </tr>
+     * </table>
+     * 
+     * <p>
+     * <b>Important:</b> When auto-accept is disabled and a good task is found,
+     * the task does NOT reschedule specifically for this. It falls through to
+     * normal rescheduling logic (availability timers or 5-minute fallback).
+     * This allows the user time to manually accept the task.
+     * 
+     * @return TaskProcessingResult indicating whether to stop processing and any
+     *         cooldown
+     */
+    private TaskProcessingResult makeTaskDecision(
+            DTOPoint bonusLocation,
+            EnumTemplates taskType,
+            boolean isTaskTypeEnabled,
+            int detectedPoints,
+            int minimumPoints,
+            boolean shouldAcceptBonusLevel,
+            boolean anyTaskRunning,
+            int currentShortestCooldown,
+            String bonusPercentage) {
+
+        logInfo("Found: " + taskType.name() + " (" + detectedPoints + "pts, " + bonusPercentage +
+                ", enabled: " + isTaskTypeEnabled + ")");
+
+        // Decision 1: Wrong bonus level (filter mismatch)
+        if (!shouldAcceptBonusLevel) {
+            logInfo("Refreshing (bonus level " + bonusPercentage + " not selected in filter)");
+            int cooldown = clickAndRefreshTask(bonusLocation);
+            int newShortest = Math.min(cooldown, currentShortestCooldown);
+            return new TaskProcessingResult(false, newShortest);
+        }
+
+        // Decision 2: Task type disabled
+        if (!isTaskTypeEnabled) {
+            logInfo("Refreshing (mission disabled)");
+            int cooldown = clickAndRefreshTask(bonusLocation);
+            int newShortest = Math.min(cooldown, currentShortestCooldown);
+            return new TaskProcessingResult(false, newShortest);
+        }
+
+        // Decision 3: Points below minimum
+        if (detectedPoints < minimumPoints) {
+            logInfo("Refreshing (low points: " + detectedPoints + " < " + minimumPoints + ")");
+            int cooldown = clickAndRefreshTask(bonusLocation);
+            int newShortest = Math.min(cooldown, currentShortestCooldown);
+            return new TaskProcessingResult(false, newShortest);
+        }
+
+        // Decision 4: Good task but another task is running
+        if (anyTaskRunning) {
+            logInfo("Waiting 1h (task good but another task running)");
+            LocalDateTime nextRun = LocalDateTime.now().plusHours(Delays.RESCHEDULE_WAIT_HOURS);
+            reschedule(nextRun);
+            return new TaskProcessingResult(true, 0); // Stop processing, reschedule already set
+        }
+
+        // Decision 5: Good task and auto-accept enabled
+        if (autoAcceptEnabled) {
+            logInfo("Accepting task");
+            clickAndAcceptTask(bonusLocation);
+            return new TaskProcessingResult(false, currentShortestCooldown);
+        }
+
+        // Decision 6: Good task but auto-accept disabled (user will accept manually)
+        logInfo("Skipping (auto-accept disabled - user will accept manually)");
+        return new TaskProcessingResult(false, currentShortestCooldown);
+    }
+
+    // ========================================================================
+    // TASK ACTIONS - ACCEPT AND REFRESH
+    // ========================================================================
+
+    /**
+     * Clicks a task and refreshes it to get a new random task.
+     * 
+     * <p>
+     * <b>Refresh Flow:</b>
+     * <ol>
+     * <li>Click task to open details screen</li>
+     * <li>Click refresh button</li>
+     * <li>Confirm refresh in popup</li>
+     * <li>Read cooldown from the mission area after popup closes</li>
+     * <li>Return cooldown for rescheduling</li>
+     * </ol>
+     * 
+     * <p>
+     * The cooldown is read from the appropriate mission area (left or right)
+     * based on the bonus location x-coordinate. The left mission uses coordinates
+     * (75, 712) to (299, 798), and the right mission uses (410, 712) to (627, 798).
+     * 
+     * @param bonusLocation location of the task's bonus indicator
+     * @return cooldown in seconds until task can be refreshed again
+     */
+    private int clickAndRefreshTask(DTOPoint bonusLocation) {
+        tapPoint(bonusLocation);
+        sleepTask(2000); // Wait for task details screen to load
+
+        tapPoint(Coords.REFRESH_BUTTON);
+        sleepTask(1500); // Wait for cooldown confirmation popup
+
+        tapPoint(Coords.REFRESH_CONFIRM_BUTTON);
+        sleepTask(1500); // Wait for refresh to complete and return to overview
+
+        int cooldownSeconds = readRefreshCooldownFromMission(bonusLocation);
+
+        logInfo("Cooldown: " + cooldownSeconds + "s");
+        return cooldownSeconds;
+    }
+
+    /**
+     * Clicks a task and accepts it to start the task.
+     * 
+     * <p>
+     * <b>Accept Flow:</b>
+     * <ol>
+     * <li>Click task to open details screen</li>
+     * <li>Click accept button</li>
+     * <li>Task starts running (timer bar appears)</li>
+     * </ol>
+     * 
+     * <p>
+     * After acceptance, the task will show a timer bar and count toward
+     * the daily attempts counter. Only one task can run at a time.
+     * 
+     * @param bonusLocation location of the task's bonus indicator
+     */
+    private void clickAndAcceptTask(DTOPoint bonusLocation) {
+        tapPoint(bonusLocation);
+        sleepTask(2000); // Wait for task details screen to load
+
+        tapPoint(Coords.ACCEPT_BUTTON);
+        sleepTask(1500); // Wait for acceptance to complete
+    }
+
+    // ========================================================================
+    // TASK DETECTION - POINTS, TYPE, RUNNING STATUS
+    // ========================================================================
+
+    /**
+     * Reads points value near a bonus indicator using OCR.
+     * 
+     * <p>
+     * Points are displayed as a number (e.g., "150") in a fixed offset
+     * from the bonus indicator. The points value determines the rewards
+     * and is a key criterion for task acceptance.
+     * 
+     * <p>
+     * OCR area is calculated relative to the bonus location using
+     * predefined offsets for consistent detection.
+     * 
+     * @param bonusLocation location of the bonus indicator on screen
+     * @return points value as integer, or -1 if OCR fails
+     */
+    private int readPointsNearBonus(DTOPoint bonusLocation) {
+        logDebug("Reading points near bonus location: " + bonusLocation);
+
+        DTOPoint topLeft = new DTOPoint(
+                bonusLocation.getX() + Offsets.POINTS_X,
+                bonusLocation.getY() + Offsets.POINTS_Y);
+
+        DTOPoint bottomRight = new DTOPoint(
+                topLeft.getX() + Offsets.POINTS_WIDTH,
+                topLeft.getY() + Offsets.POINTS_HEIGHT);
+
+        logDebug("OCR area for points: " + topLeft + " to " + bottomRight);
+
+        String ocrResult = stringHelper.execute(
+                topLeft,
+                bottomRight,
+                1,
+                300L,
+                null,
+                s -> !s.isEmpty(),
+                s -> s);
+
+        if (ocrResult != null && !ocrResult.trim().isEmpty()) {
+            String numericValue = ocrResult.replaceAll("[^0-9]", "");
+
+            if (!numericValue.isEmpty()) {
+                int points = Integer.parseInt(numericValue);
+                logInfo("Detected points on overview: " + points);
+                return points;
+            }
+        }
+
+        logWarning("Could not read points near bonus after OCR attempts");
+        return -1;
+    }
+
+    /**
+     * Detects task type near a bonus indicator via image recognition.
+     * 
+     * <p>
+     * Searches for all 14 task type icons and finds the one closest
+     * to the bonus indicator (within proximity thresholds). Task type
+     * icons are displayed to the left of the bonus indicator.
+     * 
+     * <p>
+     * <b>Task Types (14 total):</b>
+     * <ul>
+     * <li>Build Speedups - Complete building upgrades</li>
+     * <li>Buy Package - Purchase items from shop</li>
+     * <li>Chief Gear Charm - Upgrade chief gear charms</li>
+     * <li>Chief Gear Score - Improve chief gear score</li>
+     * <li>Defeat Beasts - Kill wild beasts</li>
+     * <li>Fire Crystal - Collect/use fire crystals</li>
+     * <li>Gather Resources - Gather from wilderness</li>
+     * <li>Hero Gear Stone - Upgrade hero gear</li>
+     * <li>Mythic Shard - Collect mythic shards</li>
+     * <li>Rally - Participate in rallies</li>
+     * <li>Train Troops - Train new troops</li>
+     * <li>Training Speedups - Use training speedups</li>
+     * <li>Use Gems - Spend gems</li>
+     * <li>Use Speedups - Use speedup items</li>
+     * </ul>
+     * 
+     * <p>
+     * <b>Detection Strategy:</b>
+     * For each task type template, search for up to 5 matches on screen.
+     * For each match, calculate distance from bonus indicator. The match
+     * within proximity thresholds is the task type.
+     * 
+     * @param bonusLocation location of the bonus indicator on screen
+     * @return EnumTemplates for the detected task type, or null if not found
+     */
     private EnumTemplates detectTaskTypeNearBonus(DTOPoint bonusLocation) {
         logDebug("Detecting task type near bonus location: " + bonusLocation);
 
-        // Define task type templates to search for
         EnumTemplates[] taskTypeTemplates = {
-            EnumTemplates.AM_BUILD_SPEEDUPS,
-            EnumTemplates.AM_BUY_PACKAGE,
-            EnumTemplates.AM_CHIEF_GEAR_CHARM,
-            EnumTemplates.AM_CHIEF_GEAR_SCORE,
-            EnumTemplates.AM_DEFEAT_BEASTS,
-            EnumTemplates.AM_FIRE_CRYSTAL,
-            EnumTemplates.AM_GATHER_RESOURCES,
-            EnumTemplates.AM_HERO_GEAR_STONE,
-            EnumTemplates.AM_MYTHIC_SHARD,
-            EnumTemplates.AM_RALLY,
-            EnumTemplates.AM_TRAIN_TROOPS,
-            EnumTemplates.AM_TRAINING_SPEEDUPS,
-            EnumTemplates.AM_USE_GEMS,
-            EnumTemplates.AM_USE_SPEEDUPS
+                EnumTemplates.AM_BUILD_SPEEDUPS,
+                EnumTemplates.AM_BUY_PACKAGE,
+                EnumTemplates.AM_CHIEF_GEAR_CHARM,
+                EnumTemplates.AM_CHIEF_GEAR_SCORE,
+                EnumTemplates.AM_DEFEAT_BEASTS,
+                EnumTemplates.AM_FIRE_CRYSTAL,
+                EnumTemplates.AM_GATHER_RESOURCES,
+                EnumTemplates.AM_HERO_GEAR_STONE,
+                EnumTemplates.AM_MYTHIC_SHARD,
+                EnumTemplates.AM_RALLY,
+                EnumTemplates.AM_TRAIN_TROOPS,
+                EnumTemplates.AM_TRAINING_SPEEDUPS,
+                EnumTemplates.AM_USE_GEMS,
+                EnumTemplates.AM_USE_SPEEDUPS
         };
 
-        // Search for task type icon near the bonus indicator (typically to the left)
         for (EnumTemplates template : taskTypeTemplates) {
-            // Search for multiple matches of the same template (max 5)
-            List<DTOImageSearchResult> results = emuManager.searchTemplates(
-                EMULATOR_NUMBER, 
-                template, 
-                Thresholds.TASK_TYPE, 
-                5
-            );
+            List<DTOImageSearchResult> results = templateSearchHelper.searchTemplates(
+                    template,
+                    SearchConfig.builder()
+                            .withThreshold(Thresholds.TASK_TYPE)
+                            .withMaxAttempts(3)
+                            .withMaxResults(Limits.MAX_TEMPLATE_SEARCH_RESULTS_TASK_TYPE)
+                            .build());
 
             if (results != null && !results.isEmpty()) {
-                // Check each match to find one near the bonus
                 for (DTOImageSearchResult result : results) {
-                    // Verify the task type icon is near the bonus indicator
                     int deltaX = Math.abs(result.getPoint().getX() - bonusLocation.getX());
                     int deltaY = Math.abs(result.getPoint().getY() - bonusLocation.getY());
 
-                    logDebug("  " + template.name() + " found at (" + result.getPoint().getX() + "," +
-                            result.getPoint().getY() + ") - Distance from bonus: ΔX=" + deltaX + "px, ΔY=" + deltaY + "px");
+                    logDebug(template.name() + " found at (" + result.getPoint().getX() + "," +
+                            result.getPoint().getY() + ") - Distance from bonus: deltaX=" + deltaX + "px, deltaY="
+                            + deltaY + "px");
 
-                    // Task icon should be within reasonable distance (adjust based on UI layout)
+                    // Check if this match is close enough to the bonus indicator
                     if (deltaX < Offsets.TASK_TYPE_MAX_DELTA_X && deltaY < Offsets.TASK_TYPE_MAX_DELTA_Y) {
-                        logInfo("✅ Detected task type: " + template.name() + " at " + result.getPoint() +
-                               " (ΔX=" + deltaX + "px, ΔY=" + deltaY + "px)");
+                        logInfo("Detected task type: " + template.name() + " at " + result.getPoint() +
+                                " (deltaX=" + deltaX + "px, deltaY=" + deltaY + "px)");
                         return template;
                     } else {
-                        logDebug("  ❌ Too far from bonus (max: ΔX=" + Offsets.TASK_TYPE_MAX_DELTA_X + "px, ΔY=" + Offsets.TASK_TYPE_MAX_DELTA_Y + "px)");
+                        logDebug("Too far from bonus (max: deltaX=" + Offsets.TASK_TYPE_MAX_DELTA_X +
+                                "px, deltaY=" + Offsets.TASK_TYPE_MAX_DELTA_Y + "px)");
                     }
                 }
             }
@@ -685,29 +1650,44 @@ public class AllianceMobilizationTask extends DelayedTask {
         return null;
     }
 
+    /**
+     * Checks if a task is already running by searching for its timer bar.
+     * 
+     * <p>
+     * Running tasks display a progress timer bar below the bonus indicator.
+     * This timer shows how much time remains until the task completes.
+     * 
+     * <p>
+     * Detection is performed by searching for the AM_BAR_X template
+     * (which matches only the fixed frame parts of the timer, not the
+     * variable progress bar itself).
+     * 
+     * @param bonusLocation location of the bonus indicator on screen
+     * @return true if timer bar found (task is running), false otherwise (task
+     *         available)
+     */
     private boolean isTaskAlreadyRunning(DTOPoint bonusLocation) {
         logDebug("Checking if task is already running near: " + bonusLocation);
 
-        // Search for AM_Bar_X.png (timer bar with only fixed frame parts, variable progress excluded) below the bonus indicator
         DTOPoint searchTopLeft = new DTOPoint(
-            bonusLocation.getX() + Offsets.RUNNING_TASK_X, 
-            bonusLocation.getY() + Offsets.RUNNING_TASK_Y
-        );
-        DTOPoint searchBottomRight = new DTOPoint(
-            searchTopLeft.getX() + Offsets.RUNNING_TASK_WIDTH, 
-            searchTopLeft.getY() + Offsets.RUNNING_TASK_HEIGHT
-        );
+                bonusLocation.getX() + Offsets.RUNNING_TASK_X,
+                bonusLocation.getY() + Offsets.RUNNING_TASK_Y);
 
-        DTOImageSearchResult barResult = emuManager.searchTemplate(
-            EMULATOR_NUMBER,
-            EnumTemplates.AM_BAR_X,
-            searchTopLeft,
-            searchBottomRight,
-            Thresholds.RUNNING
-        );
+        DTOPoint searchBottomRight = new DTOPoint(
+                searchTopLeft.getX() + Offsets.RUNNING_TASK_WIDTH,
+                searchTopLeft.getY() + Offsets.RUNNING_TASK_HEIGHT);
+
+        DTOImageSearchResult barResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.AM_BAR_X,
+                SearchConfig.builder()
+                        .withThreshold(Thresholds.RUNNING)
+                        .withMaxAttempts(1)
+                        .withDelay(100L)
+                        .withArea(new DTOArea(searchTopLeft, searchBottomRight))
+                        .build());
 
         if (barResult.isFound()) {
-            logInfo("✅ Timer bar detected at " + barResult.getPoint() + " - task is already running");
+            logInfo("Timer bar detected at " + barResult.getPoint() + " - task is already running");
             return true;
         }
 
@@ -715,300 +1695,309 @@ public class AllianceMobilizationTask extends DelayedTask {
         return false;
     }
 
+    /**
+     * Checks if a task type is enabled based on configuration.
+     * 
+     * <p>
+     * Maps the task type template to its corresponding configuration flag.
+     * Each of the 14 task types has its own enable/disable flag in the profile.
+     * 
+     * @param taskType the task type to check
+     * @return true if task type is enabled, false if disabled or unknown
+     */
     private boolean isTaskTypeEnabled(EnumTemplates taskType) {
         logDebug("Checking if task type is enabled: " + taskType.name());
 
-        // Map template to configuration key
         switch (taskType) {
             case AM_BUILD_SPEEDUPS:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_BUILD_SPEEDUPS_BOOL, Boolean.class);
+                return buildSpeedupsEnabled;
             case AM_BUY_PACKAGE:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_BUY_PACKAGE_BOOL, Boolean.class);
+                return buyPackageEnabled;
             case AM_CHIEF_GEAR_CHARM:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_CHIEF_GEAR_CHARM_BOOL, Boolean.class);
+                return chiefGearCharmEnabled;
             case AM_CHIEF_GEAR_SCORE:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_CHIEF_GEAR_SCORE_BOOL, Boolean.class);
+                return chiefGearScoreEnabled;
             case AM_DEFEAT_BEASTS:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_DEFEAT_BEASTS_BOOL, Boolean.class);
+                return defeatBeastsEnabled;
             case AM_FIRE_CRYSTAL:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_FIRE_CRYSTAL_BOOL, Boolean.class);
+                return fireCrystalEnabled;
             case AM_GATHER_RESOURCES:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_GATHER_RESOURCES_BOOL, Boolean.class);
+                return gatherResourcesEnabled;
             case AM_HERO_GEAR_STONE:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_HERO_GEAR_STONE_BOOL, Boolean.class);
+                return heroGearStoneEnabled;
             case AM_MYTHIC_SHARD:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_MYTHIC_SHARD_BOOL, Boolean.class);
+                return mythicShardEnabled;
             case AM_RALLY:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_RALLY_BOOL, Boolean.class);
+                return rallyEnabled;
             case AM_TRAIN_TROOPS:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_TRAIN_TROOPS_BOOL, Boolean.class);
+                return trainTroopsEnabled;
             case AM_TRAINING_SPEEDUPS:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_TRAINING_SPEEDUPS_BOOL, Boolean.class);
+                return trainingSpeedupsEnabled;
             case AM_USE_GEMS:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_USE_GEMS_BOOL, Boolean.class);
+                return useGemsEnabled;
             case AM_USE_SPEEDUPS:
-                return profile.getConfig(EnumConfigurationKey.ALLIANCE_MOBILIZATION_USE_SPEEDUPS_BOOL, Boolean.class);
+                return useSpeedupsEnabled;
             default:
                 logWarning("Unknown task type: " + taskType.name());
                 return false;
         }
     }
 
-    private TaskProcessResult processTaskWithPoints(DTOPoint bonusLocation, EnumTemplates taskType, boolean isTaskTypeEnabled,
-                                      int detectedPoints, int minimumPoints, boolean anyTaskRunning, boolean autoAcceptEnabled,
-                                      String currentBonusPercentage, String rewardsPercentage) {
-        logInfo("Found: " + taskType.name() + " (" + detectedPoints + "pts, " + currentBonusPercentage + ", enabled: " + isTaskTypeEnabled + ")");
-
-        // Check if we should refresh based on bonus mismatch
-        boolean shouldRefreshDueToBonus = false;
-        if (rewardsPercentage.equals("200%") && currentBonusPercentage.equals("120%")) {
-            shouldRefreshDueToBonus = true;
-            logInfo("→ Refreshing (120% task but 200% is selected)");
-        } else if (rewardsPercentage.equals("120%") && currentBonusPercentage.equals("200%")) {
-            shouldRefreshDueToBonus = true;
-            logInfo("→ Refreshing (200% task but 120% is selected)");
-        }
-
-        if (shouldRefreshDueToBonus) {
-            int cooldown = clickAndRefreshTask(bonusLocation);
-            return new TaskProcessResult(false, cooldown);
-        }
-
-        // Decision logic based on points, enabled status, and whether another task is running
-        boolean pointsMeetMinimum = detectedPoints >= minimumPoints;
-
-        if (!isTaskTypeEnabled) {
-            logInfo("→ Refreshing (disabled)");
-            int cooldown = clickAndRefreshTask(bonusLocation);
-            return new TaskProcessResult(false, cooldown);
-        } else if (!pointsMeetMinimum) {
-            logInfo("→ Refreshing (low points: " + detectedPoints + " < " + minimumPoints + ")");
-            int cooldown = clickAndRefreshTask(bonusLocation);
-            return new TaskProcessResult(false, cooldown);
-        } else if (anyTaskRunning) {
-            logInfo("→ Waiting 1h (task good but another task running)");
-            LocalDateTime nextRun = LocalDateTime.now().plusHours(Delays.RESCHEDULE_WAIT_HOURS);
-            this.reschedule(nextRun);
-            return new TaskProcessResult(true, 0);
-        } else {
-            if (autoAcceptEnabled) {
-                logInfo("→ Accepting task");
-                clickAndAcceptTask(bonusLocation);
-                return new TaskProcessResult(false, 0);
-            } else {
-                logInfo("→ Skipping (auto-accept disabled)");
-                return new TaskProcessResult(false, 0);
-            }
-        }
-    }
-
-    private int clickAndRefreshTask(DTOPoint bonusLocation) {
-        emuManager.tapAtPoint(EMULATOR_NUMBER, bonusLocation);
-        sleepTask(2000);
-
-        emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.REFRESH_BUTTON);
-        sleepTask(1500);
-
-        int cooldownSeconds = readRefreshCooldownFromPopup(
-            Coords.COOLDOWN_POPUP_TOP_LEFT, 
-            Coords.COOLDOWN_POPUP_BOTTOM_RIGHT
-        );
-
-        emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.REFRESH_CONFIRM_BUTTON);
-        sleepTask(1500);
-
-        logInfo("  Cooldown: " + cooldownSeconds + "s");
-        return cooldownSeconds;
-    }
-
-    private void clickAndAcceptTask(DTOPoint bonusLocation) {
-        emuManager.tapAtPoint(EMULATOR_NUMBER, bonusLocation);
-        sleepTask(2000);
-
-        emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.ACCEPT_BUTTON);
-        sleepTask(1500);
-    }
-
     // ========================================================================
     // OCR AND TIMER READING METHODS
     // ========================================================================
 
-    private int readRefreshCooldownFromPopup(DTOPoint topLeft, DTOPoint bottomRight) {
-        logDebug("Reading refresh cooldown from popup: " + topLeft + " to " + bottomRight);
-        sleepTask(Delays.SWIPE_MS);
+    /**
+     * Reads refresh cooldown from the mission area after popup is closed.
+     * 
+     * <p>
+     * After confirming a refresh, the cooldown timer appears in the mission area.
+     * This method determines which mission area (left or right) based on the
+     * bonus location x-coordinate and reads the cooldown from that area.
+     * 
+     * <p>
+     * <b>Mission Area Division:</b>
+     * <ul>
+     * <li>Left mission: x < 360, coordinates (75, 712) to (299, 798)</li>
+     * <li>Right mission: x >= 360, coordinates (410, 712) to (627, 798)</li>
+     * </ul>
+     * 
+     * <p>
+     * Cooldown format can be:
+     * /**
+     * Reads refresh cooldown from the mission area after popup is closed.
+     * 
+     * <p>
+     * After confirming a refresh, the cooldown timer appears in the mission area.
+     * This method determines which mission area (left or right) based on the
+     * bonus location x-coordinate and reads the cooldown from that area.
+     * 
+     * <p>
+     * <b>Mission Area Division:</b>
+     * <ul>
+     * <li>Left mission: x < 360, coordinates (75, 712) to (299, 798)</li>
+     * <li>Right mission: x >= 360, coordinates (410, 712) to (627, 798)</li>
+     * </ul>
+     * 
+     * <p>
+     * Cooldown format can be:
+     * <ul>
+     * <li>MM:SS (e.g., "05:30")</li>
+     * <li>Xd HH:mm:ss (e.g., "1d 05:30:00")</li>
+     * </ul>
+     * 
+     * @param bonusLocation location of the bonus indicator to determine left/right
+     *                      mission
+     * @return cooldown in seconds, or DEFAULT_COOLDOWN_SECONDS if OCR fails
+     */
+    private int readRefreshCooldownFromMission(DTOPoint bonusLocation) {
+        // Determine which mission area (left or right) based on bonus location
+        DTOPoint topLeft;
+        DTOPoint bottomRight;
+        String missionSide;
 
-        try {
-            String ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, topLeft, bottomRight);
-            logInfo("OCR popup result: '" + (ocrResult != null ? ocrResult : "null") + "'");
-            debugOCRArea("Cooldown popup", topLeft, bottomRight, ocrResult);
-
-            if (ocrResult != null && !ocrResult.trim().isEmpty()) {
-                int seconds = parseTimeToSeconds(ocrResult);
-                if (seconds > 0) {
-                    logInfo("✅ Cooldown from popup: " + seconds + " seconds (from: '" + ocrResult + "')");
-                    return seconds;
-                }
-                logWarning("OCR returned text but could not parse time: '" + ocrResult + "'");
-            } else {
-                logWarning("OCR returned empty or null result");
-            }
-        } catch (Exception e) {
-            logWarning("Failed to read cooldown from popup: " + e.getMessage());
+        if (bonusLocation.getX() < 360) {
+            // Left mission
+            topLeft = new DTOPoint(75, 712);
+            bottomRight = new DTOPoint(299, 798);
+            missionSide = "Left";
+        } else {
+            // Right mission
+            topLeft = new DTOPoint(410, 712);
+            bottomRight = new DTOPoint(627, 798);
+            missionSide = "Right";
         }
 
-        logWarning("Could not read cooldown from confirmation popup, using default 5 minutes");
+        logDebug("Reading refresh cooldown from " + missionSide + " mission area: " + topLeft + " to " + bottomRight);
+        sleepTask(500); // Wait for popup to close and cooldown to appear
+
+        DTOTesseractSettings timeSettings = DTOTesseractSettings.builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setRemoveBackground(true)
+                .setTextColor(new Color(158, 14, 14))
+                .setAllowedChars("0123456789d:")
+                .build();
+
+        Duration cooldownTime = durationHelper.execute(
+                topLeft,
+                bottomRight,
+                3, // 3 retries
+                200L, // 200ms delay between retries
+                timeSettings,
+                TimeValidators::isValidTime,
+                TimeConverters::toDuration);
+
+        if (cooldownTime == null) {
+            logWarning("Failed to read cooldown time from " + missionSide + " mission area");
+            return Delays.DEFAULT_COOLDOWN_SECONDS;
+        }
+
+        int totalSeconds = (int) cooldownTime.getSeconds();
+        if (totalSeconds > 0) {
+            logInfo("Cooldown from " + missionSide + " mission: " + totalSeconds + " seconds");
+            return totalSeconds;
+        }
+
+        logWarning("Could not read cooldown from " + missionSide + " mission area, using default 5 minutes");
         return Delays.DEFAULT_COOLDOWN_SECONDS;
     }
 
-    private int parseTimeToSeconds(String timeString) {
-        // Remove all spaces and normalize common variations
-        String cleaned = timeString.replaceAll("\\s+", "").toLowerCase();
+    /**
+     * Reads task availability timers from the screen.
+     * 
+     * <p>
+     * When no tasks are available, the game shows timers on empty task slots
+     * indicating when new tasks will appear. There can be up to 2 timers
+     * (left and right positions).
+     * 
+     * <p>
+     * This method reads both timers and returns the shortest one for
+     * optimal rescheduling.
+     * 
+     * @return shortest timer in seconds, or 0 if no timers found
+     */
+    private int readTaskAvailabilityTimers() {
+        logDebug("Reading task availability timers from empty task slots...");
 
-        // Remove common prefix words
-        cleaned = cleaned.replaceAll("^(in|r|ear)", "");
+        int leftTimerSeconds = readTimerFromRegion(
+                Coords.LEFT_TIMER_TOP_LEFT,
+                Coords.LEFT_TIMER_BOTTOM_RIGHT,
+                "Left");
 
-        // Fix common OCR errors for HH:mm:ss format
-        // Numbers: O/o -> 0, l/I -> 1, Z -> 2, S -> 5
-        cleaned = cleaned.replaceAll("O", "0");
-        cleaned = cleaned.replaceAll("o", "0");
-        cleaned = cleaned.replaceAll("l(?=\\d|:)", "1"); // l followed by digit or colon
-        cleaned = cleaned.replaceAll("I(?=\\d|:)", "1"); // I followed by digit or colon
-        cleaned = cleaned.replaceAll("Z(?=\\d|:)", "2");
-        cleaned = cleaned.replaceAll("S(?=\\d|:)", "5");
+        int rightTimerSeconds = readTimerFromRegion(
+                Coords.RIGHT_TIMER_TOP_LEFT,
+                Coords.RIGHT_TIMER_BOTTOM_RIGHT,
+                "Right");
 
-        // Colon errors: i, l, I, | -> :
-        cleaned = cleaned.replaceAll("(?<=\\d)[il\\|I](?=\\d)", ":");
+        if (leftTimerSeconds > 0 && rightTimerSeconds > 0) {
+            int shortestTimer = Math.min(leftTimerSeconds, rightTimerSeconds);
+            logInfo("Found task availability timers - using shortest: " + shortestTimer + " seconds");
+            return shortestTimer;
+        }
 
-        // Fix common OCR errors: "Smins" -> "5mins", "Zmins" -> "2mins"
-        cleaned = cleaned.replaceAll("smins", "5mins");
-        cleaned = cleaned.replaceAll("zmins", "2mins");
+        if (leftTimerSeconds > 0) {
+            logInfo("Found left timer: " + leftTimerSeconds + " seconds");
+            return leftTimerSeconds;
+        }
 
-        // Normalize: "mins" -> "m", "min" -> "m", "secs" -> "s", "sec" -> "s"
-        cleaned = cleaned.replaceAll("mins?", "m");
-        cleaned = cleaned.replaceAll("secs?", "s");
-        cleaned = cleaned.replaceAll("hours?", "h");
-        // Remove exclamation marks and other punctuation
-        cleaned = cleaned.replaceAll("[!.,]", "");
+        if (rightTimerSeconds > 0) {
+            logInfo("Found right timer: " + rightTimerSeconds + " seconds");
+            return rightTimerSeconds;
+        }
 
-        try {
-            // Primary Format: "HH:mm:ss" or "H:mm:ss" (hours:minutes:seconds)
-            if (cleaned.matches("\\d{1,2}:\\d{2}:\\d{2}")) {
-                String[] parts = cleaned.split(":");
-                int hours = Integer.parseInt(parts[0]);
-                int minutes = Integer.parseInt(parts[1]);
-                int seconds = Integer.parseInt(parts[2]);
-                return hours * 3600 + minutes * 60 + seconds;
-            }
+        logDebug("No task availability timers found");
+        return 0;
+    }
 
-            // Fallback Format: "mm:ss" or "m:ss" (minutes:seconds)
-            if (cleaned.matches("\\d{1,2}:\\d{2}")) {
-                String[] parts = cleaned.split(":");
-                int minutes = Integer.parseInt(parts[0]);
-                int seconds = Integer.parseInt(parts[1]);
-                return minutes * 60 + seconds;
-            }
+    /**
+     * Reads a single timer from a specific region using OCR.
+     * 
+     * <p>
+     * Timer format can be:
+     * <ul>
+     * <li>HH:mm:ss (e.g., "01:30:00")</li>
+     * <li>Xd HH:mm:ss (e.g., "1d 05:30:00")</li>
+     * </ul>
+     * 
+     * <p>
+     * Uses the durationHelper with robust time parsing to handle
+     * various OCR inaccuracies.
+     * 
+     * @param topLeft     top-left corner of timer region
+     * @param bottomRight bottom-right corner of timer region
+     * @param timerName   descriptive name for logging (e.g., "Left", "Right")
+     * @return timer value in seconds, or 0 if OCR fails
+     */
+    private int readTimerFromRegion(DTOPoint topLeft, DTOPoint bottomRight, String timerName) {
+        DTOTesseractSettings timeSettings = DTOTesseractSettings.builder()
+                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
+                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setAllowedChars("0123456789d:")
+                .build();
 
-            // Format: "5m30s" or "5m 30s"
-            if (cleaned.contains("m") && cleaned.contains("s")) {
-                String minutesStr = cleaned.substring(0, cleaned.indexOf("m"));
-                String secondsStr = cleaned.substring(cleaned.indexOf("m") + 1, cleaned.indexOf("s"));
-                int minutes = Integer.parseInt(minutesStr);
-                int seconds = Integer.parseInt(secondsStr);
-                return minutes * 60 + seconds;
-            }
+        Duration cooldownTime = durationHelper.execute(
+                topLeft,
+                bottomRight,
+                3, // 3 retries
+                200L, // 200ms delay between retries
+                timeSettings,
+                TimeValidators::isValidTime,
+                TimeConverters::toDuration);
 
-            // Format: "5m" (only minutes)
-            if (cleaned.matches("\\d+m")) {
-                String minutesStr = cleaned.replace("m", "");
-                int minutes = Integer.parseInt(minutesStr);
-                return minutes * 60;
-            }
+        if (cooldownTime == null) {
+            logDebug("Failed to read " + timerName + " timer from screen");
+            return 0;
+        }
 
-            // Format: "330s" or "330" (only seconds)
-            if (cleaned.matches("\\d+s?")) {
-                String secondsStr = cleaned.replace("s", "");
-                return Integer.parseInt(secondsStr);
-            }
-
-            // Format: "5h" (hours - convert to seconds)
-            if (cleaned.matches("\\d+h")) {
-                String hoursStr = cleaned.replace("h", "");
-                int hours = Integer.parseInt(hoursStr);
-                return hours * 3600;
-            }
-
-            // Format: "5h30m" (hours and minutes)
-            if (cleaned.contains("h") && cleaned.contains("m")) {
-                String hoursStr = cleaned.substring(0, cleaned.indexOf("h"));
-                String minutesStr = cleaned.substring(cleaned.indexOf("h") + 1, cleaned.indexOf("m"));
-                int hours = Integer.parseInt(hoursStr);
-                int minutes = Integer.parseInt(minutesStr);
-                return hours * 3600 + minutes * 60;
-            }
-
-        } catch (Exception e) {
-            logDebug("Failed to parse time string '" + timeString + "': " + e.getMessage());
+        int totalSeconds = (int) cooldownTime.getSeconds();
+        if (totalSeconds > 0) {
+            logInfo("Cooldown from " + timerName + " timer: " + totalSeconds + " seconds");
+            return totalSeconds;
         }
 
         return 0;
     }
 
-    private int readPointsNearBonus(DTOPoint bonusLocation) {
-        logDebug("Reading points near bonus location: " + bonusLocation);
+    // ========================================================================
+    // COMPLETED TASKS
+    // ========================================================================
 
-        DTOPoint topLeft = new DTOPoint(
-            bonusLocation.getX() + Offsets.POINTS_X, 
-            bonusLocation.getY() + Offsets.POINTS_Y
-        );
-        DTOPoint bottomRight = new DTOPoint(
-            topLeft.getX() + Offsets.POINTS_WIDTH, 
-            topLeft.getY() + Offsets.POINTS_HEIGHT
-        );
+    /**
+     * Checks for and collects rewards from completed tasks.
+     * 
+     * <p>
+     * When a task completes, a "Completed" indicator appears on the task.
+     * Clicking it collects the rewards and clears the task slot.
+     * 
+     * <p>
+     * This is checked at the start of task processing to ensure we
+     * collect rewards and free up slots before searching for new tasks.
+     */
+    private void checkAndCollectCompletedTasks() {
+        logDebug("Checking for completed tasks to collect rewards...");
 
-        logDebug("OCR area for points: " + topLeft + " to " + bottomRight);
+        DTOImageSearchResult completedResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.AM_COMPLETED,
+                SearchConfig.builder()
+                        .withThreshold(Thresholds.COMPLETED)
+                        .withMaxAttempts(1)
+                        .build());
 
-        for (int attempt = 1; attempt <= Limits.MAX_OCR_RETRIES; attempt++) {
-            try {
-                String ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, topLeft, bottomRight);
-                debugOCRArea("Points near bonus (attempt " + attempt + ")", topLeft, bottomRight, ocrResult);
-
-                if (ocrResult != null && !ocrResult.trim().isEmpty()) {
-                    String numericValue = ocrResult.replaceAll("[^0-9]", "");
-
-                    if (!numericValue.isEmpty()) {
-                        int points = Integer.parseInt(numericValue);
-                        logInfo("✅ Detected points on overview: " + points + " (attempt " + attempt + ")");
-                        return points;
-                    }
-                    logWarning("OCR result contains no numeric value: '" + ocrResult + "' (attempt " + attempt + ")");
-                } else {
-                    logWarning("OCR result is empty (attempt " + attempt + ")");
-                }
-            } catch (Exception e) {
-                logWarning("Failed to read points via OCR (attempt " + attempt + "): " + e.getMessage());
-            }
-
-            if (attempt < Limits.MAX_OCR_RETRIES) {
-                sleepTask(Delays.SWIPE_MS);
-            }
+        if (completedResult.isFound()) {
+            logInfo("Completed task found at " + completedResult.getPoint() + " - collecting rewards");
+            tapPoint(completedResult.getPoint());
+            sleepTask(1500); // Wait for reward collection animation
+            logInfo("Rewards collected from completed task");
+        } else {
+            logDebug("No completed tasks found");
         }
-
-        logWarning("Could not read points near bonus after " + Limits.MAX_OCR_RETRIES + " attempts");
-        return -1;
     }
 
     // ========================================================================
     // SPECIAL FEATURES (FREE MISSION & MONUMENTS)
     // ========================================================================
 
+    /**
+     * Checks for and uses the free mission bonus if available.
+     * 
+     * <p>
+     * The free mission button grants +1 extra attempt without consuming
+     * the daily attempt counter. It appears near the expected position
+     * but we verify proximity before clicking.
+     * 
+     * <p>
+     * This is a valuable bonus that should be used whenever available.
+     */
     private void checkAndUseFreeMission() {
         logDebug("Checking for free mission button...");
 
-        DTOImageSearchResult freeMissionResult = emuManager.searchTemplate(
-            EMULATOR_NUMBER, 
-            EnumTemplates.AM_PLUS_1_FREE_MISSION, 
-            Thresholds.FREE_MISSION
-        );
+        DTOImageSearchResult freeMissionResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.AM_PLUS_1_FREE_MISSION,
+                SearchConfig.builder()
+                        .withThreshold(Thresholds.FREE_MISSION)
+                        .withMaxAttempts(1)
+                        .build());
 
         if (!freeMissionResult.isFound()) {
             logDebug("No free mission button found");
@@ -1020,29 +2009,48 @@ public class AllianceMobilizationTask extends DelayedTask {
         int deltaY = Math.abs(location.getY() - Coords.FREE_MISSION_EXPECTED.getY());
 
         if (deltaX <= Offsets.FREE_MISSION_TOLERANCE && deltaY <= Offsets.FREE_MISSION_TOLERANCE) {
-            logInfo("✅ Free mission button found at " + location + " (near expected position) - using it");
-            emuManager.tapAtPoint(EMULATOR_NUMBER, location);
-            sleepTask(1500);
+            logInfo("Free mission button found at " + location + " (near expected position) - using it");
+            tapPoint(location);
+            sleepTask(1500); // Wait for confirmation popup
 
             logInfo("Clicking confirm at: " + Coords.FREE_MISSION_CONFIRM);
-            emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.FREE_MISSION_CONFIRM);
-            sleepTask(1500);
+            tapPoint(Coords.FREE_MISSION_CONFIRM);
+            sleepTask(1500); // Wait for confirmation to complete
 
-            logInfo("✅ Free mission used successfully");
+            logInfo("Free mission used successfully");
         } else {
-            logDebug("Free mission button found at " + location + 
+            logDebug("Free mission button found at " + location +
                     " but too far from expected position " + Coords.FREE_MISSION_EXPECTED + ", skipping");
         }
     }
 
+    /**
+     * Checks for and uses Alliance Monuments if available.
+     * 
+     * <p>
+     * Alliance Monuments provide bonus rewards and are accessed through
+     * a special button on the Alliance Mobilization screen. The interaction
+     * involves:
+     * <ol>
+     * <li>Click Alliance Monuments button</li>
+     * <li>Perform image recognition for special chests (future feature)</li>
+     * <li>Click through 5 fixed monument positions</li>
+     * <li>Click back button twice to return</li>
+     * </ol>
+     * 
+     * <p>
+     * <b>Future Enhancement:</b> Monument image recognition is prepared
+     * but not yet implemented (templates need to be added to EnumTemplates).
+     */
     private void checkAndUseAllianceMonuments() {
         logDebug("Checking for Alliance Monuments button...");
 
-        DTOImageSearchResult monumentsResult = emuManager.searchTemplate(
-            EMULATOR_NUMBER, 
-            EnumTemplates.AM_ALLIANCE_MONUMENTS, 
-            Thresholds.MONUMENTS
-        );
+        DTOImageSearchResult monumentsResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.AM_ALLIANCE_MONUMENTS,
+                SearchConfig.builder()
+                        .withThreshold(Thresholds.MONUMENTS)
+                        .withMaxAttempts(1)
+                        .build());
 
         if (!monumentsResult.isFound()) {
             logDebug("No Alliance Monuments button found");
@@ -1050,206 +2058,195 @@ public class AllianceMobilizationTask extends DelayedTask {
         }
 
         DTOPoint location = monumentsResult.getPoint();
-        logInfo("✅ Alliance Monuments button found at " + location + " - using it");
+        logInfo("Alliance Monuments button found at " + location + " - using it");
 
-        emuManager.tapAtPoint(EMULATOR_NUMBER, location);
-        sleepTask(1500);
+        tapPoint(location);
+        sleepTask(1500); // Wait for monuments screen to load
 
-        // Image recognition loop before the 5 fixed clicks
+        // Image recognition loop for special chests (prepared for future use)
         processMonumentImageRecognition();
 
+        // Click through the 5 fixed monument positions
         for (int i = 0; i < Coords.MONUMENT_CLICKS.length; i++) {
-            logInfo("Clicking monument position " + (i + 1) + "/" + Coords.MONUMENT_CLICKS.length + " at: " + Coords.MONUMENT_CLICKS[i]);
-            emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.MONUMENT_CLICKS[i]);
-            sleepTask(i < 2 ? 1000 : 500);
+            logInfo("Clicking monument position " + (i + 1) + "/" + Coords.MONUMENT_CLICKS.length + " at: " +
+                    Coords.MONUMENT_CLICKS[i]);
+            tapPoint(Coords.MONUMENT_CLICKS[i]);
+            sleepTask(i < 2 ? 1000 : 500); // Longer delay for first 2 clicks
         }
 
-        // Click back button twice to close
-        for (int i = 1; i <= 2; i++) {
-            logInfo("Clicking back button (" + i + "/2) at: " + Coords.BACK_BUTTON);
-            emuManager.tapAtPoint(EMULATOR_NUMBER, Coords.BACK_BUTTON);
-            sleepTask(Delays.SWIPE_MS);
+        // Click back button twice to close monuments screen
+        for (int i = 1; i <= Limits.MONUMENT_BACK_CLICKS_COUNT; i++) {
+            logInfo("Clicking back button (" + i + "/" + Limits.MONUMENT_BACK_CLICKS_COUNT + ") at: "
+                    + Coords.BACK_BUTTON);
+            tapPoint(Coords.BACK_BUTTON);
+            sleepTask(500); // Wait for screen transition
         }
 
-        logInfo("✅ Alliance Monuments used successfully");
+        logInfo("Alliance Monuments used successfully");
     }
 
+    /**
+     * Processes monument image recognition for special chests.
+     * 
+     * <p>
+     * <b>Future Feature:</b> This method is prepared for detecting and
+     * clicking special monument chests using image recognition. The feature
+     * is currently inactive because the chest image templates are not yet
+     * added to EnumTemplates.
+     * 
+     * <p>
+     * <b>Planned Behavior:</b>
+     * Search for chest images repeatedly and double-click each one found
+     * until no more chests are detected. Then proceed with fixed clicks.
+     * 
+     * <p>
+     * <b>To Enable:</b> Add the following templates to EnumTemplates:
+     * <ul>
+     * <li>AM_BALDUR_CHEST_1</li>
+     * <li>AM_BALDUR_CHEST_2</li>
+     * <li>AM_BALDUR_CHEST_3</li>
+     * </ul>
+     */
     private void processMonumentImageRecognition() {
-        // TODO: Add AM_Baldur_Chest1.png, AM_Baldur_Chest2.png, AM_Baldur_Chest3.png to EnumTemplates
+        // Future feature: Monument chest detection
+        // Templates need to be added to EnumTemplates before enabling this
         EnumTemplates[] monumentImages = {
-            // EnumTemplates.AM_BALDUR_CHEST_1,
-            // EnumTemplates.AM_BALDUR_CHEST_2,
-            // EnumTemplates.AM_BALDUR_CHEST_3
+                // EnumTemplates.AM_BALDUR_CHEST_1,
+                // EnumTemplates.AM_BALDUR_CHEST_2,
+                // EnumTemplates.AM_BALDUR_CHEST_3
         };
-        
+
         // Skip if no images configured
         if (monumentImages.length == 0) {
             return;
         }
-        
+
         logInfo("Starting monument image recognition loop...");
         int clickCount = 0;
         boolean imageFound;
-        
+
         do {
             imageFound = false;
-            
-            // Search for each of the 3 images
+
+            // Search for each of the 3 chest images
             for (EnumTemplates imageTemplate : monumentImages) {
-                DTOImageSearchResult imageResult = emuManager.searchTemplate(
-                    EMULATOR_NUMBER,
-                    imageTemplate,
-                    85 // TODO: Adjust threshold if needed
-                );
-                
+                DTOImageSearchResult imageResult = templateSearchHelper.searchTemplate(
+                        imageTemplate,
+                        SearchConfig.builder()
+                                .withThreshold(85)
+                                .withMaxAttempts(1)
+                                .build());
+
                 if (imageResult.isFound()) {
                     imageFound = true;
                     clickCount++;
                     DTOPoint imageLocation = imageResult.getPoint();
-                    
-                    logInfo("✅ Monument image found (" + imageTemplate.name() + ") at " + imageLocation + " - clicking (click #" + clickCount + ")");
-                    
+
+                    logInfo("Monument image found (" + imageTemplate.name() + ") at " + imageLocation +
+                            " - clicking (click #" + clickCount + ")");
+
                     // First click
-                    emuManager.tapAtPoint(EMULATOR_NUMBER, imageLocation);
+                    tapPoint(imageLocation);
                     sleepTask(500);
-                    
+
                     // Second click on same position
                     logInfo("Second click on same position");
-                    emuManager.tapAtPoint(EMULATOR_NUMBER, imageLocation);
+                    tapPoint(imageLocation);
                     sleepTask(500);
-                    
+
                     // Break inner loop to re-search all images from start
                     break;
                 }
             }
-            
+
             if (!imageFound) {
-                logInfo("No more monument images found. Proceeding with fixed clicks. Total recognition clicks: " + clickCount);
+                logInfo("No more monument images found. Proceeding with fixed clicks. Total recognition clicks: " +
+                        clickCount);
             }
-            
+
         } while (imageFound);
-    }
-
-    // ========================================================================
-    // TASK AVAILABILITY TIMERS
-    // ========================================================================
-
-    private int readTaskAvailabilityTimers() {
-        logDebug("Reading task availability timers from empty task slots...");
-
-        int leftTimerSeconds = readTimerFromRegion(
-            Coords.LEFT_TIMER_TOP_LEFT, 
-            Coords.LEFT_TIMER_BOTTOM_RIGHT, 
-            "Left"
-        );
-        int rightTimerSeconds = readTimerFromRegion(
-            Coords.RIGHT_TIMER_TOP_LEFT, 
-            Coords.RIGHT_TIMER_BOTTOM_RIGHT, 
-            "Right"
-        );
-
-        if (leftTimerSeconds > 0 && rightTimerSeconds > 0) {
-            int shortestTimer = Math.min(leftTimerSeconds, rightTimerSeconds);
-            logInfo("✅ Found task availability timers - using shortest: " + shortestTimer + " seconds");
-            return shortestTimer;
-        }
-        
-        if (leftTimerSeconds > 0) {
-            logInfo("✅ Found left timer: " + leftTimerSeconds + " seconds");
-            return leftTimerSeconds;
-        }
-        
-        if (rightTimerSeconds > 0) {
-            logInfo("✅ Found right timer: " + rightTimerSeconds + " seconds");
-            return rightTimerSeconds;
-        }
-
-        logDebug("No task availability timers found");
-        return 0;
-    }
-
-    private int readTimerFromRegion(DTOPoint topLeft, DTOPoint bottomRight, String timerName) {
-        try {
-            String ocrResult = emuManager.ocrRegionText(EMULATOR_NUMBER, topLeft, bottomRight);
-            debugOCRArea("Task availability timer (" + timerName + ")", topLeft, bottomRight, ocrResult);
-
-            if (ocrResult != null && !ocrResult.trim().isEmpty()) {
-                int seconds = parseTimeToSeconds(ocrResult);
-                if (seconds > 0) {
-                    logInfo("✅ " + timerName + " timer: " + ocrResult + " = " + seconds + " seconds");
-                    return seconds;
-                }
-                logDebug(timerName + " timer OCR failed to parse: '" + ocrResult + "'");
-            }
-        } catch (Exception e) {
-            logDebug(timerName + " timer OCR failed: " + e.getMessage());
-        }
-        return 0;
-    }
-
-    // ========================================================================
-    // COMPLETED TASKS
-    // ========================================================================
-
-    private void checkAndCollectCompletedTasks() {
-        logDebug("Checking for completed tasks to collect rewards...");
-
-        DTOImageSearchResult completedResult = emuManager.searchTemplate(
-            EMULATOR_NUMBER, 
-            EnumTemplates.AM_COMPLETED, 
-            Thresholds.COMPLETED
-        );
-
-        if (completedResult.isFound()) {
-            logInfo("✅ Completed task found at " + completedResult.getPoint() + " - collecting rewards");
-            emuManager.tapAtPoint(EMULATOR_NUMBER, completedResult.getPoint());
-            sleepTask(1500);
-            logInfo("Rewards collected from completed task");
-        } else {
-            logDebug("No completed tasks found");
-        }
-    }
-
-    // ========================================================================
-    // DEBUGGING HELPERS
-    // ========================================================================
-
-    private void debugOCRArea(String description, DTOPoint topLeft, DTOPoint bottomRight, String ocrResult) {
-        logDebug("[OCR] " + description + " - Region: TL=" + topLeft + ", BR=" + bottomRight + ", Result='" + ocrResult + "'");
-    }
-
-    private void debugTemplateSearch(String templateName, DTOImageSearchResult result, int threshold) {
-        if (result.isFound()) {
-            logInfo("✅ Template FOUND: " + templateName + " at (" +
-                   result.getPoint().getX() + "," + result.getPoint().getY() +
-                   ") match: " + String.format("%.1f", result.getMatchPercentage()) + "% (threshold: " + threshold + "%)");
-        } else {
-            logInfo("❌ Template NOT FOUND: " + templateName + " (threshold: " + threshold + "%)");
-        }
     }
 
     // ========================================================================
     // OVERRIDES
     // ========================================================================
 
+    /**
+     * Returns the required start location for this task.
+     * 
+     * <p>
+     * Alliance Mobilization can be accessed from any location (home or world)
+     * since we navigate through the Events button which is accessible from both.
+     * 
+     * @return EnumStartLocation.ANY since navigation works from anywhere
+     */
     @Override
-    public EnumStartLocation getRequiredStartLocation() {
-        return EnumStartLocation.HOME;
+    protected EnumStartLocation getRequiredStartLocation() {
+        return EnumStartLocation.ANY;
+    }
+
+    /**
+     * Indicates whether this task provides daily mission progress.
+     * 
+     * <p>
+     * Alliance Mobilization does NOT contribute to daily mission objectives.
+     * 
+     * @return false
+     */
+    @Override
+    public boolean provideDailyMissionProgress() {
+        return false;
+    }
+
+    /**
+     * Indicates whether this task consumes stamina.
+     * 
+     * <p>
+     * Alliance Mobilization does NOT consume stamina. It has its own
+     * separate attempts counter that resets daily.
+     * 
+     * @return false
+     */
+    @Override
+    protected boolean consumesStamina() {
+        return false;
     }
 
     // ========================================================================
     // DATA CLASSES
     // ========================================================================
 
-    private record AttemptStatus(int remaining, Integer total) {}
-    
-    private record TaskProcessResult(boolean shouldStop, int cooldownSeconds) {}
+    /**
+     * Represents the attempts counter status.
+     * 
+     * @param remaining number of attempts remaining
+     * @param total     total attempts available (may be null if unknown)
+     */
+    private record AttemptStatus(int remaining, Integer total) {
+    }
+
+    /**
+     * Represents the result of task processing.
+     * 
+     * @param shouldStopProcessing true if processing should stop (reschedule
+     *                             already set)
+     * @param shortestCooldown     shortest cooldown in seconds from processed tasks
+     */
+    private record TaskProcessingResult(boolean shouldStopProcessing, int shortestCooldown) {
+    }
+
+    /**
+     * Represents task search filters based on rewards percentage configuration.
+     * 
+     * @param search200 whether to search for 200% tasks
+     * @param search120 whether to search for 120% tasks
+     * @param accept200 whether to accept 200% tasks (vs refresh)
+     * @param accept120 whether to accept 120% tasks (vs refresh)
+     */
+    private record TaskSearchFilters(
+            boolean search200,
+            boolean search120,
+            boolean accept200,
+            boolean accept120) {
+    }
 }
-
-
-
-
-
-
-
-
