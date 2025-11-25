@@ -7,6 +7,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 import java.time.Clock;
 import java.time.DayOfWeek;
@@ -70,13 +71,6 @@ public class CrystalLaboratoryTask extends DelayedTask {
     private static final int RFC_TIER_3_MAX = 60;
     private static final int RFC_TIER_4_MAX = 80;
     private static final int RFC_TIER_5_MAX = 100;
-
-    // Screen coordinates
-    private static final DTOPoint SWIPE_START = new DTOPoint(710, 950);
-    private static final DTOPoint SWIPE_END = new DTOPoint(510, 810);
-
-    /** Backup navigation coordinate for Crystal Lab FC button */
-    private static final DTOPoint CRYSTAL_LAB_FC_FALLBACK = new DTOPoint(281, 697);
 
     // OCR regions
     private static final DTOPoint CURRENT_FC_TOP_LEFT = new DTOPoint(590, 21);
@@ -217,8 +211,6 @@ public class CrystalLaboratoryTask extends DelayedTask {
             return false;
         }
 
-        swipeToCrystalLab();
-
         return openCrystalLabInterface();
     }
 
@@ -228,7 +220,9 @@ public class CrystalLaboratoryTask extends DelayedTask {
      * @return true if button found and tapped, false otherwise
      */
     private boolean findAndTapTroopsButton() {
-        DTOImageSearchResult troopsResult = searchTemplateWithRetries(GAME_HOME_SHORTCUTS_LANCER);
+        DTOImageSearchResult troopsResult = templateSearchHelper.searchTemplate(
+                GAME_HOME_SHORTCUTS_LANCER,
+                SearchConfig.builder().build());
 
         if (!troopsResult.isFound()) {
             logWarning("Could not locate troops button. Navigation failed.");
@@ -241,14 +235,6 @@ public class CrystalLaboratoryTask extends DelayedTask {
     }
 
     /**
-     * Swipes down to reveal the Crystal Laboratory section.
-     */
-    private void swipeToCrystalLab() {
-        swipe(SWIPE_START, SWIPE_END);
-        sleepTask(2000); // Wait for swipe animation and UI to stabilize
-    }
-
-    /**
      * Opens the Crystal Lab interface with fallback navigation.
      * 
      * <p>
@@ -258,41 +244,18 @@ public class CrystalLaboratoryTask extends DelayedTask {
      * @return true if interface opened successfully, false otherwise
      */
     private boolean openCrystalLabInterface() {
-        DTOImageSearchResult crystalLabResult = searchTemplateWithRetries(CRYSTAL_LAB_FC_BUTTON);
+        tapRandomPoint(new DTOPoint(637, 903), new DTOPoint(692, 914), 1, 500);
 
-        if (crystalLabResult.isFound()) {
-            tapPoint(crystalLabResult.getPoint());
-            sleepTask(1000); // Wait for Crystal Lab to open
-            return true;
+        DTOImageSearchResult validationResult = templateSearchHelper.searchTemplate(
+                VALIDATION_CRYSTAL_LAB_UI,
+                SearchConfig.builder().build());
+
+        if (!validationResult.isFound()) {
+            logWarning("Crystal Lab UI not found. Retrying in 5min.");
+            return false;
         }
-
-        return attemptFallbackNavigation();
-    }
-
-    /**
-     * Attempts fallback navigation using hardcoded coordinate.
-     * 
-     * <p>
-     * This fallback exists because the FC button appearance can vary
-     * depending on whether crystals have been claimed.
-     * 
-     * @return true if validation succeeds, false otherwise
-     */
-    private boolean attemptFallbackNavigation() {
-        logInfo("Primary navigation failed. Attempting fallback method.");
-
-        tapPoint(CRYSTAL_LAB_FC_FALLBACK);
-        sleepTask(1000); // Wait for interface to open
-
-        DTOImageSearchResult validationResult = searchTemplateWithRetries(VALIDATION_CRYSTAL_LAB_UI);
-
-        if (validationResult.isFound()) {
-            logInfo("Crystal Lab UI validated using fallback method");
-            return true;
-        }
-
-        logWarning("Could not locate Crystal Lab after all navigation attempts.");
-        return false;
+        logInfo("Successfully navigated to Crystal Laboratory");
+        return true;
     }
 
     // ===============================
@@ -315,7 +278,9 @@ public class CrystalLaboratoryTask extends DelayedTask {
      * </ul>
      */
     private void claimAllCrystals() {
-        DTOImageSearchResult claimResult = searchTemplateWithRetries(CRYSTAL_LAB_REFINE_BUTTON);
+        DTOImageSearchResult claimResult = templateSearchHelper.searchTemplate(
+                CRYSTAL_LAB_REFINE_BUTTON,
+                SearchConfig.builder().build());
 
         if (!claimResult.isFound()) {
             logInfo("No crystals available to claim.");
@@ -341,7 +306,9 @@ public class CrystalLaboratoryTask extends DelayedTask {
             tapRandomPoint(claimResult.getPoint(), claimResult.getPoint());
             sleepTask(100); // Brief pause for claim animation
 
-            claimResult = searchTemplateWithRetries(CRYSTAL_LAB_REFINE_BUTTON);
+            claimResult = templateSearchHelper.searchTemplate(
+                    CRYSTAL_LAB_REFINE_BUTTON,
+                    SearchConfig.builder().build());
 
             if (!claimResult.isFound()) {
                 consecutiveFailures++;
@@ -380,8 +347,9 @@ public class CrystalLaboratoryTask extends DelayedTask {
      * checks for availability and purchases it automatically.
      */
     private void purchaseDiscountedRFC() {
-        DTOImageSearchResult discountedResult = searchTemplateWithRetries(
-                CRYSTAL_LAB_DAILY_DISCOUNTED_RFC);
+        DTOImageSearchResult discountedResult = templateSearchHelper.searchTemplate(
+                CRYSTAL_LAB_DAILY_DISCOUNTED_RFC,
+                SearchConfig.builder().build());
 
         if (!discountedResult.isFound()) {
             logInfo("No discounted RFC available today.");
@@ -396,8 +364,9 @@ public class CrystalLaboratoryTask extends DelayedTask {
      * Executes the discounted RFC purchase by tapping the refine button.
      */
     private void executeDiscountedRFCPurchase() {
-        DTOImageSearchResult refineResult = searchTemplateWithRetries(
-                CRYSTAL_LAB_RFC_REFINE_BUTTON);
+        DTOImageSearchResult refineResult = templateSearchHelper.searchTemplate(
+                CRYSTAL_LAB_RFC_REFINE_BUTTON,
+                SearchConfig.builder().build());
 
         if (refineResult.isFound()) {
             tapPoint(refineResult.getPoint());
@@ -510,8 +479,9 @@ public class CrystalLaboratoryTask extends DelayedTask {
 
         logInfo(String.format("Sufficient FC available. Performing %d refinements.", refinesToDo));
 
-        DTOImageSearchResult refineResult = searchTemplateWithRetries(
-                CRYSTAL_LAB_RFC_REFINE_BUTTON);
+        DTOImageSearchResult refineResult = templateSearchHelper.searchTemplate(
+                CRYSTAL_LAB_RFC_REFINE_BUTTON,
+                SearchConfig.builder().build());
 
         if (refineResult.isFound()) {
             tapRandomPoint(refineResult.getPoint(), refineResult.getPoint(), refinesToDo, 500);
@@ -551,7 +521,14 @@ public class CrystalLaboratoryTask extends DelayedTask {
                     attempt + "/" + MAX_OCR_RETRIES + ")");
 
             try {
-                String ocrResult = OCRWithRetries(topLeft, bottomRight, 1);
+                String ocrResult = stringHelper.execute(
+                        topLeft,
+                        bottomRight,
+                        1,
+                        300L,
+                        null,
+                        s -> !s.isEmpty(),
+                        s -> s);
                 Integer number = parseNumberFromOCR(ocrResult);
 
                 if (number != null) {
