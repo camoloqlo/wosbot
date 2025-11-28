@@ -28,6 +28,7 @@ import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.TaskQueue;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 import net.sourceforge.tess4j.TesseractException;
 
@@ -62,12 +63,6 @@ public class IntelligenceTask extends DelayedTask {
 	private DTOTaskState autoJoinTask;
 	private TextRecognitionRetrier<LocalDateTime> textHelper;
 
-	private SearchConfig searchConfig = SearchConfig.builder()
-			.withMaxAttempts(3)
-			.withDelay(300L)
-			.withThreshold(90)
-			.build();
-
 	private SearchConfig searchConfigMultiple = SearchConfig.builder()
 			.withMaxAttempts(3)
 			.withDelay(300L)
@@ -89,8 +84,6 @@ public class IntelligenceTask extends DelayedTask {
 		// Reset runtime state
 		processingTask = true;
 		beastMarchSent = false;
-		boolean anyIntelProcessed = false;
-		boolean nonBeastIntelProcessed = false;
 
 		autoJoinTask = ServTaskManager.getInstance().getTaskState(profile.getId(),
 				TpDailyTaskEnum.ALLIANCE_AUTOJOIN.getId());
@@ -110,10 +103,10 @@ public class IntelligenceTask extends DelayedTask {
 			logInfo("All gather troops recalled. Proceeding with intel processing.");
 		}
 
-		while(processingTask) {
+		while (processingTask) {
+			boolean anyIntelProcessed = false;
+			boolean nonBeastIntelProcessed = false;
 			beastMarchSent = false;
-			anyIntelProcessed = false;
-			nonBeastIntelProcessed = false;
 
 			// Return to world screen for march checks
 			ensureCorrectScreenLocation(EnumStartLocation.WORLD);
@@ -121,10 +114,10 @@ public class IntelligenceTask extends DelayedTask {
 			// Check march availability once
 			MarchesAvailable marchesAvailable = checkMarchAvailability();
 			marchQueueLimitReached = !marchesAvailable.available();
-			
+
 			// Claim completed missions
 			claimCompletedMissions();
-			
+
 			// Check stamina
 			if (!hasEnoughStamina()) {
 				processingTask = false;
@@ -138,33 +131,35 @@ public class IntelligenceTask extends DelayedTask {
 				}
 			}
 
-		// Process survivor camps
-		if (survivorCampsEnabled) {
-			ensureOnIntelScreen();
-			logInfo("Searching for survivor camps using grayscale matching.");
-			EnumTemplates survivorTemplate = fcEra ? EnumTemplates.INTEL_SURVIVOR_GRAYSCALE_FC
-					: EnumTemplates.INTEL_SURVIVOR_GRAYSCALE;
-			if (searchAndProcessGrayscale(survivorTemplate, this::processSurvivor)) {
-				anyIntelProcessed = true;
-				nonBeastIntelProcessed = true;
+			// Process survivor camps
+			if (survivorCampsEnabled) {
+				ensureOnIntelScreen();
+				logInfo("Searching for survivor camps using grayscale matching.");
+				EnumTemplates survivorTemplate = fcEra ? EnumTemplates.INTEL_SURVIVOR_GRAYSCALE_FC
+						: EnumTemplates.INTEL_SURVIVOR_GRAYSCALE;
+				if (searchAndProcessGrayscale(survivorTemplate, this::processSurvivor)) {
+					anyIntelProcessed = true;
+					nonBeastIntelProcessed = true;
+				}
 			}
 
-		// Process explorations
-		if (explorationsEnabled) {
-			ensureOnIntelScreen();
-			logInfo("Searching for explorations using grayscale matching.");
-			EnumTemplates journeyTemplate = fcEra ? EnumTemplates.INTEL_JOURNEY_GRAYSCALE_FC
-					: EnumTemplates.INTEL_JOURNEY_GRAYSCALE;
-			if (searchAndProcessGrayscale(journeyTemplate, this::processJourney)) {
-				anyIntelProcessed = true;
-				nonBeastIntelProcessed = true;
+			// Process explorations
+			if (explorationsEnabled) {
+				ensureOnIntelScreen();
+				logInfo("Searching for explorations using grayscale matching.");
+				EnumTemplates journeyTemplate = fcEra ? EnumTemplates.INTEL_JOURNEY_GRAYSCALE_FC
+						: EnumTemplates.INTEL_JOURNEY_GRAYSCALE;
+				if (searchAndProcessGrayscale(journeyTemplate, this::processJourney)) {
+					anyIntelProcessed = true;
+					nonBeastIntelProcessed = true;
+				}
 			}
 
 			// Handle rescheduling
 			handleRescheduling(anyIntelProcessed, nonBeastIntelProcessed, marchesAvailable);
 		}
 
-		logInfo("Intel Task finished.");
+		logInfo("Intel Task finished");
 	}
 
 	/**
@@ -174,7 +169,8 @@ public class IntelligenceTask extends DelayedTask {
 	private void loadConfiguration() {
 		this.fcEra = profile.getConfig(EnumConfigurationKey.INTEL_FC_ERA_BOOL, Boolean.class);
 		this.useSmartProcessing = profile.getConfig(EnumConfigurationKey.INTEL_SMART_PROCESSING_BOOL, Boolean.class);
-		this.recallGatherTroops = profile.getConfig(EnumConfigurationKey.INTEL_RECALL_GATHER_TROOPS_BOOL, Boolean.class);
+		this.recallGatherTroops = profile.getConfig(EnumConfigurationKey.INTEL_RECALL_GATHER_TROOPS_BOOL,
+				Boolean.class);
 		this.useFlag = profile.getConfig(EnumConfigurationKey.INTEL_USE_FLAG_BOOL, Boolean.class);
 		this.flagNumber = useFlag ? profile.getConfig(EnumConfigurationKey.INTEL_BEASTS_FLAG_INT, Integer.class) : null;
 		this.beastsEnabled = profile.getConfig(EnumConfigurationKey.INTEL_BEASTS_BOOL, Boolean.class);
@@ -184,7 +180,8 @@ public class IntelligenceTask extends DelayedTask {
 		this.textHelper = new TextRecognitionRetrier<>(provider);
 
 		logDebug("Configuration loaded: fcEra=" + fcEra + ", useSmartProcessing=" + useSmartProcessing +
-				", recallGatherTroops=" + recallGatherTroops + ", useFlag=" + useFlag + ", beastsEnabled=" + beastsEnabled);
+				", recallGatherTroops=" + recallGatherTroops + ", useFlag=" + useFlag + ", beastsEnabled="
+				+ beastsEnabled);
 	}
 
 	/**
@@ -307,7 +304,7 @@ public class IntelligenceTask extends DelayedTask {
 				logInfo("Intel processing complete. Re-queueing gather tasks...");
 				requeueGatherTasks();
 			}
-			
+
 			processingTask = false;
 			return;
 		}
@@ -319,7 +316,7 @@ public class IntelligenceTask extends DelayedTask {
 			reschedule(LocalDateTime.now().plusMinutes(2));
 			logInfo("Non-beast intel processed but march queue full. " +
 					"Rescheduling in 2 minutes to check for more.");
-					
+
 			processingTask = false;
 			return;
 		}
@@ -334,7 +331,7 @@ public class IntelligenceTask extends DelayedTask {
 				reschedule(LocalDateTime.now().plusMinutes(2));
 				logInfo("March queue is full, and only beasts remain. Rescheduling in 2 minutes");
 			}
-			
+
 			processingTask = false;
 			return;
 		}
@@ -344,12 +341,12 @@ public class IntelligenceTask extends DelayedTask {
 			reschedule(LocalDateTime.now().plusMinutes(2));
 			logInfo("Rescheduling in 2 minutes to check if any intel got skipped. " +
 					"Beast march sent: " + beastMarchSent + ", March queue full: " + marchQueueLimitReached);
-					
+
 			processingTask = false;
 			return;
 		}
 
-		// Beast march was sent successfully 
+		// Beast march was sent successfully
 		logInfo("Beast march sent successfully. Continuing processing.");
 	}
 
@@ -397,7 +394,7 @@ public class IntelligenceTask extends DelayedTask {
 	 */
 	private boolean searchAndProcessGrayscale(EnumTemplates template, Consumer<DTOImageSearchResult> processMethod) {
 		logInfo("Searching for grayscale template '" + template + "'");
-		DTOImageSearchResult result = templateSearchHelper.searchTemplateGrayscale(template, searchConfig);
+		DTOImageSearchResult result = templateSearchHelper.searchTemplateGrayscale(template, SearchConfigConstants.SINGLE_WITH_RETRIES);
 
 		if (result.isFound()) {
 			logInfo("Grayscale template found: " + template);
@@ -412,7 +409,7 @@ public class IntelligenceTask extends DelayedTask {
 		tapPoint(result.getPoint());
 		sleepTask(2000);
 
-		DTOImageSearchResult view = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_VIEW, searchConfig);
+		DTOImageSearchResult view = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_VIEW, SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (!view.isFound()) {
 			logWarning("Could not find the 'View' button for the journey. Going back.");
 			tapBackButton();
@@ -422,7 +419,7 @@ public class IntelligenceTask extends DelayedTask {
 		tapPoint(view.getPoint());
 		sleepTask(500);
 
-		DTOImageSearchResult explore = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_EXPLORE, searchConfig);
+		DTOImageSearchResult explore = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_EXPLORE, SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (!explore.isFound()) {
 			logWarning("Could not find the 'Explore' button for the journey. Going back.");
 			tapBackButton();
@@ -442,7 +439,7 @@ public class IntelligenceTask extends DelayedTask {
 		tapPoint(result.getPoint());
 		sleepTask(2000);
 
-		DTOImageSearchResult view = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_VIEW, searchConfig);
+		DTOImageSearchResult view = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_VIEW, SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (!view.isFound()) {
 			logWarning("Could not find the 'View' button for the survivor. Going back.");
 			tapBackButton();
@@ -452,7 +449,7 @@ public class IntelligenceTask extends DelayedTask {
 		tapPoint(view.getPoint());
 		sleepTask(500);
 
-		DTOImageSearchResult rescue = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_RESCUE, searchConfig);
+		DTOImageSearchResult rescue = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_RESCUE, SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (!rescue.isFound()) {
 			logWarning("Could not find the 'Rescue' button for the survivor. Going back.");
 			tapBackButton();
@@ -479,7 +476,7 @@ public class IntelligenceTask extends DelayedTask {
 		tapPoint(beast.getPoint());
 		sleepTask(2000);
 
-		DTOImageSearchResult view = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_VIEW, searchConfig);
+		DTOImageSearchResult view = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_VIEW, SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (!view.isFound()) {
 			logWarning("Could not find the 'View' button for the beast. Going back.");
 			tapBackButton();
@@ -488,7 +485,7 @@ public class IntelligenceTask extends DelayedTask {
 		tapPoint(view.getPoint());
 		sleepTask(500);
 
-		DTOImageSearchResult attack = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_ATTACK, searchConfig);
+		DTOImageSearchResult attack = templateSearchHelper.searchTemplate(EnumTemplates.INTEL_ATTACK, SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (!attack.isFound()) {
 			logWarning("Could not find the 'Attack' button for the beast. Going back.");
 			tapBackButton();
@@ -500,7 +497,7 @@ public class IntelligenceTask extends DelayedTask {
 
 		// Check if the march screen is open
 		DTOImageSearchResult deployButton = templateSearchHelper.searchTemplate(EnumTemplates.DEPLOY_BUTTON,
-				searchConfig);
+				SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (!deployButton.isFound()) {
 			logError("March queue is full. Cannot start a new march.");
 			marchQueueLimitReached = true;
@@ -514,7 +511,7 @@ public class IntelligenceTask extends DelayedTask {
 
 		// Equalize troops
 		DTOImageSearchResult equalizeButton = templateSearchHelper.searchTemplate(EnumTemplates.RALLY_EQUALIZE_BUTTON,
-				searchConfig);
+				SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (equalizeButton.isFound()) {
 			tapPoint(equalizeButton.getPoint());
 			sleepTask(300);
@@ -534,7 +531,7 @@ public class IntelligenceTask extends DelayedTask {
 		logDebug("Spent stamina read: " + spentStamina);
 
 		// Deploy march
-		DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(EnumTemplates.DEPLOY_BUTTON, searchConfig);
+		DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(EnumTemplates.DEPLOY_BUTTON, SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (!deploy.isFound()) {
 			logError("Deploy button not found. Rescheduling to try again in 5 minutes.");
 			reschedule(LocalDateTime.now().plusMinutes(5));
@@ -546,7 +543,7 @@ public class IntelligenceTask extends DelayedTask {
 		sleepTask(2000);
 
 		// Verify deployment
-		deploy = templateSearchHelper.searchTemplate(EnumTemplates.DEPLOY_BUTTON, searchConfig);
+		deploy = templateSearchHelper.searchTemplate(EnumTemplates.DEPLOY_BUTTON, SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (deploy.isFound()) {
 			logWarning(
 					"Deploy button still present after deployment attempt. March may have failed. Rescheduling in 5 minutes.");
@@ -570,7 +567,7 @@ public class IntelligenceTask extends DelayedTask {
 			return;
 		}
 
-		if(useSmartProcessing) {
+		if (useSmartProcessing) {
 			LocalDateTime rescheduleTime = LocalDateTime.now().plusSeconds(travelTimeSeconds);
 			reschedule(rescheduleTime);
 			logInfo("Beast march scheduled to return at " + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
@@ -583,16 +580,16 @@ public class IntelligenceTask extends DelayedTask {
 		openLeftMenuCitySection(false);
 
 		DTOTesseractSettings settings = DTOTesseractSettings.builder()
-		.setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-		.setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-		.build();
+				.setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+				.setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+				.build();
 
 		// Try OCR to find idle marches
 		try {
 			for (int i = 0; i < 5; i++) {
 				String ocrSearchResult = emuManager.ocrRegionText(EMULATOR_NUMBER,
 						new DTOPoint(10, 342),
-						new DTOPoint(435, 772), 
+						new DTOPoint(435, 772),
 						settings);
 				Pattern idleMarchesPattern = Pattern.compile("idle");
 				Matcher m = idleMarchesPattern.matcher(ocrSearchResult.toLowerCase());
@@ -616,7 +613,7 @@ public class IntelligenceTask extends DelayedTask {
 		LocalDateTime earliestAvailableMarch = LocalDateTime.now().plusHours(14); // Very long default time
 
 		for (GatherType gatherType : GatherType.values()) {
-			DTOImageSearchResult resource = templateSearchHelper.searchTemplate(gatherType.getTemplate(), searchConfig);
+			DTOImageSearchResult resource = templateSearchHelper.searchTemplate(gatherType.getTemplate(), SearchConfigConstants.SINGLE_WITH_RETRIES);
 			if (!resource.isFound()) {
 				logDebug("March queue for " + gatherType.getName() + " is not active. (Used: " +
 						activeMarchQueues + "/" + totalMarchesAvailable + ")");
@@ -668,11 +665,12 @@ public class IntelligenceTask extends DelayedTask {
 		while (attempt < maxRetries) {
 			attempt++;
 
-			DTOImageSearchResult returningArrow = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_RECALL_BUTTON,
-					90, 3);
-			DTOImageSearchResult marchView = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_VIEW_BUTTON, 90, 3);
-			DTOImageSearchResult marchSpeedup = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_SPEEDUP_BUTTON, 90,
-					3);
+			DTOImageSearchResult returningArrow = templateSearchHelper.searchTemplate(EnumTemplates.MARCHES_AREA_RECALL_BUTTON,
+					SearchConfigConstants.SINGLE_WITH_RETRIES);
+			DTOImageSearchResult marchView = templateSearchHelper.searchTemplate(EnumTemplates.MARCHES_AREA_VIEW_BUTTON,
+					SearchConfigConstants.SINGLE_WITH_RETRIES);
+			DTOImageSearchResult marchSpeedup = templateSearchHelper.searchTemplate(EnumTemplates.MARCHES_AREA_SPEEDUP_BUTTON,
+					SearchConfigConstants.SINGLE_WITH_RETRIES);
 
 			boolean foundReturning = returningArrow != null && returningArrow.isFound();
 			boolean foundView = marchView != null && marchView.isFound();
