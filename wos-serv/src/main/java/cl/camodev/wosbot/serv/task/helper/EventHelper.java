@@ -42,7 +42,7 @@ public class EventHelper {
             EmulatorManager emuManager,
             String emulatorNumber,
             DTOProfiles profile) {
-        this.templateSearchHelper = new TemplateSearchHelper(emuManager, emulatorNumber);
+        this.templateSearchHelper = new TemplateSearchHelper(emuManager, emulatorNumber, profile);
         this.logger = new ProfileLogger(EventHelper.class, profile);
     }
 

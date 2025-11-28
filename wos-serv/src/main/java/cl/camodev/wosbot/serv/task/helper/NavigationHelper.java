@@ -44,7 +44,7 @@ public class NavigationHelper {
     public NavigationHelper(EmulatorManager emuManager, String emulatorNumber, DTOProfiles profile) {
         this.emuManager = emuManager;
         this.emulatorNumber = emulatorNumber;
-        this.templateSearchHelper = new TemplateSearchHelper(emuManager, emulatorNumber);
+        this.templateSearchHelper = new TemplateSearchHelper(emuManager, emulatorNumber, profile);
         this.logger = new ProfileLogger(NavigationHelper.class, profile);
         this.profileName = profile.getName();
     }

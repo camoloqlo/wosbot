@@ -136,7 +136,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
         this.stringHelper = new TextRecognitionRetrier<>(provider);
 
         // Initialize game helpers
-        this.templateSearchHelper = new TemplateSearchHelper(emuManager, EMULATOR_NUMBER);
+        this.templateSearchHelper = new TemplateSearchHelper(emuManager, EMULATOR_NUMBER, profile);
         this.navigationHelper = new NavigationHelper(emuManager, EMULATOR_NUMBER, profile);
         this.marchHelper = new MarchHelper(emuManager, EMULATOR_NUMBER, stringHelper, profile);
         this.staminaHelper = new StaminaHelper(emuManager, EMULATOR_NUMBER, integerHelper, durationHelper, profile,
