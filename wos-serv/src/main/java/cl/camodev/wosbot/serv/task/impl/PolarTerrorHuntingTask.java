@@ -13,6 +13,7 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -197,7 +198,9 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         Integer spentStamina = getSpentStamina();
 
         // Deploy march
-        DTOImageSearchResult deploy = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 3);
+        DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(
+                EnumTemplates.DEPLOY_BUTTON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
 
         if (!deploy.isFound()) {
             logDebug("Deploy button not found. Rescheduling to try again in 5 minutes.");
@@ -207,7 +210,9 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         tapPoint(deploy.getPoint());
         sleepTask(2000);
 
-        deploy = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 3);
+        deploy = templateSearchHelper.searchTemplate(
+                EnumTemplates.DEPLOY_BUTTON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
         if (deploy.isFound()) {
             // Probably march got taken by auto-join or something
             logInfo("Deploy button still found after trying to deploy march. Rescheduling to try again in 5 minutes.");
@@ -265,7 +270,9 @@ public class PolarTerrorHuntingTask extends DelayedTask {
 
     private boolean openRallyMenu() {
         // Search for rally button
-        DTOImageSearchResult rallyButton = searchTemplateWithRetries(EnumTemplates.RALLY_BUTTON, 90, 3);
+        DTOImageSearchResult rallyButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.RALLY_BUTTON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
         sleepTask(500);
 
         if (!rallyButton.isFound()) {
@@ -290,12 +297,16 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         sleepTask(500);
 
         // Search the polar terror search icon
-        DTOImageSearchResult polarTerror = searchTemplateWithRetries(EnumTemplates.POLAR_TERROR_SEARCH_ICON, 90, 3);
+        DTOImageSearchResult polarTerror = templateSearchHelper.searchTemplate(
+                EnumTemplates.POLAR_TERROR_SEARCH_ICON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
         logDebug("Searching for Polar Terror icon");
         for (int i = 0; i < 3 && !polarTerror.isFound(); i++) {
             swipe(new DTOPoint(40, 913), new DTOPoint(678, 913));
             sleepTask(500);
-            polarTerror = searchTemplateWithRetries(EnumTemplates.POLAR_TERROR_SEARCH_ICON, 90, 3);
+            polarTerror = templateSearchHelper.searchTemplate(
+                    EnumTemplates.POLAR_TERROR_SEARCH_ICON,
+                    SearchConfigConstants.SINGLE_WITH_RETRIES);
         }
 
         if (!polarTerror.isFound()) {
@@ -339,8 +350,9 @@ public class PolarTerrorHuntingTask extends DelayedTask {
 
         // Need to search for the magnifying glass icon to be sure we're on the search
         // screen
-        DTOImageSearchResult magnifyingGlass = searchTemplateWithRetries(
-                EnumTemplates.POLAR_TERROR_TAB_MAGNIFYING_GLASS_ICON, 90, 3);
+        DTOImageSearchResult magnifyingGlass = templateSearchHelper.searchTemplate(
+                EnumTemplates.POLAR_TERROR_TAB_MAGNIFYING_GLASS_ICON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
         logDebug("Searching for magnifying glass icon");
         sleepTask(500);
 
@@ -353,11 +365,13 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         tapPoint(magnifyingGlass.getPoint());
         sleepTask(2000);
 
-        DTOImageSearchResult specialRewardsCompleted = searchTemplateWithRetries(
-                EnumTemplates.POLAR_TERROR_TAB_SPECIAL_REWARDS, 90, 1);
+        DTOImageSearchResult specialRewardsCompleted = templateSearchHelper.searchTemplate(
+                EnumTemplates.POLAR_TERROR_TAB_SPECIAL_REWARDS,
+                SearchConfigConstants.QUICK_SEARCH);
         for (int i = 0; i < 5 && !specialRewardsCompleted.isFound(); i++) {
-            specialRewardsCompleted = searchTemplateWithRetries(EnumTemplates.POLAR_TERROR_TAB_SPECIAL_REWARDS,
-                    90, 1);
+            specialRewardsCompleted = templateSearchHelper.searchTemplate(
+                    EnumTemplates.POLAR_TERROR_TAB_SPECIAL_REWARDS,
+                    SearchConfigConstants.QUICK_SEARCH);
             if (specialRewardsCompleted.isFound()) {
                 // Due to limited mode being enabled, and there's no special rewards left,
                 // means there's no hunts left

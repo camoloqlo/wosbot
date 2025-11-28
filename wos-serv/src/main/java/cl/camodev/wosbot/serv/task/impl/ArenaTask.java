@@ -6,7 +6,6 @@ import java.time.format.DateTimeFormatter;
 import java.awt.Color;
 
 import cl.camodev.utiles.UtilTime;
-import cl.camodev.utiles.ocr.TextRecognitionRetrier;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -16,6 +15,7 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 /**
  * Task responsible for managing arena challenges.
@@ -104,7 +104,6 @@ public class ArenaTask extends DelayedTask {
     private int extraAttempts;
     private boolean refreshWithGems;
     private int playerState;
-    private TextRecognitionRetrier<String> textHelper;
 
     // ========== Execution State (reset each execution) ==========
     private int attempts;
@@ -136,8 +135,6 @@ public class ArenaTask extends DelayedTask {
         Integer playerState = profile.getConfig(
                 EnumConfigurationKey.ARENA_TASK_PLAYER_STATE_INT, Integer.class);
         this.playerState = (playerState != null) ? playerState : DEFAULT_PLAYER_STATE;
-
-        this.textHelper = new TextRecognitionRetrier<>(provider);
 
         logDebug(String.format(
                 "Configuration loaded - Time: %s, Extra attempts: %d, Refresh with gems: %s, Player state: %d",
@@ -267,8 +264,9 @@ public class ArenaTask extends DelayedTask {
         openLeftMenuCitySection(true);
 
         logInfo("Searching for Marksman Camp shortcut");
-        DTOImageSearchResult marksmanResult = searchTemplateWithRetries(
-                EnumTemplates.GAME_HOME_SHORTCUTS_MARKSMAN);
+        DTOImageSearchResult marksmanResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.GAME_HOME_SHORTCUTS_MARKSMAN,
+                SearchConfig.builder().build());
 
         if (!marksmanResult.isFound()) {
             logError("Marksman camp shortcut not found.");
@@ -295,8 +293,6 @@ public class ArenaTask extends DelayedTask {
         logDebug("Checking if this is first arena run");
 
         DTOTesseractSettings settings = DTOTesseractSettings.builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(255, 255, 255))
                 .setAllowedChars("0123456789")
@@ -330,8 +326,9 @@ public class ArenaTask extends DelayedTask {
     private boolean openChallengeList() {
         logDebug("Opening challenge list");
 
-        DTOImageSearchResult challengeResult = searchTemplateWithRetries(
-                EnumTemplates.ARENA_CHALLENGE_BUTTON);
+        DTOImageSearchResult challengeResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.ARENA_CHALLENGE_BUTTON,
+                SearchConfig.builder().build());
 
         if (!challengeResult.isFound()) {
             logError("Challenge button not found.");
@@ -353,7 +350,6 @@ public class ArenaTask extends DelayedTask {
         logDebug("Reading initial challenge attempts");
 
         DTOTesseractSettings settings = DTOTesseractSettings.builder()
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(91, 112, 147))
                 .setAllowedChars("0123456789")
@@ -415,8 +411,9 @@ public class ArenaTask extends DelayedTask {
         tapPoint(EXTRA_ATTEMPTS_BUTTON);
         sleepTask(1000); // Wait for purchase dialog to open
 
-        DTOImageSearchResult confirmResult = searchTemplateWithRetries(
-                EnumTemplates.ARENA_GEMS_EXTRA_ATTEMPTS_BUTTON);
+        DTOImageSearchResult confirmResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.ARENA_GEMS_EXTRA_ATTEMPTS_BUTTON,
+                SearchConfig.builder().build());
 
         if (!confirmResult.isFound()) {
             logInfo("No more extra attempts available for purchase");
@@ -475,8 +472,6 @@ public class ArenaTask extends DelayedTask {
         logDebug("Detecting current attempt position via price");
 
         DTOTesseractSettings settings = DTOTesseractSettings.builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
                 .setTextColor(new Color(255, 255, 255))
                 .setAllowedChars("0123456789")
@@ -610,20 +605,24 @@ public class ArenaTask extends DelayedTask {
     private boolean scanAndChallengeWeakerOpponent() {
         int baseY = firstRun ? OPPONENT_BASE_Y_FIRST_RUN : OPPONENT_BASE_Y_NORMAL;
         boolean allSameState = true;
+        int startIndex = currentOpponentPosition;
 
         for (int i = 0; i < MAX_OPPONENTS; i++) {
             if (attempts <= 0) {
                 break;
             }
 
-            int opponentY = baseY + (i * OPPONENT_Y_SPACING);
-            int opponentStateY = OPPONENT_STATE_TOP_LEFT.getY() + (i * OPPONENT_Y_SPACING);
+            int opponentIndex = (startIndex + i) % MAX_OPPONENTS;
+
+            int opponentY = baseY + (opponentIndex * OPPONENT_Y_SPACING);
+            int opponentStateY = OPPONENT_STATE_TOP_LEFT.getY() + (opponentIndex * OPPONENT_Y_SPACING);
 
             // If player state is 0 (unconfigured), skip state verification
             if (playerState != 0) {
                 // Check opponent's state
                 int opponentState = firstRun ? 0 : getOpponentState(opponentStateY);
-                logInfo(String.format("Opponent %d state: %d (our state: %d)", i + 1, opponentState, playerState));
+                logInfo(String.format("Opponent %d state: %d (our state: %d)", opponentIndex + 1, opponentState,
+                        playerState));
                 sleepTask(300);
 
                 if (opponentState == playerState) {
@@ -635,8 +634,8 @@ public class ArenaTask extends DelayedTask {
                 allSameState = false; // Don't force refresh when state checking is disabled
             }
 
-            if (isOpponentWeaker(opponentY, i + 1)) {
-                challengeOpponent(opponentY, i + 1);
+            if (isOpponentWeaker(opponentY, opponentIndex + 1)) {
+                challengeOpponent(opponentY, opponentIndex + 1);
                 attempts--;
 
                 boolean victory = checkBattleResult();
@@ -648,7 +647,7 @@ public class ArenaTask extends DelayedTask {
                 } else {
                     // Lost the battle - update currentOpponentPosition to continue from next
                     // opponent
-                    currentOpponentPosition = (i + 1) % MAX_OPPONENTS;
+                    currentOpponentPosition = (opponentIndex + 1) % MAX_OPPONENTS;
                     logInfo(String.format("Battle lost. Next scan will start from opponent %d",
                             currentOpponentPosition + 1));
                     sleepTask(1000);
@@ -858,7 +857,7 @@ public class ArenaTask extends DelayedTask {
                 .setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
                 .build();
 
-        String resultText = textHelper.execute(
+        String resultText = stringHelper.execute(
                 VICTORY_TEXT_TOP_LEFT,
                 VICTORY_TEXT_BOTTOM_RIGHT,
                 3,
@@ -893,9 +892,7 @@ public class ArenaTask extends DelayedTask {
         DTOTesseractSettings settings = DTOTesseractSettings.builder()
                 .setTextColor(Color.white)
                 .setRemoveBackground(true)
-                .setAllowedChars("0123456789M.")
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+                .setAllowedChars("0123456789")
                 .build();
 
         // Calculate state coordinates relative to opponent's position
@@ -931,8 +928,9 @@ public class ArenaTask extends DelayedTask {
      */
     private boolean tryRefreshOpponentList() {
         // Try free refresh first
-        DTOImageSearchResult freeRefreshResult = searchTemplateWithRetries(
-                EnumTemplates.ARENA_FREE_REFRESH_BUTTON);
+        DTOImageSearchResult freeRefreshResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.ARENA_FREE_REFRESH_BUTTON,
+                SearchConfig.builder().build());
 
         if (freeRefreshResult.isFound()) {
             logInfo("Using free refresh");
@@ -953,8 +951,9 @@ public class ArenaTask extends DelayedTask {
             return false;
         }
 
-        DTOImageSearchResult gemsRefreshResult = searchTemplateWithRetries(
-                EnumTemplates.ARENA_GEMS_REFRESH_BUTTON);
+        DTOImageSearchResult gemsRefreshResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.ARENA_GEMS_REFRESH_BUTTON,
+                SearchConfig.builder().build());
 
         if (!gemsRefreshResult.isFound()) {
             logDebug("Gem refresh button not found");
@@ -968,8 +967,9 @@ public class ArenaTask extends DelayedTask {
         sleepTask(500); // Wait for confirmation popup
 
         // Confirm gem refresh
-        DTOImageSearchResult confirmResult = searchTemplateWithRetries(
-                EnumTemplates.ARENA_GEMS_REFRESH_CONFIRM_BUTTON);
+        DTOImageSearchResult confirmResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.ARENA_GEMS_REFRESH_CONFIRM_BUTTON,
+                SearchConfig.builder().build());
 
         if (confirmResult.isFound()) {
             tapPoint(REFRESH_CONFIRM_BUTTON); // Tap checkbox if needed

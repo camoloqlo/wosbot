@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 import cl.camodev.utiles.UtilTime;
+import cl.camodev.utiles.time.TimeConverters;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -18,6 +19,8 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 public class TundraTruckEventTask extends DelayedTask {
 
@@ -80,7 +83,7 @@ public class TundraTruckEventTask extends DelayedTask {
 
 	// Retry limits
 	private static final int MAX_NAVIGATION_ATTEMPTS = 2;
-	private static final int MAX_SWIPE_ATTEMPTS = 5;
+	private static final int MAX_SWIPE_ATTEMPTS = 10;
 	private static final int MAX_REFRESH_ATTEMPTS = 10;
 	private static final int INITIAL_SWIPE_COUNT = 3;
 	private static final int POPUP_CLOSE_TAPS = 5;
@@ -253,7 +256,9 @@ public class TundraTruckEventTask extends DelayedTask {
 		logInfo("Navigating to Tundra Truck event");
 
 		// Find and click Events button
-		DTOImageSearchResult eventsButton = searchTemplateWithRetries(EnumTemplates.HOME_EVENTS_BUTTON);
+		DTOImageSearchResult eventsButton = templateSearchHelper.searchTemplate(
+				EnumTemplates.HOME_EVENTS_BUTTON,
+				SearchConfigConstants.DEFAULT_SINGLE);
 		if (!eventsButton.isFound()) {
 			logWarning("Events button not found");
 			return TundraNavigationResult.FAILURE;
@@ -266,7 +271,9 @@ public class TundraTruckEventTask extends DelayedTask {
 		tapRandomPoint(CLOSE_POPUP.topLeft(), CLOSE_POPUP.bottomRight(), POPUP_CLOSE_TAPS, 300);
 
 		// Search for Tundra Truck tab
-		DTOImageSearchResult truckTab = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_TAB);
+		DTOImageSearchResult truckTab = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_TAB,
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (truckTab.isFound()) {
 			return handleTruckTabFound(truckTab);
@@ -286,7 +293,14 @@ public class TundraTruckEventTask extends DelayedTask {
 		logInfo("Navigated to Tundra Truck event");
 
 		// Check if in countdown
-		String countdownText = OCRWithRetries("countdown", COUNTDOWN_OCR.topLeft(), COUNTDOWN_OCR.bottomRight());
+		String countdownText = stringHelper.execute(
+				COUNTDOWN_OCR.topLeft(),
+				COUNTDOWN_OCR.bottomRight(),
+				1,
+				300L,
+				null,
+				s -> !s.isEmpty(),
+				s -> s);
 		if (countdownText != null && countdownText.toLowerCase().contains("countdown")) {
 			rescheduleWithActivationTime();
 			return TundraNavigationResult.COUNTDOWN;
@@ -314,7 +328,9 @@ public class TundraTruckEventTask extends DelayedTask {
 
 		// Search while swiping right
 		for (int attempt = 0; attempt < MAX_SWIPE_ATTEMPTS; attempt++) {
-			DTOImageSearchResult truckTab = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_TAB);
+			DTOImageSearchResult truckTab = templateSearchHelper.searchTemplate(
+					EnumTemplates.TUNDRA_TRUCK_TAB,
+					SearchConfigConstants.DEFAULT_SINGLE);
 
 			if (truckTab.isFound()) {
 				return handleTruckTabFound(truckTab);
@@ -333,7 +349,9 @@ public class TundraTruckEventTask extends DelayedTask {
 	 * Check if event has ended
 	 */
 	private boolean isEventEnded() {
-		DTOImageSearchResult endedResult = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_ENDED);
+		DTOImageSearchResult endedResult = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_ENDED,
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (endedResult.isFound()) {
 			logInfo("Tundra Truck event has ended. Rescheduling for next reset.");
@@ -370,8 +388,13 @@ public class TundraTruckEventTask extends DelayedTask {
 	 * Collect any arrived trucks
 	 */
 	private void collectArrivedTrucks() {
-		List<DTOImageSearchResult> arrivedsTruck = searchTemplatesWithRetries(EnumTemplates.TUNDRA_TRUCK_ARRIVED, 80, 3,
-				2);
+		List<DTOImageSearchResult> arrivedsTruck = templateSearchHelper.searchTemplates(
+				EnumTemplates.TUNDRA_TRUCK_ARRIVED,
+				SearchConfig.builder()
+						.withThreshold(80)
+						.withMaxAttempts(2)
+						.withMaxResults(3)
+						.build());
 
 		logDebug("Searching for arrived trucks");
 
@@ -397,7 +420,14 @@ public class TundraTruckEventTask extends DelayedTask {
 	 */
 	private boolean checkAvailableTrucks() {
 		try {
-			String text = OCRWithRetries(REMAINING_TRUCKS_OCR.topLeft(), REMAINING_TRUCKS_OCR.bottomRight());
+			String text = stringHelper.execute(
+					REMAINING_TRUCKS_OCR.topLeft(),
+					REMAINING_TRUCKS_OCR.bottomRight(),
+					1,
+					300L,
+					null,
+					s -> !s.isEmpty(),
+					s -> s);
 			logInfo("Remaining trucks OCR: '" + text + "'");
 
 			if (text != null && text.trim().matches("0\\s*/\\s*\\d+")) {
@@ -487,7 +517,9 @@ public class TundraTruckEventTask extends DelayedTask {
 		sleepTask(500);
 
 		// Check if already departed
-		DTOImageSearchResult departedResult = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_DEPARTED);
+		DTOImageSearchResult departedResult = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_DEPARTED,
+				SearchConfigConstants.DEFAULT_SINGLE);
 		if (departedResult.isFound()) {
 			logInfo(side + " truck has already departed");
 			tapRandomPoint(CLOSE_DETAIL.topLeft(), CLOSE_DETAIL.bottomRight());
@@ -497,7 +529,9 @@ public class TundraTruckEventTask extends DelayedTask {
 		}
 
 		// Check if available to send
-		DTOImageSearchResult escortResult = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_ESCORT);
+		DTOImageSearchResult escortResult = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_ESCORT,
+				SearchConfigConstants.DEFAULT_SINGLE);
 		if (escortResult.isFound()) {
 			logInfo(side + " truck is available to send");
 			tapBackButton();
@@ -529,7 +563,9 @@ public class TundraTruckEventTask extends DelayedTask {
 		}
 
 		// Check if escort button available
-		DTOImageSearchResult escortButton = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_ESCORT);
+		DTOImageSearchResult escortButton = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_ESCORT,
+				SearchConfigConstants.DEFAULT_SINGLE);
 		sleepTask(500);
 
 		if (!escortButton.isFound()) {
@@ -548,7 +584,9 @@ public class TundraTruckEventTask extends DelayedTask {
 		sleepTask(1000);
 
 		// Check for "higher-level trucks" pop-up
-		DTOImageSearchResult tipsPopup = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_TIPS_POPUP, 90, 2);
+		DTOImageSearchResult tipsPopup = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_TIPS_POPUP,
+				SearchConfigConstants.SINGLE_WITH_2_RETRIES);
 		if (tipsPopup.isFound()) {
 			tapRandomPoint(TIPS_POPUP_CHECKBOX.topLeft(), TIPS_POPUP_CHECKBOX.bottomRight(), 1, 300);
 			tapRandomPoint(CONFIRM_CHECKBOX.topLeft(), CONFIRM_CHECKBOX.bottomRight(), 1, 300);
@@ -561,7 +599,9 @@ public class TundraTruckEventTask extends DelayedTask {
 	 * Check if truck already departed
 	 */
 	private boolean isTruckDeparted(TruckSide side) {
-		DTOImageSearchResult departedResult = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_DEPARTED);
+		DTOImageSearchResult departedResult = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_DEPARTED,
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		if (departedResult.isFound()) {
 			logInfo(side + " truck already departed. Skipping.");
@@ -577,7 +617,9 @@ public class TundraTruckEventTask extends DelayedTask {
 	 * Find SSR truck through refreshes
 	 */
 	private boolean findSSRTruck() {
-		DTOImageSearchResult ssrTruck = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_YELLOW);
+		DTOImageSearchResult ssrTruck = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_YELLOW,
+				SearchConfigConstants.DEFAULT_SINGLE);
 
 		for (int attempt = 0; attempt < MAX_REFRESH_ATTEMPTS && !ssrTruck.isFound(); attempt++) {
 			logInfo("SSR truck not found. Refreshing (attempt " + (attempt + 1) + "/" + MAX_REFRESH_ATTEMPTS + ")");
@@ -587,7 +629,9 @@ public class TundraTruckEventTask extends DelayedTask {
 				return false;
 			}
 
-			ssrTruck = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_YELLOW);
+			ssrTruck = templateSearchHelper.searchTemplate(
+					EnumTemplates.TUNDRA_TRUCK_YELLOW,
+					SearchConfigConstants.DEFAULT_SINGLE);
 		}
 
 		if (!ssrTruck.isFound()) {
@@ -604,8 +648,13 @@ public class TundraTruckEventTask extends DelayedTask {
 		tapRandomPoint(REFRESH_BUTTON.topLeft(), REFRESH_BUTTON.bottomRight());
 		sleepTask(1000);
 
-		DTOImageSearchResult freeRefresh = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_REFRESH, 90, 3);
-		DTOImageSearchResult gemRefresh = searchTemplateWithRetries(EnumTemplates.TUNDRA_TRUCK_REFRESH_GEMS, 98, 3);
+		DTOImageSearchResult freeRefresh = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_REFRESH,
+				SearchConfigConstants.SINGLE_WITH_RETRIES);
+
+		DTOImageSearchResult gemRefresh = templateSearchHelper.searchTemplate(
+				EnumTemplates.TUNDRA_TRUCK_REFRESH_GEMS,
+				SearchConfigConstants.STRICT_MATCHING);
 
 		if (freeRefresh.isFound()) {
 			logInfo("Free refresh available - confirming");
@@ -683,7 +732,14 @@ public class TundraTruckEventTask extends DelayedTask {
 			DTOPoint start = side == TruckSide.LEFT ? LEFT_TRUCK_TIME.topLeft() : RIGHT_TRUCK_TIME.topLeft();
 			DTOPoint end = side == TruckSide.LEFT ? LEFT_TRUCK_TIME.bottomRight() : RIGHT_TRUCK_TIME.bottomRight();
 
-			String text = OCRWithRetries(start, end);
+			String text = stringHelper.execute(
+					start,
+					end,
+					1,
+					300L,
+					null,
+					s -> !s.isEmpty(),
+					s -> s);
 
 			if (text == null || text.trim().isEmpty()) {
 				logDebug("OCR returned empty for " + side + " truck time");
@@ -693,7 +749,7 @@ public class TundraTruckEventTask extends DelayedTask {
 			logDebug(side + " truck time OCR: '" + text + "'");
 
 			// Use UtilTime to parse
-			LocalDateTime returnTime = UtilTime.parseTime(text);
+			LocalDateTime returnTime = TimeConverters.toLocalDateTime(text);
 			logInfo(side + " truck returns at: " + returnTime);
 			return Optional.of(returnTime);
 

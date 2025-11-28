@@ -9,19 +9,6 @@
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%-5.5level] - %m [%c{1}]%n</pattern>
         </encoder>
-        <!-- Filter out specific warnings using JaninoEventEvaluator -->
-        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
-            <evaluator class="ch.qos.logback.classic.boolex.JaninoEventEvaluator">
-                <expression>
-                    return message.contains("HikariPool") || 
-                           message.contains("has been deprecated for versions of Hibernate") ||
-                           message.contains("Unsupported JavaFX configuration") ||
-                           message.contains("Loading FXML document with JavaFX API");
-                </expression>
-            </evaluator>
-            <OnMismatch>NEUTRAL</OnMismatch>
-            <OnMatch>DENY</OnMatch>
-        </filter>
     </appender>
 
     <!-- Rolling File Appender with header -->
@@ -29,7 +16,7 @@
         <file>log/bot.log</file>
         <append>true</append>
         <immediateFlush>true</immediateFlush>
-        
+
         <!-- Use an encoder with layout wrapping for proper header -->
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%-5.5level] - %m [%c{1}]%n</pattern>
@@ -61,7 +48,7 @@
     <logger name="com.zaxxer.hikari" level="ERROR"/>
     <logger name="com.sun.javafx" level="ERROR"/>
     <logger name="javax.persistence" level="ERROR"/>
-    
+
     <!-- Root logger configuration -->
     <root level="INFO">
         <appender-ref ref="CONSOLE" />

@@ -202,9 +202,12 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 					// After loading saved configuration, merge with current enum values so any
 					// newly added enum constants are included in the list
 					if (enumClass != null) {
-						@SuppressWarnings({"unchecked", "rawtypes"})
+						@SuppressWarnings("rawtypes")
 						Class castClass = (Class) enumClass;
-						mergeEnumWithSavedPriorities(priorityListView, castClass, key);
+						// Suppress unchecked warnings - this is required due to Java's type erasure with generics
+						@SuppressWarnings("unchecked")
+						Runnable call = () -> mergeEnumWithSavedPriorities(priorityListView, castClass, key);
+						call.run();
 					}
 				} else {
 					if (enumClass != null) {

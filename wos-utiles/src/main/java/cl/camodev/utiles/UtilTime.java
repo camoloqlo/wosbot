@@ -1,7 +1,6 @@
 package cl.camodev.utiles;
 
 import java.time.*;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.regex.Matcher;
@@ -77,27 +76,6 @@ public class UtilTime {
 		}
 	}
 
-    public static LocalDateTime parseTime(String input) {
-
-        Pattern withDays = Pattern.compile("(?i).*?\\b(\\d+)\\b[^\\d:]+(\\d{1,2}:\\d{2}:\\d{2}).*", Pattern.DOTALL);
-        Matcher m = withDays.matcher(input.trim());
-
-        if (m.matches()) {
-            int days = Integer.parseInt(m.group(1));
-            LocalTime t = LocalTime.parse(m.group(2), DateTimeFormatter.ofPattern("H:mm:ss"));
-            return LocalDateTime.now().plusDays(days).plusHours(t.getHour()).plusMinutes(t.getMinute()).plusSeconds(t.getSecond());
-        }
-
-        Pattern timeOnly = Pattern.compile("(?i).*?\\b(\\d{1,2}:\\d{2}:\\d{2})\\b.*", Pattern.DOTALL);
-        Matcher mt = timeOnly.matcher(input.trim());
-        if (mt.matches()) {
-            LocalTime t = LocalTime.parse(mt.group(1), DateTimeFormatter.ofPattern("H:mm:ss"));
-            return LocalDateTime.now().plusHours(t.getHour()).plusMinutes(t.getMinute()).plusSeconds(t.getSecond());
-        }
-
-        throw new IllegalArgumentException("Input does not match expected format. Input: " + input);
-    }
-    
     /**
      * Ensures a scheduled time doesn't go beyond the game reset time.
      * If the proposed schedule time is after game reset, returns a time 5 minutes before game reset.

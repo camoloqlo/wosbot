@@ -16,6 +16,7 @@ import cl.camodev.wosbot.serv.impl.ServTaskManager;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 import java.awt.Color;
 
 import java.time.LocalDateTime;
@@ -142,10 +143,12 @@ public class MercenaryEventTask extends DelayedTask {
     private boolean selectMercenaryEventLevel() {
         // Check if level selection is needed
         try {
-            String textEasy = OCRWithRetries(new DTOPoint(112, 919), new DTOPoint(179, 953), 2);
-            String textNormal = OCRWithRetries(new DTOPoint(310, 919),
-                    new DTOPoint(410, 953), 2);
-            String textHard = OCRWithRetries(new DTOPoint(540, 919), new DTOPoint(609, 953), 2);
+            String textEasy = stringHelper.execute(
+                    new DTOPoint(112, 919), new DTOPoint(179, 953), 2, 300L, null, s -> !s.isEmpty(), s -> s);
+            String textNormal = stringHelper.execute(
+                    new DTOPoint(310, 919), new DTOPoint(410, 953), 2, 300L, null, s -> !s.isEmpty(), s -> s);
+            String textHard = stringHelper.execute(
+                    new DTOPoint(540, 919), new DTOPoint(609, 953), 2, 300L, null, s -> !s.isEmpty(), s -> s);
             logDebug("OCR Results - Easy: '" + textEasy + "', Normal: '" + textNormal + "', Hard: '" + textHard + "'");
             if ((textEasy != null && textEasy.toLowerCase().contains("easy"))
                     || (textNormal != null && textNormal.toLowerCase().contains("normal"))
@@ -179,8 +182,12 @@ public class MercenaryEventTask extends DelayedTask {
             logDebug("Attempting to select difficulty: " + level.name());
             tapPoint(level.point());
             sleepTask(2000);
-            DTOImageSearchResult challengeCheck = searchTemplateWithRetries(
-                    EnumTemplates.MERCENARY_DIFFICULTY_CHALLENGE, 90, 3);
+            DTOImageSearchResult challengeCheck = templateSearchHelper.searchTemplate(
+                    EnumTemplates.MERCENARY_DIFFICULTY_CHALLENGE,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(3)
+                            .build());
             if (challengeCheck.isFound()) {
                 sleepTask(1000);
                 tapPoint(challengeCheck.getPoint());
@@ -202,8 +209,12 @@ public class MercenaryEventTask extends DelayedTask {
             logDebug("Attempting to select difficulty: " + level.name());
             tapPoint(level.point());
             sleepTask(500);
-            DTOImageSearchResult challengeCheck = searchTemplateWithRetries(
-                    EnumTemplates.MERCENARY_DIFFICULTY_CHALLENGE, 90, 3);
+            DTOImageSearchResult challengeCheck = templateSearchHelper.searchTemplate(
+                    EnumTemplates.MERCENARY_DIFFICULTY_CHALLENGE,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(3)
+                            .build());
             if (challengeCheck.isFound()) {
                 sleepTask(1000);
                 tapPoint(challengeCheck.getPoint());
@@ -226,7 +237,12 @@ public class MercenaryEventTask extends DelayedTask {
     private boolean navigateToEventScreen() {
 
         // Search for the events button
-        DTOImageSearchResult eventsResult = searchTemplateWithRetries(EnumTemplates.HOME_EVENTS_BUTTON, 90, 3);
+        DTOImageSearchResult eventsResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.HOME_EVENTS_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
         if (!eventsResult.isFound()) {
             logWarning("The 'Events' button was not found.");
             return false;
@@ -239,7 +255,12 @@ public class MercenaryEventTask extends DelayedTask {
         tapRandomPoint(new DTOPoint(529, 27), new DTOPoint(635, 63), 5, 300);
 
         // Search for the mercenary within events
-        DTOImageSearchResult result = searchTemplateWithRetries(EnumTemplates.MERCENARY_EVENT_TAB, 90, 3);
+        DTOImageSearchResult result = templateSearchHelper.searchTemplate(
+                EnumTemplates.MERCENARY_EVENT_TAB,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
 
         if (result.isFound()) {
             tapPoint(result.getPoint());
@@ -256,8 +277,13 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         int attempts = 0;
-        while (attempts < 5) {
-            result = searchTemplateWithRetries(EnumTemplates.MERCENARY_EVENT_TAB, 90, 1);
+        while (attempts < 10) {
+            result = templateSearchHelper.searchTemplate(
+                    EnumTemplates.MERCENARY_EVENT_TAB,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(1)
+                            .build());
 
             if (result.isFound()) {
                 tapPoint(result.getPoint());
@@ -287,7 +313,12 @@ public class MercenaryEventTask extends DelayedTask {
         logInfo("Checking for mercenary event buttons.");
 
         // First check for scout button
-        DTOImageSearchResult scoutButton = searchTemplateWithRetries(EnumTemplates.MERCENARY_SCOUT_BUTTON, 90, 3);
+        DTOImageSearchResult scoutButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.MERCENARY_SCOUT_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
         if (scoutButton.isFound()) {
             scout = true;
             logInfo("Found scout button for mercenary event.");
@@ -295,8 +326,12 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // If scout button not found, check for challenge button
-        DTOImageSearchResult challengeButton = searchTemplateWithRetries(EnumTemplates.MERCENARY_CHALLENGE_BUTTON, 90,
-                3);
+        DTOImageSearchResult challengeButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.MERCENARY_CHALLENGE_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
         if (challengeButton.isFound()) {
             scout = false;
             logInfo("Found challenge button for mercenary event.");
@@ -332,10 +367,20 @@ public class MercenaryEventTask extends DelayedTask {
         if (attackAttempts > 3) {
             logWarning(
                     "Multiple consecutive attack attempts detected without level change. Rallying the mercenary instead of normal attack.");
-            attackOrRallyButton = searchTemplateWithRetries(EnumTemplates.RALLY_BUTTON, 90, 3);
+            attackOrRallyButton = templateSearchHelper.searchTemplate(
+                    EnumTemplates.RALLY_BUTTON,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(3)
+                            .build());
             rally = true;
         } else {
-            attackOrRallyButton = searchTemplateWithRetries(EnumTemplates.MERCENARY_ATTACK_BUTTON, 90, 3);
+            attackOrRallyButton = templateSearchHelper.searchTemplate(
+                    EnumTemplates.MERCENARY_ATTACK_BUTTON,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(3)
+                            .build());
         }
 
         if (attackOrRallyButton == null || !attackOrRallyButton.isFound()) {
@@ -354,7 +399,12 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // Check if the march screen is open before proceeding
-        DTOImageSearchResult deployButton = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 3);
+        DTOImageSearchResult deployButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.DEPLOY_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
 
         if (!deployButton.isFound()) {
             logError(
@@ -398,7 +448,12 @@ public class MercenaryEventTask extends DelayedTask {
         sleepTask(2000);
 
         // Verify deployment succeeded
-        DTOImageSearchResult deployStillPresent = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 2);
+        DTOImageSearchResult deployStillPresent = templateSearchHelper.searchTemplate(
+                EnumTemplates.DEPLOY_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(2)
+                        .build());
         if (deployStillPresent.isFound()) {
             logWarning(
                     "Deploy button still present after attempting to deploy. March may have failed. Retrying in 5 minutes.");

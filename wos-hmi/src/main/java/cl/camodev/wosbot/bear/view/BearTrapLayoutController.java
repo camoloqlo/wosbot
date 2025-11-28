@@ -182,7 +182,7 @@ public class BearTrapLayoutController extends AbstractProfileController {
 
                 // Rebuild with separators at fixed cut points
                 StringBuilder masked = new StringBuilder();
-                for (int i = 0, d = 0; d < digits.length(); d++) {
+                for (int d = 0; d < digits.length(); d++) {
                     // Insert '-' after MM and dd, space after yyyy, ':' after HH
                     if (d == 2) masked.append('-');
                     if (d == 4) masked.append('-');

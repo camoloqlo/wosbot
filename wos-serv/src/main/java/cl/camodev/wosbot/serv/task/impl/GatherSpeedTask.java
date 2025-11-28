@@ -184,9 +184,10 @@ public class GatherSpeedTask extends DelayedTask {
 	private boolean handleObtainDialog() {
 		logDebug("Checking for Obtain dialog");
 
-		String obtainText = OCRWithRetries(
+		String obtainText = readStringValue(
 				OBTAIN_DIALOG_TEXT_TOP_LEFT,
-				OBTAIN_DIALOG_TEXT_BOTTOM_RIGHT);
+				OBTAIN_DIALOG_TEXT_BOTTOM_RIGHT,
+				null);
 
 		if (obtainText == null || obtainText.isEmpty()) {
 			logDebug("No Obtain dialog detected");
@@ -221,9 +222,10 @@ public class GatherSpeedTask extends DelayedTask {
 	private boolean handlePurchaseConfirmation() {
 		logDebug("Checking for purchase confirmation dialog");
 
-		String purchaseText = OCRWithRetries(
+		String purchaseText = readStringValue(
 				PURCHASE_DIALOG_TEXT_TOP_LEFT,
-				PURCHASE_DIALOG_TEXT_BOTTOM_RIGHT);
+				PURCHASE_DIALOG_TEXT_BOTTOM_RIGHT,
+				null);
 
 		if (purchaseText == null || purchaseText.isEmpty()) {
 			logDebug("No purchase confirmation dialog");
@@ -263,9 +265,10 @@ public class GatherSpeedTask extends DelayedTask {
 	private void handleBoostReplacementDialog() {
 		logDebug("Checking for boost replacement dialog");
 
-		String confirmText = OCRWithRetries(
+		String confirmText = readStringValue(
 				BOOST_REPLACE_TEXT_TOP_LEFT,
-				BOOST_REPLACE_TEXT_BOTTOM_RIGHT);
+				BOOST_REPLACE_TEXT_BOTTOM_RIGHT,
+				null);
 
 		if (confirmText == null || confirmText.isEmpty()) {
 			logDebug("No boost replacement dialog");

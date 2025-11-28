@@ -9,6 +9,7 @@ import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 public class ExplorationTask extends DelayedTask {
 
@@ -19,24 +20,23 @@ public class ExplorationTask extends DelayedTask {
 	@Override
 	protected void execute() {
 		logInfo("Starting exploration task.");
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(40, 1190), new DTOPoint(100, 1250));
+		tapRandomPoint(new DTOPoint(40, 1190), new DTOPoint(100, 1250));
 		sleepTask(500);
-		DTOImageSearchResult claimResult = emuManager.searchTemplate(EMULATOR_NUMBER,
-				EnumTemplates.EXPLORATION_CLAIM, 95);
+		DTOImageSearchResult claimResult = templateSearchHelper.searchTemplate(
+				EnumTemplates.EXPLORATION_CLAIM, SearchConfigConstants.DEFAULT_SINGLE);
 		if (claimResult.isFound()) {
 			logInfo("Claiming exploration rewards...");
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(560, 900), new DTOPoint(670, 940));
+			tapRandomPoint(new DTOPoint(560, 900), new DTOPoint(670, 940));
 			sleepTask(500);
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(230, 890), new DTOPoint(490, 960));
+			tapRandomPoint(new DTOPoint(230, 890), new DTOPoint(490, 960));
 			sleepTask(500);
 
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(230, 890), new DTOPoint(490, 960));
+			tapRandomPoint(new DTOPoint(230, 890), new DTOPoint(490, 960));
 			sleepTask(200);
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(230, 890), new DTOPoint(490, 960));
+			tapRandomPoint(new DTOPoint(230, 890), new DTOPoint(490, 960));
 			sleepTask(200);
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(230, 890), new DTOPoint(490, 960));
+			tapRandomPoint(new DTOPoint(230, 890), new DTOPoint(490, 960));
 			sleepTask(200);
-
 
 			Integer minutes = profile.getConfig(EnumConfigurationKey.INT_EXPLORATION_CHEST_OFFSET, Integer.class);
 			LocalDateTime nextSchedule = LocalDateTime.now().plusMinutes(minutes);

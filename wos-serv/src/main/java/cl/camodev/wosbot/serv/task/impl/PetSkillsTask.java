@@ -23,6 +23,7 @@ import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 /**
  * Unified Pet Skills task that processes all enabled pet skills in a single
@@ -298,8 +299,9 @@ public class PetSkillsTask extends DelayedTask {
     private boolean openPetsMenu() {
         logDebug("Opening Pets menu");
 
-        DTOImageSearchResult petsButton = searchTemplateWithRetries(
-                EnumTemplates.GAME_HOME_PETS);
+        DTOImageSearchResult petsButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.GAME_HOME_PETS,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!petsButton.isFound()) {
             navigationAttempts++;
@@ -398,10 +400,9 @@ public class PetSkillsTask extends DelayedTask {
      * @return true if skill is learned, false otherwise
      */
     private boolean isSkillLearned(PetSkill skill) {
-        DTOImageSearchResult infoSkill = searchTemplateWithRetries(
+        DTOImageSearchResult infoSkill = templateSearchHelper.searchTemplate(
                 EnumTemplates.PETS_INFO_SKILLS,
-                90,
-                1);
+                SearchConfigConstants.QUICK_SEARCH);
 
         if (!infoSkill.isFound()) {
             logInfo(skill.name() + " skill not learned yet. Skipping.");
@@ -418,10 +419,9 @@ public class PetSkillsTask extends DelayedTask {
      * @return true if skill is locked, false if unlocked
      */
     private boolean isSkillLocked(PetSkill skill) {
-        DTOImageSearchResult unlockText = searchTemplateWithRetries(
+        DTOImageSearchResult unlockText = templateSearchHelper.searchTemplate(
                 EnumTemplates.PETS_UNLOCK_TEXT,
-                90,
-                1);
+                SearchConfigConstants.QUICK_SEARCH);
 
         if (unlockText.isFound()) {
             logInfo(skill.name() + " skill is locked. Skipping.");
@@ -444,10 +444,9 @@ public class PetSkillsTask extends DelayedTask {
      * @return true if skill was used, false if on cooldown
      */
     private boolean tryUseSkill(PetSkill skill) {
-        DTOImageSearchResult useButton = searchTemplateWithRetries(
+        DTOImageSearchResult useButton = templateSearchHelper.searchTemplate(
                 EnumTemplates.PETS_SKILL_USE,
-                90,
-                1);
+                SearchConfigConstants.QUICK_SEARCH);
 
         if (!useButton.isFound()) {
             return false;

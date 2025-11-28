@@ -12,12 +12,14 @@ import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
+import cl.camodev.wosbot.ot.DTOArea;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 import java.awt.Color;
 
@@ -91,7 +93,12 @@ public class HeroMissionEventTask extends DelayedTask {
 
     private boolean navigateToEventScreen() {
         // Search for the events button
-        DTOImageSearchResult eventsResult = searchTemplateWithRetries(EnumTemplates.HOME_EVENTS_BUTTON, 90, 3);
+        DTOImageSearchResult eventsResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.HOME_EVENTS_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
         if (!eventsResult.isFound()) {
             logWarning("The 'Events' button was not found.");
             return false;
@@ -103,8 +110,12 @@ public class HeroMissionEventTask extends DelayedTask {
         tapRandomPoint(new DTOPoint(529, 27), new DTOPoint(635, 63), 5, 300);
 
         // Search for the Hero's Mission event tab
-        DTOImageSearchResult result = searchTemplateWithRetries(
-                EnumTemplates.HERO_MISSION_EVENT_TAB, 90, 3);
+        DTOImageSearchResult result = templateSearchHelper.searchTemplate(
+                EnumTemplates.HERO_MISSION_EVENT_TAB,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
 
         if (result.isFound()) {
             sleepTask(500);
@@ -120,8 +131,12 @@ public class HeroMissionEventTask extends DelayedTask {
         }
 
         for (int i = 0; i < 5; i++) {
-            result = searchTemplateWithRetries(
-                    EnumTemplates.HERO_MISSION_EVENT_TAB, 90, 1);
+            result = templateSearchHelper.searchTemplate(
+                    EnumTemplates.HERO_MISSION_EVENT_TAB,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(1)
+                            .build());
             if (result.isFound()) {
                 sleepTask(500);
                 tapPoint(result.getPoint());
@@ -157,10 +172,19 @@ public class HeroMissionEventTask extends DelayedTask {
     }
 
     private boolean rallyReaper() {
-        DTOImageSearchResult button = searchTemplateWithRetries(EnumTemplates.HERO_MISSION_EVENT_TRACE_BUTTON, 90,
-                3);
+        DTOImageSearchResult button = templateSearchHelper.searchTemplate(
+                EnumTemplates.HERO_MISSION_EVENT_TRACE_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
         if (!button.isFound()) {
-            button = searchTemplateWithRetries(EnumTemplates.HERO_MISSION_EVENT_CAPTURE_BUTTON, 90, 3);
+            button = templateSearchHelper.searchTemplate(
+                    EnumTemplates.HERO_MISSION_EVENT_CAPTURE_BUTTON,
+                    SearchConfig.builder()
+                            .withThreshold(90)
+                            .withMaxAttempts(3)
+                            .build());
             if (!button.isFound()) {
                 logWarning(
                         "Could not find 'Trace' or 'Capture' button to rally reapers. Rescheduling to try again in 5 minutes.");
@@ -173,7 +197,12 @@ public class HeroMissionEventTask extends DelayedTask {
         sleepTask(300);
 
         // Search for rally button
-        DTOImageSearchResult rallyButton = searchTemplateWithRetries(EnumTemplates.RALLY_BUTTON, 90, 3);
+        DTOImageSearchResult rallyButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.RALLY_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
 
         if (!rallyButton.isFound()) {
             logDebug("Rally button not found. Rescheduling to try again in 5 minutes.");
@@ -201,7 +230,14 @@ public class HeroMissionEventTask extends DelayedTask {
                 .build();
 
         try {
-            String timeStr = OCRWithRetries(new DTOPoint(521, 1141), new DTOPoint(608, 1162), 5, settings);
+            String timeStr = stringHelper.execute(
+                    new DTOPoint(521, 1141),
+                    new DTOPoint(608, 1162),
+                    5,
+                    300L,
+                    settings,
+                    s -> !s.isEmpty(),
+                    s -> s);
             travelTimeSeconds = UtilTime.parseTimeToSeconds(timeStr) * 2 + 2;
 
             logInfo("Success parsing travel time: " + timeStr);
@@ -212,7 +248,12 @@ public class HeroMissionEventTask extends DelayedTask {
         Integer spentStamina = getSpentStamina();
 
         // Deploy march
-        DTOImageSearchResult deploy = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 3);
+        DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(
+                EnumTemplates.DEPLOY_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
 
         if (!deploy.isFound()) {
             logDebug("Deploy button not found. Rescheduling to try again in 5 minutes.");
@@ -222,7 +263,12 @@ public class HeroMissionEventTask extends DelayedTask {
         tapPoint(deploy.getPoint());
         sleepTask(2000);
 
-        deploy = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 3);
+        deploy = templateSearchHelper.searchTemplate(
+                EnumTemplates.DEPLOY_BUTTON,
+                SearchConfig.builder()
+                        .withThreshold(90)
+                        .withMaxAttempts(3)
+                        .build());
         if (deploy.isFound()) {
             // Probably march got taken by auto-join or something
             logInfo("Deploy button still found after trying to deploy march. Rescheduling to try again in 5 minutes.");
@@ -250,8 +296,14 @@ public class HeroMissionEventTask extends DelayedTask {
     }
 
     private void claimAllRewards() {
-        List<DTOImageSearchResult> chests = searchTemplatesWithRetries(EnumTemplates.HERO_MISSION_EVENT_CHEST,
-                new DTOPoint(116, 950), new DTOPoint(671, 1018), 90, 5, 5);
+        List<DTOImageSearchResult> chests = templateSearchHelper.searchTemplates(
+                EnumTemplates.HERO_MISSION_EVENT_CHEST,
+                SearchConfig.builder()
+                        .withArea(new DTOArea(new DTOPoint(116, 950), new DTOPoint(671, 1018)))
+                        .withThreshold(90)
+                        .withMaxResults(5)
+                        .withMaxAttempts(5)
+                        .build());
 
         if (!chests.isEmpty()) {
             logInfo("Found " + chests.size() + " chests to be claimed.");
@@ -276,7 +328,6 @@ public class HeroMissionEventTask extends DelayedTask {
                 .setRemoveBackground(true)
                 .setTextColor(new Color(254, 254, 254)) // White text
                 .setAllowedChars("0123456789") // Only allow digits
-                //.setDebug(true)
                 .build();
 
         // Limited mode: Check how many reapers have been rallied
