@@ -113,6 +113,7 @@ public class GatherTask extends DelayedTask {
     private int activeMarchQueues;
     private boolean removeHeroes;
     private boolean intelSmartProcessing;
+    private boolean intelRecallGatherEnabled;
     private boolean intelEnabled;
     private boolean gatherSpeedEnabled;
     private TextRecognitionRetrier<LocalDateTime> textHelper;
@@ -152,6 +153,10 @@ public class GatherTask extends DelayedTask {
                 EnumConfigurationKey.INTEL_SMART_PROCESSING_BOOL, Boolean.class);
         this.intelSmartProcessing = (configuredIntelSmart != null) ? configuredIntelSmart
                 : DEFAULT_INTEL_SMART_PROCESSING;
+
+        Boolean configuredIntelRecallGatherEnabled = profile.getConfig(
+                EnumConfigurationKey.INTEL_RECALL_GATHER_TROOPS_BOOL, Boolean.class);
+        this.intelRecallGatherEnabled = (configuredIntelRecallGatherEnabled != null) ? configuredIntelRecallGatherEnabled : false;
 
         Boolean configuredIntelEnabled = profile.getConfig(
                 EnumConfigurationKey.INTEL_BOOL, Boolean.class);
@@ -241,7 +246,7 @@ public class GatherTask extends DelayedTask {
         logInfo(String.format("Starting gather task for %d resource types.", enabledGatherTypes.size()));
 
         // Check Intel task conflict
-        if (intelSmartProcessing && intelEnabled && isIntelAboutToRun()) {
+        if ((intelSmartProcessing || intelRecallGatherEnabled) && intelEnabled && isIntelAboutToRun()) {
             logWarning("Intel task scheduled to run soon. Rescheduling gather task for 35 minutes.");
             reschedule(LocalDateTime.now().plusMinutes(35));
             return;

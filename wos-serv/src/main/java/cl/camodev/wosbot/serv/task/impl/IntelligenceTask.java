@@ -46,6 +46,7 @@ public class IntelligenceTask extends DelayedTask {
 
 	// Specific configurations
 	private boolean autoJoinDisabledForIntel;
+	private boolean recallGatherTroops;
 
 	// Configuration (loaded fresh each execution after profile refresh)
 	private boolean fcEra;
@@ -57,6 +58,7 @@ public class IntelligenceTask extends DelayedTask {
 	private boolean survivorCampsEnabled;
 	private boolean explorationsEnabled;
 	private boolean isAutoJoinTaskEnabled;
+	private boolean processingTask;
 	private DTOTaskState autoJoinTask;
 	private TextRecognitionRetrier<LocalDateTime> textHelper;
 
@@ -85,13 +87,10 @@ public class IntelligenceTask extends DelayedTask {
 		loadConfiguration();
 
 		// Reset runtime state
+		processingTask = true;
 		beastMarchSent = false;
 		boolean anyIntelProcessed = false;
 		boolean nonBeastIntelProcessed = false;
-
-		// Check march availability once
-		MarchesAvailable marchesAvailable = checkMarchAvailability();
-		marchQueueLimitReached = !marchesAvailable.available();
 
 		autoJoinTask = ServTaskManager.getInstance().getTaskState(profile.getId(),
 				TpDailyTaskEnum.ALLIANCE_AUTOJOIN.getId());
@@ -104,20 +103,40 @@ public class IntelligenceTask extends DelayedTask {
 				logDebug("Failed to disable auto-join, proceeding anyway.");
 		}
 
-		// Claim completed missions
-		claimCompletedMissions();
-
-		// Check stamina
-		if (!hasEnoughStamina()) {
-			return; // Already rescheduled in hasEnoughStamina()
+		// Recall gather troops if recall is enabled
+		if (recallGatherTroops) {
+			logInfo("Recall gather troops enabled. Recalling all gather troops...");
+			recallGatherTroops();
+			logInfo("All gather troops recalled. Proceeding with intel processing.");
 		}
 
-		// Process beasts
-		if (beastsEnabled && shouldProcessBeasts()) {
-			if (processBeastIntel()) {
-				anyIntelProcessed = true;
+		while(processingTask) {
+			beastMarchSent = false;
+			anyIntelProcessed = false;
+			nonBeastIntelProcessed = false;
+
+			// Return to world screen for march checks
+			ensureCorrectScreenLocation(EnumStartLocation.WORLD);
+
+			// Check march availability once
+			MarchesAvailable marchesAvailable = checkMarchAvailability();
+			marchQueueLimitReached = !marchesAvailable.available();
+			
+			// Claim completed missions
+			claimCompletedMissions();
+			
+			// Check stamina
+			if (!hasEnoughStamina()) {
+				processingTask = false;
+				return; // Already rescheduled in hasEnoughStamina()
 			}
-		}
+
+			// Process beasts
+			if (beastsEnabled && shouldProcessBeasts()) {
+				if (processBeastIntel()) {
+					anyIntelProcessed = true;
+				}
+			}
 
 		// Process survivor camps
 		if (survivorCampsEnabled) {
@@ -129,7 +148,6 @@ public class IntelligenceTask extends DelayedTask {
 				anyIntelProcessed = true;
 				nonBeastIntelProcessed = true;
 			}
-		}
 
 		// Process explorations
 		if (explorationsEnabled) {
@@ -141,10 +159,10 @@ public class IntelligenceTask extends DelayedTask {
 				anyIntelProcessed = true;
 				nonBeastIntelProcessed = true;
 			}
-		}
 
-		// Handle rescheduling
-		handleRescheduling(anyIntelProcessed, nonBeastIntelProcessed, marchesAvailable);
+			// Handle rescheduling
+			handleRescheduling(anyIntelProcessed, nonBeastIntelProcessed, marchesAvailable);
+		}
 
 		logInfo("Intel Task finished.");
 	}
@@ -156,6 +174,7 @@ public class IntelligenceTask extends DelayedTask {
 	private void loadConfiguration() {
 		this.fcEra = profile.getConfig(EnumConfigurationKey.INTEL_FC_ERA_BOOL, Boolean.class);
 		this.useSmartProcessing = profile.getConfig(EnumConfigurationKey.INTEL_SMART_PROCESSING_BOOL, Boolean.class);
+		this.recallGatherTroops = profile.getConfig(EnumConfigurationKey.INTEL_RECALL_GATHER_TROOPS_BOOL, Boolean.class);
 		this.useFlag = profile.getConfig(EnumConfigurationKey.INTEL_USE_FLAG_BOOL, Boolean.class);
 		this.flagNumber = useFlag ? profile.getConfig(EnumConfigurationKey.INTEL_BEASTS_FLAG_INT, Integer.class) : null;
 		this.beastsEnabled = profile.getConfig(EnumConfigurationKey.INTEL_BEASTS_BOOL, Boolean.class);
@@ -165,7 +184,7 @@ public class IntelligenceTask extends DelayedTask {
 		this.textHelper = new TextRecognitionRetrier<>(provider);
 
 		logDebug("Configuration loaded: fcEra=" + fcEra + ", useSmartProcessing=" + useSmartProcessing +
-				", useFlag=" + useFlag + ", beastsEnabled=" + beastsEnabled);
+				", recallGatherTroops=" + recallGatherTroops + ", useFlag=" + useFlag + ", beastsEnabled=" + beastsEnabled);
 	}
 
 	/**
@@ -282,6 +301,14 @@ public class IntelligenceTask extends DelayedTask {
 		if (!anyIntelProcessed) {
 			// No intel found at all - try to read cooldown timer
 			tryRescheduleFromCooldown();
+
+			// Re-queue gather tasks if we recalled troops earlier
+			if (recallGatherTroops) {
+				logInfo("Intel processing complete. Re-queueing gather tasks...");
+				requeueGatherTasks();
+			}
+			
+			processingTask = false;
 			return;
 		}
 
@@ -292,6 +319,8 @@ public class IntelligenceTask extends DelayedTask {
 			reschedule(LocalDateTime.now().plusMinutes(2));
 			logInfo("Non-beast intel processed but march queue full. " +
 					"Rescheduling in 2 minutes to check for more.");
+					
+			processingTask = false;
 			return;
 		}
 
@@ -305,6 +334,8 @@ public class IntelligenceTask extends DelayedTask {
 				reschedule(LocalDateTime.now().plusMinutes(2));
 				logInfo("March queue is full, and only beasts remain. Rescheduling in 2 minutes");
 			}
+			
+			processingTask = false;
 			return;
 		}
 
@@ -313,11 +344,13 @@ public class IntelligenceTask extends DelayedTask {
 			reschedule(LocalDateTime.now().plusMinutes(2));
 			logInfo("Rescheduling in 2 minutes to check if any intel got skipped. " +
 					"Beast march sent: " + beastMarchSent + ", March queue full: " + marchQueueLimitReached);
+					
+			processingTask = false;
 			return;
 		}
 
-		// Beast march was sent successfully - already rescheduled in processBeast()
-		logInfo("Beast march sent successfully. Task already rescheduled for march return.");
+		// Beast march was sent successfully 
+		logInfo("Beast march sent successfully. Continuing processing.");
 	}
 
 	/**
@@ -505,6 +538,7 @@ public class IntelligenceTask extends DelayedTask {
 		if (!deploy.isFound()) {
 			logError("Deploy button not found. Rescheduling to try again in 5 minutes.");
 			reschedule(LocalDateTime.now().plusMinutes(5));
+			processingTask = false; // Stop processing task
 			return;
 		}
 
@@ -517,6 +551,7 @@ public class IntelligenceTask extends DelayedTask {
 			logWarning(
 					"Deploy button still present after deployment attempt. March may have failed. Rescheduling in 5 minutes.");
 			reschedule(LocalDateTime.now().plusMinutes(5));
+			processingTask = false; // Stop processing task
 			return;
 		}
 
@@ -531,24 +566,34 @@ public class IntelligenceTask extends DelayedTask {
 			logError("Failed to parse travel time via OCR. Using 5 minute fallback reschedule.");
 			LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(5);
 			reschedule(rescheduleTime);
+			processingTask = false; // Stop processing task
 			return;
 		}
 
-		LocalDateTime rescheduleTime = LocalDateTime.now().plusSeconds(travelTimeSeconds);
-		reschedule(rescheduleTime);
-		logInfo("Beast march scheduled to return at " + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
+		if(useSmartProcessing) {
+			LocalDateTime rescheduleTime = LocalDateTime.now().plusSeconds(travelTimeSeconds);
+			reschedule(rescheduleTime);
+			logInfo("Beast march scheduled to return at " + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
+			processingTask = false; // Stop processing task
+		}
 	}
 
 	private MarchesAvailable getMarchesAvailable() {
 		// Open active marches panel
 		openLeftMenuCitySection(false);
 
+		DTOTesseractSettings settings = DTOTesseractSettings.builder()
+		.setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+		.setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+		.build();
+
 		// Try OCR to find idle marches
 		try {
 			for (int i = 0; i < 5; i++) {
 				String ocrSearchResult = emuManager.ocrRegionText(EMULATOR_NUMBER,
 						new DTOPoint(10, 342),
-						new DTOPoint(435, 772));
+						new DTOPoint(435, 772), 
+						settings);
 				Pattern idleMarchesPattern = Pattern.compile("idle");
 				Matcher m = idleMarchesPattern.matcher(ocrSearchResult.toLowerCase());
 				if (m.find()) {
@@ -607,6 +652,83 @@ public class IntelligenceTask extends DelayedTask {
 		logInfo("Not all march queues used (" + activeMarchQueues + "/" + totalMarchesAvailable +
 				"), but no idle marches. Suspected auto-rally marches. Rescheduling in 5 minutes.");
 		return new MarchesAvailable(false, LocalDateTime.now().plusMinutes(5));
+	}
+
+	/**
+	 * Recalls all gathering troops back to the city
+	 * Checks for returning arrows, march view, and speedup buttons
+	 * Continues until all troops are recalled or max retries reached
+	 */
+	private void recallGatherTroops() {
+		int maxRetries = 120; // Safety limit to avoid long-running loop
+		int attempt = 0;
+
+		logInfo("Recalling all gather troops to the city...");
+
+		while (attempt < maxRetries) {
+			attempt++;
+
+			DTOImageSearchResult returningArrow = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_RECALL_BUTTON,
+					90, 3);
+			DTOImageSearchResult marchView = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_VIEW_BUTTON, 90, 3);
+			DTOImageSearchResult marchSpeedup = searchTemplateWithRetries(EnumTemplates.MARCHES_AREA_SPEEDUP_BUTTON, 90,
+					3);
+
+			boolean foundReturning = returningArrow != null && returningArrow.isFound();
+			boolean foundView = marchView != null && marchView.isFound();
+			boolean foundSpeedup = marchSpeedup != null && marchSpeedup.isFound();
+
+			logDebug(String.format("recallGatherTroops status => returning:%b view:%b speedup:%b (attempt %d)",
+					foundReturning, foundView, foundSpeedup, attempt));
+
+			// If nothing is present, we're done
+			if (!foundReturning && !foundView && !foundSpeedup) {
+				logInfo("No march indicators found. All gather troops are recalled or none present.");
+				return; // Finished successfully
+			}
+
+			// If there's a returning arrow (recall button), tap it to recall troops
+			if (foundReturning) {
+				logInfo("Returning arrow found - attempting to tap recall button");
+				tapRandomPoint(returningArrow.getPoint(), returningArrow.getPoint(), 1, 300);
+				tapRandomPoint(new DTOPoint(446, 780), new DTOPoint(578, 800), 1, 200); // Confirm recall
+			}
+
+			// If 'view' or 'speedup' buttons are present, wait for UI to clear
+			if (foundView || foundSpeedup) {
+				logInfo("Troops are still marching - waiting for them to return");
+				sleepTask(1000);
+			}
+
+			// Short sleep between attempts to avoid tight loop
+			sleepTask(200);
+		}
+
+		// If we reach here, max retries were hit
+		logError("recallGatherTroops exceeded max attempts (" + maxRetries + "), exiting to avoid deadlock");
+	}
+
+	/**
+	 * Re-queues gather tasks after intel completes
+	 * This ensures gather troops can be sent out again
+	 */
+	private void requeueGatherTasks() {
+		logInfo("Re-queueing gather tasks after Intel completion...");
+
+		// Get the task queue for this profile
+		TaskQueue queue = servScheduler.getQueueManager().getQueue(profile.getId());
+		if (queue == null) {
+			logError("Could not access task queue for profile " + profile.getName());
+			return;
+		}
+
+		// Check and re-queue gather task if enabled
+		if (profile.getConfig(EnumConfigurationKey.GATHER_TASK_BOOL, Boolean.class)) {
+			queue.executeTaskNow(TpDailyTaskEnum.GATHER_RESOURCES, true);
+			logInfo("Re-queued Gather Resources task");
+		}
+
+		sleepTask(500);
 	}
 
 	@Override

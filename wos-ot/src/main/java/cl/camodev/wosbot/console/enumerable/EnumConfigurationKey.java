@@ -75,6 +75,7 @@ public enum EnumConfigurationKey {
 	INTEL_USE_FLAG_BOOL("false", Boolean.class),
 	INTEL_FC_ERA_BOOL("false", Boolean.class),
 	INTEL_SMART_PROCESSING_BOOL("false", Boolean.class),
+	INTEL_RECALL_GATHER_TROOPS_BOOL("false", Boolean.class),
 	
     // ========================================================================
     // ALLIANCE FEATURES
