@@ -578,6 +578,11 @@ public class BearTrapTask extends DelayedTask {
      * If rally is started successfully, schedules automatic flag reset
      * after rally duration completes.
      * 
+     * <p>
+     * If an ADB connection error occurs during rally startup (likely due to
+     * emulator lag or resource constraints), logs the error and resets the
+     * ownRallyActive flag to allow retry on next cycle.
+     * 
      * @param secondsRemaining seconds remaining in trap duration
      */
     private void tryStartOwnRally(long secondsRemaining) {
@@ -585,19 +590,30 @@ public class BearTrapTask extends DelayedTask {
             return;
         }
 
-        long marchDurationSeconds = startOwnRally();
+        try {
+            long marchDurationSeconds = startOwnRally();
 
-        if (marchDurationSeconds > 0) {
-            LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
-            LocalDateTime returnTime = now.plusSeconds(marchDurationSeconds * 2 + 2)
-                    .plusMinutes(RALLY_RETURN_BUFFER_MINUTES);
+            if (marchDurationSeconds > 0) {
+                LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
+                LocalDateTime returnTime = now.plusSeconds(marchDurationSeconds * 2 + 2)
+                        .plusMinutes(RALLY_RETURN_BUFFER_MINUTES);
 
-            logInfo("Own rally started successfully, returning in: " + returnTime.format(TIME_FORMATTER));
-            ownRallyActive.set(true);
-            scheduleRallyFlagReset(marchDurationSeconds);
-            sleepTask(200); // Brief pause after rally start
-        } else {
-            logWarning("Could not start rally (may already be active)");
+                logInfo("Own rally started successfully, returning in: " + returnTime.format(TIME_FORMATTER));
+                ownRallyActive.set(true);
+                scheduleRallyFlagReset(marchDurationSeconds);
+                sleepTask(200); // Brief pause after rally start
+            } else {
+                logWarning("Could not start rally (may already be active)");
+            }
+        } catch (cl.camodev.wosbot.ex.ADBConnectionException e) {
+            logWarning("ADB connection error during rally startup (emulator may be lagging): " + e.getMessage());
+            logDebug("Skipping this rally startup attempt, will retry on next cycle");
+            ownRallyActive.set(false); // Reset flag to allow retry
+            // Don't re-throw - allow task to continue and retry on next iteration
+        } catch (Exception e) {
+            logError("Unexpected error during rally startup: " + e.getMessage(), e);
+            ownRallyActive.set(false); // Reset flag to allow retry
+            // Don't re-throw for unexpected errors either - try to recover gracefully
         }
     }
 
@@ -613,27 +629,41 @@ public class BearTrapTask extends DelayedTask {
      * <li>Search for joinable rallies</li>
      * <li>Join rallies with configured flag</li>
      * </ol>
+     * 
+     * <p>
+     * If an ADB connection error occurs during rally joining (likely due to
+     * emulator lag or resource constraints), logs the error and skips this
+     * iteration to allow the task to continue on the next cycle.
      */
     private void processJoinRallies() {
         if (!joinRally) {
             return;
         }
 
-        int freeMarches = checkFreeMarches();
+        try {
+            int freeMarches = checkFreeMarches();
 
-        if (freeMarches > 0) {
-            DTOImageSearchResult warButton = templateSearchHelper.searchTemplate(
-                    GAME_HOME_WAR,
-                    SearchConfig.builder()
-                            .withThreshold(90)
-                            .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
-                            .build());
+            if (freeMarches > 0) {
+                DTOImageSearchResult warButton = templateSearchHelper.searchTemplate(
+                        GAME_HOME_WAR,
+                        SearchConfig.builder()
+                                .withThreshold(90)
+                                .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
+                                .build());
 
-            if (warButton.isFound()) {
-                logInfo("Entering war section to check for rallies");
-                tapPoint(warButton.getPoint());
-                handleJoinRallies(freeMarches);
+                if (warButton.isFound()) {
+                    logInfo("Entering war section to check for rallies");
+                    tapPoint(warButton.getPoint());
+                    handleJoinRallies(freeMarches);
+                }
             }
+        } catch (cl.camodev.wosbot.ex.ADBConnectionException e) {
+            logWarning("ADB connection error during rally joining (emulator may be lagging): " + e.getMessage());
+            logDebug("Skipping this rally join iteration, will retry on next cycle");
+            // Don't re-throw - allow task to continue and retry on next iteration
+        } catch (Exception e) {
+            logError("Unexpected error during rally joining: " + e.getMessage(), e);
+            // Don't re-throw for unexpected errors either - try to recover gracefully
         }
     }
 
