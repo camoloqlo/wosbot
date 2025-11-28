@@ -210,6 +210,7 @@ public class AllianceMobilizationTask extends DelayedTask {
      */
     private static final class Delays {
         static final int DEFAULT_COOLDOWN_SECONDS = 300; // 5 minutes
+        static final int LONG_COOLDOWN_SECONDS = 1800; // 30 minutes
         static final int RESCHEDULE_BUFFER_SECONDS = 5;
         static final int RESCHEDULE_WAIT_HOURS = 1;
     }
@@ -276,6 +277,25 @@ public class AllianceMobilizationTask extends DelayedTask {
     // ========================================================================
 
     private TextRecognitionRetrier<Duration> durationHelper;
+
+    // ========================================================================
+    // Mission Availability Tracking
+    // ========================================================================
+
+    /**
+     * Tracks consecutive runs where no missions were found.
+     * When this counter reaches 3, it indicates that both mission slots
+     * have completed the maximum number of times for today, and the task
+     * should be rescheduled for the next game reset (00:00 UTC).
+     */
+    private int consecutiveNoMissionsCount = 0;
+
+    /**
+     * Tracks consecutive runs where only one mission was found and it's running.
+     * When this counter reaches 3, reschedules for 30 minutes to wait for
+     * the running mission to complete and free up a slot.
+     */
+    private int consecutiveOnlyRunningMissionCount = 0;
 
     /**
      * Constructs a new AllianceMobilizationTask.
@@ -494,7 +514,7 @@ public class AllianceMobilizationTask extends DelayedTask {
     private void handleNavigationFailure() {
         LocalDateTime nextMonday = UtilTime.getNextMondayUtc();
         logInfo("Failed to navigate after " + Limits.MAX_NAVIGATION_ATTEMPTS +
-                " attempts. Event may not be active. Retrying on next Monday at " + nextMonday + ".");
+                " attempts. Event may not be active. Retrying on next Monday at " + nextMonday.format(DATETIME_FORMATTER) + ".");
         reschedule(nextMonday);
     }
 
@@ -520,7 +540,7 @@ public class AllianceMobilizationTask extends DelayedTask {
 
             if (attemptStatus.remaining() <= 0) {
                 LocalDateTime nextReset = UtilTime.getGameReset();
-                logInfo("No attempts remaining. Rescheduling for next UTC reset at " + nextReset + ".");
+                logInfo("No attempts remaining. Rescheduling for next UTC reset at " + nextReset.format(DATETIME_FORMATTER) + ".");
                 reschedule(nextReset);
                 return false;
             }
@@ -944,6 +964,8 @@ public class AllianceMobilizationTask extends DelayedTask {
      * <li>Check if any task is already running (only 1 allowed)</li>
      * <li>Process 200% tasks if applicable</li>
      * <li>Process 120% tasks if applicable</li>
+     * <li>Check if no missions found for 3 consecutive runs (reschedule for
+     * reset)</li>
      * <li>Check task availability timers if no tasks found</li>
      * <li>Check and use Alliance Monuments (bonus rewards)</li>
      * </ol>
@@ -952,6 +974,13 @@ public class AllianceMobilizationTask extends DelayedTask {
      * <b>Important Constraint:</b> Only ONE task can run at a time.
      * If a task is running, other tasks will be refreshed but not accepted,
      * and this method will reschedule to check again later.
+     * 
+     * <p>
+     * <b>No Missions Found Handling:</b>
+     * If no missions are found on any run, the consecutive counter increments.
+     * When this counter reaches 3 runs in a row with no missions, it indicates
+     * that both mission slots have been completed the maximum number of times
+     * for today, and the task reschedules for game reset (00:00 UTC).
      * 
      * @return true if a specific reschedule time was set, false for fallback
      *         reschedule
@@ -975,6 +1004,8 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         int shortestCooldownSeconds = Integer.MAX_VALUE;
         boolean rescheduleWasSet = false;
+        boolean anyMissionFound = false; // True if ANY mission detected (running or available)
+        boolean onlyRunningMissions = false; // True if only running missions were found
 
         if (filters.search200) {
             TaskProcessingResult result = process200PercentTask(
@@ -983,20 +1014,63 @@ public class AllianceMobilizationTask extends DelayedTask {
                     shortestCooldownSeconds);
 
             shortestCooldownSeconds = result.shortestCooldown;
+            if (result.missionFound) {
+                anyMissionFound = true;
+                onlyRunningMissions = result.onlyRunningMission;
+            }
             if (result.shouldStopProcessing) {
                 return true; // Specific reschedule already set (e.g., waiting for running task)
             }
         }
 
-        if (filters.search120) {
+        if (filters.search120 && !anyMissionFound) {
             TaskProcessingResult result = process120PercentTasks(
                     filters.accept120,
                     anyTaskRunning,
                     shortestCooldownSeconds);
 
             shortestCooldownSeconds = result.shortestCooldown;
+            if (result.missionFound) {
+                anyMissionFound = true;
+                onlyRunningMissions = result.onlyRunningMission;
+            }
             if (result.shouldStopProcessing) {
                 return true; // Specific reschedule already set
+            }
+        }
+
+        // Check if no missions found for 3 consecutive runs
+        // A mission is considered "found" if it exists and is detected, whether running or not
+        if (!anyMissionFound) {
+            consecutiveNoMissionsCount++;
+            logInfo("No missions detected. Consecutive count: " + consecutiveNoMissionsCount + "/3");
+
+            if (consecutiveNoMissionsCount >= 3) {
+                logInfo("No missions found for 3 consecutive runs - both mission slots completed for today");
+                rescheduleForGameReset();
+                return true;
+            }
+        } else {
+            if (consecutiveNoMissionsCount > 0) {
+                logDebug("Missions detected again - resetting consecutive no-mission counter");
+                consecutiveNoMissionsCount = 0;
+            }
+        }
+
+        // Check if only running missions found for 3 consecutive runs
+        if (onlyRunningMissions) {
+            consecutiveOnlyRunningMissionCount++;
+            logInfo("Only running mission(s) found. Consecutive count: " + consecutiveOnlyRunningMissionCount + "/3");
+
+            if (consecutiveOnlyRunningMissionCount >= 3) {
+                logInfo("Only running missions found for 3 consecutive runs - rescheduling for 30 minutes");
+                reschedule(LocalDateTime.now().plusSeconds(Delays.LONG_COOLDOWN_SECONDS));
+                return true;
+            }
+        } else {
+            if (consecutiveOnlyRunningMissionCount > 0) {
+                logDebug("Available mission(s) found again - resetting only-running-mission counter");
+                consecutiveOnlyRunningMissionCount = 0;
             }
         }
 
@@ -1103,6 +1177,20 @@ public class AllianceMobilizationTask extends DelayedTask {
     }
 
     /**
+     * Reschedules the task for the next game reset (00:00 UTC).
+     * 
+     * <p>
+     * Called when no missions are found for 3 consecutive runs in a row,
+     * indicating that both mission slots have completed the maximum number
+     * of times for today. The task will resume at the next game reset.
+     */
+    private void rescheduleForGameReset() {
+        LocalDateTime nextReset = UtilTime.getGameReset();
+        logInfo("Rescheduling for game reset at " + nextReset.format(DATETIME_FORMATTER) + " (next day 00:00 UTC)");
+        reschedule(nextReset);
+    }
+
+    /**
      * Reschedules based on the shortest cooldown found from refreshed tasks.
      * 
      * <p>
@@ -1118,7 +1206,8 @@ public class AllianceMobilizationTask extends DelayedTask {
                 .plusSeconds(shortestCooldownSeconds + Delays.RESCHEDULE_BUFFER_SECONDS);
 
         reschedule(nextRun);
-        logInfo("Rescheduling based on shortest cooldown: " + shortestCooldownSeconds + " seconds -> " + nextRun);
+        logInfo("Rescheduling based on shortest cooldown: " + shortestCooldownSeconds + " seconds -> "
+                + nextRun.format(DATETIME_FORMATTER));
     }
 
     /**
@@ -1177,12 +1266,12 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         if (!result200.isFound()) {
             logDebug("No 200% bonus task found");
-            return new TaskProcessingResult(false, currentShortestCooldown);
+            return new TaskProcessingResult(false, currentShortestCooldown, false, false);
         }
 
         if (isTaskAlreadyRunning(result200.getPoint())) {
             logInfo("Task at 200% is already running - skipping this one");
-            return new TaskProcessingResult(false, currentShortestCooldown);
+            return new TaskProcessingResult(false, currentShortestCooldown, true, true); // Mission found but running (only running mission)
         }
 
         return processIndividualTask(
@@ -1228,18 +1317,23 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         if (results120 == null || results120.isEmpty()) {
             logDebug("No 120% bonus tasks found");
-            return new TaskProcessingResult(false, currentShortestCooldown);
+            return new TaskProcessingResult(false, currentShortestCooldown, false, false);
         }
 
         logInfo("Found " + results120.size() + " x 120% bonus task(s)");
 
         int shortestCooldown = currentShortestCooldown;
+        boolean anyMissionFound = false;
+        boolean anyAvailableMissionFound = false;
 
         for (DTOImageSearchResult result120 : results120) {
             if (isTaskAlreadyRunning(result120.getPoint())) {
                 logInfo("Task at 120% (" + result120.getPoint() + ") is already running - skipping this one");
+                anyMissionFound = true; // Mission was detected even if running
                 continue; // Check next 120% task
             }
+
+            anyAvailableMissionFound = true; // At least one available mission found
 
             TaskProcessingResult result = processIndividualTask(
                     result120.getPoint(),
@@ -1250,13 +1344,16 @@ public class AllianceMobilizationTask extends DelayedTask {
                     "120%");
 
             shortestCooldown = result.shortestCooldown;
+            anyMissionFound = anyMissionFound || result.missionFound;
 
             if (result.shouldStopProcessing) {
-                return result; // Stop processing remaining tasks
+                return new TaskProcessingResult(result.shouldStopProcessing, result.shortestCooldown, true, false); // Mission was found, not only running
             }
         }
 
-        return new TaskProcessingResult(false, shortestCooldown);
+        // onlyRunningMission = true only if we found missions but all are running (no available ones)
+        boolean onlyRunningMission = anyMissionFound && !anyAvailableMissionFound;
+        return new TaskProcessingResult(false, shortestCooldown, anyMissionFound, onlyRunningMission);
     }
 
     // ========================================================================
@@ -1299,14 +1396,14 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         if (detectedPoints < 0) {
             logWarning("Could not read points for " + bonusPercentage + " task - skipping");
-            return new TaskProcessingResult(false, currentShortestCooldown);
+            return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission was found, just OCR failed
         }
 
         EnumTemplates taskType = detectTaskTypeNearBonus(bonusLocation);
 
         if (taskType == null) {
             logInfo("Task type not detected at " + bonusLocation);
-            return new TaskProcessingResult(false, currentShortestCooldown);
+            return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission was found, just type detection failed
         }
 
         logInfo("Task type detected: " + taskType.name());
@@ -1399,7 +1496,7 @@ public class AllianceMobilizationTask extends DelayedTask {
             logInfo("Refreshing (bonus level " + bonusPercentage + " not selected in filter)");
             int cooldown = clickAndRefreshTask(bonusLocation);
             int newShortest = Math.min(cooldown, currentShortestCooldown);
-            return new TaskProcessingResult(false, newShortest);
+            return new TaskProcessingResult(false, newShortest, true, false); // Mission found and refreshed
         }
 
         // Decision 2: Task type disabled
@@ -1407,7 +1504,7 @@ public class AllianceMobilizationTask extends DelayedTask {
             logInfo("Refreshing (mission disabled)");
             int cooldown = clickAndRefreshTask(bonusLocation);
             int newShortest = Math.min(cooldown, currentShortestCooldown);
-            return new TaskProcessingResult(false, newShortest);
+            return new TaskProcessingResult(false, newShortest, true, false); // Mission found and refreshed
         }
 
         // Decision 3: Points below minimum
@@ -1415,7 +1512,7 @@ public class AllianceMobilizationTask extends DelayedTask {
             logInfo("Refreshing (low points: " + detectedPoints + " < " + minimumPoints + ")");
             int cooldown = clickAndRefreshTask(bonusLocation);
             int newShortest = Math.min(cooldown, currentShortestCooldown);
-            return new TaskProcessingResult(false, newShortest);
+            return new TaskProcessingResult(false, newShortest, true, false); // Mission found and refreshed
         }
 
         // Decision 4: Good task but another task is running
@@ -1423,19 +1520,19 @@ public class AllianceMobilizationTask extends DelayedTask {
             logInfo("Waiting 1h (task good but another task running)");
             LocalDateTime nextRun = LocalDateTime.now().plusHours(Delays.RESCHEDULE_WAIT_HOURS);
             reschedule(nextRun);
-            return new TaskProcessingResult(true, 0); // Stop processing, reschedule already set
+            return new TaskProcessingResult(true, 0, true, false); // Stop processing, reschedule already set, mission found
         }
 
         // Decision 5: Good task and auto-accept enabled
         if (autoAcceptEnabled) {
             logInfo("Accepting task");
             clickAndAcceptTask(bonusLocation);
-            return new TaskProcessingResult(false, currentShortestCooldown);
+            return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission found and accepted
         }
 
         // Decision 6: Good task but auto-accept disabled (user will accept manually)
         logInfo("Skipping (auto-accept disabled - user will accept manually)");
-        return new TaskProcessingResult(false, currentShortestCooldown);
+        return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission found but awaiting manual acceptance
     }
 
     // ========================================================================
@@ -2231,8 +2328,10 @@ public class AllianceMobilizationTask extends DelayedTask {
      * @param shouldStopProcessing true if processing should stop (reschedule
      *                             already set)
      * @param shortestCooldown     shortest cooldown in seconds from processed tasks
+     * @param missionFound         true if any mission was detected (running or available)
+     * @param onlyRunningMission   true if only a running mission was found (no available missions)
      */
-    private record TaskProcessingResult(boolean shouldStopProcessing, int shortestCooldown) {
+    private record TaskProcessingResult(boolean shouldStopProcessing, int shortestCooldown, boolean missionFound, boolean onlyRunningMission) {
     }
 
     /**
