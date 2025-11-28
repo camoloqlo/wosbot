@@ -738,8 +738,8 @@ public class TaskQueue {
         taskState.setTaskId(taskEnum.getId());
         taskState.setScheduled(true);
         taskState.setExecuting(false);
-        taskState.setLastExecutionTime(prototype.getScheduled());
-        taskState.setNextExecutionTime(LocalDateTime.now());
+        taskState.setLastExecutionTime(LocalDateTime.now());
+        taskState.setNextExecutionTime(prototype.getScheduled());
         ServTaskManager.getInstance().setTaskState(profile.getId(), taskState);
     }
 
