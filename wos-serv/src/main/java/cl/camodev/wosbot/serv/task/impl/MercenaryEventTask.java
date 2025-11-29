@@ -164,7 +164,8 @@ public class MercenaryEventTask extends DelayedTask {
                     SearchConfigConstants.SINGLE_WITH_RETRIES);
 
             if (alreadySelectedTab.isFound()) {
-                logInfo(initiationTypes[i] + " Initiation tab is already selected. Proceeding with difficulty selection.");
+                logInfo(initiationTypes[i]
+                        + " Initiation tab is already selected. Proceeding with difficulty selection.");
                 tabIsSelected = true;
             } else {
                 // Tab is not selected, check if it's unselected (available to select)
@@ -231,10 +232,9 @@ public class MercenaryEventTask extends DelayedTask {
             }
         }
 
-        // If no difficulty was selected, all may be exhausted
-        logWarning("Could not select a mercenary event difficulty. Rescheduling to try later.");
-        reschedule(LocalDateTime.now().plusMinutes(10));
-        return false;
+        // If no tab was found at all, a level was already selected beforehand
+        logInfo("No initiation type found, assuming one was already selected beforehand. Proceeding.");
+        return true;
     }
 
     private boolean navigateToEventScreen() {
