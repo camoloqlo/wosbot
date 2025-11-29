@@ -595,13 +595,13 @@ public class BearTrapTask extends DelayedTask {
 
             if (marchDurationSeconds > 0) {
                 LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
-                LocalDateTime returnTime = now.plusSeconds(marchDurationSeconds * 2 + 2)
+                LocalDateTime returnTime = now.plusSeconds(marchDurationSeconds * 2 + 3)
                         .plusMinutes(RALLY_RETURN_BUFFER_MINUTES);
 
                 logInfo("Own rally started successfully, returning in: " + returnTime.format(TIME_FORMATTER));
                 ownRallyActive.set(true);
                 scheduleRallyFlagReset(marchDurationSeconds);
-                sleepTask(200); // Brief pause after rally start
+                sleepTask(500); // Brief pause after rally start
             } else {
                 logWarning("Could not start rally (may already be active)");
             }
