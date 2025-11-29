@@ -405,6 +405,12 @@ public enum EnumTemplates {
 	MERCENARY_ATTACK_BUTTON("/templates/mercenary/mercenaryEventAttack.png"),
 	MERCENARY_DEPLOY_BUTTON("/templates/mercenary/mercenaryEventDeploy.png"),
 	MERCENARY_DIFFICULTY_CHALLENGE("/templates/mercenary/mercenaryEventDifficultyChallenge.png"),
+	MERCENARY_EPIC_INITIATION_SELECTED("/templates/mercenary/mercenaryEventEpicInitiationSelected.png"),
+	MERCENARY_EPIC_INITIATION_UNSELECTED("/templates/mercenary/mercenaryEventEpicInitiationUnselected.png"),
+	MERCENARY_CHAMPIONS_INITIATION_SELECTED("/templates/mercenary/mercenaryEventChampionsInitiationSelected.png"),
+	MERCENARY_CHAMPIONS_INITIATION_UNSELECTED("/templates/mercenary/mercenaryEventChampionsInitiationUnselected.png"),
+	MERCENARY_LEGENDS_INITIATION_SELECTED("/templates/mercenary/mercenaryEventLegendsInitiationSelected.png"),
+	MERCENARY_LEGENDS_INITIATION_UNSELECTED("/templates/mercenary/mercenaryEventLegendsInitiationUnselected.png"),
 
 	// ========================================================================
     // HERO'S MISSION EVENT
