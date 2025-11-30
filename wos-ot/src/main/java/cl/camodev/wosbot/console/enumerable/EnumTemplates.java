@@ -262,6 +262,7 @@ public enum EnumTemplates {
 	// Grayscale templates for B&W matching
 	INTEL_BEAST_GRAYSCALE("/templates/intel/beastGrayscale.png"),
 	INTEL_BEAST_GRAYSCALE_FC("/templates/intel/beastGrayscaleFC.png"),
+	INTEL_BEAST_GRAYSCALE_FC1("/templates/intel/beastGrayscaleFC1.png"),
 	INTEL_SURVIVOR_GRAYSCALE("/templates/intel/survivorGrayscale.png"),
 	INTEL_SURVIVOR_GRAYSCALE_FC("/templates/intel/survivorGrayscaleFC.png"),
 	INTEL_JOURNEY_GRAYSCALE("/templates/intel/journeyGrayscale.png"),

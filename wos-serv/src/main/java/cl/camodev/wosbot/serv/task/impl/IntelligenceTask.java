@@ -278,10 +278,25 @@ public class IntelligenceTask extends DelayedTask {
 		// Search for regular beasts
 		if (!(useFlag && beastMarchSent)) {
 			logInfo("Searching for beasts using grayscale matching.");
-			EnumTemplates beastTemplate = fcEra ? EnumTemplates.INTEL_BEAST_GRAYSCALE_FC
-					: EnumTemplates.INTEL_BEAST_GRAYSCALE;
-			if (searchAndProcessGrayscale(beastTemplate, this::processBeast)) {
-				beastFound = true;
+			EnumTemplates[] beast_screenings;
+			if (fcEra) {
+				// In FC era prefer the old FC template, then fallback to new FC 
+				beast_screenings = new EnumTemplates[] {
+						EnumTemplates.INTEL_BEAST_GRAYSCALE_FC,
+						EnumTemplates.INTEL_BEAST_GRAYSCALE_FC1,
+				};
+			} else {
+				// Non-FC default
+				beast_screenings = new EnumTemplates[] {
+						EnumTemplates.INTEL_BEAST_GRAYSCALE
+				};
+			}
+
+			for (EnumTemplates beast_screening : beast_screenings) {
+				if (searchAndProcessGrayscale(beast_screening, this::processBeast)) {
+					beastFound = true;
+					break;
+				}
 			}
 		}
 
