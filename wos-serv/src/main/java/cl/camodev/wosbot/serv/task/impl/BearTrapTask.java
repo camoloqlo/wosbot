@@ -355,6 +355,15 @@ public class BearTrapTask extends DelayedTask {
                 executePreparationPhase(timing.activationTime);
             } else {
                 logInfo("Trap is already ACTIVE (preparation time passed)");
+                // Still execute pet activation and bear trap navigation even if already active
+                logInfo("Executing essential setup (pets and navigation)...");
+                if (usePets) {
+                    logInfo("Activating pets...");
+                    enablePets();
+                }
+                logInfo("Moving camera to Bear Trap " + trapNumber);
+                navigateToBearTrap(trapNumber);
+                sleepTask(1000); // Wait for camera to settle
             }
 
             now = LocalDateTime.now(ZoneId.of("UTC"));
