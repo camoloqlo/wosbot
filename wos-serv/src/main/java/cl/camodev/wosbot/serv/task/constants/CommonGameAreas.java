@@ -145,4 +145,41 @@ public interface CommonGameAreas {
         DTOArea TRAVEL_TIME_OCR_AREA = new DTOArea(
                         new DTOPoint(521, 1141),
                         new DTOPoint(608, 1162));
+
+        // ========================================================================
+        // CHARACTER PROFILE AREAS
+        // ========================================================================
+
+        /** OCR region for reading character ID from profile menu */
+        DTOArea CHARACTER_ID_OCR_AREA =new DTOArea(new DTOPoint(300, 940), new DTOPoint(465, 980));
+
+        /** OCR region for reading character name from profile menu */
+        DTOArea CHARACTER_NAME_OCR_AREA = new DTOArea(new DTOPoint(280, 890),
+        new DTOPoint(600, 930));
+
+        /** Profile settings button area */
+        DTOArea PROFILE_SETTINGS_BUTTON_AREA = new DTOArea(new DTOPoint(540, 1150), new DTOPoint(720, 1250));
+        /** Profile settings switch character button area */
+        DTOArea PROFILE_SETTINGS_SWITCH_CHARACTER_BUTTON_AREA = new DTOArea(new DTOPoint(30, 280), new DTOPoint(340, 380));
+        /** Profile settings switch character character list area */
+        DTOArea PROFILE_SETTINGS_SWITCH_CHARACTER_CHARACTER_LIST_AREA = new DTOArea(new DTOPoint(60, 380), new DTOPoint(660, 1100));
+        /** Profile settings switch character prompt button area */
+        DTOArea PROFILE_SETTINGS_SWITCH_CHARACTER_PROMPT_BUTTON_AREA = new DTOArea(new DTOPoint(50, 750), new DTOPoint(670, 850));
+        
+        /** OCR region for reading character name in character switch confirmation dialog */
+        DTOArea PROFILE_SETTINGS_SWITCH_CHARACTER_CONFIRM_DIALOG_NAME_OCR_AREA = new DTOArea(
+                new DTOPoint(170, 650),
+                new DTOPoint(550, 700));
+
+        /** 
+         * OCR region for reading character name above Furnace Level template in character list.
+         * Character name is positioned relative to furnace level template:
+         * - Vertical: Character name Y position is 35 pixels above furnace template (furnace Y - 35)
+         * - Height: 50 pixels, so search from (furnace Y - 60) to (furnace Y - 10)
+         * - Horizontal: Fixed range from X=210 to X=500 (not relative to furnace position)
+         */
+        int CHARACTER_NAME_ABOVE_FURNACE_TOP_OFFSET_Y = 60;  // Pixels above Furnace Level template for top of character name OCR region
+        int CHARACTER_NAME_ABOVE_FURNACE_BOTTOM_OFFSET_Y = 10;  // Pixels above Furnace Level template for bottom of character name OCR region
+        int CHARACTER_NAME_ABOVE_FURNACE_X_START = 210;  // Fixed X start position for character name OCR
+        int CHARACTER_NAME_ABOVE_FURNACE_X_END = 500;  // Fixed X end position for character name OCR
 }

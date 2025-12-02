@@ -454,7 +454,18 @@ public enum EnumTemplates {
 	CHIEF_ORDER_RUSH_JOB("/templates/chieforder/chiefOrderRushJob.png"),
 	CHIEF_ORDER_URGENT_MOBILISATION("/templates/chieforder/chiefOrderUrgentMobilisation.png"),
 	CHIEF_ORDER_PRODUCTIVITY_DAY("/templates/chieforder/chiefOrderProductivityDay.png"),
-	CHIEF_ORDER_ENACT_BUTTON("/templates/chieforder/chiefOrderEnactButton.png");
+	CHIEF_ORDER_ENACT_BUTTON("/templates/chieforder/chiefOrderEnactButton.png"),
+	
+    // ========================================================================
+    // CHARACTER PROFILE AND SETTINGS
+    // ========================================================================
+	GAME_PROFILE_SETTINGS_BUTTON("/templates/profile/settingsButton.png"),  // Settings button in profile menu (PLACEHOLDER - replace with actual template)
+	GAME_PROFILE_SETTINGS_SWITCH_CHARACTER_BUTTON("/templates/profile/settings/switchCharacterButton.png"),  // Characters button in settings menu (PLACEHOLDER - replace with actual template)
+	GAME_PROFILE_SETTINGS_CHARACTER_FURNACE_LEVEL_ACTIVE("/templates/profile/settings/switchcharacter/furnaceLevelActive.png"),  // Furnace Level icon template for finding characters (PLACEHOLDER - replace with actual template)
+	GAME_PROFILE_SETTINGS_CHARACTER_FURNACE_LEVEL_INACTIVE("/templates/profile/settings/switchcharacter/furnaceLevelInactive.png"),  // Furnace Level icon template for finding characters (PLACEHOLDER - replace with actual template)
+	GAME_PROFILE_SETTINGS_CHARACTER_ACTIVE_CHECKMARK("/templates/profile/settings/switchcharacter/activeCharacterCheckMark.png"),  // Green checkmark icon indicating active character (PLACEHOLDER - replace with actual template)
+	GAME_PROFILE_SETTINGS_SWITCH_CHARACTER_CONFIRM_BUTTON("/templates/profile/settings/switchcharacter/confirmButton.png"),  // Confirm button in character switch confirmation dialog (PLACEHOLDER - replace with actual template)
+	GAME_PROFILE_SETTINGS_SWITCH_CHARACTER_CANCEL_BUTTON("/templates/profile/settings/switchcharacter/cancelButton.png");  // Cancel button in character switch confirmation dialog (PLACEHOLDER - replace with actual template)
 
 	// @formatter:on
 	private final String template;
