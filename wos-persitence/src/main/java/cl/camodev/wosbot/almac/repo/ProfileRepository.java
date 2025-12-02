@@ -31,7 +31,7 @@ public class ProfileRepository implements IProfileRepository {
 
 	@Override
 	public List<DTOProfiles> getProfiles() {
-		String queryProfiles = "SELECT new cl.camodev.wosbot.ot.DTOProfiles(p.id, p.name, p.emulatorNumber, p.enabled, p.priority, p.reconnectionTime) FROM Profile p";
+		String queryProfiles = "SELECT new cl.camodev.wosbot.ot.DTOProfiles(p.id, p.name, p.emulatorNumber, p.enabled, p.priority, p.reconnectionTime, p.characterId, p.characterName, p.characterAllianceCode, p.characterServer) FROM Profile p";
 
 		// Get profiles using getQueryResults
 		List<DTOProfiles> profiles = persistence.getQueryResults(queryProfiles, DTOProfiles.class, null);
@@ -81,7 +81,7 @@ public class ProfileRepository implements IProfileRepository {
 			return null;
 		}
 
-		String queryProfile = "SELECT new cl.camodev.wosbot.ot.DTOProfiles(p.id, p.name, p.emulatorNumber, p.enabled, p.priority, p.reconnectionTime) FROM Profile p WHERE p.id = :id";
+		String queryProfile = "SELECT new cl.camodev.wosbot.ot.DTOProfiles(p.id, p.name, p.emulatorNumber, p.enabled, p.priority, p.reconnectionTime, p.characterId, p.characterName, p.characterAllianceCode, p.characterServer) FROM Profile p WHERE p.id = :id";
 		Map<String, Object> params = new HashMap<>();
 		params.put("id", id);
 		List<DTOProfiles> result = persistence.getQueryResults(queryProfile, DTOProfiles.class, params);

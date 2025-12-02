@@ -36,6 +36,18 @@ public class Profile {
 	@Column(name = "reconnection_time", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
 	private Long reconnectionTime;
 
+	@Column(name = "character_id", nullable = true)
+	private String characterId;
+
+	@Column(name = "character_name", nullable = true)
+	private String characterName;
+
+	@Column(name = "character_alliance_code", nullable = true, length = 3)
+	private String characterAllianceCode;
+
+	@Column(name = "character_server", nullable = true)
+	private String characterServer;
+
 	@OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<Config> configs = new ArrayList<>();
 
@@ -95,5 +107,37 @@ public class Profile {
 
 	public void setReconnectionTime(Long reconnectionTime) {
 		this.reconnectionTime = reconnectionTime;
+	}
+
+	public String getCharacterId() {
+		return characterId;
+	}
+
+	public void setCharacterId(String characterId) {
+		this.characterId = characterId;
+	}
+
+	public String getCharacterName() {
+		return characterName;
+	}
+
+	public void setCharacterName(String characterName) {
+		this.characterName = characterName;
+	}
+
+	public String getCharacterAllianceCode() {
+		return characterAllianceCode;
+	}
+
+	public void setCharacterAllianceCode(String characterAllianceCode) {
+		this.characterAllianceCode = characterAllianceCode;
+	}
+
+	public String getCharacterServer() {
+		return characterServer;
+	}
+
+	public void setCharacterServer(String characterServer) {
+		this.characterServer = characterServer;
 	}
 }

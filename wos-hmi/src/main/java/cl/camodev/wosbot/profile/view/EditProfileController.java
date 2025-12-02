@@ -43,6 +43,18 @@ public class EditProfileController implements Initializable {
     @FXML
     private TextField txtReconnectionTime;
 
+    @FXML
+    private TextField txtCharacterName;
+
+    @FXML
+    private TextField txtCharacterId;
+
+    @FXML
+    private TextField txtCharacterAllianceCode;
+
+    @FXML
+    private TextField txtCharacterServer;
+
     private ProfileAux profileToEdit;
     private ProfileManagerActionController actionController;
     private Stage dialogStage;
@@ -70,6 +82,31 @@ public class EditProfileController implements Initializable {
                 txtReconnectionTime.setText(newValue.replaceAll("[^\\d]", ""));
             }
         });
+
+        txtCharacterId.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.matches("\\d*")) {
+                txtCharacterId.setText(newValue.replaceAll("[^\\d]", ""));
+            }
+        });
+
+        // Add input validation to alliance code field - only alphanumeric, max 3 characters
+        txtCharacterAllianceCode.textProperty().addListener((observable, oldValue, newValue) -> {
+            // Only allow alphanumeric
+            String filtered = newValue.replaceAll("[^A-Za-z0-9]", "");
+            // Limit to 3 characters
+            if (filtered.length() > 3) {
+                filtered = filtered.substring(0, 3);
+            }
+            if (!filtered.equals(newValue)) {
+                txtCharacterAllianceCode.setText(filtered);
+            }
+        });
+
+        txtCharacterServer.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.matches("\\d*")) {
+                txtCharacterServer.setText(newValue.replaceAll("[^\\d]", ""));
+            }
+        });                      
 
         // Configure the priority slider
         sliderPriority.valueProperty().addListener((observable, oldValue, newValue) -> {
@@ -103,6 +140,12 @@ public class EditProfileController implements Initializable {
             sliderPriority.setValue(profileToEdit.getPriority().doubleValue());
             lblPriorityValue.setText(String.valueOf(profileToEdit.getPriority()));
             txtReconnectionTime.setText(String.valueOf(profileToEdit.getReconnectionTime()));
+            
+            // Populate character fields from direct properties
+            txtCharacterId.setText(profileToEdit.getCharacterId() != null ? profileToEdit.getCharacterId() : "");
+            txtCharacterName.setText(profileToEdit.getCharacterName() != null ? profileToEdit.getCharacterName() : "");
+            txtCharacterAllianceCode.setText(profileToEdit.getCharacterAllianceCode() != null ? profileToEdit.getCharacterAllianceCode() : "");
+            txtCharacterServer.setText(profileToEdit.getCharacterServer() != null ? profileToEdit.getCharacterServer() : "");
         }
     }
 
@@ -118,6 +161,17 @@ public class EditProfileController implements Initializable {
             // Update reconnection time
             long reconnectionTime = Long.parseLong(txtReconnectionTime.getText().isEmpty() ? "0" : txtReconnectionTime.getText());
             profileToEdit.setReconnectionTime(reconnectionTime);
+
+            // Update character fields (direct properties)
+            String characterId = txtCharacterId.getText().trim();
+            String characterName = txtCharacterName.getText().trim();
+            String characterAllianceCode = txtCharacterAllianceCode.getText().trim().toUpperCase();
+            String characterServer = txtCharacterServer.getText().trim();
+            
+            profileToEdit.setCharacterId(characterId.isEmpty() ? null : characterId);
+            profileToEdit.setCharacterName(characterName.isEmpty() ? null : characterName);
+            profileToEdit.setCharacterAllianceCode(characterAllianceCode.isEmpty() ? null : characterAllianceCode);
+            profileToEdit.setCharacterServer(characterServer.isEmpty() ? null : characterServer);
 
             // Save to database
             boolean success = actionController.saveProfile(profileToEdit);
