@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
@@ -58,7 +60,7 @@
                                                 <!-- Pet Skills Section -->
                                                 <VBox spacing="10" style="-fx-background-color: #2a2a2a; -fx-background-radius: 4; -fx-padding: 10;">
                                                     <children>
-                                          <HBox maxWidth="1.7976931348623157E308">
+                                          <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308">
                                              <children>
                                                 <CheckBox fx:id="checkBoxPetSkills" mnemonicParsing="false" text="Activate Pet Skills">
                                                    <font>
@@ -68,12 +70,14 @@
                                              </children>
                                           </HBox>
 
-                                                        <GridPane hgap="20" vgap="10">
+                                                        <GridPane alignment="CENTER_LEFT" hgap="20" vgap="10">
                                                             <columnConstraints>
-                                                                <ColumnConstraints percentWidth="50" />
-                                                                <ColumnConstraints percentWidth="50" />
+                                                                <ColumnConstraints percentWidth="50.0" />
+                                                                <ColumnConstraints percentWidth="50.0" />
+                                                <ColumnConstraints />
                                                             </columnConstraints>
                                                             <rowConstraints>
+                                                                <RowConstraints />
                                                                 <RowConstraints />
                                                                 <RowConstraints />
                                                             </rowConstraints>
@@ -82,6 +86,15 @@
                                                                 <CheckBox fx:id="checkboxFoodSkill" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Use Food Skill" GridPane.columnIndex="1" GridPane.rowIndex="0" />
                                                                 <CheckBox fx:id="checkboxTreasureSkill" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Use Treasure Skill" GridPane.columnIndex="0" GridPane.rowIndex="1" />
                                                                 <CheckBox fx:id="checkboxGatheringSkill" mnemonicParsing="false" style="-fx-text-fill: #e5e5e5;" text="Use Gathering Skill" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                                                                <VBox alignment="CENTER_LEFT" fillWidth="false" spacing="5" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.rowIndex="2">
+                                                                    <children>
+                                                                        <Label style="-fx-text-fill: #b5b5b5; -fx-font-size: 10px;" text="Gathering Resource:" />
+                                                                        <ComboBox fx:id="comboBoxGatheringResource" prefHeight="24.0" prefWidth="90.0" style="-fx-font-size: 11px;">
+                                                         <VBox.margin>
+                                                            <Insets left="10.0" />
+                                                         </VBox.margin></ComboBox>
+                                                                    </children>
+                                                                </VBox>
                                                             </children>
                                                         </GridPane>
                                                     </children>

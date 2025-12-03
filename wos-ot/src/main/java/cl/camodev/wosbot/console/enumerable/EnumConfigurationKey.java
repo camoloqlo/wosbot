@@ -135,6 +135,7 @@ public enum EnumConfigurationKey {
 	PET_SKILL_FOOD_BOOL("false", Boolean.class),
 	PET_SKILL_TREASURE_BOOL("false", Boolean.class),
 	PET_SKILL_GATHERING_BOOL("false", Boolean.class),
+	PET_SKILL_GATHERING_RESOURCE_STRING("MEAT", String.class),
 	PET_PERSONAL_TREASURE_BOOL("false", Boolean.class),
 	
     // ========================================================================
