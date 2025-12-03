@@ -2,6 +2,7 @@ package cl.camodev.wosbot.emulator;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -807,15 +808,15 @@ public class EmulatorManager {
 
     /**
      * Finds the next waiting profile with the same emulatorNumber.
-     * Since queue is priority-ordered, the first match is the highest priority.
+     * Returns the highest priority matching profile (since WaitingThread.compareTo orders by priority).
      * 
      * @param emulatorNumber The emulator number to search for
-     * @return The next WaitingThread with matching emulatorNumber, or null
+     * @return The highest priority WaitingThread with matching emulatorNumber, or null
      */
     private WaitingThread findNextSameAccountProfile(String emulatorNumber) {
         return waitingQueue.stream()
                 .filter(wt -> emulatorNumber.equals(wt.getEmulatorNumber()))
-                .findFirst()
+                .min(Comparator.naturalOrder())
                 .orElse(null);
     }
 
