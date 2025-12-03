@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.Set;
@@ -40,6 +41,10 @@ public class EmulatorManager {
     private Emulator emulator;
     private int MAX_RUNNING_EMULATORS = 3;
     private final Set<Thread> activeSlots = new HashSet<>();
+    // Map: emulatorNumber -> Thread (tracks which thread is using which emulator)
+    private final Map<String, Thread> emulatorToThread = new HashMap<>();
+    // Map: Thread -> emulatorNumber (reverse lookup)
+    private final Map<Thread, String> threadToEmulator = new HashMap<>();
 
     private EmulatorManager() {
 
@@ -615,13 +620,40 @@ public class EmulatorManager {
         emulator.restartAdb();
     }
 
+    /**
+     * Checks if another profile with the same emulatorNumber is already active.
+     * 
+     * @param emulatorNumber The emulator number to check
+     * @param currentThread The current thread (to exclude from check)
+     * @return true if conflict exists, false otherwise
+     */
+    private boolean hasEmulatorConflict(String emulatorNumber, Thread currentThread) {
+        if (emulatorNumber == null || emulatorNumber.isEmpty()) {
+            return false; // Invalid emulator number, will be handled by validation
+        }
+        Thread activeThread = emulatorToThread.get(emulatorNumber);
+        if (activeThread == null) {
+            return false; // No conflict
+        }
+        // Conflict exists if another thread (not current) is using this emulator
+        return !activeThread.equals(currentThread);
+    }
+
     public void adquireEmulatorSlot(DTOProfiles profile, PositionCallback callback) throws InterruptedException {
         Thread currentThread = Thread.currentThread();
+        String emulatorNumber = profile.getEmulatorNumber();
+        
+        // Validate emulator number
+        if (emulatorNumber == null || emulatorNumber.isEmpty()) {
+            logger.error("Profile {} has invalid emulator number, cannot acquire slot", profile.getName());
+            throw new IllegalArgumentException("Profile emulator number is required");
+        }
+        
         lock.lock();
         try {
             // Check if this thread already has an active slot
             if (activeSlots.contains(currentThread)) {
-                if (emulator.isRunning(profile.getEmulatorNumber())) {
+                if (emulator.isRunning(emulatorNumber)) {
                     logger.info("Profile {} already has an active slot, continuing without acquiring a new one.",
                             profile.getName());
                     logSlotHolders();
@@ -629,6 +661,11 @@ public class EmulatorManager {
                     return;
                 } else {
                     activeSlots.remove(currentThread);
+                    // Clean up emulator tracking if thread had a slot
+                    String oldEmulatorNumber = threadToEmulator.remove(currentThread);
+                    if (oldEmulatorNumber != null) {
+                        emulatorToThread.remove(oldEmulatorNumber);
+                    }
                     // MAX_RUNNING_EMULATORS++;
                     logger.info(
                             "Profile {} had a slot, but emulator was not running, removing from slot holders and placing in queue. ",
@@ -637,16 +674,32 @@ public class EmulatorManager {
                 }
             }
 
-            // If a slot is available and no one is waiting, it is acquired immediately.
-            logger.info("Profile " + profile.getName() + " is requesting queue slot.");
-            if (activeSlots.size() < MAX_RUNNING_EMULATORS && waitingQueue.isEmpty()) {
-                logger.info("Profile " + profile.getName() + " acquired slot immediately.");
+            // Check for emulator conflict first
+            boolean hasConflict = hasEmulatorConflict(emulatorNumber, currentThread);
+            logger.info("Profile {} (emulator {}) is requesting queue slot.", profile.getName(), emulatorNumber);
+            
+            // If slot available and no conflict, acquire immediately (regardless of queue state)
+            // This allows different emulators to run concurrently without unnecessary queuing
+            if (activeSlots.size() < MAX_RUNNING_EMULATORS && !hasConflict) {
+                logger.info("Profile {} (emulator {}) acquired slot immediately (slot available, no conflict).", 
+                        profile.getName(), emulatorNumber);
                 logger.debug("Current slot holders: " + activeSlots);
                 profile.setQueuePosition(0);
-                // MAX_RUNNING_EMULATORS--;
                 activeSlots.add(currentThread); // Track this thread as having a slot
+                emulatorToThread.put(emulatorNumber, currentThread);
+                threadToEmulator.put(currentThread, emulatorNumber);
                 logSlotHolders();
+                permitsAvailable.signalAll(); // Notify waiting threads in case they can now proceed
                 return;
+            }
+            
+            // If we reach here, we need to queue (either no slots available or conflict exists)
+            if (hasConflict) {
+                logger.info("Profile {} (emulator {}) conflicts with active profile, queuing...", 
+                        profile.getName(), emulatorNumber);
+            } else {
+                logger.info("Profile {} (emulator {}) queuing (no slots available: {}/{})", 
+                        profile.getName(), emulatorNumber, activeSlots.size(), MAX_RUNNING_EMULATORS);
             }
 
             // Create the object representing the current thread with its priority
@@ -654,7 +707,9 @@ public class EmulatorManager {
             waitingQueue.add(currentWaiting);
 
             // Wait with a timeout to be able to notify the position periodically.
-            while (waitingQueue.peek() != currentWaiting || activeSlots.size() >= MAX_RUNNING_EMULATORS) {
+            while (waitingQueue.peek() != currentWaiting 
+                    || activeSlots.size() >= MAX_RUNNING_EMULATORS
+                    || hasEmulatorConflict(emulatorNumber, currentThread)) {
                 // Wait for up to 1 second.
                 permitsAvailable.await(1, TimeUnit.SECONDS);
 
@@ -663,13 +718,15 @@ public class EmulatorManager {
                 profile.setQueuePosition(position);
                 callback.onPositionUpdate(currentThread, position);
             }
-            logger.info("Profile {} acquired slot", profile.getName());
+            logger.info("Profile {} (emulator {}) acquired slot", profile.getName(), emulatorNumber);
             logger.debug("Current slot holders: " + activeSlots);
             // It's the turn and a slot is available.
             waitingQueue.poll(); // Remove the thread from the queue.
             profile.setQueuePosition(0);
             // MAX_RUNNING_EMULATORS--; // Acquire the slot.
             activeSlots.add(currentThread); // Track this thread as having a slot
+            emulatorToThread.put(emulatorNumber, currentThread);
+            threadToEmulator.put(currentThread, emulatorNumber);
             logSlotHolders();
             // Notify other threads to re-evaluate the condition.
             permitsAvailable.signalAll();
@@ -694,11 +751,26 @@ public class EmulatorManager {
             logger.info("Profile {} is releasing queue slot.", profile.getName());
             profile.setQueuePosition(Integer.MAX_VALUE);
 
+            // Get emulator number for this thread
+            String emulatorNumber = threadToEmulator.get(currentThread);
+
             // Only increment MAX_RUNNING_EMULATORS if this thread actually had a slot
             if (activeSlots.remove(currentThread)) {
+                // Remove from emulator tracking
+                if (emulatorNumber != null) {
+                    emulatorToThread.remove(emulatorNumber);
+                    threadToEmulator.remove(currentThread);
+                    
+                    // Check if same-account profiles are waiting
+                    WaitingThread nextSameAccount = findNextSameAccountProfile(emulatorNumber);
+                    if (nextSameAccount != null) {
+                        logger.info("Profile {} released emulator {} slot. Next same-account profile {} is queued.", 
+                                profile.getName(), emulatorNumber, nextSameAccount.getProfileId());
+                    }
+                }
                 // MAX_RUNNING_EMULATORS++;
-                logger.info("Thread {} released its slot, slots available: {}", currentThread.getName(),
-                        MAX_RUNNING_EMULATORS);
+                logger.info("Thread {} released its slot (emulator {}), slots available: {}", 
+                        currentThread.getName(), emulatorNumber != null ? emulatorNumber : "unknown", MAX_RUNNING_EMULATORS);
             } else {
                 logger.warn("Thread {} tried to release a slot it didn't have", currentThread.getName());
             }
@@ -725,10 +797,26 @@ public class EmulatorManager {
         try {
             waitingQueue.clear();
             activeSlots.clear(); // Clear the set of active slots
+            emulatorToThread.clear();
+            threadToEmulator.clear();
             permitsAvailable.signalAll();
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * Finds the next waiting profile with the same emulatorNumber.
+     * Since queue is priority-ordered, the first match is the highest priority.
+     * 
+     * @param emulatorNumber The emulator number to search for
+     * @return The next WaitingThread with matching emulatorNumber, or null
+     */
+    private WaitingThread findNextSameAccountProfile(String emulatorNumber) {
+        return waitingQueue.stream()
+                .filter(wt -> emulatorNumber.equals(wt.getEmulatorNumber()))
+                .findFirst()
+                .orElse(null);
     }
 
 }
