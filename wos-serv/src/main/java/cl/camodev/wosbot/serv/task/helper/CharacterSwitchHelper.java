@@ -59,6 +59,13 @@ public class CharacterSwitchHelper {
     private static final int TEMPLATE_SEARCH_DELAY_MS = 500;
     private static final int TEMPLATE_SEARCH_THRESHOLD = 80;
     private static final int TEMPLATE_SEARCH_HIGH_THRESHOLD = 90;
+    
+    /** Offset from furnace level position to checkmark X coordinate (pixels right) */
+    private static final int CHECKMARK_OFFSET_X = 264;
+    /** Offset from furnace level position to checkmark Y coordinate (pixels up) */
+    private static final int CHECKMARK_OFFSET_Y = -40;
+    /** Size of the checkmark icon (width and height in pixels) */
+    private static final int CHECKMARK_SIZE = 60;
 
     private final EmulatorManager emuManager;
     private final String emulatorNumber;
@@ -525,12 +532,12 @@ public class CharacterSwitchHelper {
         // Calculate checkmark position relative to furnace level
         // Offset: +264 pixels right, -40 pixels up from furnace position
         // Checkmark size: 60x60 pixels
-        int checkmarkX = furnacePosition.getX() + 264;
-        int checkmarkY = furnacePosition.getY() - 40;
+        int checkmarkX = furnacePosition.getX() + CHECKMARK_OFFSET_X;
+        int checkmarkY = furnacePosition.getY() + CHECKMARK_OFFSET_Y;
         
         DTOArea checkmarkSearchArea = new DTOArea(
                 new DTOPoint(checkmarkX, checkmarkY),
-                new DTOPoint(checkmarkX + 60, checkmarkY + 60));
+                new DTOPoint(checkmarkX + CHECKMARK_SIZE, checkmarkY + CHECKMARK_SIZE));
 
         DTOImageSearchResult checkmarkResult = templateSearchHelper.searchTemplate(
                 EnumTemplates.GAME_PROFILE_SETTINGS_CHARACTER_ACTIVE_CHECKMARK,
@@ -678,7 +685,7 @@ public class CharacterSwitchHelper {
      * <ul>
      * <li>Correct: "[ABC] John Doe" → "John Doe"</li>
      * <li>Missing bracket: "[ABCJohn Doe" → "John Doe"</li>
-     * <li>Extra char: "[ABCA]dam Doe" → "dam Doe" (strips [ABCA])</li>
+     * <li>Extra char: "[ABCJ]ohn Doe" → "ohn Doe" (strips [ABCJ])</li>
      * <li>No prefix: "John Doe" → "John Doe"</li>
      * </ul>
      * 
@@ -694,9 +701,9 @@ public class CharacterSwitchHelper {
         // Flexible pattern to handle correct and malformed OCR patterns:
         // - [XXX] or [XXX] with space (correct: [ABC] John)
         // - [XXX followed by letter (missing bracket: [ABCJohn)
-        // - [XXXX] or [XXXX (4 chars, OCR error: [ABCA]dam or [ABCA)
+        // - [XXXX] or [XXXX (4 chars, OCR error: [ABCJ]ohn or [ABCJ)
         // Pattern: \[ followed by 3-4 alphanumeric, optional ], optional whitespace
-        String stripped = characterName.replaceFirst("^\\[[A-Z0-9]{3,4}(\\]|)(\\s*)", "");
+        String stripped = characterName.replaceFirst("^\\[[A-Z0-9]{3,4}\\]?(\\s*)", "");
 
         // If still no match, try pattern without closing bracket requirement
         // This handles cases like [ABCJohn where bracket is missing
