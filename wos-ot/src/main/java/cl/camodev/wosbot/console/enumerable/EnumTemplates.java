@@ -71,6 +71,10 @@ public enum EnumTemplates {
 	GAME_HOME_SHORTCUTS_FARM_GATHER("/templates/shortcuts/farmGather.png"),
 	
 	GATHER_DEPLOY_BUTTON("/templates/shortcuts/gatherDeploy.png"),
+	GATHER_MEAT_HERO("/templates/gathering/meatHero.png"),
+	GATHER_WOOD_HERO("/templates/gathering/woodHero.png"),
+	GATHER_COAL_HERO("/templates/gathering/coalHero.png"),
+	GATHER_IRON_HERO("/templates/gathering/ironHero.png"),
 
     // ========================================================================
     // BUILDING INTERACTIONS
@@ -258,6 +262,7 @@ public enum EnumTemplates {
 	// Grayscale templates for B&W matching
 	INTEL_BEAST_GRAYSCALE("/templates/intel/beastGrayscale.png"),
 	INTEL_BEAST_GRAYSCALE_FC("/templates/intel/beastGrayscaleFC.png"),
+	INTEL_BEAST_GRAYSCALE_FC1("/templates/intel/beastGrayscaleFC1.png"),
 	INTEL_SURVIVOR_GRAYSCALE("/templates/intel/survivorGrayscale.png"),
 	INTEL_SURVIVOR_GRAYSCALE_FC("/templates/intel/survivorGrayscaleFC.png"),
 	INTEL_JOURNEY_GRAYSCALE("/templates/intel/journeyGrayscale.png"),
@@ -401,6 +406,12 @@ public enum EnumTemplates {
 	MERCENARY_ATTACK_BUTTON("/templates/mercenary/mercenaryEventAttack.png"),
 	MERCENARY_DEPLOY_BUTTON("/templates/mercenary/mercenaryEventDeploy.png"),
 	MERCENARY_DIFFICULTY_CHALLENGE("/templates/mercenary/mercenaryEventDifficultyChallenge.png"),
+	MERCENARY_EPIC_INITIATION_SELECTED("/templates/mercenary/mercenaryEventEpicInitiationSelected.png"),
+	MERCENARY_EPIC_INITIATION_UNSELECTED("/templates/mercenary/mercenaryEventEpicInitiationUnselected.png"),
+	MERCENARY_CHAMPIONS_INITIATION_SELECTED("/templates/mercenary/mercenaryEventChampionsInitiationSelected.png"),
+	MERCENARY_CHAMPIONS_INITIATION_UNSELECTED("/templates/mercenary/mercenaryEventChampionsInitiationUnselected.png"),
+	MERCENARY_LEGENDS_INITIATION_SELECTED("/templates/mercenary/mercenaryEventLegendsInitiationSelected.png"),
+	MERCENARY_LEGENDS_INITIATION_UNSELECTED("/templates/mercenary/mercenaryEventLegendsInitiationUnselected.png"),
 
 	// ========================================================================
     // HERO'S MISSION EVENT

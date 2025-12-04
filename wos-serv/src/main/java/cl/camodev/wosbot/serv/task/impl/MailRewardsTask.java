@@ -7,10 +7,12 @@ import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
+import cl.camodev.wosbot.ot.DTOArea;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 /**
  * Mail Rewards task that automatically claims all rewards from the mail inbox.
@@ -167,12 +169,13 @@ public class MailRewardsTask extends DelayedTask {
     private boolean openMailMenu() {
         logInfo("Opening mail menu.");
 
-        DTOImageSearchResult mailMenu = searchTemplateRegionWithRetries(
+        DTOImageSearchResult mailMenu = templateSearchHelper.searchTemplate(
                 EnumTemplates.MAIL_MENU,
-                MAIL_MENU_SEARCH_TOP_LEFT,
-                MAIL_MENU_SEARCH_BOTTOM_RIGHT,
-                MAIL_MENU_SEARCH_RETRIES,
-                200L);
+                SearchConfig.builder()
+                        .withArea(new DTOArea(MAIL_MENU_SEARCH_TOP_LEFT, MAIL_MENU_SEARCH_BOTTOM_RIGHT))
+                        .withMaxAttempts(MAIL_MENU_SEARCH_RETRIES)
+                        .withDelay(200L)
+                        .build());
 
         if (!mailMenu.isFound()) {
             logError("Unable to find mail menu icon.");
@@ -194,12 +197,13 @@ public class MailRewardsTask extends DelayedTask {
      * @return true if mail menu is open, false otherwise
      */
     private boolean verifyMailMenuOpened() {
-        DTOImageSearchResult inMailMenu = searchTemplateRegionWithRetries(
+        DTOImageSearchResult inMailMenu = templateSearchHelper.searchTemplate(
                 EnumTemplates.MAIL_MENU_OPEN,
-                MAIL_MENU_OPEN_TOP_LEFT,
-                MAIL_MENU_OPEN_BOTTOM_RIGHT,
-                MAIL_MENU_OPEN_VERIFICATION_RETRIES,
-                200L);
+                SearchConfig.builder()
+                        .withArea(new DTOArea(MAIL_MENU_OPEN_TOP_LEFT, MAIL_MENU_OPEN_BOTTOM_RIGHT))
+                        .withMaxAttempts(MAIL_MENU_OPEN_VERIFICATION_RETRIES)
+                        .withDelay(200L)
+                        .build());
 
         if (!inMailMenu.isFound()) {
             logError("Mail menu did not open successfully.");
@@ -345,9 +349,12 @@ public class MailRewardsTask extends DelayedTask {
      * @return true if unclaimed rewards found, false otherwise
      */
     private boolean hasUnclaimedRewards() {
-        DTOImageSearchResult unclaimedRewards = searchTemplateWithRetries(
+        DTOImageSearchResult unclaimedRewards = templateSearchHelper.searchTemplate(
                 EnumTemplates.MAIL_UNCLAIMED_REWARDS,
-                UNCLAIMED_REWARDS_SEARCH_RETRIES, 100L);
+                SearchConfig.builder()
+                        .withMaxAttempts(UNCLAIMED_REWARDS_SEARCH_RETRIES)
+                        .withDelay(100L)
+                        .build());
 
         return unclaimedRewards.isFound();
     }

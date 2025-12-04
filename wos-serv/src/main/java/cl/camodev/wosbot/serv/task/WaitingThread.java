@@ -26,6 +26,11 @@ public class WaitingThread implements Comparable<WaitingThread> {
 		return cmp;
 	}
 
-	public Long getProfileId() { return profileId; }
-	public Thread getThread() { return thread; }
+	public Long getProfileId() {
+		return profileId;
+	}
+
+	public Thread getThread() {
+		return thread;
+	}
 }

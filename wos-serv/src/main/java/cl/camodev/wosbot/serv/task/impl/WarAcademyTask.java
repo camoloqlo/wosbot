@@ -16,6 +16,7 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 /**
  * Task responsible for redeeming War Academy shards.
@@ -140,11 +141,9 @@ public class WarAcademyTask extends DelayedTask {
         sleepTask(500); // Wait for swipe animation
 
         // Search for Research Centers
-        List<DTOImageSearchResult> researchCenters = searchTemplatesWithRetries(
+        List<DTOImageSearchResult> researchCenters = templateSearchHelper.searchTemplates(
                 EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER,
-                90,
-                3,
-                MIN_RESEARCH_CENTERS_REQUIRED);
+                SearchConfigConstants.MULTIPLE_RESULTS);
 
         if (researchCenters.size() < MIN_RESEARCH_CENTERS_REQUIRED) {
             logError(String.format("Only found %d Research Centers, need at least %d.",
@@ -169,8 +168,9 @@ public class WarAcademyTask extends DelayedTask {
         sleepTask(1000); // Wait for building to open
 
         // Open Research section
-        DTOImageSearchResult researchButton = searchTemplateWithRetries(
-                EnumTemplates.BUILDING_BUTTON_RESEARCH);
+        DTOImageSearchResult researchButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.BUILDING_BUTTON_RESEARCH,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!researchButton.isFound()) {
             logError("Research button not found.");
@@ -182,8 +182,9 @@ public class WarAcademyTask extends DelayedTask {
         sleepTask(500); // Wait for Research screen
 
         // Verify War Academy UI
-        DTOImageSearchResult warAcademyUI = searchTemplateWithRetries(
-                EnumTemplates.VALIDATION_WAR_ACADEMY_UI);
+        DTOImageSearchResult warAcademyUI = templateSearchHelper.searchTemplate(
+                EnumTemplates.VALIDATION_WAR_ACADEMY_UI,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!warAcademyUI.isFound()) {
             logError("War Academy UI validation failed.");

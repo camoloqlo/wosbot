@@ -18,6 +18,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 public class LifeEssenceTask extends DelayedTask {
 
@@ -82,29 +83,30 @@ public class LifeEssenceTask extends DelayedTask {
 			buyWeeklyFreeScroll();
 		}
 
-        likeIsland();
+		likeIsland();
 
 		// Exit and reschedule
 		exitAndReschedule(claimedCount);
 	}
 
-    private void likeIsland() {
+	private void likeIsland() {
 
-        DTOImageSearchResult likeButton =         searchTemplateRegionWithRetries(
-                EnumTemplates.ISLAND_LIKE_BUTTON,
-                new DTOPoint(634, 718),
-                new DTOPoint(700,774),
-                95,
-                3,
-                100);
-        if (likeButton.isFound()) {
-            logInfo("Liking the island");
-            tapPoint(likeButton.getPoint());
-            sleepTask(500); // Wait for like action
-        }
-    }
+		DTOImageSearchResult likeButton = templateSearchHelper.searchTemplate(
+				EnumTemplates.ISLAND_LIKE_BUTTON,
+				SearchConfig.builder()
+						.withArea(new DTOArea(new DTOPoint(634, 718), new DTOPoint(700, 774)))
+						.withThreshold(95)
+						.withMaxAttempts(3)
+						.withDelay(100)
+						.build());
+		if (likeButton.isFound()) {
+			logInfo("Liking the island");
+			tapPoint(likeButton.getPoint());
+			sleepTask(500); // Wait for like action
+		}
+	}
 
-    /**
+	/**
 	 * Load configuration from profile after refresh
 	 */
 	private void loadConfiguration() {
@@ -169,7 +171,9 @@ public class LifeEssenceTask extends DelayedTask {
 		sleepTask(1000); // Wait for scroll to settle
 
 		// Search for Life Essence menu option
-		DTOImageSearchResult lifeEssenceMenu = searchTemplateWithRetries(EnumTemplates.LIFE_ESSENCE_MENU);
+		DTOImageSearchResult lifeEssenceMenu = templateSearchHelper.searchTemplate(
+				EnumTemplates.LIFE_ESSENCE_MENU,
+				SearchConfig.builder().build());
 
 		// Try second swipe if not found
 		if (!lifeEssenceMenu.isFound()) {
@@ -177,7 +181,9 @@ public class LifeEssenceTask extends DelayedTask {
 			swipe(MENU_SCROLL_START, MENU_SCROLL_END);
 			sleepTask(1000); // Wait for scroll
 
-			lifeEssenceMenu = searchTemplateWithRetries(EnumTemplates.LIFE_ESSENCE_MENU);
+			lifeEssenceMenu = templateSearchHelper.searchTemplate(
+					EnumTemplates.LIFE_ESSENCE_MENU,
+					SearchConfig.builder().build());
 		}
 
 		if (!lifeEssenceMenu.isFound()) {
@@ -220,13 +226,15 @@ public class LifeEssenceTask extends DelayedTask {
 			logDebug("Claim search attempt " + searchAttempt + "/" + MAX_CLAIM_SEARCH_ATTEMPTS);
 
 			// Search for claimable essence in the defined area
-			List<DTOImageSearchResult> essenceList = searchTemplatesWithRetries(
+			List<DTOImageSearchResult> essenceList = templateSearchHelper.searchTemplates(
 					EnumTemplates.LIFE_ESSENCE_CLAIM,
-					LIFE_ESSENCE_SEARCH_AREA.topLeft(),
-					LIFE_ESSENCE_SEARCH_AREA.bottomRight(),
-					90,
-					1,
-					MAX_CLAIM_RESULTS);
+					SearchConfig.builder()
+							.withArea(new DTOArea(LIFE_ESSENCE_SEARCH_AREA.topLeft(),
+									LIFE_ESSENCE_SEARCH_AREA.bottomRight()))
+							.withThreshold(90)
+							.withMaxAttempts(1)
+							.withMaxResults(MAX_CLAIM_RESULTS)
+							.build());
 
 			if (essenceList.isEmpty()) {
 				emptySearches++;
@@ -315,7 +323,9 @@ public class LifeEssenceTask extends DelayedTask {
 		sleepTask(1000); // Wait for tab transition
 
 		// Search for weekly free scroll offer
-		DTOImageSearchResult scrollOffer = searchTemplateWithRetries(EnumTemplates.ISLAND_WEEKLY_FREE_SCROLL);
+		DTOImageSearchResult scrollOffer = templateSearchHelper.searchTemplate(
+				EnumTemplates.ISLAND_WEEKLY_FREE_SCROLL,
+				SearchConfig.builder().build());
 
 		if (!scrollOffer.isFound()) {
 			logInfo("Weekly free scroll not available (already purchased this week)");
@@ -338,7 +348,9 @@ public class LifeEssenceTask extends DelayedTask {
 		sleepTask(500); // Wait for dialog
 
 		// Search for buy button
-		DTOImageSearchResult buyButton = searchTemplateWithRetries(EnumTemplates.ISLAND_WEEKLY_FREE_SCROLL_BUY_BUTTON);
+		DTOImageSearchResult buyButton = templateSearchHelper.searchTemplate(
+				EnumTemplates.ISLAND_WEEKLY_FREE_SCROLL_BUY_BUTTON,
+				SearchConfig.builder().build());
 
 		if (!buyButton.isFound()) {
 			logWarning("Buy button not found. Purchase may have failed.");

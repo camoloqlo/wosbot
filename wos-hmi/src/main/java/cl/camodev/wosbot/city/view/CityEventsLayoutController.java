@@ -39,7 +39,7 @@ public class CityEventsLayoutController extends AbstractProfileController {
 		textFieldMappings.put(textfieldLifeEssenceOffset, EnumConfigurationKey.LIFE_ESSENCE_OFFSET_INT);
 		textFieldMappings.put(textfieldDailyMissionOffset, EnumConfigurationKey.DAILY_MISSION_OFFSET_INT);
 
-		comboBoxMondayRefinements.getItems().addAll(0, 20, 40, 60);
+		comboBoxMondayRefinements.getItems().addAll(0,14,20,34,40,54,60,74,80,94);
 		comboBoxMappings.put(comboBoxMondayRefinements, EnumConfigurationKey.INT_WEEKLY_RFC);
 
 		initializeChangeEvents();

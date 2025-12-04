@@ -40,15 +40,16 @@ public class BeastSlayTask extends DelayedTask {
 	protected void execute() {
 
 		// go to profile to see stamina
-		emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(50, 50));
+		tapPoint(new DTOPoint(50, 50));
 		sleepTask(500);
 		// go to stamina menu
-		emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(220, 1100), new DTOPoint(250, 1125));
+		tapRandomPoint(new DTOPoint(220, 1100), new DTOPoint(250, 1125));
 		sleepTask(2000);
 		// ocr the stamina 350,270 490,300
 
 		try {
-			String staminaText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(350, 270), new DTOPoint(490, 300));
+			String staminaText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(350, 270),
+					new DTOPoint(490, 300));
 			logInfo("Stamina detected: " + staminaText);
 			tapBackButton();
 			tapBackButton();
@@ -57,7 +58,8 @@ public class BeastSlayTask extends DelayedTask {
 
 			if (stamina < 10) {
 				LocalDateTime fullStaminaTime = calculateFullStaminaTime(stamina, 100, 5);
-				logInfo("Stamina (" + stamina + ") is below the threshold (10). Rescheduling task to " + fullStaminaTime);
+				logInfo("Stamina (" + stamina + ") is below the threshold (10). Rescheduling task to "
+						+ fullStaminaTime);
 				this.reschedule(fullStaminaTime);
 				return;
 			}
@@ -71,14 +73,15 @@ public class BeastSlayTask extends DelayedTask {
 
 		try {
 			// go to profile
-			emuManager.tapAtPoint(EMULATOR_NUMBER, new DTOPoint(50, 50));
+			tapPoint(new DTOPoint(50, 50));
 			sleepTask(1000);
 
 			// go to queue menu
-			emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(210, 1190), new DTOPoint(330, 1250));
+			tapRandomPoint(new DTOPoint(210, 1190), new DTOPoint(330, 1250));
 			sleepTask(1000);
 
-			String queueText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(280, 230), new DTOPoint(340, 252));
+			String queueText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(280, 230),
+					new DTOPoint(340, 252));
 			logInfo("Available queues detected: " + queueText);
 			tapBackButton();
 			tapBackButton();
@@ -87,7 +90,8 @@ public class BeastSlayTask extends DelayedTask {
 
 			if (stamina < 10) {
 				LocalDateTime fullStaminaTime = calculateFullStaminaTime(stamina, 100, 5);
-				logInfo("Stamina (" + stamina + ") is below the threshold (10). Rescheduling task to " + fullStaminaTime);
+				logInfo("Stamina (" + stamina + ") is below the threshold (10). Rescheduling task to "
+						+ fullStaminaTime);
 				return;
 			}
 
@@ -96,7 +100,8 @@ public class BeastSlayTask extends DelayedTask {
 			return;
 		}
 
-		// if we got here, we have more than 10 stamina and should attack beasts until stamina is less than 10, consumption is 8-10 per attack
+		// if we got here, we have more than 10 stamina and should attack beasts until
+		// stamina is less than 10, consumption is 8-10 per attack
 		int beastLevel = 30;
 		List<Long> activeBeasts = new ArrayList<>(); // List of beast completion times
 		logInfo("Starting beast attacks.");
@@ -122,38 +127,39 @@ public class BeastSlayTask extends DelayedTask {
 
 					sleepTask(6000);
 					// go to the beast
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(25, 850), new DTOPoint(67, 898));
+					tapRandomPoint(new DTOPoint(25, 850), new DTOPoint(67, 898));
 					sleepTask(1000);
 
 					emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(20, 910), new DTOPoint(70, 915));
 					sleepTask(1000);
 					// beast button
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(70, 880), new DTOPoint(120, 930));
+					tapRandomPoint(new DTOPoint(70, 880), new DTOPoint(120, 930));
 					sleepTask(1000);
 					// go to level 1
 					emuManager.executeSwipe(EMULATOR_NUMBER, new DTOPoint(180, 1050), new DTOPoint(1, 1050));
 
 					// select beast level
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(470, 1040), new DTOPoint(500, 1070), beastLevel - 1, 100);
+					tapRandomPoint(new DTOPoint(470, 1040), new DTOPoint(500, 1070), beastLevel - 1, 100);
 					sleepTask(1000);
 					// click search
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(301, 1200), new DTOPoint(412, 1229));
+					tapRandomPoint(new DTOPoint(301, 1200), new DTOPoint(412, 1229));
 					sleepTask(6000);
 
 					// click attack
-					emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(270, 600), new DTOPoint(460, 630));
+					tapRandomPoint(new DTOPoint(270, 600), new DTOPoint(460, 630));
 					sleepTask(6000);
 
 					try {
 						// Get stamina and remaining time via OCR
 
-						String timeText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(519, 1141), new DTOPoint(618, 1164));
+						String timeText = emuManager.ocrRegionText(EMULATOR_NUMBER, new DTOPoint(519, 1141),
+								new DTOPoint(618, 1164));
 						logInfo("Attack time detected: " + timeText);
 
 						timeText = timeText.trim().replaceAll("[^0-9:]", ""); // Only keep numbers and ":"
 
 						// attack
-						emuManager.tapAtRandomPoint(EMULATOR_NUMBER, new DTOPoint(450, 1183), new DTOPoint(640, 1240));
+						tapRandomPoint(new DTOPoint(450, 1183), new DTOPoint(640, 1240));
 
 						stamina -= 10;
 						availableQueues--;
@@ -163,7 +169,8 @@ public class BeastSlayTask extends DelayedTask {
 
 						if (timeParts.length == 3) {
 							// HH:mm:ss format
-							totalSeconds = Integer.parseInt(timeParts[0]) * 3600 + Integer.parseInt(timeParts[1]) * 60 + Integer.parseInt(timeParts[2]);
+							totalSeconds = Integer.parseInt(timeParts[0]) * 3600 + Integer.parseInt(timeParts[1]) * 60
+									+ Integer.parseInt(timeParts[2]);
 						} else if (timeParts.length == 2) {
 							// mm:ss format
 							totalSeconds = Integer.parseInt(timeParts[0]) * 60 + Integer.parseInt(timeParts[1]);
@@ -176,7 +183,8 @@ public class BeastSlayTask extends DelayedTask {
 						// Calculate the beast's finish time
 						long finishTime = System.currentTimeMillis() + ((totalSeconds * 1000L) * 2);
 						activeBeasts.add(finishTime);
-						logInfo("Beast attacked. March will return in approximately " + (totalSeconds * 2) + " seconds.");
+						logInfo("Beast attacked. March will return in approximately " + (totalSeconds * 2)
+								+ " seconds.");
 
 					} catch (Exception e) {
 						logError("Failed to get beast information: " + e.getMessage());

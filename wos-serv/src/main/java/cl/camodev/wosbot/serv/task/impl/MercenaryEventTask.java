@@ -16,6 +16,8 @@ import cl.camodev.wosbot.serv.impl.ServTaskManager;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 import java.awt.Color;
 
 import java.time.LocalDateTime;
@@ -140,93 +142,107 @@ public class MercenaryEventTask extends DelayedTask {
     }
 
     private boolean selectMercenaryEventLevel() {
-        // Check if level selection is needed
-        try {
-            String textEasy = OCRWithRetries(new DTOPoint(112, 919), new DTOPoint(179, 953), 2);
-            String textNormal = OCRWithRetries(new DTOPoint(310, 919),
-                    new DTOPoint(410, 953), 2);
-            String textHard = OCRWithRetries(new DTOPoint(540, 919), new DTOPoint(609, 953), 2);
-            logDebug("OCR Results - Easy: '" + textEasy + "', Normal: '" + textNormal + "', Hard: '" + textHard + "'");
-            if ((textEasy != null && textEasy.toLowerCase().contains("easy"))
-                    || (textNormal != null && textNormal.toLowerCase().contains("normal"))
-                    || (textHard != null && textHard.toLowerCase().contains("hard"))) {
-                logInfo("Mercenary event level selection detected.");
-            } else {
-                logInfo("Mercenary event level selection not needed.");
-                return true;
-            }
-        } catch (Exception e) {
-            logError("Error checking mercenary event level selection: " + e.getMessage(), e);
-            return false;
-        }
-
-        // First try to select a level in the Legend's Initiation tab
-        tapPoint(new DTOPoint(512, 625)); // Tap Legend's Initiation tab
-        sleepTask(1000);
-
-        // Define difficulties in order from highest to lowest
-        record DifficultyLevel(String name, DTOPoint point) {
-        }
-        DifficultyLevel[] difficultyLevels = {
-                new DifficultyLevel("Insane", new DTOPoint(467, 1088)),
-                new DifficultyLevel("Nightmare", new DTOPoint(252, 1088)),
-                new DifficultyLevel("Hard", new DTOPoint(575, 817)),
-                new DifficultyLevel("Normal", new DTOPoint(360, 817)),
-                new DifficultyLevel("Easy", new DTOPoint(145, 817))
+        // Try each initiation type in order: Legends -> Epic -> Champions
+        String[] initiationTypes = { "Legends", "Epic", "Champions" };
+        EnumTemplates[] unselectedTemplates = {
+                EnumTemplates.MERCENARY_LEGENDS_INITIATION_UNSELECTED,
+                EnumTemplates.MERCENARY_EPIC_INITIATION_UNSELECTED,
+                EnumTemplates.MERCENARY_CHAMPIONS_INITIATION_UNSELECTED
+        };
+        EnumTemplates[] selectedTemplates = {
+                EnumTemplates.MERCENARY_LEGENDS_INITIATION_SELECTED,
+                EnumTemplates.MERCENARY_EPIC_INITIATION_SELECTED,
+                EnumTemplates.MERCENARY_CHAMPIONS_INITIATION_SELECTED
         };
 
-        for (DifficultyLevel level : difficultyLevels) {
-            logDebug("Attempting to select difficulty: " + level.name());
-            tapPoint(level.point());
-            sleepTask(2000);
-            DTOImageSearchResult challengeCheck = searchTemplateWithRetries(
-                    EnumTemplates.MERCENARY_DIFFICULTY_CHALLENGE, 90, 3);
-            if (challengeCheck.isFound()) {
-                sleepTask(1000);
-                tapPoint(challengeCheck.getPoint());
-                sleepTask(1000);
-                tapPoint(new DTOPoint(504, 788)); // Tap the confirm button
-                logInfo("Selected mercenary event difficulty: " + level.name() + " in Legend's Initiation tab.");
-                sleepTask(2000);
-                return true;
+        for (int i = 0; i < initiationTypes.length; i++) {
+            boolean tabIsSelected = false;
+
+            // First check if this initiation type is already selected
+            DTOImageSearchResult alreadySelectedTab = templateSearchHelper.searchTemplate(
+                    selectedTemplates[i],
+                    SearchConfigConstants.SINGLE_WITH_RETRIES);
+
+            if (alreadySelectedTab.isFound()) {
+                logInfo(initiationTypes[i]
+                        + " Initiation tab is already selected. Proceeding with difficulty selection.");
+                tabIsSelected = true;
+            } else {
+                // Tab is not selected, check if it's unselected (available to select)
+                DTOImageSearchResult unselectedTab = templateSearchHelper.searchTemplate(
+                        unselectedTemplates[i],
+                        SearchConfigConstants.SINGLE_WITH_RETRIES);
+
+                if (unselectedTab.isFound()) {
+                    logInfo("Found unselected " + initiationTypes[i] + " Initiation tab. Tapping to open.");
+
+                    // Tap the unselected tab to open it
+                    tapPoint(unselectedTab.getPoint());
+                    sleepTask(1500);
+
+                    // Verify that the tab changed to selected (not locked)
+                    DTOImageSearchResult selectedTab = templateSearchHelper.searchTemplate(
+                            selectedTemplates[i],
+                            SearchConfigConstants.SINGLE_WITH_RETRIES);
+
+                    if (selectedTab.isFound()) {
+                        tabIsSelected = true;
+                    } else {
+                        logDebug(initiationTypes[i] + " Initiation tab is locked. Skipping to next type.");
+                    }
+                }
             }
-            sleepTask(1000);
-            tapBackButton();
+
+            if (tabIsSelected) {
+                logInfo(initiationTypes[i] + " Initiation tab is open. Attempting to select difficulty.");
+
+                // Now select a difficulty within this initiation type
+                // Define difficulties in order from highest to lowest
+                record DifficultyLevel(String name, DTOPoint point) {
+                }
+                DifficultyLevel[] difficultyLevels = {
+                        new DifficultyLevel("Insane", new DTOPoint(467, 1088)),
+                        new DifficultyLevel("Nightmare", new DTOPoint(252, 1088)),
+                        new DifficultyLevel("Hard", new DTOPoint(575, 817)),
+                        new DifficultyLevel("Normal", new DTOPoint(360, 817)),
+                        new DifficultyLevel("Easy", new DTOPoint(145, 817))
+                };
+
+                for (DifficultyLevel level : difficultyLevels) {
+                    logDebug("Attempting to select difficulty: " + level.name() + " in " + initiationTypes[i]
+                            + " Initiation.");
+                    tapPoint(level.point());
+                    sleepTask(2000);
+                    DTOImageSearchResult challengeCheck = templateSearchHelper.searchTemplate(
+                            EnumTemplates.MERCENARY_DIFFICULTY_CHALLENGE,
+                            SearchConfigConstants.SINGLE_WITH_RETRIES);
+                    if (challengeCheck.isFound()) {
+                        sleepTask(1000);
+                        tapPoint(challengeCheck.getPoint());
+                        sleepTask(1000);
+                        tapPoint(new DTOPoint(504, 788)); // Tap the confirm button
+                        logInfo("Selected mercenary event difficulty: " + level.name() + " in " + initiationTypes[i]
+                                + " Initiation.");
+                        sleepTask(2000);
+                        return true;
+                    }
+                    sleepTask(1000);
+                    tapBackButton();
+                }
+            }
         }
 
-        // If not found, try the Champion's Initiation tab
-        tapPoint(new DTOPoint(185, 625)); // Tap Champion's Initiation tab
-        sleepTask(1000);
-
-        for (DifficultyLevel level : difficultyLevels) {
-            logDebug("Attempting to select difficulty: " + level.name());
-            tapPoint(level.point());
-            sleepTask(500);
-            DTOImageSearchResult challengeCheck = searchTemplateWithRetries(
-                    EnumTemplates.MERCENARY_DIFFICULTY_CHALLENGE, 90, 3);
-            if (challengeCheck.isFound()) {
-                sleepTask(1000);
-                tapPoint(challengeCheck.getPoint());
-                sleepTask(1000);
-                tapPoint(new DTOPoint(504, 788)); // Tap the confirm button
-                logInfo("Selected mercenary event difficulty: " + level.name() + " in Champion's Initiation tab.");
-                sleepTask(2000);
-                return true;
-            }
-            sleepTask(1000);
-            tapBackButton();
-        }
-
-        // If no difficulty was selected, log a warning
-        logWarning("Could not select a mercenary event difficulty. Rescheduling to try later.");
-        reschedule(LocalDateTime.now().plusMinutes(10));
-        return false;
+        // If no tab was found at all, a level was already selected beforehand
+        logInfo("No initiation type found, assuming one was already selected beforehand. Proceeding.");
+        return true;
     }
 
     private boolean navigateToEventScreen() {
 
         // Search for the events button
-        DTOImageSearchResult eventsResult = searchTemplateWithRetries(EnumTemplates.HOME_EVENTS_BUTTON, 90, 3);
+        DTOImageSearchResult eventsResult = templateSearchHelper.searchTemplate(
+                EnumTemplates.HOME_EVENTS_BUTTON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
         if (!eventsResult.isFound()) {
             logWarning("The 'Events' button was not found.");
             return false;
@@ -239,7 +255,9 @@ public class MercenaryEventTask extends DelayedTask {
         tapRandomPoint(new DTOPoint(529, 27), new DTOPoint(635, 63), 5, 300);
 
         // Search for the mercenary within events
-        DTOImageSearchResult result = searchTemplateWithRetries(EnumTemplates.MERCENARY_EVENT_TAB, 90, 3);
+        DTOImageSearchResult result = templateSearchHelper.searchTemplate(
+                EnumTemplates.MERCENARY_EVENT_TAB,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
 
         if (result.isFound()) {
             tapPoint(result.getPoint());
@@ -256,8 +274,10 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         int attempts = 0;
-        while (attempts < 5) {
-            result = searchTemplateWithRetries(EnumTemplates.MERCENARY_EVENT_TAB, 90, 1);
+        while (attempts < 10) {
+            result = templateSearchHelper.searchTemplate(
+                    EnumTemplates.MERCENARY_EVENT_TAB,
+                    SearchConfigConstants.DEFAULT_SINGLE);
 
             if (result.isFound()) {
                 tapPoint(result.getPoint());
@@ -287,7 +307,10 @@ public class MercenaryEventTask extends DelayedTask {
         logInfo("Checking for mercenary event buttons.");
 
         // First check for scout button
-        DTOImageSearchResult scoutButton = searchTemplateWithRetries(EnumTemplates.MERCENARY_SCOUT_BUTTON, 90, 3);
+        DTOImageSearchResult scoutButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.MERCENARY_SCOUT_BUTTON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
+
         if (scoutButton.isFound()) {
             scout = true;
             logInfo("Found scout button for mercenary event.");
@@ -295,8 +318,10 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // If scout button not found, check for challenge button
-        DTOImageSearchResult challengeButton = searchTemplateWithRetries(EnumTemplates.MERCENARY_CHALLENGE_BUTTON, 90,
-                3);
+        DTOImageSearchResult challengeButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.MERCENARY_CHALLENGE_BUTTON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
+
         if (challengeButton.isFound()) {
             scout = false;
             logInfo("Found challenge button for mercenary event.");
@@ -332,10 +357,14 @@ public class MercenaryEventTask extends DelayedTask {
         if (attackAttempts > 3) {
             logWarning(
                     "Multiple consecutive attack attempts detected without level change. Rallying the mercenary instead of normal attack.");
-            attackOrRallyButton = searchTemplateWithRetries(EnumTemplates.RALLY_BUTTON, 90, 3);
+            attackOrRallyButton = templateSearchHelper.searchTemplate(
+                    EnumTemplates.RALLY_BUTTON,
+                    SearchConfigConstants.SINGLE_WITH_RETRIES);
             rally = true;
         } else {
-            attackOrRallyButton = searchTemplateWithRetries(EnumTemplates.MERCENARY_ATTACK_BUTTON, 90, 3);
+            attackOrRallyButton = templateSearchHelper.searchTemplate(
+                    EnumTemplates.MERCENARY_ATTACK_BUTTON,
+                    SearchConfigConstants.SINGLE_WITH_RETRIES);
         }
 
         if (attackOrRallyButton == null || !attackOrRallyButton.isFound()) {
@@ -354,7 +383,9 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // Check if the march screen is open before proceeding
-        DTOImageSearchResult deployButton = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 3);
+        DTOImageSearchResult deployButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.DEPLOY_BUTTON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
 
         if (!deployButton.isFound()) {
             logError(
@@ -398,7 +429,9 @@ public class MercenaryEventTask extends DelayedTask {
         sleepTask(2000);
 
         // Verify deployment succeeded
-        DTOImageSearchResult deployStillPresent = searchTemplateWithRetries(EnumTemplates.DEPLOY_BUTTON, 90, 2);
+        DTOImageSearchResult deployStillPresent = templateSearchHelper.searchTemplate(
+                EnumTemplates.DEPLOY_BUTTON,
+                SearchConfigConstants.SINGLE_WITH_2_RETRIES);
         if (deployStillPresent.isFound()) {
             logWarning(
                     "Deploy button still present after attempting to deploy. March may have failed. Retrying in 5 minutes.");

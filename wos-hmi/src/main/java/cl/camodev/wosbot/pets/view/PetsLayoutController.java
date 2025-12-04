@@ -4,11 +4,15 @@ import cl.camodev.wosbot.common.view.AbstractProfileController;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 
 public class PetsLayoutController extends AbstractProfileController {
 	@FXML
 	private CheckBox checkBoxPetSkills, checkBoxPetAllianceTreasure, checkBoxPetPersonalTreasure, checkboxFoodSkill,
 			checkboxGatheringSkill, checkboxStaminaSkill, checkboxTreasureSkill;
+
+	@FXML
+	private ComboBox<String> comboBoxGatheringResource;
 
 	@FXML
 	private void initialize() {
@@ -20,9 +24,13 @@ public class PetsLayoutController extends AbstractProfileController {
 		checkBoxMappings.put(checkboxStaminaSkill, EnumConfigurationKey.PET_SKILL_STAMINA_BOOL);
 		checkBoxMappings.put(checkboxTreasureSkill, EnumConfigurationKey.PET_SKILL_TREASURE_BOOL);
 
-		initializeChangeEvents();
-		checkboxGatheringSkill.setDisable(true);
+		// Register ComboBox for gathering resource selection
+		comboBoxMappings.put(comboBoxGatheringResource, EnumConfigurationKey.PET_SKILL_GATHERING_RESOURCE_STRING);
 
+		// Initialize gathering resource ComboBox with options
+		comboBoxGatheringResource.getItems().addAll("MEAT", "WOOD", "COAL", "IRON");
+
+		initializeChangeEvents();
 	}
 
 }

@@ -113,7 +113,6 @@ public enum EnumConfigurationKey {
 	ALLIANCE_MOBILIZATION_USE_SPEEDUPS_BOOL("false", Boolean.class),
 	ALLIANCE_MOBILIZATION_MINIMUM_POINTS_200_INT("800", Integer.class),
 	ALLIANCE_MOBILIZATION_MINIMUM_POINTS_120_INT("520", Integer.class),
-	ALLIANCE_MOBILIZATION_MINIMUM_POINTS_INT("520", Integer.class),
 	ALLIANCE_MOBILIZATION_AUTO_ACCEPT_BOOL("true", Boolean.class),
 	ALLIANCE_MOBILIZATION_USE_GEMS_FOR_ACCEPT_BOOL("false", Boolean.class),
 	ALLIANCE_CHAMPIONSHIP_BOOL("false", Boolean.class),
@@ -136,6 +135,7 @@ public enum EnumConfigurationKey {
 	PET_SKILL_FOOD_BOOL("false", Boolean.class),
 	PET_SKILL_TREASURE_BOOL("false", Boolean.class),
 	PET_SKILL_GATHERING_BOOL("false", Boolean.class),
+	PET_SKILL_GATHERING_RESOURCE_STRING("MEAT", String.class),
 	PET_PERSONAL_TREASURE_BOOL("false", Boolean.class),
 	
     // ========================================================================

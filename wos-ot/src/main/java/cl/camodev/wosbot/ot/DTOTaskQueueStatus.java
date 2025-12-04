@@ -52,7 +52,6 @@ public class DTOTaskQueueStatus {
         this.idleTimeLimit = idleTimeLimit;
     }
 
-
     /**
      * Determines if background checks should be run based on a counter.
      * Uses a default interval of 60 loops between checks.
@@ -69,11 +68,9 @@ public class DTOTaskQueueStatus {
         return false;
     }
 
-    @SuppressWarnings(value = { "unused" })
-    public void setBackgroundChecksInterval(Integer BACKGROUND_CHECKS_INTERVAL) {
-        this.backgroundChecksInterval = BACKGROUND_CHECKS_INTERVAL;
+    public void setBackgroundChecksInterval(Integer backgroundChecksInterval) {
+        this.backgroundChecksInterval = backgroundChecksInterval;
     }
-
 
     /**
      * Sets the reconnection time and schedules a delayed reconnection.
@@ -82,7 +79,7 @@ public class DTOTaskQueueStatus {
      * @param reconnectionTime The time to wait before reconnecting, in minutes
      */
     public void setReconnectAt(long reconnectionTime) {
-        this.setDelayUntil(LocalDateTime.now().plusMinutes(reconnectionTime)); 
+        this.setDelayUntil(LocalDateTime.now().plusMinutes(reconnectionTime));
         this.setReconnectAt(LocalDateTime.now().plusMinutes(reconnectionTime));
     }
 
@@ -102,14 +99,13 @@ public class DTOTaskQueueStatus {
             }
         });
     }
-    @SuppressWarnings(value = "unused" )
+
     public void cancelReconnectThread() {
         if (this.reconnectThread != null) {
             this.reconnectThread.interrupt();
         }
     }
 
-    @SuppressWarnings(value = { "unused" })
     public LocalDateTime getReconnectAt() {
         return this.reconnectAt;
     }
@@ -133,9 +129,11 @@ public class DTOTaskQueueStatus {
     public void pause() {
         this.setPaused(true);
     }
+
     public void setPaused(boolean paused) {
         this.paused = paused;
-        if (paused) this.pausedAt = LocalDateTime.now();
+        if (paused)
+            this.pausedAt = LocalDateTime.now();
     }
 
     public boolean needsReconnect() {

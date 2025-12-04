@@ -23,6 +23,7 @@ import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 /**
  * Unified Pet Skills task that processes all enabled pet skills in a single
@@ -119,6 +120,13 @@ public class PetSkillsTask extends DelayedTask {
             .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
             .setRemoveBackground(true)
             .setTextColor(new Color(69, 88, 110))
+            .build();
+
+    private static final DTOTesseractSettings GATHERING_SKILL_OCR_SETTINGS = DTOTesseractSettings.builder()
+            .setAllowedChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+            .setRemoveBackground(true)
+            .setTextColor(new Color(0, 187, 0))
+            .setDebug(true)
             .build();
 
     // ========== Configuration (loaded in loadConfiguration()) ==========
@@ -298,8 +306,9 @@ public class PetSkillsTask extends DelayedTask {
     private boolean openPetsMenu() {
         logDebug("Opening Pets menu");
 
-        DTOImageSearchResult petsButton = searchTemplateWithRetries(
-                EnumTemplates.GAME_HOME_PETS);
+        DTOImageSearchResult petsButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.GAME_HOME_PETS,
+                SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!petsButton.isFound()) {
             navigationAttempts++;
@@ -350,6 +359,8 @@ public class PetSkillsTask extends DelayedTask {
      * <li>Taps skill icon to show details overlay</li>
      * <li>Checks if skill is learned (returns early if not)</li>
      * <li>Checks if skill is locked (returns early if locked)</li>
+     * <li>For gathering skill: checks if already Active and proceeds with
+     * deployment</li>
      * <li>Attempts to use skill if Use button is visible</li>
      * <li>Reads cooldown timer and tracks earliest cooldown</li>
      * </ol>
@@ -368,6 +379,14 @@ public class PetSkillsTask extends DelayedTask {
         }
 
         if (isSkillLocked(skill)) {
+            return;
+        }
+
+        // Special handling for gathering skill: check if already Active
+        if (skill == PetSkill.GATHERING && isGatheringSkillActive()) {
+            logInfo("Gathering skill is already Active. Proceeding with deployment flow.");
+            deployGatheringSkillMarch();
+            readAndTrackCooldown(skill);
             return;
         }
 
@@ -398,10 +417,9 @@ public class PetSkillsTask extends DelayedTask {
      * @return true if skill is learned, false otherwise
      */
     private boolean isSkillLearned(PetSkill skill) {
-        DTOImageSearchResult infoSkill = searchTemplateWithRetries(
+        DTOImageSearchResult infoSkill = templateSearchHelper.searchTemplate(
                 EnumTemplates.PETS_INFO_SKILLS,
-                90,
-                1);
+                SearchConfigConstants.QUICK_SEARCH);
 
         if (!infoSkill.isFound()) {
             logInfo(skill.name() + " skill not learned yet. Skipping.");
@@ -418,10 +436,9 @@ public class PetSkillsTask extends DelayedTask {
      * @return true if skill is locked, false if unlocked
      */
     private boolean isSkillLocked(PetSkill skill) {
-        DTOImageSearchResult unlockText = searchTemplateWithRetries(
+        DTOImageSearchResult unlockText = templateSearchHelper.searchTemplate(
                 EnumTemplates.PETS_UNLOCK_TEXT,
-                90,
-                1);
+                SearchConfigConstants.QUICK_SEARCH);
 
         if (unlockText.isFound()) {
             logInfo(skill.name() + " skill is locked. Skipping.");
@@ -444,10 +461,9 @@ public class PetSkillsTask extends DelayedTask {
      * @return true if skill was used, false if on cooldown
      */
     private boolean tryUseSkill(PetSkill skill) {
-        DTOImageSearchResult useButton = searchTemplateWithRetries(
+        DTOImageSearchResult useButton = templateSearchHelper.searchTemplate(
                 EnumTemplates.PETS_SKILL_USE,
-                90,
-                1);
+                SearchConfigConstants.QUICK_SEARCH);
 
         if (!useButton.isFound()) {
             return false;
@@ -464,6 +480,9 @@ public class PetSkillsTask extends DelayedTask {
 
         if (skill == PetSkill.STAMINA) {
             addStaminaBySkillLevel();
+        } else if (skill == PetSkill.GATHERING) {
+            // Deploy gathering march as part of gathering skill activation
+            deployGatheringSkillMarch();
         }
 
         return true;
@@ -535,6 +554,39 @@ public class PetSkillsTask extends DelayedTask {
                 COOLDOWN_OCR_SETTINGS,
                 TimeValidators::isValidTime,
                 TimeConverters::toDuration);
+    }
+
+    /**
+     * Checks if the gathering skill is currently in "Active" state.
+     * 
+     * <p>
+     * The gathering skill displays green "Active" text when it's currently deployed
+     * in the gathering process. This method uses OCR to detect this state.
+     * 
+     * @return true if gathering skill shows "Active", false otherwise
+     */
+    private boolean isGatheringSkillActive() {
+        String text = stringHelper.execute(
+                GATHERING_COOLDOWN_OCR_AREA.topLeft(),
+                GATHERING_COOLDOWN_OCR_AREA.bottomRight(),
+                3, // Max retries
+                200L, // Retry delay in ms
+                GATHERING_SKILL_OCR_SETTINGS,
+                s -> !s.isEmpty(), // Accept any text
+                s -> s.trim().toUpperCase()); // Return raw text
+
+        if (text == null || text.isEmpty()) {
+            logDebug("Could not read gathering skill status - OCR returned null or empty");
+            return false;
+        }
+
+        boolean isActive = text.contains("ACTIVE");
+
+        if (isActive) {
+            logDebug("Gathering skill is Active: " + text);
+        }
+
+        return isActive;
     }
 
     /**
@@ -648,13 +700,418 @@ public class PetSkillsTask extends DelayedTask {
     }
 
     /**
-     * Indicates that this task does not provide daily mission progress.
+     * Executes the gathering skill deployment if enabled.
      * 
-     * @return false
+     * <p>
+     * Flow:
+     * <ol>
+     * <li>Leave pets menu</li>
+     * <li>Check for idle marches using MarchHelper</li>
+     * <li>If no idle marches, set fallback cooldown and return</li>
+     * <li>Open resource search menu</li>
+     * <li>Select resource tile based on user configuration</li>
+     * <li>Select highest level available</li>
+     * <li>Search for tile and deploy march</li>
+     * <li>Reopen pets menu to read gathering skill cooldown</li>
+     * </ol>
      */
-    @Override
-    public boolean provideDailyMissionProgress() {
+    private void deployGatheringSkillMarch() {
+        logInfo("Deploying gathering skill march...");
+
+        try {
+            // Step 1: Leave pets menu
+            tapBackButton();
+            sleepTask(500);
+
+            navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.WORLD);
+            sleepTask(500);
+
+            // Step 2: Check for idle marches using MarchHelper
+            if (!marchHelper.checkMarchesAvailable()) {
+                logWarning("No idle marches available for gathering skill march. Setting 5 minute fallback cooldown.");
+                LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+                updateEarliestCooldown(fallbackCooldown);
+                return;
+            }
+
+            logInfo("Idle march found, proceeding with deployment");
+            sleepTask(500);
+
+            // Step 3: Open resource search menu
+            if (!openResourceSearchMenu()) {
+                logWarning("Failed to open resource search menu");
+                LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+                updateEarliestCooldown(fallbackCooldown);
+                return;
+            }
+
+            // Step 4-7: Select resource tile, set level, execute search, and deploy
+            GatheringResourceType resourceType = getConfiguredGatheringResource();
+            if (!deployGatheringMarch(resourceType)) {
+                logWarning("Failed to deploy gathering march");
+                tapBackButton();
+                LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+                updateEarliestCooldown(fallbackCooldown);
+                return;
+            }
+
+            // Step 8: Reopen pets menu to read gathering skill cooldown
+            logDebug("Reopening pets menu to read gathering skill cooldown");
+            if (openPetsMenu()) {
+                // Navigate to gathering skill and read its cooldown
+                tapSkillIcon(PetSkill.GATHERING);
+                sleepTask(300);
+                readAndTrackCooldown(PetSkill.GATHERING);
+            } else {
+                logWarning("Could not reopen pets menu to read gathering skill cooldown. Using fallback.");
+                LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+                updateEarliestCooldown(fallbackCooldown);
+            }
+        } catch (Exception e) {
+            logWarning("Error deploying gathering skill march: " + e.getMessage());
+            LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+            updateEarliestCooldown(fallbackCooldown);
+        }
+    }
+
+    /**
+     * Gets the configured resource type for gathering skill.
+     * 
+     * @return the resource type to gather, defaults to MEAT
+     */
+    private GatheringResourceType getConfiguredGatheringResource() {
+        String resourceConfig = profile.getConfig(
+                EnumConfigurationKey.PET_SKILL_GATHERING_RESOURCE_STRING,
+                String.class);
+
+        if (resourceConfig == null) {
+            return GatheringResourceType.MEAT;
+        }
+
+        try {
+            return GatheringResourceType.valueOf(resourceConfig.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            logWarning("Invalid gathering resource configuration: " + resourceConfig + ", using MEAT");
+            return GatheringResourceType.MEAT;
+        }
+    }
+
+    /**
+     * Opens the resource search menu by tapping the search button area.
+     * 
+     * @return true if menu opened successfully, false otherwise
+     */
+    private boolean openResourceSearchMenu() {
+        logDebug("Opening resource search menu");
+
+        tapRandomPoint(new DTOPoint(25, 850), new DTOPoint(67, 898));
+        sleepTask(2000); // Wait for search menu to open
+
+        // Swipe left to find resource tiles tab
+        swipe(new DTOPoint(678, 913), new DTOPoint(40, 913));
+        sleepTask(500); // Wait for swipe animation
+
+        return true;
+    }
+
+    /**
+     * Deploys a gathering march for the specified resource type.
+     * 
+     * <p>
+     * Flow:
+     * <ul>
+     * <li>Select resource tile by searching for and tapping the tile template</li>
+     * <li>Set level to highest available (with OCR-based adjustment)</li>
+     * <li>Execute search</li>
+     * <li>Find and tap gather button on map</li>
+     * <li>Deploy march</li>
+     * </ul>
+     * 
+     * @param resourceType the resource to gather
+     * @return true if march was deployed successfully, false otherwise
+     */
+    private boolean deployGatheringMarch(GatheringResourceType resourceType) {
+        logInfo("Deploying gathering march for: " + resourceType.name());
+
+        try {
+            // Step 1: Select resource tile by searching for tile template
+            if (!selectResourceTile(resourceType)) {
+                logWarning("Failed to select resource tile");
+                return false;
+            }
+            sleepTask(500);
+
+            // Step 2: Set level to highest available
+            if (!selectHighestLevel()) {
+                logWarning("Failed to set resource level");
+                return false;
+            }
+            sleepTask(500);
+
+            // Step 3: Execute search
+            if (!executeResourceSearch()) {
+                logWarning("Failed to execute resource search");
+                return false;
+            }
+            sleepTask(500);
+
+            // Step 4: Find and tap gather button on map
+            DTOImageSearchResult gatherButton = templateSearchHelper.searchTemplate(
+                    EnumTemplates.GAME_HOME_SHORTCUTS_FARM_GATHER,
+                    SearchConfigConstants.SINGLE_WITH_RETRIES);
+
+            if (!gatherButton.isFound()) {
+                logWarning("Gather button not found. Tile may be occupied.");
+                return false;
+            }
+
+            logDebug("Tapping gather button");
+            tapPoint(gatherButton.getPoint());
+            sleepTask(1000); // Wait for march configuration screen
+
+            // Step 5: Deploy the march
+            DTOImageSearchResult deployButton = templateSearchHelper.searchTemplate(
+                    EnumTemplates.GATHER_DEPLOY_BUTTON,
+                    SearchConfigConstants.SINGLE_WITH_RETRIES);
+
+            if (!deployButton.isFound()) {
+                logError("Deploy button not found");
+                return false;
+            }
+
+            logInfo("Deploying gather march");
+            tapPoint(deployButton.getPoint());
+            sleepTask(1000); // Wait for deployment confirmation
+
+            logInfo(String.format("%s march deployed successfully!", resourceType.name()));
+            return true;
+
+        } catch (Exception e) {
+            logWarning("Error deploying gathering march: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Selects the resource tile by searching for and tapping the tile template.
+     * Swipes through resource tabs until the tile is found.
+     * 
+     * @param resourceType the resource to select
+     * @return true if tile was found and selected, false otherwise
+     */
+    private boolean selectResourceTile(GatheringResourceType resourceType) {
+        logDebug(String.format("Searching for %s tile", resourceType.name()));
+
+        final int MAX_SWIPE_ATTEMPTS = 4;
+
+        for (int attempt = 0; attempt < MAX_SWIPE_ATTEMPTS; attempt++) {
+            // Get the appropriate tile template based on resource type
+            EnumTemplates tileTemplate = getResourceTileTemplate(resourceType);
+
+            DTOImageSearchResult tile = templateSearchHelper.searchTemplate(
+                    tileTemplate,
+                    SearchConfigConstants.SINGLE_WITH_RETRIES);
+
+            if (tile.isFound()) {
+                logInfo(String.format("%s tile found", resourceType.name()));
+                tapPoint(tile.getPoint());
+                sleepTask(500); // Wait for tile selection
+                return true;
+            }
+
+            if (attempt < MAX_SWIPE_ATTEMPTS - 1) {
+                logDebug(String.format("Tile not found, swiping (attempt %d/%d)",
+                        attempt + 1, MAX_SWIPE_ATTEMPTS));
+                swipe(new DTOPoint(678, 913), new DTOPoint(40, 913));
+                sleepTask(500); // Wait for swipe animation
+            }
+        }
+
+        logError(String.format("%s tile not found after %d attempts",
+                resourceType.name(), MAX_SWIPE_ATTEMPTS));
         return false;
+    }
+
+    /**
+     * Gets the tile template for a resource type.
+     * 
+     * @param resourceType the resource type
+     * @return the appropriate EnumTemplates tile template
+     */
+    private EnumTemplates getResourceTileTemplate(GatheringResourceType resourceType) {
+        switch (resourceType) {
+            case MEAT:
+                return EnumTemplates.GAME_HOME_SHORTCUTS_FARM_MEAT;
+            case WOOD:
+                return EnumTemplates.GAME_HOME_SHORTCUTS_FARM_WOOD;
+            case COAL:
+                return EnumTemplates.GAME_HOME_SHORTCUTS_FARM_COAL;
+            case IRON:
+                return EnumTemplates.GAME_HOME_SHORTCUTS_FARM_IRON;
+            default:
+                return EnumTemplates.GAME_HOME_SHORTCUTS_FARM_MEAT;
+        }
+    }
+
+    /**
+     * Sets the resource level to the highest available.
+     * 
+     * <p>
+     * Reads current level via OCR, then adjusts to maximum by incrementing.
+     * If OCR fails, uses backup plan of resetting to level 1 and incrementing to max.
+     * 
+     * @return true if level was set successfully, false otherwise
+     */
+    private boolean selectHighestLevel() {
+        logInfo("Setting resource level to highest available");
+
+        final int DESIRED_LEVEL = 20; // Highest gather level
+        final DTOPoint LEVEL_INCREMENT_BUTTON_TOP_LEFT = new DTOPoint(470, 1040);
+        final DTOPoint LEVEL_INCREMENT_BUTTON_BOTTOM_RIGHT = new DTOPoint(500, 1066);
+        final DTOPoint LEVEL_DECREMENT_BUTTON_TOP_LEFT = new DTOPoint(50, 1040);
+        final DTOPoint LEVEL_DECREMENT_BUTTON_BOTTOM_RIGHT = new DTOPoint(85, 1066);
+        final DTOPoint LEVEL_LOCK_BUTTON = new DTOPoint(183, 1140);
+        final int LEVEL_BUTTON_TAP_DELAY = 150;
+
+        // Read current level
+        Integer currentLevel = readCurrentGatheringLevel();
+
+        if (currentLevel != null && currentLevel == DESIRED_LEVEL) {
+            logInfo("Desired level already selected");
+            return true;
+        }
+
+        if (currentLevel == null) {
+            // OCR failed, use backup plan: reset to level 1 and increment
+            logDebug("OCR failed, using backup level selection");
+            resetLevelToOne();
+
+            if (DESIRED_LEVEL > 1) {
+                tapRandomPoint(
+                        LEVEL_INCREMENT_BUTTON_TOP_LEFT,
+                        LEVEL_INCREMENT_BUTTON_BOTTOM_RIGHT,
+                        DESIRED_LEVEL - 1,
+                        LEVEL_BUTTON_TAP_DELAY);
+            }
+        } else {
+            // OCR succeeded, adjust from current level
+            logDebug(String.format("Current level: %d, adjusting to %d", currentLevel, DESIRED_LEVEL));
+
+            if (currentLevel < DESIRED_LEVEL) {
+                int taps = DESIRED_LEVEL - currentLevel;
+                tapRandomPoint(
+                        LEVEL_INCREMENT_BUTTON_TOP_LEFT,
+                        LEVEL_INCREMENT_BUTTON_BOTTOM_RIGHT,
+                        taps,
+                        LEVEL_BUTTON_TAP_DELAY);
+            } else {
+                int taps = currentLevel - DESIRED_LEVEL;
+                tapRandomPoint(
+                        LEVEL_DECREMENT_BUTTON_TOP_LEFT,
+                        LEVEL_DECREMENT_BUTTON_BOTTOM_RIGHT,
+                        taps,
+                        LEVEL_BUTTON_TAP_DELAY);
+            }
+        }
+
+        // Ensure level lock checkbox is checked
+        ensureLevelLocked(LEVEL_LOCK_BUTTON);
+
+        return true;
+    }
+
+    /**
+     * Reads the current gathering level from the display via OCR.
+     * 
+     * @return the current level as an Integer, or null if OCR fails
+     */
+    private Integer readCurrentGatheringLevel() {
+        DTOArea levelArea = new DTOArea(
+                new DTOPoint(78, 991),
+                new DTOPoint(474, 1028));
+
+        DTOTesseractSettings settings = DTOTesseractSettings.builder()
+                .setAllowedChars("0123456789")
+                .setRemoveBackground(true)
+                .setTextColor(new Color(255, 255, 255))
+                .build();
+
+        Integer level = integerHelper.execute(
+                levelArea.topLeft(),
+                levelArea.bottomRight(),
+                3, // Max retries
+                200L, // Retry delay
+                settings,
+                text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
+                text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
+
+        if (level != null) {
+            logDebug("Current level detected: " + level);
+        } else {
+            logWarning("Failed to read current level via OCR");
+        }
+
+        return level;
+    }
+
+    /**
+     * Resets the level slider to level 1.
+     */
+    private void resetLevelToOne() {
+        logDebug("Resetting level slider to 1");
+        swipe(new DTOPoint(40, 1052), new DTOPoint(435, 1052));
+        sleepTask(300); // Wait for slider animation
+    }
+
+    /**
+     * Ensures the level lock checkbox is checked.
+     * 
+     * @param levelLockButton the point of the lock button
+     */
+    private void ensureLevelLocked(DTOPoint levelLockButton) {
+        DTOImageSearchResult tick = templateSearchHelper.searchTemplate(
+                EnumTemplates.GAME_HOME_SHORTCUTS_FARM_TICK,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
+
+        if (!tick.isFound()) {
+            logDebug("Level not locked, tapping lock button");
+            tapPoint(levelLockButton);
+            sleepTask(300); // Wait for checkbox animation
+        }
+    }
+
+    /**
+     * Executes the resource search.
+     * 
+     * @return true if search executed successfully, false otherwise
+     */
+    private boolean executeResourceSearch() {
+        logInfo("Executing resource search");
+
+        tapRandomPoint(new DTOPoint(301, 1200), new DTOPoint(412, 1229));
+        sleepTask(3000); // Wait for search to complete and map to load
+
+        return true;
+    }
+
+    /**
+     * Enum representing gathering resource types for the pet skill.
+     */
+    public enum GatheringResourceType {
+        MEAT(0),
+        WOOD(1),
+        COAL(2),
+        IRON(3);
+
+        private final int tabIndex;
+
+        GatheringResourceType(int tabIndex) {
+            this.tabIndex = tabIndex;
+        }
+
+        public int getTabIndex() {
+            return tabIndex;
+        }
     }
 
     /**

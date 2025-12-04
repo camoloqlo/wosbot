@@ -11,6 +11,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 public class LifeEssenceCaringTask extends DelayedTask {
 
@@ -120,7 +121,9 @@ public class LifeEssenceCaringTask extends DelayedTask {
 		sleepTask(1000); // Wait for scroll to settle
 
 		// Search for Life Essence menu option
-		DTOImageSearchResult lifeEssenceMenu = searchTemplateWithRetries(EnumTemplates.LIFE_ESSENCE_MENU);
+		DTOImageSearchResult lifeEssenceMenu = templateSearchHelper.searchTemplate(
+				EnumTemplates.LIFE_ESSENCE_MENU,
+				SearchConfig.builder().build());
 
 		// Try second swipe if not found
 		if (!lifeEssenceMenu.isFound()) {
@@ -128,7 +131,9 @@ public class LifeEssenceCaringTask extends DelayedTask {
 			swipe(MENU_SCROLL_START, MENU_SCROLL_END);
 			sleepTask(1000); // Wait for scroll
 
-			lifeEssenceMenu = searchTemplateWithRetries(EnumTemplates.LIFE_ESSENCE_MENU);
+			lifeEssenceMenu = templateSearchHelper.searchTemplate(
+					EnumTemplates.LIFE_ESSENCE_MENU,
+					SearchConfig.builder().build());
 		}
 
 		if (!lifeEssenceMenu.isFound()) {
@@ -171,8 +176,9 @@ public class LifeEssenceCaringTask extends DelayedTask {
 		sleepTask(2000);
 
 		// Search for daily attempt indicator
-		DTOImageSearchResult dailyAttemptIndicator = searchTemplateWithRetries(
-				EnumTemplates.LIFE_ESSENCE_DAILY_CARING_AVAILABLE);
+		DTOImageSearchResult dailyAttemptIndicator = templateSearchHelper.searchTemplate(
+				EnumTemplates.LIFE_ESSENCE_DAILY_CARING_AVAILABLE,
+				SearchConfig.builder().build());
 
 		if (dailyAttemptIndicator.isFound()) {
 			logInfo("Daily caring attempt is available");
@@ -201,8 +207,9 @@ public class LifeEssenceCaringTask extends DelayedTask {
 					"/" + MAX_ISLAND_SCROLL_ATTEMPTS + ")");
 
 			// Search for "Go to Island" button indicating island needs care
-			DTOImageSearchResult gotoIslandButton = searchTemplateWithRetries(
-					EnumTemplates.LIFE_ESSENCE_DAILY_CARING_GOTO_ISLAND);
+			DTOImageSearchResult gotoIslandButton = templateSearchHelper.searchTemplate(
+					EnumTemplates.LIFE_ESSENCE_DAILY_CARING_GOTO_ISLAND,
+					SearchConfig.builder().build());
 
 			if (gotoIslandButton.isFound()) {
 				logInfo("Found island needing care (after " + (scrollAttempt + 1) + " scroll(s))");
@@ -247,8 +254,9 @@ public class LifeEssenceCaringTask extends DelayedTask {
 			logDebug("Searching for caring button (attempt " + (attempt + 1) +
 					"/" + MAX_CARING_BUTTON_SEARCHES + ")");
 
-			DTOImageSearchResult caringButton = searchTemplateWithRetries(
-					EnumTemplates.LIFE_ESSENCE_DAILY_CARING_BUTTON);
+			DTOImageSearchResult caringButton = templateSearchHelper.searchTemplate(
+					EnumTemplates.LIFE_ESSENCE_DAILY_CARING_BUTTON,
+					SearchConfig.builder().build());
 
 			if (caringButton.isFound()) {
 				logInfo("Caring button found. Performing caring action.");

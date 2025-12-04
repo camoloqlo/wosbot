@@ -12,6 +12,7 @@ import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 public class TundraTrekTask extends DelayedTask {
 
@@ -28,7 +29,9 @@ public class TundraTrekTask extends DelayedTask {
     protected void execute() {
         if (navigateToTrekSupplies()) {
             // Search for claim button
-            DTOImageSearchResult trekClaimButton = searchTemplateWithRetries(EnumTemplates.TUNDRA_TREK_CLAIM_BUTTON, 1);
+            DTOImageSearchResult trekClaimButton = templateSearchHelper.searchTemplate(
+                    EnumTemplates.TUNDRA_TREK_CLAIM_BUTTON,
+                    SearchConfigConstants.DEFAULT_SINGLE);
             if (trekClaimButton.isFound()) {
                 logInfo("Trek Supplies are available. Claiming now...");
                 tapPoint(trekClaimButton.getPoint());
@@ -41,16 +44,17 @@ public class TundraTrekTask extends DelayedTask {
             // Do OCR to find next reward time and reschedule
             try {
                 Duration nextRewardTimeDuration = durationHelper.execute(
-                    new DTOPoint(526, 592),
-                    new DTOPoint(627, 616),
-                    3,
-                    200L,
-                    null,
-                    TimeValidators::isValidTime,
-                    TimeConverters::toDuration);
+                        new DTOPoint(526, 592),
+                        new DTOPoint(627, 616),
+                        3,
+                        200L,
+                        null,
+                        TimeValidators::isValidTime,
+                        TimeConverters::toDuration);
                 LocalDateTime nextRewardTime = LocalDateTime.now().plus(nextRewardTimeDuration);
                 reschedule(nextRewardTime);
-                logInfo("Successfully parsed the next reward time. Rescheduling the task for: " + nextRewardTime.format(DATETIME_FORMATTER));
+                logInfo("Successfully parsed the next reward time. Rescheduling the task for: "
+                        + nextRewardTime.format(DATETIME_FORMATTER));
             } catch (IllegalArgumentException e) {
                 logError("Failed to read or parse the next reward time. Rescheduling for 1 hour from now.", e);
                 reschedule(LocalDateTime.now().plusHours(1));
@@ -68,7 +72,9 @@ public class TundraTrekTask extends DelayedTask {
         openLeftMenuCitySection(true);
 
         for (int i = 0; i < 5; i++) { // Try up to 5 times (swipes)
-            DTOImageSearchResult trekSupplies = searchTemplateWithRetries(EnumTemplates.TUNDRA_TREK_SUPPLIES, 1);
+            DTOImageSearchResult trekSupplies = templateSearchHelper.searchTemplate(
+                    EnumTemplates.TUNDRA_TREK_SUPPLIES,
+                    SearchConfigConstants.DEFAULT_SINGLE);
 
             if (trekSupplies.isFound()) {
                 logInfo("Found the Tundra Trek Supplies button.");
