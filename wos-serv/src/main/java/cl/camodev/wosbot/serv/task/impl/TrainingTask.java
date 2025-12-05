@@ -1514,6 +1514,15 @@ public class TrainingTask extends DelayedTask {
             if (troop.isFound()) {
                 tapPoint(troop.getPoint());
                 sleepTask(500); // Wait for selection
+
+                DTOImageSearchResult lockedIndicator = templateSearchHelper.searchTemplate(
+                        TRAINING_TROOP_LOCKED,
+                        SearchConfigConstants.DEFAULT_SINGLE);
+                if (lockedIndicator.isFound()) {
+                    logInfo("Troop level locked: " + template.name() + ". Continuing search.");
+                    continue;
+                }
+
                 logInfo("Selected highest troop level: " + template.name());
                 return;
             } else {
