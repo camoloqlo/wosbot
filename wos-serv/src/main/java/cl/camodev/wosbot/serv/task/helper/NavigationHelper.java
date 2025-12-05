@@ -126,7 +126,7 @@ public class NavigationHelper {
                 logger.warn("Home/World screen not found. Tapping back button (Attempt " +
                         attempt + "/" + MAX_SCREEN_LOCATION_ATTEMPTS + ")");
                 emuManager.tapBackButton(emulatorNumber);
-                sleep(100);
+                sleep(300);
             }
         }
 

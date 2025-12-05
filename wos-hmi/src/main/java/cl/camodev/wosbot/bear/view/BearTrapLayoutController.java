@@ -4,6 +4,7 @@ import cl.camodev.wosbot.common.view.AbstractProfileController;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import org.controlsfx.control.CheckComboBox;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
@@ -49,7 +50,7 @@ public class BearTrapLayoutController extends AbstractProfileController {
     private CheckBox checkBoxEnableJoin;
 
     @FXML
-    private ComboBox<Integer> comboBoxJoinFlag;
+    private CheckComboBox<Integer> checkComboBoxJoinFlag;
 
     @FXML
     private javafx.scene.control.Label labelDateTimeError;
@@ -81,9 +82,9 @@ public class BearTrapLayoutController extends AbstractProfileController {
         // Map join checkbox
         checkBoxMappings.put(checkBoxEnableJoin, EnumConfigurationKey.BEAR_TRAP_JOIN_RALLY_BOOL);
 
-        // Initialize join quantity ComboBox (1-8)
-        comboBoxJoinFlag.getItems().addAll(1, 2, 3, 4, 5, 6,7,8);
-        comboBoxMappings.put(comboBoxJoinFlag, EnumConfigurationKey.BEAR_TRAP_JOIN_FLAG_INT);
+        // Initialize join flag CheckComboBox (1-8)
+        checkComboBoxJoinFlag.getItems().addAll(1, 2, 3, 4, 5, 6, 7, 8);
+        checkComboBoxMappings.put(checkComboBoxJoinFlag, EnumConfigurationKey.BEAR_TRAP_JOIN_FLAG_INT);
 
         // Bind disable property of all controls to the enable checkbox (inverted)
         // When checkbox is NOT selected, controls are disabled
@@ -95,26 +96,26 @@ public class BearTrapLayoutController extends AbstractProfileController {
         checkBoxCallRally.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
         comboBoxRallyFlag.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
         checkBoxEnableJoin.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
-        comboBoxJoinFlag.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
+        checkComboBoxJoinFlag.disableProperty().bind(checkBoxEnableBearTrap.selectedProperty().not());
 
-        // Set initial visibility of rally flag ComboBox based on call rally checkbox state
+        // Set initial visibility of rally flag CheckComboBox based on call rally checkbox state
         comboBoxRallyFlag.setVisible(checkBoxCallRally.isSelected());
         comboBoxRallyFlag.setManaged(checkBoxCallRally.isSelected());
 
-        // Set initial visibility of join quantity ComboBox based on enable join checkbox state
-        comboBoxJoinFlag.setVisible(checkBoxEnableJoin.isSelected());
-        comboBoxJoinFlag.setManaged(checkBoxEnableJoin.isSelected());
+        // Set initial visibility of join flag CheckComboBox based on enable join checkbox state
+        checkComboBoxJoinFlag.setVisible(checkBoxEnableJoin.isSelected());
+        checkComboBoxJoinFlag.setManaged(checkBoxEnableJoin.isSelected());
 
-        // Set up listener to show/hide rally flag ComboBox based on call rally checkbox state
+        // Set up listener to show/hide rally flag CheckComboBox based on call rally checkbox state
         checkBoxCallRally.selectedProperty().addListener((obs, oldVal, newVal) -> {
             comboBoxRallyFlag.setVisible(newVal);
             comboBoxRallyFlag.setManaged(newVal);
         });
 
-        // Set up listener to show/hide join quantity ComboBox based on enable join checkbox state
+        // Set up listener to show/hide join flag CheckComboBox based on enable join checkbox state
         checkBoxEnableJoin.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            comboBoxJoinFlag.setVisible(newVal);
-            comboBoxJoinFlag.setManaged(newVal);
+            checkComboBoxJoinFlag.setVisible(newVal);
+            checkComboBoxJoinFlag.setManaged(newVal);
         });
 
         // Set up date/time validation for textFieldScheduleDateTime

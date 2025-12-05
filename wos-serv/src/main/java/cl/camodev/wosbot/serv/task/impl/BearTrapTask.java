@@ -22,6 +22,9 @@ import java.awt.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -114,6 +117,10 @@ public class BearTrapTask extends DelayedTask {
     private final AtomicBoolean ownRallyActive = new AtomicBoolean(false);
     private ScheduledExecutorService rallyScheduler;
     private ScheduledFuture<?> rallyResetTask;
+    
+    // ========== Join Flag Rotation ==========
+    private List<Integer> joinFlags = new ArrayList<>();
+    private int currentJoinFlagIndex = 0;
 
     // ========== OCR Helpers ==========
     private TextRecognitionRetrier<Duration> durationHelper;
@@ -193,7 +200,6 @@ public class BearTrapTask extends DelayedTask {
     private boolean recallTroops;
     private int trapNumber;
     private int ownRallyFlag;
-    private int joinRallyFlag;
     private int trapPreparationTime;
     private LocalDateTime referenceTrapTime;
 
@@ -254,11 +260,14 @@ public class BearTrapTask extends DelayedTask {
         this.usePets = getConfigBoolean(BEAR_TRAP_ACTIVE_PETS_BOOL, DEFAULT_USE_PETS);
         this.recallTroops = getConfigBoolean(BEAR_TRAP_RECALL_TROOPS_BOOL, DEFAULT_RECALL_TROOPS);
         this.ownRallyFlag = getConfigInt(BEAR_TRAP_RALLY_FLAG_INT, DEFAULT_OWN_RALLY_FLAG);
-        this.joinRallyFlag = getConfigInt(BEAR_TRAP_JOIN_FLAG_INT, DEFAULT_JOIN_RALLY_FLAG);
+        
+        // Parse join flags (comma-separated string) and sort by priority (ascending)
+        this.joinFlags = parseJoinFlags();
+        this.currentJoinFlagIndex = 0; // Reset rotation index
 
         logDebug(String.format(
-                "Configuration loaded - Trap: %d, PrepTime: %dmin, OwnRally: %s (flag:%d), JoinRally: %s (flag:%d), Pets: %s, Recall: %s",
-                trapNumber, trapPreparationTime, callOwnRally, ownRallyFlag, joinRally, joinRallyFlag, usePets,
+                "Configuration loaded - Trap: %d, PrepTime: %dmin, OwnRally: %s (flag:%d), JoinRally: %s (flags:%s), Pets: %s, Recall: %s",
+                trapNumber, trapPreparationTime, callOwnRally, ownRallyFlag, joinRally, joinFlags, usePets,
                 recallTroops));
     }
 
@@ -302,6 +311,67 @@ public class BearTrapTask extends DelayedTask {
             return LocalDateTime.now(ZoneId.of("UTC")).plusHours(1);
         }
         return value;
+    }
+
+    /**
+     * Parses the join flag configuration (comma-separated string) into a sorted list.
+     * 
+     * <p>
+     * Examples:
+     * <ul>
+     * <li>"1,3,4" → [1, 3, 4]</li>
+     * <li>"5,2,7" → [2, 5, 7]</li>
+     * <li>"" → [1] (default)</li>
+     * </ul>
+     * 
+     * @return sorted list of join flag numbers
+     */
+    private List<Integer> parseJoinFlags() {
+        String flagConfig = profile.getConfig(BEAR_TRAP_JOIN_FLAG_INT, String.class);
+        List<Integer> flags = new ArrayList<>();
+        
+        if (flagConfig != null && !flagConfig.trim().isEmpty()) {
+            String[] parts = flagConfig.split(",");
+            for (String part : parts) {
+                try {
+                    int flag = Integer.parseInt(part.trim());
+                    if (flag >= 1 && flag <= 8) {
+                        flags.add(flag);
+                    }
+                } catch (NumberFormatException e) {
+                    logWarning("Invalid join flag value: " + part);
+                }
+            }
+        }
+        
+        // If no valid flags found, use default
+        if (flags.isEmpty()) {
+            flags.add(DEFAULT_JOIN_RALLY_FLAG);
+        }
+        
+        // Sort flags by priority (ascending order)
+        flags.sort(Integer::compareTo);
+        
+        return flags;
+    }
+
+    /**
+     * Gets the next join flag in rotation sequence.
+     * 
+     * <p>
+     * Rotates through flags in priority order: flag1 → flag2 → flag3 → flag1...
+     * 
+     * @return the next flag number to use
+     */
+    private int getNextJoinFlag() {
+        if (joinFlags.isEmpty()) {
+            return DEFAULT_JOIN_RALLY_FLAG;
+        }
+        
+        int flag = joinFlags.get(currentJoinFlagIndex);
+        currentJoinFlagIndex = (currentJoinFlagIndex + 1) % joinFlags.size();
+        
+        return flag;
     }
 
     /**
@@ -751,12 +821,13 @@ public class BearTrapTask extends DelayedTask {
             return;
         }
 
-        logInfo("Joining rally with flag #" + joinRallyFlag);
+        int selectedFlag = getNextJoinFlag();
+        logInfo("Joining rally with flag #" + selectedFlag + " (rotation: " + joinFlags + ")");
 
         tapRandomPoint(plusIcon.getPoint(), plusIcon.getPoint(), 1, 100);
         sleepTask(300); // Wait for flag selection screen
 
-        DTOPoint flagPoint = UtilRally.getMarchFlagPoint(joinRallyFlag);
+        DTOPoint flagPoint = UtilRally.getMarchFlagPoint(selectedFlag);
         tapRandomPoint(flagPoint, flagPoint, 1, 0);
         sleepTask(300); // Wait for deploy button
 
