@@ -15,6 +15,8 @@ import cl.camodev.wosbot.ot.DTOTesseractSettings;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Helper class for character profile switching operations.
@@ -163,19 +165,17 @@ public class CharacterSwitchHelper {
                 logger.warn("Character name is configured but OCR failed to read it");
                 nameMatches = false;
             } else {
-                // Strip alliance code prefix from OCR'd name (format: "[XXX] Character name")
-                String strippedName = stripAllianceCodePrefix(currentCharacterName);
-                // Use contains() to match character name (case-insensitive for robustness)
-                nameMatches = strippedName != null && strippedName.toUpperCase().contains(characterName.toUpperCase());
-                logger.debug("Character name match: " + nameMatches + " (OCR'd: '" + currentCharacterName + "', stripped: '"
-                        + strippedName + "', expected: '" + characterName + "')");
+                // Search for character name directly in OCR result (may contain alliance code prefix)
+                nameMatches = matchesCharacterName(currentCharacterName, characterName);
+                logger.debug("Character name match: " + nameMatches + " (OCR'd: '" + currentCharacterName
+                        + "', expected: '" + characterName + "')");
             }
         }
 
         // Both idMatches and nameMatches default to true when not configured.
         // So if only one is configured, that one must match (the other is true by default).
         // If both are configured, both must match.
-        boolean matches = idMatches && nameMatches;
+        boolean matches = idMatches || nameMatches;
 
         if (matches) {
             logger.info("Character verification successful - correct character is active");
@@ -502,11 +502,9 @@ public class CharacterSwitchHelper {
                     text -> text.trim());
 
             if (characterName != null) {
-                // Strip alliance code prefix from OCR'd name
-                String strippedName = stripAllianceCodePrefix(characterName);
-                // Use contains() to match character name (case-insensitive)
-                if (strippedName != null && strippedName.toUpperCase().contains(targetCharacterName.toUpperCase())) {
-                    logger.info("Found target character: '" + characterName + "' (stripped: '" + strippedName + "')");
+                // Search for character name directly in OCR result (may contain alliance code prefix)
+                if (matchesCharacterName(characterName, targetCharacterName)) {
+                    logger.info("Found target character: '" + characterName + "'");
                     return furnaceLevel;
                 }
             }
@@ -584,21 +582,16 @@ public class CharacterSwitchHelper {
             return false;
         }
 
-        // Strip alliance code prefix from OCR'd name
-        String strippedName = stripAllianceCodePrefix(characterNameInDialog);
-
-        // Verify the name matches (case-insensitive, using contains for robustness)
-        boolean nameMatches = strippedName != null &&
-                strippedName.toUpperCase().contains(targetCharacterName.toUpperCase());
+        // Search for character name directly in OCR result (may contain alliance code prefix)
+        boolean nameMatches = matchesCharacterName(characterNameInDialog, targetCharacterName);
 
         if (!nameMatches) {
             logger.warn("Character name in confirmation dialog does not match. Expected: '" + targetCharacterName +
-                    "', Found: '" + characterNameInDialog + "' (stripped: '" + strippedName + "')");
+                    "', Found: '" + characterNameInDialog + "')");
             return false;
         }
 
-        logger.info("Character name verified in confirmation dialog: '" + characterNameInDialog + "' (stripped: '"
-                + strippedName + "')");
+        logger.info("Character name verified in confirmation dialog: '" + characterNameInDialog + "'");
 
         // Name matches, proceed with confirmation
         DTOImageSearchResult confirmButton = templateSearchHelper.searchTemplate(
@@ -673,46 +666,46 @@ public class CharacterSwitchHelper {
     }
 
     /**
-     * Strips the alliance code prefix from a character name.
+     * Checks if the OCR result contains the expected character name.
      * 
      * <p>
-     * Character names from OCR may include an alliance code prefix in the format
-     * "[XXX] Character name" where XXX is a 3-character alliance code.
-     * This method removes that prefix to get just the character name.
+     * This method searches for the expected character name directly in the OCR result,
+     * which may contain an alliance code prefix (e.g., "[ABC] John Doe" or "[ABCJohn Doe").
+     * Uses pattern matching for case-insensitive search, similar to IntelligenceTask.
      * 
      * <p>
-     * Handles malformed OCR patterns:
+     * Both strings are trimmed and all spaces are removed before matching to handle OCR spacing
+     * errors. This makes matching more lenient and robust against OCR spacing inconsistencies.
+     * 
+     * <p>
+     * Examples:
      * <ul>
-     * <li>Correct: "[ABC] John Doe" → "John Doe"</li>
-     * <li>Missing bracket: "[ABCJohn Doe" → "John Doe"</li>
-     * <li>Extra char: "[ABCJ]ohn Doe" → "ohn Doe" (strips [ABCJ])</li>
-     * <li>No prefix: "John Doe" → "John Doe"</li>
+     * <li>OCR: "[ABC] John Doe", Expected: "John Doe" → true (both become "[ABC]JohnDoe" and "JohnDoe")</li>
+     * <li>OCR: "[ABC]John Doe", Expected: "John Doe" → true</li>
+     * <li>OCR: "[ABCJohnDoe", Expected: "John Doe" → true</li>
+     * <li>OCR: "John  Doe" (double space), Expected: "John Doe" → true</li>
+     * <li>OCR: "JohnDoe", Expected: "John Doe" → true</li>
      * </ul>
      * 
-     * @param characterName The character name with optional alliance code prefix
-     * @return The character name without the alliance code prefix, or null if input
-     *         is null
+     * @param ocrResult The OCR result that may contain alliance code prefix
+     * @param expectedName The expected character name to search for
+     * @return true if the expected name is found in the OCR result (case-insensitive)
      */
-    private String stripAllianceCodePrefix(String characterName) {
-        if (characterName == null || characterName.isEmpty()) {
-            return characterName;
+    private boolean matchesCharacterName(String ocrResult, String expectedName) {
+        if (ocrResult == null || ocrResult.isEmpty() || expectedName == null || expectedName.isEmpty()) {
+            return false;
         }
 
-        // Flexible pattern to handle correct and malformed OCR patterns:
-        // - [XXX] or [XXX] with space (correct: [ABC] John)
-        // - [XXX followed by letter (missing bracket: [ABCJohn)
-        // - [XXXX] or [XXXX (4 chars, OCR error: [ABCJ]ohn or [ABCJ)
-        // Pattern: \[ followed by 3-4 alphanumeric, optional ], optional whitespace
-        String stripped = characterName.replaceFirst("^\\[[A-Z0-9]{3,4}\\]?(\\s*)", "");
+        // Trim and remove all spaces from both strings for more lenient matching
+        // This handles OCR spacing errors (missing spaces, extra spaces, etc.)
+        String normalizedOcr = ocrResult.trim().replaceAll("\\s+", "");
+        String normalizedExpected = expectedName.trim().replaceAll("\\s+", "");
 
-        // If still no match, try pattern without closing bracket requirement
-        // This handles cases like [ABCJohn where bracket is missing
-        if (stripped.equals(characterName)) {
-            // Match [XXX at start, followed by uppercase letter (start of name)
-            stripped = characterName.replaceFirst("^\\[[A-Z0-9]{3}(?=[A-Z])", "");
-        }
-
-        return stripped.trim();
+        // Escape special regex characters in the expected name and create case-insensitive pattern
+        String escapedName = Pattern.quote(normalizedExpected);
+        Pattern namePattern = Pattern.compile(escapedName, Pattern.CASE_INSENSITIVE);
+        Matcher matcher = namePattern.matcher(normalizedOcr);
+        return matcher.find();
     }
 
     /**
@@ -723,7 +716,6 @@ public class CharacterSwitchHelper {
     private DTOTesseractSettings createCharacterIdOCRSettings() {
         return DTOTesseractSettings.builder()
                 .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setDebug(true)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setAllowedChars("0123456789")
                 .setRemoveBackground(true)
@@ -739,9 +731,8 @@ public class CharacterSwitchHelper {
     private DTOTesseractSettings createCharacterNameOCRSettings() {
         return DTOTesseractSettings.builder()
                 .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setDebug(true)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789[]_ ")
+                .setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ")
                 .setRemoveBackground(true)
                 .build();
     }
