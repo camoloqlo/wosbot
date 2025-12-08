@@ -413,11 +413,13 @@ public class TaskQueue {
     private void enqueueNewTask() {
         logInfo("Scheduled task will start soon");
 
-        // Only acquire a new emulator slot if the emulator is not running
-        // (i.e., if we closed the entire emulator rather than just the game)
-        if (!emuManager.isRunning(profile.getEmulatorNumber())) {
-            acquireEmulatorSlot();
-        }
+        // Always attempt to acquire emulator slot - EmulatorManager will handle:
+        // 1. Early return if we already have a valid slot
+        // 2. Conflict detection if another profile is using the same emulator
+        // 3. Queuing if no slots available or conflicts exist
+        // This ensures we properly reacquire slots after releasing them, even if
+        // the emulator is still running (used by another profile)
+        acquireEmulatorSlot();
 
         addTask(new InitializeTask(profile, TpDailyTaskEnum.INITIALIZE));
     }

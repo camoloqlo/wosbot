@@ -654,23 +654,40 @@ public class EmulatorManager {
         try {
             // Check if this thread already has an active slot
             if (activeSlots.contains(currentThread)) {
-                if (emulator.isRunning(emulatorNumber)) {
+                // Verify emulator tracking is consistent
+                String trackedEmulator = threadToEmulator.get(currentThread);
+                Thread trackedThread = emulatorToThread.get(emulatorNumber);
+                
+                // Check for conflicts even if thread thinks it has a slot
+                boolean hasConflict = hasEmulatorConflict(emulatorNumber, currentThread);
+                
+                // If tracking is consistent, no conflict, and emulator is running, we have a valid slot
+                if (emulatorNumber.equals(trackedEmulator) 
+                        && currentThread.equals(trackedThread)
+                        && !hasConflict
+                        && emulator.isRunning(emulatorNumber)) {
                     logger.info("Profile {} already has an active slot, continuing without acquiring a new one.",
                             profile.getName());
                     logSlotHolders();
                     profile.setQueuePosition(0);
                     return;
                 } else {
+                    // Inconsistent state or conflict detected - clean up and reacquire properly
                     activeSlots.remove(currentThread);
                     // Clean up emulator tracking if thread had a slot
-                    String oldEmulatorNumber = threadToEmulator.remove(currentThread);
-                    if (oldEmulatorNumber != null) {
-                        emulatorToThread.remove(oldEmulatorNumber);
+                    if (trackedEmulator != null) {
+                        emulatorToThread.remove(trackedEmulator);
                     }
-                    // MAX_RUNNING_EMULATORS++;
-                    logger.info(
-                            "Profile {} had a slot, but emulator was not running, removing from slot holders and placing in queue. ",
-                            profile.getName());
+                    threadToEmulator.remove(currentThread);
+                    if (hasConflict) {
+                        logger.warn(
+                                "Profile {} had slot but conflict detected (another thread using emulator {}), cleaning up and queuing.",
+                                profile.getName(), emulatorNumber);
+                    } else {
+                        logger.info(
+                                "Profile {} had inconsistent slot state (emulator running: {}, tracked: {}), cleaning up and reacquiring.",
+                                profile.getName(), emulator.isRunning(emulatorNumber), trackedEmulator);
+                    }
                     logSlotHolders();
                 }
             }
