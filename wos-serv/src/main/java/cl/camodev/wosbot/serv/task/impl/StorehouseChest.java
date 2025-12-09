@@ -147,7 +147,7 @@ public class StorehouseChest extends DelayedTask {
     private boolean openStorehouse() {
         logDebug("Navigating to Storehouse");
 
-        openLeftMenuCitySection(true);
+        marchHelper.openLeftMenuCitySection(true);
 
         DTOImageSearchResult researchCenter = templateSearchHelper.searchTemplate(
                 EnumTemplates.GAME_HOME_SHORTCUTS_RESEARCH_CENTER,

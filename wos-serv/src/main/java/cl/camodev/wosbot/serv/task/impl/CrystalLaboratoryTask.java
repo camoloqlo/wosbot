@@ -205,7 +205,7 @@ public class CrystalLaboratoryTask extends DelayedTask {
     private boolean navigateToCrystalLaboratory() {
         logInfo("Navigating to Crystal Laboratory");
 
-        openLeftMenuCitySection(true);
+        marchHelper.openLeftMenuCitySection(true);
 
         if (!findAndTapTroopsButton()) {
             return false;

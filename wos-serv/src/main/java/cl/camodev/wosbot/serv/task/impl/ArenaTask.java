@@ -261,7 +261,7 @@ public class ArenaTask extends DelayedTask {
      */
     private boolean navigateToArena() {
         // Open left menu on city section
-        openLeftMenuCitySection(true);
+        marchHelper.openLeftMenuCitySection(true);
 
         logInfo("Searching for Marksman Camp shortcut");
         DTOImageSearchResult marksmanResult = templateSearchHelper.searchTemplate(

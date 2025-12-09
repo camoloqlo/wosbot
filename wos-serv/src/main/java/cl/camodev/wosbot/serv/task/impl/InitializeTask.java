@@ -300,7 +300,7 @@ public class InitializeTask extends DelayedTask {
 	 */
 	private void handleInitializationSuccess() {
 		logInfo("Initialization successful. Reading initial stamina value.");
-		updateStaminaFromProfile();
+		staminaHelper.updateStaminaFromProfile();
 		logInfo("Initialization task completed successfully.");
 	}
 

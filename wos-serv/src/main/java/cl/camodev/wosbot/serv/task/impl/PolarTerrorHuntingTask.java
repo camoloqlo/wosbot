@@ -42,7 +42,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         // Load configuration fresh after profile refresh
         loadConfiguration();
 
-        if (isBearRunning()) {
+        if (eventHelper.isBearRunning()) {
             LocalDateTime rescheduleTo = LocalDateTime.now().plusMinutes(30);
             logInfo("Bear Hunt is running, rescheduling for " + rescheduleTo);
             reschedule(rescheduleTo);
@@ -68,7 +68,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
                 useFlag ? "#" + flagNumber : "None"));
 
         // Verify if there's enough stamina to hunt, if not, reschedule the task
-        if (!checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel))
+        if (!staminaHelper.checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel, this::reschedule))
             return;
 
         // Check limited hunting limit
@@ -89,7 +89,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         int ralliesDeployed = 0;
         while (true) {
             // Check marches before each rally
-            if (!checkMarchesAvailable()) {
+            if (!marchHelper.checkMarchesAvailable()) {
                 logInfo("No marches available after " + ralliesDeployed + " rallies. Waiting for marches to return.");
                 reschedule(LocalDateTime.now().plusMinutes(1));
                 return;
@@ -124,7 +124,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
 
             // result == 1: success
             ralliesDeployed++;
-            logInfo("Rally #" + ralliesDeployed + " deployed successfully. Current stamina: " + getCurrentStamina());
+            logInfo("Rally #" + ralliesDeployed + " deployed successfully. Current stamina: " + staminaHelper.getCurrentStamina());
             sleepTask(1500);
         }
 
@@ -167,7 +167,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
      * @return 3 if deployment successful but stamina too low to continue
      */
     private int launchSingleRally(int polarLevel, boolean useFlag, int flagNumber) {
-        ensureCorrectScreenLocation(getRequiredStartLocation());
+        navigationHelper.ensureCorrectScreenLocation(getRequiredStartLocation());
 
         // Open polars menu
         logInfo("Navigating to polars menu");
@@ -189,13 +189,13 @@ public class PolarTerrorHuntingTask extends DelayedTask {
 
         // Select flag if needed
         if (useFlag) {
-            selectFlag(flagNumber);
+            marchHelper.selectFlag(flagNumber);
         }
 
         // Parse travel time
-        long travelTimeSeconds = parseTravelTime();
+        long travelTimeSeconds = staminaHelper.parseTravelTime();
 
-        Integer spentStamina = getSpentStamina();
+        Integer spentStamina = staminaHelper.getSpentStamina();
 
         // Deploy march
         DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(
@@ -222,7 +222,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         logInfo("March deployed successfully.");
 
         // Update stamina
-        subtractStamina(spentStamina, true);
+        staminaHelper.subtractStamina(spentStamina, true);
 
         // Flag mode: reschedule for march return
         if (useFlag) {
@@ -238,10 +238,10 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         }
 
         // No-flag mode: check stamina for next rally
-        if (getCurrentStamina() <= minStaminaLevel) {
+        if (staminaHelper.getCurrentStamina() <= minStaminaLevel) {
             logInfo("Stamina is at or below minimum. Stopping deployment and rescheduling.");
             reschedule(
-                    LocalDateTime.now().plusMinutes(staminaRegenerationTime(getCurrentStamina(), refreshStaminaLevel)));
+                    LocalDateTime.now().plusMinutes(staminaHelper.staminaRegenerationTime(staminaHelper.getCurrentStamina(), refreshStaminaLevel)));
             return 3;
         }
         return 1;

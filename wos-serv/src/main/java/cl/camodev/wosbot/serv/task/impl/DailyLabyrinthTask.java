@@ -91,7 +91,7 @@ public class DailyLabyrinthTask extends DelayedTask {
         logInfo("Navigating to the Labyrinth menu...");
 
         // Open side menu
-        openLeftMenuCitySection(true);
+        marchHelper.openLeftMenuCitySection(true);
 
         // Scroll down to find labyrinth
         swipe(SCROLL_START_POINT, SCROLL_END_POINT);

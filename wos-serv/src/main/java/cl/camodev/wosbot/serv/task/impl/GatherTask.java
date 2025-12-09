@@ -341,11 +341,11 @@ public class GatherTask extends DelayedTask {
     private void processGatherType(GatherType gatherType) {
         logInfo(String.format("Processing %s gathering.", gatherType.name()));
 
-        openLeftMenuCitySection(false);
+        marchHelper.openLeftMenuCitySection(false);
 
         ActiveMarchResult result = checkActiveMarch(gatherType);
 
-        closeLeftMenu();
+        marchHelper.closeLeftMenu();
 
         if (result.isActive()) {
             logInfo(String.format("%s march is active. Returns in: %s",

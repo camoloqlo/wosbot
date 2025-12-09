@@ -23,7 +23,6 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -817,7 +816,7 @@ public class BearTrapTask extends DelayedTask {
 
         if (!plusIcon.isFound()) {
             logWarning("No joinable rallies found (plus icon not present)");
-            ensureCorrectScreenLocation(EnumStartLocation.ANY);
+            navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.ANY);
             return;
         }
 
@@ -845,7 +844,7 @@ public class BearTrapTask extends DelayedTask {
             sleepTask(500); // Wait for deployment
         }
 
-        ensureCorrectScreenLocation(EnumStartLocation.ANY);
+        navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
 
     /**
@@ -1131,7 +1130,7 @@ public class BearTrapTask extends DelayedTask {
         tapBackButton();
         sleepTask(300); // Wait for menu close
 
-        ensureCorrectScreenLocation(EnumStartLocation.ANY);
+        navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
 
     /**
@@ -1279,7 +1278,7 @@ public class BearTrapTask extends DelayedTask {
         tapRandomPoint(AUTOJOIN_STOP_BUTTON_TL, AUTOJOIN_STOP_BUTTON_BR, 1, 500);
         sleepTask(500); // Wait for stop to process
 
-        ensureCorrectScreenLocation(EnumStartLocation.ANY);
+        navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.ANY);
     }
 
     /**

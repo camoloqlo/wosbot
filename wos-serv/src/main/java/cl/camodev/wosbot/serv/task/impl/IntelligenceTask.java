@@ -91,7 +91,7 @@ public class IntelligenceTask extends DelayedTask {
 
 		if (!autoJoinDisabledForIntel && isAutoJoinTaskEnabled && autoJoinTask.isScheduled()) {
 			logInfo("Auto-join is enabled and scheduled, proceeding to disable it.");
-			autoJoinDisabledForIntel = disableAutoJoin();
+			autoJoinDisabledForIntel = allianceHelper.disableAutoJoin();
 			if (!autoJoinDisabledForIntel)
 				logDebug("Failed to disable auto-join, proceeding anyway.");
 		}
@@ -109,7 +109,7 @@ public class IntelligenceTask extends DelayedTask {
 			beastMarchSent = false;
 
 			// Return to world screen for march checks
-			ensureCorrectScreenLocation(EnumStartLocation.WORLD);
+			navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.WORLD);
 
 			// Check march availability once
 			MarchesAvailable marchesAvailable = checkMarchAvailability();
@@ -133,7 +133,7 @@ public class IntelligenceTask extends DelayedTask {
 
 			// Process survivor camps
 			if (survivorCampsEnabled) {
-				ensureOnIntelScreen();
+				intelScreenHelper.ensureOnIntelScreen();
 				logInfo("Searching for survivor camps using grayscale matching.");
 				EnumTemplates survivorTemplate = fcEra ? EnumTemplates.INTEL_SURVIVOR_GRAYSCALE_FC
 						: EnumTemplates.INTEL_SURVIVOR_GRAYSCALE;
@@ -145,7 +145,7 @@ public class IntelligenceTask extends DelayedTask {
 
 			// Process explorations
 			if (explorationsEnabled) {
-				ensureOnIntelScreen();
+				intelScreenHelper.ensureOnIntelScreen();
 				logInfo("Searching for explorations using grayscale matching.");
 				EnumTemplates journeyTemplate = fcEra ? EnumTemplates.INTEL_JOURNEY_GRAYSCALE_FC
 						: EnumTemplates.INTEL_JOURNEY_GRAYSCALE;
@@ -191,7 +191,7 @@ public class IntelligenceTask extends DelayedTask {
 		if (useSmartProcessing) {
 			return getMarchesAvailable();
 		} else {
-			boolean available = checkMarchesAvailable();
+			boolean available = marchHelper.checkMarchesAvailable();
 			return new MarchesAvailable(available, LocalDateTime.now());
 		}
 	}
@@ -232,7 +232,7 @@ public class IntelligenceTask extends DelayedTask {
 	 * Claim all completed missions
 	 */
 	private void claimCompletedMissions() {
-		ensureOnIntelScreen();
+		intelScreenHelper.ensureOnIntelScreen();
 		logInfo("Searching for completed missions to claim.");
 
 		for (int i = 0; i < 2; i++) {
@@ -261,7 +261,7 @@ public class IntelligenceTask extends DelayedTask {
 	 * Process all beast intel (fire beasts and regular beasts)
 	 */
 	private boolean processBeastIntel() {
-		ensureOnIntelScreen();
+		intelScreenHelper.ensureOnIntelScreen();
 		boolean beastFound = false;
 
 		// Search for fire beasts if enabled
@@ -521,7 +521,7 @@ public class IntelligenceTask extends DelayedTask {
 
 		// Select flag if needed
 		if (useFlag) {
-			selectFlag(flagNumber);
+			marchHelper.selectFlag(flagNumber);
 		}
 
 		// Equalize troops
@@ -535,14 +535,14 @@ public class IntelligenceTask extends DelayedTask {
 		// Parse travel time
 		long travelTimeSeconds = 0;
 		try {
-			travelTimeSeconds = parseTravelTime();
+			travelTimeSeconds = staminaHelper.parseTravelTime();
 			logInfo("Successfully parsed travel time: " + travelTimeSeconds + "s");
 		} catch (Exception e) {
 			logError("Error parsing travel time: " + e.getMessage());
 		}
 
 		// Parse stamina cost
-		Integer spentStamina = getSpentStamina();
+		Integer spentStamina = staminaHelper.getSpentStamina();
 		logDebug("Spent stamina read: " + spentStamina);
 
 		// Deploy march
@@ -571,7 +571,7 @@ public class IntelligenceTask extends DelayedTask {
 		beastMarchSent = true;
 
 		// Update stamina
-		subtractStamina(spentStamina, false); // false = not rally, use 10 stamina default
+		staminaHelper.subtractStamina(spentStamina, false); // false = not rally, use 10 stamina default
 
 		// Reschedule for march return
 		if (travelTimeSeconds <= 0) {
@@ -592,7 +592,7 @@ public class IntelligenceTask extends DelayedTask {
 
 	private MarchesAvailable getMarchesAvailable() {
 		// Open active marches panel
-		openLeftMenuCitySection(false);
+		marchHelper.openLeftMenuCitySection(false);
 
 		DTOTesseractSettings settings = DTOTesseractSettings.builder()
 				.setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
