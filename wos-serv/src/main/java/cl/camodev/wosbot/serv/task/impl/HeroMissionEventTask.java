@@ -19,6 +19,7 @@ import cl.camodev.wosbot.ot.DTOTesseractSettings;
 import cl.camodev.wosbot.serv.impl.ServTaskManager;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.NavigationHelper.EventMenu;
 import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 import java.awt.Color;
@@ -42,7 +43,7 @@ public class HeroMissionEventTask extends DelayedTask {
         flagNumber = profile.getConfig(EnumConfigurationKey.HERO_MISSION_FLAG_INT, Integer.class);
         useFlag = flagNumber > 0;
 
-        if (isBearRunning()) {
+        if (eventHelper.isBearRunning()) {
             LocalDateTime rescheduleTo = LocalDateTime.now().plusMinutes(30);
             logInfo("Bear Hunt is running, rescheduling for " + rescheduleTo);
             reschedule(rescheduleTo);
@@ -64,7 +65,7 @@ public class HeroMissionEventTask extends DelayedTask {
         }
 
         // Verify if there's enough stamina to hunt, if not, reschedule the task
-        if (!checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel))
+        if (!staminaHelper.checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel, this::reschedule))
             return;
 
         int attempt = 0;
@@ -92,62 +93,17 @@ public class HeroMissionEventTask extends DelayedTask {
     }
 
     private boolean navigateToEventScreen() {
-        // Search for the events button
-        DTOImageSearchResult eventsResult = templateSearchHelper.searchTemplate(
-                EnumTemplates.HOME_EVENTS_BUTTON,
-                SearchConfig.builder()
-                        .withThreshold(90)
-                        .withMaxAttempts(3)
-                        .build());
-        if (!eventsResult.isFound()) {
-            logWarning("The 'Events' button was not found.");
+        logInfo("Navigating to Hero's Mission event...");
+
+        boolean success = navigationHelper.navigateToEventMenu(EventMenu.HERO_MISSION);
+
+        if (!success) {
+            logWarning("Failed to navigate to Hero's Mission event");
             return false;
         }
 
-        tapPoint(eventsResult.getPoint());
         sleepTask(2000);
-        // Close any windows that may be open
-        tapRandomPoint(new DTOPoint(529, 27), new DTOPoint(635, 63), 5, 300);
-
-        // Search for the Hero's Mission event tab
-        DTOImageSearchResult result = templateSearchHelper.searchTemplate(
-                EnumTemplates.HERO_MISSION_EVENT_TAB,
-                SearchConfig.builder()
-                        .withThreshold(90)
-                        .withMaxAttempts(3)
-                        .build());
-
-        if (result.isFound()) {
-            sleepTask(500);
-            tapPoint(result.getPoint());
-            return true;
-        }
-
-        // Swipe completely to the left
-        logInfo("Hero's Mission event not immediately visible. Swiping left to locate it.");
-        for (int i = 0; i < 3; i++) {
-            swipe(new DTOPoint(80, 120), new DTOPoint(578, 130));
-            sleepTask(300);
-        }
-
-        for (int i = 0; i < 5; i++) {
-            result = templateSearchHelper.searchTemplate(
-                    EnumTemplates.HERO_MISSION_EVENT_TAB,
-                    SearchConfig.builder()
-                            .withThreshold(90)
-                            .withMaxAttempts(1)
-                            .build());
-            if (result.isFound()) {
-                sleepTask(500);
-                tapPoint(result.getPoint());
-                return true;
-            }
-            logInfo("Hero's Mission event not found. Swiping right and retrying...");
-            swipe(new DTOPoint(630, 143), new DTOPoint(400, 128));
-            sleepTask(300);
-        }
-
-        return false;
+        return true;
     }
 
     private void handleHeroMissionEvent() {
@@ -218,7 +174,7 @@ public class HeroMissionEventTask extends DelayedTask {
 
         // Select flag if needed
         if (useFlag) {
-            selectFlag(flagNumber);
+            marchHelper.selectFlag(flagNumber);
         }
 
         // Parse travel time
@@ -245,7 +201,7 @@ public class HeroMissionEventTask extends DelayedTask {
             logError("Error parsing travel time: " + e.getMessage());
         }
 
-        Integer spentStamina = getSpentStamina();
+        Integer spentStamina = staminaHelper.getSpentStamina();
 
         // Deploy march
         DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(
@@ -278,7 +234,7 @@ public class HeroMissionEventTask extends DelayedTask {
         logInfo("March deployed successfully.");
 
         // Update stamina
-        subtractStamina(spentStamina, true);
+        staminaHelper.subtractStamina(spentStamina, true);
 
         if (travelTimeSeconds <= 0) {
             logError("Failed to parse travel time via OCR. Rescheduling in 10 minutes as fallback.");

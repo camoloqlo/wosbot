@@ -14,6 +14,7 @@ import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.helper.AllianceChampionshipHelper;
+import cl.camodev.wosbot.serv.task.helper.NavigationHelper.EventMenu;
 import cl.camodev.wosbot.serv.task.helper.TimeWindowHelper;
 import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
@@ -65,18 +66,6 @@ import static cl.camodev.wosbot.console.enumerable.EnumTemplates.*;
 public class AllianceChampionshipTask extends DelayedTask {
 
     // ========== UI Navigation Constants ==========
-    private static final DTOPoint EVENTS_TAB_REGION_TL = new DTOPoint(300, 30);
-    private static final DTOPoint EVENTS_TAB_REGION_BR = new DTOPoint(400, 50);
-    private static final int EVENTS_TAB_CLEAR_TAPS = 5;
-
-    private static final DTOPoint EVENT_SWIPE_START = new DTOPoint(130, 140);
-    private static final DTOPoint EVENT_SWIPE_END = new DTOPoint(640, 140);
-    private static final DTOPoint EVENT_SWIPE_BACK_START = new DTOPoint(630, 143);
-    private static final DTOPoint EVENT_SWIPE_BACK_END = new DTOPoint(500, 128);
-
-    // ========== Championship Tab Search Constants ==========
-    private static final int CHAMPIONSHIP_TAB_MAX_ATTEMPTS = 10;
-    private static final int CHAMPIONSHIP_TAB_ENTRY_TAPS = 5;
 
     // ========== Troop Input Field Coordinates ==========
     private static final DTOPoint INFANTRY_INPUT_TL = new DTOPoint(583, 519);
@@ -96,7 +85,6 @@ public class AllianceChampionshipTask extends DelayedTask {
 
     // ========== Retry and Timing Constants ==========
     private static final int TEMPLATE_SEARCH_RETRIES = 3;
-    private static final int QUICK_TEMPLATE_SEARCH_RETRIES = 1;
     private static final int TEXT_CLEAR_BACKSPACE_COUNT = 4;
     private static final int NAVIGATION_FAILURE_RETRY_MINUTES = 5;
 
@@ -290,124 +278,22 @@ public class AllianceChampionshipTask extends DelayedTask {
      * Navigates to the Alliance Championship event screen.
      * 
      * <p>
-     * Navigation steps:
-     * <ol>
-     * <li>Open Events menu from home screen</li>
-     * <li>Clear any selected tabs</li>
-     * <li>Swipe to find Championship event</li>
-     * <li>Search for Championship tab (up to 5 attempts with swipes)</li>
-     * <li>Enter the event</li>
-     * </ol>
+     * Uses the generic NavigationHelper.navigateToEventMenu() method.
      * 
      * @return true if navigation successful, false otherwise
      */
     private boolean navigateToChampionshipEvent() {
-        if (!openEventsMenu()) {
+        logInfo("Navigating to Alliance Championship event...");
+
+        boolean success = navigationHelper.navigateToEventMenu(EventMenu.ALLIANCE_CHAMPIONSHIP);
+
+        if (!success) {
+            logWarning("Failed to navigate to Alliance Championship event");
             return false;
         }
 
-        clearEventTabSelection();
-        swipeToEventsList();
-
-        DTOImageSearchResult championshipTab = searchForChampionshipTab();
-
-        if (!championshipTab.isFound()) {
-            logWarning("Failed to find Alliance Championship tab after multiple attempts.");
-            return false;
-        }
-
-        enterChampionshipEvent(championshipTab);
+        sleepTask(2000);
         return true;
-    }
-
-    /**
-     * Opens the Events menu from home screen.
-     * 
-     * @return true if Events menu opened successfully, false otherwise
-     */
-    private boolean openEventsMenu() {
-        DTOImageSearchResult eventsButton = templateSearchHelper.searchTemplate(
-                HOME_EVENTS_BUTTON,
-                SearchConfig.builder()
-                        .withThreshold(90)
-                        .withMaxAttempts(TEMPLATE_SEARCH_RETRIES)
-                        .withDelay(200L)
-                        .build());
-
-        if (!eventsButton.isFound()) {
-            logWarning("Events button not found on home screen");
-            return false;
-        }
-
-        tapPoint(eventsButton.getPoint());
-        sleepTask(1000); // Wait for Events menu to open
-        return true;
-    }
-
-    /**
-     * Clears any selected event tab to ensure clean navigation.
-     */
-    private void clearEventTabSelection() {
-        tapRandomPoint(
-                EVENTS_TAB_REGION_TL,
-                EVENTS_TAB_REGION_BR,
-                EVENTS_TAB_CLEAR_TAPS,
-                500); // Tap multiple times to clear selection
-    }
-
-    /**
-     * Swipes to reveal the events list carousel.
-     */
-    private void swipeToEventsList() {
-        swipe(EVENT_SWIPE_START, EVENT_SWIPE_END);
-        sleepTask(200); // Wait for swipe animation
-    }
-
-    /**
-     * Searches for the Alliance Championship tab with retry logic.
-     * 
-     * <p>
-     * Attempts up to 5 times, swiping back slightly between attempts
-     * to reveal different events in the carousel.
-     * 
-     * @return DTOImageSearchResult containing tab location if found
-     */
-    private DTOImageSearchResult searchForChampionshipTab() {
-        DTOImageSearchResult result = null;
-
-        for (int attempt = 0; attempt < CHAMPIONSHIP_TAB_MAX_ATTEMPTS; attempt++) {
-            result = templateSearchHelper.searchTemplate(
-                    ALLIANCE_CHAMPIONSHIP_TAB,
-                    SearchConfig.builder()
-                            .withThreshold(90)
-                            .withMaxAttempts(QUICK_TEMPLATE_SEARCH_RETRIES)
-                            .build());
-
-            if (result.isFound()) {
-                logInfo("Successfully found Alliance Championship event");
-                return result;
-            }
-
-            logDebug("Championship tab not found, attempting swipe " + (attempt + 1));
-            swipe(EVENT_SWIPE_BACK_START, EVENT_SWIPE_BACK_END);
-            sleepTask(200); // Wait for swipe animation
-        }
-
-        return result;
-    }
-
-    /**
-     * Enters the championship event by tapping its tab.
-     * 
-     * @param championshipTab the search result containing tab location
-     */
-    private void enterChampionshipEvent(DTOImageSearchResult championshipTab) {
-        tapRandomPoint(
-                championshipTab.getPoint(),
-                championshipTab.getPoint(),
-                CHAMPIONSHIP_TAB_ENTRY_TAPS,
-                300); // Multiple taps to ensure entry
-        sleepTask(1000); // Wait for event screen to load
     }
 
     /**
@@ -522,7 +408,7 @@ public class AllianceChampionshipTask extends DelayedTask {
      * @return true if deployment successful, false otherwise
      */
     private boolean deployTroops(boolean isUpdate) {
-        clearEventTabSelection();
+        navigationHelper.clearEventTabSelection();
 
         DTOArea deploymentArea = getDeploymentArea(position);
         tapRandomPoint(deploymentArea.topLeft(), deploymentArea.bottomRight(), 1, 500);

@@ -1,12 +1,15 @@
 package cl.camodev.wosbot.serv.task.helper;
 
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
+import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
 import cl.camodev.wosbot.emulator.EmulatorManager;
 import cl.camodev.wosbot.ex.HomeNotFoundException;
 import cl.camodev.wosbot.ex.ProfileInReconnectStateException;
 import cl.camodev.wosbot.logging.ProfileLogger;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
+import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.serv.impl.ServLogs;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.constants.ButtonConstants;
 import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
@@ -18,6 +21,7 @@ import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
  * Provides navigation functionality including:
  * <ul>
  * <li>Navigating to alliance menus</li>
+ * <li>Navigating to event menus</li>
  * <li>Ensuring correct screen location (Home/World)</li>
  * <li>Handling screen verification and recovery</li>
  * </ul>
@@ -27,12 +31,25 @@ import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 public class NavigationHelper {
 
     private static final int MAX_SCREEN_LOCATION_ATTEMPTS = 10;
+    private static final int MAX_EVENT_SWIPE_ATTEMPTS = 5;
+
+    // Event navigation coordinates
+    private static final DTOPoint EVENTS_TAB_CLEAR_TL = new DTOPoint(529, 27);
+    private static final DTOPoint EVENTS_TAB_CLEAR_BR = new DTOPoint(635, 63);
+    private static final int EVENTS_TAB_CLEAR_TAPS = 5;
+
+    private static final DTOPoint EVENT_SWIPE_LEFT_START = new DTOPoint(80, 120);
+    private static final DTOPoint EVENT_SWIPE_LEFT_END = new DTOPoint(578, 130);
+    private static final DTOPoint EVENT_SWIPE_RIGHT_START = new DTOPoint(630, 143);
+    private static final DTOPoint EVENT_SWIPE_RIGHT_END = new DTOPoint(400, 128);
 
     private final TemplateSearchHelper templateSearchHelper;
     private final EmulatorManager emuManager;
     private final String emulatorNumber;
     private final ProfileLogger logger;
     private final String profileName;
+    private final ServLogs servLogs;
+    private static final String HELPER_NAME = "NavigationHelper";
 
     /**
      * Constructs a new NavigationHelper.
@@ -47,6 +64,7 @@ public class NavigationHelper {
         this.templateSearchHelper = new TemplateSearchHelper(emuManager, emulatorNumber, profile);
         this.logger = new ProfileLogger(NavigationHelper.class, profile);
         this.profileName = profile.getName();
+        this.servLogs = ServLogs.getServices();
     }
 
     /**
@@ -89,6 +107,161 @@ public class NavigationHelper {
     }
 
     /**
+     * Navigates to a specific event within the Events menu.
+     * 
+     * <p>
+     * This method handles the complete navigation flow to event screens:
+     * <ol>
+     * <li>Opens the Events menu from home screen</li>
+     * <li>Clears any selected event tabs</li>
+     * <li>Swipes left to reset carousel position</li>
+     * <li>Searches for the event tab (with right swipes between attempts)</li>
+     * <li>Taps the event tab when found</li>
+     * </ol>
+     * 
+     * @param event The event to navigate to
+     * @return true if navigation was successful, false otherwise
+     */
+    public boolean navigateToEventMenu(EventMenu event) {
+        logDebug("Navigating to event: " + event.name());
+
+        // Step 1: Open Events menu
+        if (!openEventsMenu()) {
+            logWarning("Failed to open Events menu");
+            return false;
+        }
+
+        // Step 2: Clear any selected tabs
+        clearEventTabSelection();
+
+        // Step 3: Search for the event tab
+        EnumTemplates eventTemplate = switch (event) {
+            case HERO_MISSION -> EnumTemplates.HERO_MISSION_EVENT_TAB;
+            case MERCENARY -> EnumTemplates.MERCENARY_EVENT_TAB;
+            case ALLIANCE_CHAMPIONSHIP -> EnumTemplates.ALLIANCE_CHAMPIONSHIP_TAB;
+            case ALLIANCE_MOBILIZATION -> EnumTemplates.ALLIANCE_MOBILIZATION_TAB;
+            case TUNDRA_TRUCK -> EnumTemplates.TUNDRA_TRUCK_TAB;
+        };
+
+        DTOImageSearchResult eventTab = searchForEventTab(eventTemplate);
+
+        // For Alliance Mobilization, also check for unselected tab if selected not
+        // found
+        if (!eventTab.isFound() && event == EventMenu.ALLIANCE_MOBILIZATION) {
+            logDebug("Selected mobilization tab not found, searching for unselected tab");
+            eventTab = searchForEventTab(EnumTemplates.ALLIANCE_MOBILIZATION_UNSELECTED_TAB);
+        }
+
+        if (!eventTab.isFound()) {
+            logWarning("Event tab not found: " + event.name());
+            return false;
+        }
+
+        // Step 4: Tap the event tab
+        emuManager.tapAtPoint(emulatorNumber, eventTab.getPoint());
+        sleep(1000);
+
+        logInfo("Successfully navigated to event: " + event.name());
+        return true;
+    }
+
+    /**
+     * Opens the Events menu from home screen.
+     * 
+     * @return true if Events menu opened successfully, false otherwise
+     */
+    private boolean openEventsMenu() {
+        DTOImageSearchResult eventsButton = templateSearchHelper.searchTemplate(
+                EnumTemplates.HOME_EVENTS_BUTTON,
+                SearchConfigConstants.SINGLE_WITH_RETRIES);
+
+        if (!eventsButton.isFound()) {
+            logWarning("Events button not found on home screen");
+            return false;
+        }
+
+        emuManager.tapAtPoint(emulatorNumber, eventsButton.getPoint());
+        sleep(2000);
+
+        logDebug("Events menu opened");
+        return true;
+    }
+
+    /**
+     * Clears any selected event tab to ensure clean navigation.
+     * This taps multiple times in the upper-right area where tabs can be closed.
+     */
+    public void clearEventTabSelection() {
+        logDebug("Clearing event tab selection");
+        emuManager.tapAtRandomPoint(
+                emulatorNumber,
+                EVENTS_TAB_CLEAR_TL,
+                EVENTS_TAB_CLEAR_BR,
+                EVENTS_TAB_CLEAR_TAPS,
+                300);
+        sleep(300);
+    }
+
+    /**
+     * Searches for an event tab with intelligent swiping.
+     * 
+     * <p>
+     * Algorithm:
+     * <ol>
+     * <li>First checks if tab is immediately visible</li>
+     * <li>Swipes completely left (3 times) to reset position</li>
+     * <li>Searches while swiping right up to MAX_EVENT_SWIPE_ATTEMPTS times</li>
+     * </ol>
+     * 
+     * @param eventTemplate The template to search for
+     * @return DTOImageSearchResult containing tab location if found
+     */
+    private DTOImageSearchResult searchForEventTab(EnumTemplates eventTemplate) {
+        // First attempt: Check if already visible
+        DTOImageSearchResult result = templateSearchHelper.searchTemplate(
+                eventTemplate,
+                SearchConfigConstants.DEFAULT_SINGLE);
+
+        if (result.isFound()) {
+            logDebug("Event tab found immediately");
+            return result;
+        }
+
+        // Swipe completely left to reset carousel
+        logDebug("Event not visible, swiping left to reset position");
+        for (int i = 0; i < 3; i++) {
+            emuManager.executeSwipe(
+                    emulatorNumber,
+                    EVENT_SWIPE_LEFT_START,
+                    EVENT_SWIPE_LEFT_END);
+            sleep(300);
+        }
+
+        // Search while swiping right
+        logDebug("Searching for event tab while swiping right");
+        for (int attempt = 0; attempt < MAX_EVENT_SWIPE_ATTEMPTS; attempt++) {
+            result = templateSearchHelper.searchTemplate(
+                    eventTemplate,
+                    SearchConfigConstants.DEFAULT_SINGLE);
+
+            if (result.isFound()) {
+                logDebug("Event tab found after " + attempt + " swipe(s)");
+                return result;
+            }
+
+            // Swipe right to see more events
+            emuManager.executeSwipe(
+                    emulatorNumber,
+                    EVENT_SWIPE_RIGHT_START,
+                    EVENT_SWIPE_RIGHT_END);
+            sleep(300);
+        }
+
+        logWarning("Event tab not found after " + MAX_EVENT_SWIPE_ATTEMPTS + " swipe attempts");
+        return result; // Return not found result
+    }
+
+    /**
      * Ensures the emulator is on the correct screen (Home or World) before
      * continuing.
      * 
@@ -107,7 +280,7 @@ public class NavigationHelper {
      * @throws ProfileInReconnectStateException if profile is in reconnect state
      */
     public void ensureCorrectScreenLocation(EnumStartLocation requiredLocation) {
-        logger.debug("Verifying screen location. Required: " + requiredLocation);
+        logDebug("Verifying screen location. Required: " + requiredLocation);
 
         for (int attempt = 1; attempt <= MAX_SCREEN_LOCATION_ATTEMPTS; attempt++) {
             ScreenState state = detectCurrentScreen();
@@ -123,14 +296,14 @@ public class NavigationHelper {
 
             // If we're lost, tap back and try again
             if (state == ScreenState.UNKNOWN) {
-                logger.warn("Home/World screen not found. Tapping back button (Attempt " +
+                logWarning("Home/World screen not found. Tapping back button (Attempt " +
                         attempt + "/" + MAX_SCREEN_LOCATION_ATTEMPTS + ")");
                 emuManager.tapBackButton(emulatorNumber);
                 sleep(300);
             }
         }
 
-        logger.error("Failed to find Home/World screen after " + MAX_SCREEN_LOCATION_ATTEMPTS + " attempts");
+        logError("Failed to find Home/World screen after " + MAX_SCREEN_LOCATION_ATTEMPTS + " attempts");
         throw new HomeNotFoundException("Home not found after " + MAX_SCREEN_LOCATION_ATTEMPTS + " attempts");
     }
 
@@ -188,13 +361,13 @@ public class NavigationHelper {
 
         // Navigate from WORLD to HOME
         if (requiredLocation == EnumStartLocation.HOME && currentState == ScreenState.WORLD) {
-            logger.info("Navigating from WORLD to HOME...");
+            logInfo("Navigating from WORLD to HOME...");
             return navigateToHome(attemptNumber);
         }
 
         // Navigate from HOME to WORLD
         if (requiredLocation == EnumStartLocation.WORLD && currentState == ScreenState.HOME) {
-            logger.info("Navigating from HOME to WORLD...");
+            logInfo("Navigating from HOME to WORLD...");
             return navigateToWorld(attemptNumber);
         }
 
@@ -219,7 +392,7 @@ public class NavigationHelper {
                 SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!world.isFound()) {
-            logger.warn("World button not found during HOME navigation");
+            logWarning("World button not found during HOME navigation");
             return false;
         }
 
@@ -232,11 +405,11 @@ public class NavigationHelper {
                 SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!home.isFound()) {
-            logger.warn("Failed to navigate to HOME on attempt " + attemptNumber + ", retrying...");
+            logWarning("Failed to navigate to HOME on attempt " + attemptNumber + ", retrying...");
             return false;
         }
 
-        logger.info("Successfully navigated to HOME");
+        logInfo("Successfully navigated to HOME");
         return true;
     }
 
@@ -252,7 +425,7 @@ public class NavigationHelper {
                 SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!home.isFound()) {
-            logger.warn("Home button not found during WORLD navigation");
+            logWarning("Home button not found during WORLD navigation");
             return false;
         }
 
@@ -265,11 +438,11 @@ public class NavigationHelper {
                 SearchConfigConstants.DEFAULT_SINGLE);
 
         if (!world.isFound()) {
-            logger.warn("Failed to navigate to WORLD on attempt " + attemptNumber + ", retrying...");
+            logWarning("Failed to navigate to WORLD on attempt " + attemptNumber + ", retrying...");
             return false;
         }
 
-        logger.info("Successfully navigated to WORLD");
+        logInfo("Successfully navigated to WORLD");
         return true;
     }
 
@@ -301,5 +474,44 @@ public class NavigationHelper {
      */
     public enum AllianceMenu {
         WAR, CHESTS, TERRITORY, SHOP, TECH, HELP, TRIUMPH
+    }
+
+    /**
+     * Enum representing event menu options.
+     */
+    public enum EventMenu {
+        HERO_MISSION,
+        MERCENARY,
+        ALLIANCE_CHAMPIONSHIP,
+        ALLIANCE_MOBILIZATION,
+        TUNDRA_TRUCK
+    }
+
+    // ========================================================================
+    // LOGGING METHODS
+    // ========================================================================
+
+    private void logInfo(String message) {
+        String prefixedMessage = profileName + " - " + message;
+        logger.info(prefixedMessage);
+        servLogs.appendLog(EnumTpMessageSeverity.INFO, HELPER_NAME, profileName, message);
+    }
+
+    private void logWarning(String message) {
+        String prefixedMessage = profileName + " - " + message;
+        logger.warn(prefixedMessage);
+        servLogs.appendLog(EnumTpMessageSeverity.WARNING, HELPER_NAME, profileName, message);
+    }
+
+    private void logError(String message) {
+        String prefixedMessage = profileName + " - " + message;
+        logger.error(prefixedMessage);
+        servLogs.appendLog(EnumTpMessageSeverity.ERROR, HELPER_NAME, profileName, message);
+    }
+
+    private void logDebug(String message) {
+        String prefixedMessage = profileName + " - " + message;
+        logger.debug(prefixedMessage);
+        servLogs.appendLog(EnumTpMessageSeverity.DEBUG, HELPER_NAME, profileName, message);
     }
 }
