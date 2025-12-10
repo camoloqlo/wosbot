@@ -142,7 +142,7 @@ public class PetAdventureChestTask extends DelayedTask {
 		logInfo("Starting pet adventure chest management");
 
 		// Validate stamina before proceeding
-		if (!staminaHelper.checkStaminaAndMarchesOrReschedule(
+		if (!staminaHelper.checkStaminaOrReschedule(
 				MIN_STAMINA_REQUIRED,
 				TARGET_STAMINA_FOR_REFRESH,
 				this::reschedule)) {
