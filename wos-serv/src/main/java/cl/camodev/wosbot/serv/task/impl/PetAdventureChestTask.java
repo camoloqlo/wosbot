@@ -229,6 +229,10 @@ public class PetAdventureChestTask extends DelayedTask {
 	 * if the share button is available.
 	 * 
 	 * <p>
+	 * Performs 2 search attempts to ensure all completed chests are claimed,
+	 * as new chests may become visible after claiming previous ones.
+	 * 
+	 * <p>
 	 * <b>Process per chest:</b>
 	 * <ol>
 	 * <li>Tap completed chest</li>
@@ -240,19 +244,22 @@ public class PetAdventureChestTask extends DelayedTask {
 	private void claimCompletedChests() {
 		logDebug("Searching for completed chests to claim");
 
-		List<DTOImageSearchResult> completedChests = templateSearchHelper.searchTemplates(
-				EnumTemplates.PETS_CHEST_COMPLETED,
-				SearchConfigConstants.MULTIPLE_RESULTS);
+		for (int i = 0; i < 2; i++) {
+			logDebug("Searching for completed chests. Attempt " + (i + 1) + ".");
+			List<DTOImageSearchResult> completedChests = templateSearchHelper.searchTemplates(
+					EnumTemplates.PETS_CHEST_COMPLETED,
+					SearchConfigConstants.MULTIPLE_RESULTS);
 
-		if (completedChests == null || completedChests.isEmpty()) {
-			logDebug("No completed chests found to claim");
-			return;
-		}
+			if (completedChests == null || completedChests.isEmpty()) {
+				logInfo("No completed chests found on attempt " + (i + 1) + ".");
+				continue;
+			}
 
-		logInfo("Found " + completedChests.size() + " completed chest(s) to claim");
+			logInfo("Found " + completedChests.size() + " completed chest(s). Claiming them now.");
 
-		for (DTOImageSearchResult chest : completedChests) {
-			claimSingleChest(chest);
+			for (DTOImageSearchResult chest : completedChests) {
+				claimSingleChest(chest);
+			}
 		}
 	}
 
