@@ -289,6 +289,37 @@ public class StaminaHelper {
     }
 
     /**
+     * Checks if the current stamina meets the minimum requirement, otherwise reschedules.
+     *
+     * @param minStaminaLevel Minimum stamina required to proceed
+     * @param refreshStaminaLevel Target stamina for rescheduling
+     * @param rescheduleCallback Callback to reschedule the task
+     * @return true if stamina is sufficient, false if rescheduled
+     */
+    public boolean checkStaminaOrReschedule(
+            int minStaminaLevel,
+            int refreshStaminaLevel,
+            RescheduleCallback rescheduleCallback) {
+
+        int currentStamina = getCurrentStamina();
+        logger.info("Current stamina: " + currentStamina);
+
+        if (currentStamina < minStaminaLevel) {
+            int regenMinutes = staminaRegenerationTime(currentStamina, refreshStaminaLevel);
+            LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(regenMinutes);
+
+            rescheduleCallback.reschedule(rescheduleTime);
+
+            logger.warn("Not enough stamina. (" + currentStamina + "/" + minStaminaLevel +
+                    "). Rescheduling to " + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Parses the travel time displayed on the deployment screen.
      * 
      * <p>Travel time is read via OCR from the march preview and converted

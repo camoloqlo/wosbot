@@ -3,6 +3,7 @@
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.controlsfx.control.*?>
 
 <GridPane hgap="20" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="500.0" prefWidth="720.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
     <padding>
@@ -102,7 +103,7 @@
                                                 <HBox alignment="CENTER_LEFT" spacing="10">
                                                     <children>
                                                         <Label style="-fx-text-fill: #e5e5e5;" text="Join Flag" minWidth="100.0" />
-                                                        <ComboBox fx:id="comboBoxJoinFlag" prefWidth="100.0" />
+                                                        <CheckComboBox fx:id="checkComboBoxJoinFlag" prefWidth="100.0" />
                                                     </children>
                                                     <padding>
                                                         <Insets left="20.0" />

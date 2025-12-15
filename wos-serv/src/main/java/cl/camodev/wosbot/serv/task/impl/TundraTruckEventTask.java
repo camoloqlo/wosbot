@@ -26,9 +26,6 @@ public class TundraTruckEventTask extends DelayedTask {
 
 	// ===================== CONSTANTS =====================
 	// UI Areas
-	private static final DTOArea CLOSE_POPUP = new DTOArea(
-			new DTOPoint(529, 27),
-			new DTOPoint(635, 63));
 	private static final DTOArea MY_TRUCKS_TAB = new DTOArea(
 			new DTOPoint(120, 250),
 			new DTOPoint(280, 270));
@@ -69,24 +66,13 @@ public class TundraTruckEventTask extends DelayedTask {
 			new DTOPoint(432, 852),
 			new DTOPoint(535, 875));
 
-	// Swipe navigation
-	private static final DTOArea SWIPE_LEFT = new DTOArea(
-			new DTOPoint(80, 120),
-			new DTOPoint(578, 130));
-	private static final DTOArea SWIPE_RIGHT = new DTOArea(
-			new DTOPoint(500, 128),
-			new DTOPoint(630, 143));
-
 	private static final DTOArea TIPS_POPUP_CHECKBOX = new DTOArea(
 			new DTOPoint(198, 699),
 			new DTOPoint(225, 726));
 
 	// Retry limits
 	private static final int MAX_NAVIGATION_ATTEMPTS = 2;
-	private static final int MAX_SWIPE_ATTEMPTS = 10;
 	private static final int MAX_REFRESH_ATTEMPTS = 10;
-	private static final int INITIAL_SWIPE_COUNT = 3;
-	private static final int POPUP_CLOSE_TAPS = 5;
 
 	// Configuration (loaded fresh each execution)
 	private boolean useGems;
@@ -251,46 +237,22 @@ public class TundraTruckEventTask extends DelayedTask {
 
 	/**
 	 * Navigate to Tundra Truck event section
+	 * 
+	 * <p>
+	 * Uses the generic NavigationHelper.navigateToEventMenu() method.
 	 */
 	private TundraNavigationResult navigateToTundraEvent() {
 		logInfo("Navigating to Tundra Truck event");
 
-		// Find and click Events button
-		DTOImageSearchResult eventsButton = templateSearchHelper.searchTemplate(
-				EnumTemplates.HOME_EVENTS_BUTTON,
-				SearchConfigConstants.DEFAULT_SINGLE);
-		if (!eventsButton.isFound()) {
-			logWarning("Events button not found");
+		boolean success = navigationHelper.navigateToEventMenu(
+				cl.camodev.wosbot.serv.task.helper.NavigationHelper.EventMenu.TUNDRA_TRUCK);
+
+		if (!success) {
+			logWarning("Failed to navigate to Tundra Truck event");
 			return TundraNavigationResult.FAILURE;
 		}
 
-		tapPoint(eventsButton.getPoint());
 		sleepTask(2000);
-
-		// Close any popups
-		tapRandomPoint(CLOSE_POPUP.topLeft(), CLOSE_POPUP.bottomRight(), POPUP_CLOSE_TAPS, 300);
-
-		// Search for Tundra Truck tab
-		DTOImageSearchResult truckTab = templateSearchHelper.searchTemplate(
-				EnumTemplates.TUNDRA_TRUCK_TAB,
-				SearchConfigConstants.DEFAULT_SINGLE);
-
-		if (truckTab.isFound()) {
-			return handleTruckTabFound(truckTab);
-		}
-
-		// Tab not immediately visible - try swiping
-		return searchWithSwipes();
-	}
-
-	/**
-	 * Handle when truck tab is found - check status and tap
-	 */
-	private TundraNavigationResult handleTruckTabFound(DTOImageSearchResult truckTab) {
-		tapPoint(truckTab.getPoint());
-		sleepTask(1000);
-
-		logInfo("Navigated to Tundra Truck event");
 
 		// Check if in countdown
 		String countdownText = stringHelper.execute(
@@ -312,37 +274,6 @@ public class TundraTruckEventTask extends DelayedTask {
 		}
 
 		return TundraNavigationResult.SUCCESS;
-	}
-
-	/**
-	 * Search for truck tab by swiping through event tabs
-	 */
-	private TundraNavigationResult searchWithSwipes() {
-		logInfo("Tundra Truck tab not immediately visible. Swiping to locate it.");
-
-		// Swipe completely left first
-		for (int i = 0; i < INITIAL_SWIPE_COUNT; i++) {
-			swipe(SWIPE_LEFT.topLeft(), SWIPE_LEFT.bottomRight());
-			sleepTask(200);
-		}
-
-		// Search while swiping right
-		for (int attempt = 0; attempt < MAX_SWIPE_ATTEMPTS; attempt++) {
-			DTOImageSearchResult truckTab = templateSearchHelper.searchTemplate(
-					EnumTemplates.TUNDRA_TRUCK_TAB,
-					SearchConfigConstants.DEFAULT_SINGLE);
-
-			if (truckTab.isFound()) {
-				return handleTruckTabFound(truckTab);
-			}
-
-			logDebug("Truck tab not found. Swiping right (attempt " + (attempt + 1) + "/" + MAX_SWIPE_ATTEMPTS + ")");
-			swipe(SWIPE_RIGHT.bottomRight(), SWIPE_RIGHT.topLeft());
-			sleepTask(200);
-		}
-
-		logWarning("Tundra Truck tab not found after swiping. Event may not be available.");
-		return TundraNavigationResult.FAILURE;
 	}
 
 	/**

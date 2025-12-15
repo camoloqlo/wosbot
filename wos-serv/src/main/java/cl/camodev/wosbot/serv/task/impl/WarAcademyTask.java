@@ -133,7 +133,7 @@ public class WarAcademyTask extends DelayedTask {
     private boolean navigateToWarAcademy() {
         logInfo("Navigating to War Academy.");
 
-        openLeftMenuCitySection(true);
+        marchHelper.openLeftMenuCitySection(true);
 
         // Swipe to bring Research Centers into view
         logDebug("Swiping to reveal Research Centers");

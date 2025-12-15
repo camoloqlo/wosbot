@@ -327,7 +327,7 @@ public class TrainingTask extends DelayedTask {
      * @return List of QueueInfo containing status for each configured queue
      */
     private List<QueueInfo> analyzeAllQueues() {
-        openLeftMenuCitySection(true);
+        marchHelper.openLeftMenuCitySection(true);
         List<QueueInfo> result = new ArrayList<>();
 
         emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
@@ -344,7 +344,7 @@ public class TrainingTask extends DelayedTask {
         }
 
         result = retryUnknownQueues(result, troopTypes);
-        closeLeftMenu();
+        marchHelper.closeLeftMenu();
         return result;
     }
 
@@ -374,7 +374,7 @@ public class TrainingTask extends DelayedTask {
 
             logInfo("Retry attempt " + attempt + "/" + MAX_QUEUE_STATUS_RETRIES);
 
-            openLeftMenuCitySection(true);
+            marchHelper.openLeftMenuCitySection(true);
             emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
 
             unknownIndices = retryUnknownQueuesOnce(initialResults, unknownIndices, troopTypes);
@@ -635,7 +635,7 @@ public class TrainingTask extends DelayedTask {
                     nextReadyTime.get().format(DATETIME_FORMATTER));
 
             reschedule(nextReadyTime.get());
-            closeLeftMenu();
+            marchHelper.closeLeftMenu();
             return true;
         } else {
             logWarning("All queues TRAINING but couldn't determine next ready time. Continuing.");
@@ -961,8 +961,8 @@ public class TrainingTask extends DelayedTask {
      * @return Completion time, or null if training failed
      */
     private LocalDateTime trainSingleQueue(QueueInfo queue) {
-        ensureCorrectScreenLocation(EnumStartLocation.HOME);
-        openLeftMenuCitySection(true);
+        navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.HOME);
+        marchHelper.openLeftMenuCitySection(true);
 
         promotionCompletionTime = null;
         isPromotionTraining = false;
@@ -1514,6 +1514,15 @@ public class TrainingTask extends DelayedTask {
             if (troop.isFound()) {
                 tapPoint(troop.getPoint());
                 sleepTask(500); // Wait for selection
+
+                DTOImageSearchResult lockedIndicator = templateSearchHelper.searchTemplate(
+                        TRAINING_TROOP_LOCKED,
+                        SearchConfigConstants.DEFAULT_SINGLE);
+                if (lockedIndicator.isFound()) {
+                    logInfo("Troop level locked: " + template.name() + ". Continuing search.");
+                    continue;
+                }
+
                 logInfo("Selected highest troop level: " + template.name());
                 return;
             } else {

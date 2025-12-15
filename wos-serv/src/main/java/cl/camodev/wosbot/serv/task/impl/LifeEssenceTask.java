@@ -163,7 +163,7 @@ public class LifeEssenceTask extends DelayedTask {
 		logInfo("Navigating to Life Essence menu");
 
 		// Open side menu
-		openLeftMenuCitySection(true);
+		marchHelper.openLeftMenuCitySection(true);
 
 		// Scroll down to reveal Life Essence menu
 		logDebug("Scrolling to reveal Life Essence menu");

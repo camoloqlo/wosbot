@@ -23,6 +23,9 @@ import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.control.ToggleGroup;
+import org.controlsfx.control.CheckComboBox;
+
+import java.util.stream.Collectors;
 
 public abstract class AbstractProfileController implements IProfileLoadListener, IProfileObserverInjectable {
 
@@ -30,6 +33,7 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 	protected final Map<TextField, EnumConfigurationKey> textFieldMappings = new HashMap<>();
 	protected final Map<RadioButton, EnumConfigurationKey> radioButtonMappings = new HashMap<>();
 	protected final Map<ComboBox<?>, EnumConfigurationKey> comboBoxMappings = new HashMap<>();
+	protected final Map<CheckComboBox<?>, EnumConfigurationKey> checkComboBoxMappings = new HashMap<>();
 	protected final Map<PriorityListView, EnumConfigurationKey> priorityListMappings = new HashMap<>();
 	protected final Map<PriorityListView, Class<? extends Enum<?>>> priorityListEnumClasses = new HashMap<>();
 	protected IProfileChangeObserver profileObserver;
@@ -53,6 +57,7 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 		textFieldMappings.forEach(this::setupTextFieldUpdateOnFocusOrEnter);
 		radioButtonMappings.forEach(this::setupRadioButtonListener);
 		comboBoxMappings.forEach(this::setupComboBoxListener);
+		checkComboBoxMappings.forEach(this::setupCheckComboBoxListener);
 		priorityListMappings.forEach(this::setupPriorityListListener);
 		priorityListEnumClasses.forEach(this::initializePriorityListFromEnum);
 	}
@@ -100,6 +105,18 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 				profileObserver.notifyProfileChange(configKey, newVal);
 			}
 		});
+	}
+
+	protected void setupCheckComboBoxListener(CheckComboBox<?> checkComboBox, EnumConfigurationKey configKey) {
+		checkComboBox.getCheckModel().getCheckedItems().addListener(
+			(javafx.collections.ListChangeListener.Change<?> change) -> {
+				if (!isLoadingProfile) {
+					String selectedValues = checkComboBox.getCheckModel().getCheckedItems().stream()
+						.map(String::valueOf)
+						.collect(Collectors.joining(","));
+					profileObserver.notifyProfileChange(configKey, selectedValues);
+				}
+			});
 	}
 
 	protected void setupPriorityListListener(PriorityListView priorityListView, EnumConfigurationKey configKey) {
@@ -190,6 +207,33 @@ public abstract class AbstractProfileController implements IProfileLoadListener,
 					@SuppressWarnings("unchecked")
 					ComboBox<Object> uncheckedComboBox = (ComboBox<Object>) comboBox;
 					uncheckedComboBox.setValue(value);
+				}
+			});
+
+			checkComboBoxMappings.forEach((checkComboBox, key) -> {
+				String value = profile.getConfiguration(key);
+				checkComboBox.getCheckModel().clearChecks();
+				
+				if (value != null && !value.trim().isEmpty()) {
+					String[] selectedValues = value.split(",");
+					for (String val : selectedValues) {
+						try {
+							@SuppressWarnings("unchecked")
+							CheckComboBox<Object> uncheckedCheckComboBox = (CheckComboBox<Object>) checkComboBox;
+							// Parse based on the type of items in the CheckComboBox
+							if (!checkComboBox.getItems().isEmpty()) {
+								Object firstItem = checkComboBox.getItems().get(0);
+								if (firstItem instanceof Integer) {
+									Integer intVal = Integer.parseInt(val.trim());
+									uncheckedCheckComboBox.getCheckModel().check(intVal);
+								} else {
+									uncheckedCheckComboBox.getCheckModel().check(val.trim());
+								}
+							}
+						} catch (NumberFormatException e) {
+							// Skip invalid values
+						}
+					}
 				}
 			});
 

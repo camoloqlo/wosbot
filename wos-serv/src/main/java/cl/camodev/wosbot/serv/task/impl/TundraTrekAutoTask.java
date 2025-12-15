@@ -93,7 +93,7 @@ public class TundraTrekAutoTask extends DelayedTask {
         logInfo("Navigating to Tundra menu");
 
         // Open side menu
-        openLeftMenuCitySection(true);
+        marchHelper.openLeftMenuCitySection(true);
 
         // Scroll to bring Tundra menu into view
         swipe(SCROLL_START_POINT, SCROLL_END_POINT);

@@ -137,6 +137,7 @@ public enum EnumTemplates {
     RALLY_HOLD_BUTTON("/templates/rally/holdButton.png"),
 
 	TRAINING_TROOP_PROMOTE("/templates/training/troopPromote.png"),
+    TRAINING_TROOP_LOCKED("/templates/training/troopLocked.png"),
 
     MARCHES_AREA_RECALL_BUTTON("/templates/marches/recallButton.png"),
     MARCHES_AREA_SPEEDUP_BUTTON("/templates/marches/speedupButton.png"),

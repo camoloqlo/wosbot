@@ -41,7 +41,7 @@ public class ExpertSkillTrainingTask extends DelayedTask {
         }
 
         // Navigate to experts screen
-        openLeftMenuCitySection(true);
+        marchHelper.openLeftMenuCitySection(true);
 
         int maxScrollAttempts = 5;
         DTOImageSearchResult trainingExpertButton = null;

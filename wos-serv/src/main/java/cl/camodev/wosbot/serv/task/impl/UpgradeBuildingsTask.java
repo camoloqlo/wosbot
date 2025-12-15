@@ -88,7 +88,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
                 }
             }
 
-            ensureCorrectScreenLocation(EnumStartLocation.HOME);
+            navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.HOME);
 
             logInfo("Reanalyzing queues after processing idle queues...");
 
@@ -128,7 +128,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
 
             // reschedule based on busy queues (now including troop training times)
             rescheduleBasedOnBusyQueues(updatedResults);
-            closeLeftMenu();
+            marchHelper.closeLeftMenu();
         } else {
             // No idle queues, reschedule based on shortest busy queue
             rescheduleBasedOnBusyQueues(queueResults);

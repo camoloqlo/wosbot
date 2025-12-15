@@ -17,7 +17,7 @@ import cl.camodev.wosbot.serv.impl.StaminaService;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
-import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
+import cl.camodev.wosbot.serv.task.helper.NavigationHelper.EventMenu;
 import java.awt.Color;
 
 import java.time.LocalDateTime;
@@ -61,7 +61,7 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // Verify if there's enough stamina to hunt, if not, reschedule the task
-        if (!checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel))
+        if (!staminaHelper.checkStaminaAndMarchesOrReschedule(minStaminaLevel, refreshStaminaLevel, this::reschedule))
             return;
 
         int attempt = 0;
@@ -108,7 +108,7 @@ public class MercenaryEventTask extends DelayedTask {
 
             if (sameLevelAsLastTime) {
                 attackAttempts++;
-                addStamina(lastStaminaSpent);
+                staminaHelper.addStamina(lastStaminaSpent);
                 logInfo("Mercenary level is the same as last time, indicating a possible attack loss. Skipping flag selection to use strongest march.");
             } else {
                 attackAttempts = 0;
@@ -238,63 +238,17 @@ public class MercenaryEventTask extends DelayedTask {
     }
 
     private boolean navigateToEventScreen() {
+        logInfo("Navigating to Mercenary event...");
 
-        // Search for the events button
-        DTOImageSearchResult eventsResult = templateSearchHelper.searchTemplate(
-                EnumTemplates.HOME_EVENTS_BUTTON,
-                SearchConfigConstants.SINGLE_WITH_RETRIES);
-        if (!eventsResult.isFound()) {
-            logWarning("The 'Events' button was not found.");
+        boolean success = navigationHelper.navigateToEventMenu(EventMenu.MERCENARY);
+
+        if (!success) {
+            logWarning("Failed to navigate to Mercenary event");
             return false;
         }
 
-        tapPoint(eventsResult.getPoint());
         sleepTask(2000);
-
-        // Close any windows that may be open
-        tapRandomPoint(new DTOPoint(529, 27), new DTOPoint(635, 63), 5, 300);
-
-        // Search for the mercenary within events
-        DTOImageSearchResult result = templateSearchHelper.searchTemplate(
-                EnumTemplates.MERCENARY_EVENT_TAB,
-                SearchConfigConstants.SINGLE_WITH_RETRIES);
-
-        if (result.isFound()) {
-            tapPoint(result.getPoint());
-            sleepTask(1000);
-            logInfo("Successfully navigated to the Mercenary event.");
-            return true;
-        }
-
-        // Swipe completely to the left
-        logInfo("Mercenary event not immediately visible. Swiping left to locate it.");
-        for (int i = 0; i < 3; i++) {
-            swipe(new DTOPoint(80, 120), new DTOPoint(578, 130));
-            sleepTask(200);
-        }
-
-        int attempts = 0;
-        while (attempts < 10) {
-            result = templateSearchHelper.searchTemplate(
-                    EnumTemplates.MERCENARY_EVENT_TAB,
-                    SearchConfigConstants.DEFAULT_SINGLE);
-
-            if (result.isFound()) {
-                tapPoint(result.getPoint());
-                sleepTask(1000);
-                logInfo("Successfully navigated to the Mercenary event.");
-                return true;
-            }
-
-            logInfo("Mercenary event not found. Swiping right and retrying...");
-            swipe(new DTOPoint(630, 143), new DTOPoint(500, 128));
-            sleepTask(200);
-            attempts++;
-        }
-
-        logWarning("Mercenary event not found after multiple attempts. Resheduling task to next reset.");
-        reschedule(UtilTime.getGameReset());
-        return false;
+        return true;
     }
 
     /**
@@ -401,10 +355,10 @@ public class MercenaryEventTask extends DelayedTask {
         }
 
         // Parse travel time
-        long travelTimeSeconds = parseTravelTime();
+        long travelTimeSeconds = staminaHelper.parseTravelTime();
 
         // Parse stamina cost
-        Integer spentStamina = getSpentStamina();
+        Integer spentStamina = staminaHelper.getSpentStamina();
         lastStaminaSpent = spentStamina;
 
         // Validate travel time before deploying
@@ -414,7 +368,7 @@ public class MercenaryEventTask extends DelayedTask {
             sleepTask(2000);
 
             // Update stamina with fallback
-            subtractStamina(spentStamina, rally);
+            staminaHelper.subtractStamina(spentStamina, rally);
 
             // Reschedule with conservative estimate
             LocalDateTime fallbackTime = LocalDateTime.now().plusMinutes(10);
@@ -450,7 +404,7 @@ public class MercenaryEventTask extends DelayedTask {
         reschedule(rescheduleTime);
 
         // Update stamina
-        subtractStamina(spentStamina, rally);
+        staminaHelper.subtractStamina(spentStamina, rally);
 
         logInfo("Mercenary march sent. Task will run again at " +
                 rescheduleTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) +

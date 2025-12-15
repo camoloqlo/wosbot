@@ -69,7 +69,7 @@ public class TundraTrekTask extends DelayedTask {
         logInfo("Navigating to Tundra Trek Supplies...");
 
         // Open left menu on city section
-        openLeftMenuCitySection(true);
+        marchHelper.openLeftMenuCitySection(true);
 
         for (int i = 0; i < 5; i++) { // Try up to 5 times (swipes)
             DTOImageSearchResult trekSupplies = templateSearchHelper.searchTemplate(

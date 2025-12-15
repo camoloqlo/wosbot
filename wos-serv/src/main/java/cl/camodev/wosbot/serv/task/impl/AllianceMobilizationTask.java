@@ -150,10 +150,6 @@ public class AllianceMobilizationTask extends DelayedTask {
         static final DTOPoint LEFT_TIMER_BOTTOM_RIGHT = new DTOPoint(280, 743);
         static final DTOPoint RIGHT_TIMER_TOP_LEFT = new DTOPoint(486, 705);
         static final DTOPoint RIGHT_TIMER_BOTTOM_RIGHT = new DTOPoint(595, 743);
-
-        // Navigation - Tab Swipe (160px steps)
-        static final DTOPoint SWIPE_SMALL_RIGHT = new DTOPoint(480, 158);
-        static final DTOPoint SWIPE_SMALL_LEFT = new DTOPoint(320, 158);
     }
 
     // ========================================================================
@@ -193,9 +189,6 @@ public class AllianceMobilizationTask extends DelayedTask {
      */
     private static final class Limits {
         static final int MAX_NAVIGATION_ATTEMPTS = 3;
-        static final int NUM_TAB_SWIPES_RIGHT = 3;
-        static final int NUM_TAB_SWIPES_LEFT = 2;
-        static final int MAX_TAB_SEARCH_SWIPES = NUM_TAB_SWIPES_RIGHT + NUM_TAB_SWIPES_LEFT;
         static final int MAX_TEMPLATE_SEARCH_RESULTS_TASK_TYPE = 5;
         static final int MAX_TEMPLATE_SEARCH_RESULTS_120 = 2;
         static final int MONUMENT_BACK_CLICKS_COUNT = 2;
@@ -230,7 +223,6 @@ public class AllianceMobilizationTask extends DelayedTask {
         static final int COMPLETED = 85;
         static final int FREE_MISSION = 90;
         static final int MONUMENTS = 94;
-        static final int NAVIGATION = 90;
     }
 
     // ========================================================================
@@ -514,7 +506,8 @@ public class AllianceMobilizationTask extends DelayedTask {
     private void handleNavigationFailure() {
         LocalDateTime nextMonday = UtilTime.getNextMondayUtc();
         logInfo("Failed to navigate after " + Limits.MAX_NAVIGATION_ATTEMPTS +
-                " attempts. Event may not be active. Retrying on next Monday at " + nextMonday.format(DATETIME_FORMATTER) + ".");
+                " attempts. Event may not be active. Retrying on next Monday at "
+                + nextMonday.format(DATETIME_FORMATTER) + ".");
         reschedule(nextMonday);
     }
 
@@ -540,7 +533,8 @@ public class AllianceMobilizationTask extends DelayedTask {
 
             if (attemptStatus.remaining() <= 0) {
                 LocalDateTime nextReset = UtilTime.getGameReset();
-                logInfo("No attempts remaining. Rescheduling for next UTC reset at " + nextReset.format(DATETIME_FORMATTER) + ".");
+                logInfo("No attempts remaining. Rescheduling for next UTC reset at "
+                        + nextReset.format(DATETIME_FORMATTER) + ".");
                 reschedule(nextReset);
                 return false;
             }
@@ -605,7 +599,7 @@ public class AllianceMobilizationTask extends DelayedTask {
      */
     private void returnToHomeScreen() {
         try {
-            ensureCorrectScreenLocation(EnumStartLocation.HOME);
+            navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.HOME);
         } catch (Exception e) {
             logWarning("Failed to return to home screen: " + e.getMessage());
         }
@@ -615,190 +609,23 @@ public class AllianceMobilizationTask extends DelayedTask {
      * Navigates to the Alliance Mobilization event screen.
      * 
      * <p>
-     * <b>Navigation Steps:</b>
-     * <ol>
-     * <li>Click Events button on home screen</li>
-     * <li>Search for Alliance Mobilization tab (selected or unselected)</li>
-     * <li>If not found, swipe through tabs to find it</li>
-     * <li>Click tab if found</li>
-     * </ol>
+     * Uses the generic NavigationHelper.navigateToEventMenu() method.
      * 
      * @return true if successfully navigated to event screen, false otherwise
      */
     private boolean navigateToAllianceMobilization() {
         logInfo("Navigating to Alliance Mobilization...");
 
-        if (!clickEventsButton()) {
+        boolean success = navigationHelper.navigateToEventMenu(
+                cl.camodev.wosbot.serv.task.helper.NavigationHelper.EventMenu.ALLIANCE_MOBILIZATION);
+
+        if (!success) {
+            logWarning("Failed to navigate to Alliance Mobilization event");
             return false;
         }
 
-        return findAndSelectMobilizationTab();
-    }
-
-    /**
-     * Clicks the Events button on home screen.
-     * 
-     * <p>
-     * The Events button opens the events carousel where Alliance
-     * Mobilization and other timed events are displayed.
-     * 
-     * @return true if button found and clicked successfully, false otherwise
-     */
-    private boolean clickEventsButton() {
-        logDebug("Searching for Events button on home screen...");
-
-        DTOImageSearchResult eventsButton = templateSearchHelper.searchTemplate(
-                EnumTemplates.HOME_EVENTS_BUTTON,
-                SearchConfig.builder()
-                        .withThreshold(Thresholds.NAVIGATION)
-                        .withMaxAttempts(1)
-                        .build());
-
-        if (!eventsButton.isFound()) {
-            logWarning("Events button not found on home screen.");
-            return false;
-        }
-
-        logDebug("Events button found at: " + eventsButton.getPoint());
-        tapPoint(eventsButton.getPoint());
-        sleepTask(2000); // Wait for Events menu animation to complete
-
+        sleepTask(2000);
         return true;
-    }
-
-    /**
-     * Finds and selects the Alliance Mobilization tab.
-     * 
-     * <p>
-     * <b>Search Strategy:</b>
-     * <ol>
-     * <li>Check if tab is already selected (green/active state)</li>
-     * <li>Check if tab is visible but unselected (gray/inactive state)</li>
-     * <li>If not visible, swipe through tabs to find it</li>
-     * </ol>
-     * 
-     * <p>
-     * The tab has two visual states: selected (actively displayed event)
-     * and unselected (available but not currently shown). We need to detect
-     * both to determine whether to click or if we're already there.
-     * 
-     * @return true if tab found and selected, false if not found after all searches
-     */
-    private boolean findAndSelectMobilizationTab() {
-        logDebug("Searching for Alliance Mobilization tabs...");
-
-        DTOImageSearchResult selectedTab = searchForMobilizationTab(true);
-        DTOImageSearchResult unselectedTab = searchForMobilizationTab(false);
-
-        logDebug("Selected tab found: " + selectedTab.isFound());
-        logDebug("Unselected tab found: " + unselectedTab.isFound());
-
-        if (selectedTab.isFound()) {
-            logInfo("Alliance Mobilization tab is already selected at: " + selectedTab.getPoint());
-            return true;
-        }
-
-        if (unselectedTab.isFound()) {
-            logInfo("Found unselected Alliance Mobilization tab at: " + unselectedTab.getPoint() + ", clicking it.");
-            tapPoint(unselectedTab.getPoint());
-            sleepTask(2000); // Wait for tab to become active and content to load
-            return true;
-        }
-
-        return searchTabsWithSwipe();
-    }
-
-    /**
-     * Searches for Alliance Mobilization tab in specific state (selected or
-     * unselected).
-     * 
-     * @param isSelected true to search for selected (active) tab, false for
-     *                   unselected (inactive)
-     * @return search result for the appropriate tab template
-     */
-    private DTOImageSearchResult searchForMobilizationTab(boolean isSelected) {
-        EnumTemplates template = isSelected
-                ? EnumTemplates.ALLIANCE_MOBILIZATION_TAB
-                : EnumTemplates.ALLIANCE_MOBILIZATION_UNSELECTED_TAB;
-
-        return templateSearchHelper.searchTemplate(
-                template,
-                SearchConfig.builder()
-                        .withThreshold(Thresholds.NAVIGATION)
-                        .withMaxAttempts(1)
-                        .build());
-    }
-
-    /**
-     * Searches for Alliance Mobilization tab by swiping through event tabs.
-     * 
-     * <p>
-     * <b>Swipe Strategy:</b>
-     * <ul>
-     * <li>3 swipes right (160px steps) - moves through tabs to the right</li>
-     * <li>2 swipes left (160px steps back) - returns partway to cover missed
-     * tabs</li>
-     * <li>Search after each swipe for immediate detection</li>
-     * </ul>
-     * 
-     * <p>
-     * This bi-directional swipe pattern covers most of the tab carousel
-     * without excessive swiping. The 160px step size moves exactly one tab
-     * position per swipe.
-     * 
-     * @return true if tab found during swipe sequence, false after all swipes
-     *         exhausted
-     */
-    private boolean searchTabsWithSwipe() {
-        logInfo("Alliance Mobilization tabs not found, swiping to search for them...");
-
-        for (int i = 0; i < Limits.MAX_TAB_SEARCH_SWIPES; i++) {
-            logDebug("Tab search attempt " + (i + 1) + "/" + Limits.MAX_TAB_SEARCH_SWIPES);
-
-            performTabSwipe(i);
-            sleepTask(500); // Wait for swipe animation to complete
-
-            DTOImageSearchResult selectedTab = searchForMobilizationTab(true);
-            DTOImageSearchResult unselectedTab = searchForMobilizationTab(false);
-
-            if (selectedTab.isFound()) {
-                logInfo("Found selected Alliance Mobilization tab after swipe " + (i + 1) + " at: " +
-                        selectedTab.getPoint());
-                return true;
-            }
-
-            if (unselectedTab.isFound()) {
-                logInfo("Found unselected Alliance Mobilization tab after swipe " + (i + 1) + " at: " +
-                        unselectedTab.getPoint());
-                tapPoint(unselectedTab.getPoint());
-                sleepTask(2000); // Wait for tab selection and content load
-                return true;
-            }
-        }
-
-        logWarning("Alliance Mobilization tabs not found after " + Limits.MAX_TAB_SEARCH_SWIPES +
-                " swipes. Event may not be active.");
-        return false;
-    }
-
-    /**
-     * Performs a single tab swipe based on swipe index.
-     * 
-     * <p>
-     * First 3 swipes go right, next 2 go left.
-     * This creates a search pattern that covers the carousel efficiently.
-     * 
-     * @param swipeIndex the current swipe index (0-based)
-     */
-    private void performTabSwipe(int swipeIndex) {
-        if (swipeIndex < Limits.NUM_TAB_SWIPES_RIGHT) {
-            logDebug("Swiping right (step " + (swipeIndex + 1) + "/" + Limits.NUM_TAB_SWIPES_RIGHT + ")...");
-            swipe(Coords.SWIPE_SMALL_LEFT, Coords.SWIPE_SMALL_RIGHT);
-        } else {
-            int leftStep = swipeIndex - Limits.NUM_TAB_SWIPES_RIGHT + 1;
-            logDebug("Swiping left (step " + leftStep + "/" + Limits.NUM_TAB_SWIPES_LEFT + ")...");
-            swipe(Coords.SWIPE_SMALL_RIGHT, Coords.SWIPE_SMALL_LEFT);
-        }
     }
 
     // ========================================================================
@@ -1040,7 +867,8 @@ public class AllianceMobilizationTask extends DelayedTask {
         }
 
         // Check if no missions found for 3 consecutive runs
-        // A mission is considered "found" if it exists and is detected, whether running or not
+        // A mission is considered "found" if it exists and is detected, whether running
+        // or not
         if (!anyMissionFound) {
             consecutiveNoMissionsCount++;
             logInfo("No missions detected. Consecutive count: " + consecutiveNoMissionsCount + "/3");
@@ -1271,7 +1099,8 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         if (isTaskAlreadyRunning(result200.getPoint())) {
             logInfo("Task at 200% is already running - skipping this one");
-            return new TaskProcessingResult(false, currentShortestCooldown, true, true); // Mission found but running (only running mission)
+            return new TaskProcessingResult(false, currentShortestCooldown, true, true); // Mission found but running
+                                                                                         // (only running mission)
         }
 
         return processIndividualTask(
@@ -1347,11 +1176,17 @@ public class AllianceMobilizationTask extends DelayedTask {
             anyMissionFound = anyMissionFound || result.missionFound;
 
             if (result.shouldStopProcessing) {
-                return new TaskProcessingResult(result.shouldStopProcessing, result.shortestCooldown, true, false); // Mission was found, not only running
+                return new TaskProcessingResult(result.shouldStopProcessing, result.shortestCooldown, true, false); // Mission
+                                                                                                                    // was
+                                                                                                                    // found,
+                                                                                                                    // not
+                                                                                                                    // only
+                                                                                                                    // running
             }
         }
 
-        // onlyRunningMission = true only if we found missions but all are running (no available ones)
+        // onlyRunningMission = true only if we found missions but all are running (no
+        // available ones)
         boolean onlyRunningMission = anyMissionFound && !anyAvailableMissionFound;
         return new TaskProcessingResult(false, shortestCooldown, anyMissionFound, onlyRunningMission);
     }
@@ -1396,14 +1231,16 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         if (detectedPoints < 0) {
             logWarning("Could not read points for " + bonusPercentage + " task - skipping");
-            return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission was found, just OCR failed
+            return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission was found, just OCR
+                                                                                          // failed
         }
 
         EnumTemplates taskType = detectTaskTypeNearBonus(bonusLocation);
 
         if (taskType == null) {
             logInfo("Task type not detected at " + bonusLocation);
-            return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission was found, just type detection failed
+            return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission was found, just
+                                                                                          // type detection failed
         }
 
         logInfo("Task type detected: " + taskType.name());
@@ -1520,7 +1357,8 @@ public class AllianceMobilizationTask extends DelayedTask {
             logInfo("Waiting 1h (task good but another task running)");
             LocalDateTime nextRun = LocalDateTime.now().plusHours(Delays.RESCHEDULE_WAIT_HOURS);
             reschedule(nextRun);
-            return new TaskProcessingResult(true, 0, true, false); // Stop processing, reschedule already set, mission found
+            return new TaskProcessingResult(true, 0, true, false); // Stop processing, reschedule already set, mission
+                                                                   // found
         }
 
         // Decision 5: Good task and auto-accept enabled
@@ -1532,7 +1370,8 @@ public class AllianceMobilizationTask extends DelayedTask {
 
         // Decision 6: Good task but auto-accept disabled (user will accept manually)
         logInfo("Skipping (auto-accept disabled - user will accept manually)");
-        return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission found but awaiting manual acceptance
+        return new TaskProcessingResult(false, currentShortestCooldown, true, false); // Mission found but awaiting
+                                                                                      // manual acceptance
     }
 
     // ========================================================================
@@ -2328,10 +2167,13 @@ public class AllianceMobilizationTask extends DelayedTask {
      * @param shouldStopProcessing true if processing should stop (reschedule
      *                             already set)
      * @param shortestCooldown     shortest cooldown in seconds from processed tasks
-     * @param missionFound         true if any mission was detected (running or available)
-     * @param onlyRunningMission   true if only a running mission was found (no available missions)
+     * @param missionFound         true if any mission was detected (running or
+     *                             available)
+     * @param onlyRunningMission   true if only a running mission was found (no
+     *                             available missions)
      */
-    private record TaskProcessingResult(boolean shouldStopProcessing, int shortestCooldown, boolean missionFound, boolean onlyRunningMission) {
+    private record TaskProcessingResult(boolean shouldStopProcessing, int shortestCooldown, boolean missionFound,
+            boolean onlyRunningMission) {
     }
 
     /**
