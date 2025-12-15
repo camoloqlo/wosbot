@@ -123,7 +123,7 @@ public class NavigationHelper {
      * @return true if navigation was successful, false otherwise
      */
     public boolean navigateToEventMenu(EventMenu event) {
-        logDebug("Navigating to event: " + event.name());
+        logInfo("Navigating to event: " + event.name());
 
         // Step 1: Open Events menu
         if (!openEventsMenu()) {
@@ -161,7 +161,7 @@ public class NavigationHelper {
         emuManager.tapAtPoint(emulatorNumber, eventTab.getPoint());
         sleep(1000);
 
-        logInfo("Successfully navigated to event: " + event.name());
+        logInfo("Navigated to " + event.name());
         return true;
     }
 
@@ -257,7 +257,7 @@ public class NavigationHelper {
             sleep(300);
         }
 
-        logWarning("Event tab not found after " + MAX_EVENT_SWIPE_ATTEMPTS + " swipe attempts");
+        logDebug("Event tab not found after " + MAX_EVENT_SWIPE_ATTEMPTS + " swipe attempts");
         return result; // Return not found result
     }
 
@@ -296,14 +296,14 @@ public class NavigationHelper {
 
             // If we're lost, tap back and try again
             if (state == ScreenState.UNKNOWN) {
-                logWarning("Home/World screen not found. Tapping back button (Attempt " +
+                logDebug("Home/World screen not found. Tapping back button (Attempt " +
                         attempt + "/" + MAX_SCREEN_LOCATION_ATTEMPTS + ")");
                 emuManager.tapBackButton(emulatorNumber);
                 sleep(300);
             }
         }
 
-        logError("Failed to find Home/World screen after " + MAX_SCREEN_LOCATION_ATTEMPTS + " attempts");
+        logDebug("Failed to find Home/World screen after " + MAX_SCREEN_LOCATION_ATTEMPTS + " attempts");
         throw new HomeNotFoundException("Home not found after " + MAX_SCREEN_LOCATION_ATTEMPTS + " attempts");
     }
 
@@ -361,13 +361,13 @@ public class NavigationHelper {
 
         // Navigate from WORLD to HOME
         if (requiredLocation == EnumStartLocation.HOME && currentState == ScreenState.WORLD) {
-            logInfo("Navigating from WORLD to HOME...");
+            logDebug("Navigating from WORLD to HOME...");
             return navigateToHome(attemptNumber);
         }
 
         // Navigate from HOME to WORLD
         if (requiredLocation == EnumStartLocation.WORLD && currentState == ScreenState.HOME) {
-            logInfo("Navigating from HOME to WORLD...");
+            logDebug("Navigating from HOME to WORLD...");
             return navigateToWorld(attemptNumber);
         }
 
@@ -409,7 +409,7 @@ public class NavigationHelper {
             return false;
         }
 
-        logInfo("Successfully navigated to HOME");
+        logDebug("Successfully navigated to HOME");
         return true;
     }
 
@@ -442,7 +442,7 @@ public class NavigationHelper {
             return false;
         }
 
-        logInfo("Successfully navigated to WORLD");
+        logDebug("Successfully navigated to WORLD");
         return true;
     }
 

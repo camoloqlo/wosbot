@@ -1,12 +1,14 @@
 package cl.camodev.wosbot.serv.task.helper;
 
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
+import cl.camodev.wosbot.console.enumerable.EnumTpMessageSeverity;
 import cl.camodev.wosbot.emulator.EmulatorManager;
 import cl.camodev.wosbot.logging.ProfileLogger;
 import cl.camodev.wosbot.ot.DTOArea;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOPoint;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.serv.impl.ServLogs;
 import java.util.List;
 
 /**
@@ -28,6 +30,9 @@ public class TemplateSearchHelper {
     private final EmulatorManager emuManager;
     private final String emulatorNumber;
     private final ProfileLogger logger;
+    private final String profileName;
+    private final ServLogs servLogs;
+    private static final String HELPER_NAME = "TemplateSearchHelper";
 
     /**
      * Constructs a new TemplateSearchHelper.
@@ -40,6 +45,8 @@ public class TemplateSearchHelper {
         this.emuManager = emuManager;
         this.emulatorNumber = emulatorNumber;
         this.logger = new ProfileLogger(TemplateSearchHelper.class, profile);
+        this.profileName = profile.getName();
+        this.servLogs = ServLogs.getServices();
     }
 
     /**
@@ -52,8 +59,6 @@ public class TemplateSearchHelper {
      * @return A DTOImageSearchResult object if found, null otherwise
      */
     public DTOImageSearchResult searchTemplate(EnumTemplates template, SearchConfig config) {
-        logger.debug("Starting single template search for " + template.name() + " (threshold: " + config.getThreshold() + "%, max attempts: " + config.getMaxAttempts() + ")");
-        
         DTOImageSearchResult result = null;
         int attempts = 0;
 
@@ -64,18 +69,17 @@ public class TemplateSearchHelper {
 
             // If template found, return immediately
             if (result != null && result.isFound()) {
-                logger.info("Template " + template.name() + " FOUND at attempt " + attempts + " at position " + result.getPoint());
+                logDebug("Template " + template.name() + " found at attempt " + attempts);
                 return result;
             }
 
             // If not the last attempt, wait for the delay
             if (attempts < config.getMaxAttempts()) {
-                logger.debug("Template " + template.name() + " not found on attempt " + attempts + ", retrying in " + config.getDelayBetweenAttempts() + "ms...");
                 sleep(config.getDelayBetweenAttempts());
             }
         }
 
-        logger.warn("Template " + template.name() + " NOT FOUND after " + attempts + " attempts");
+        logWarning("Template " + template.name() + " not found after " + attempts + " attempts");
         return result;
     }
 
@@ -91,8 +95,6 @@ public class TemplateSearchHelper {
      * @return A DTOImageSearchResult object if found, null otherwise
      */
     public DTOImageSearchResult searchTemplateGrayscale(EnumTemplates template, SearchConfig config) {
-        logger.debug("Starting grayscale single template search for " + template.name() + " (threshold: " + config.getThreshold() + "%, max attempts: " + config.getMaxAttempts() + ")");
-        
         DTOImageSearchResult result = null;
         int attempts = 0;
 
@@ -103,18 +105,19 @@ public class TemplateSearchHelper {
 
             // If template found, return immediately
             if (result != null && result.isFound()) {
-                logger.info("Grayscale template " + template.name() + " FOUND at attempt " + attempts + " at position " + result.getPoint());
+                logDebug("Grayscale template " + template.name() + " found at attempt " + attempts);
                 return result;
             }
 
             // If not the last attempt, wait for the delay
             if (attempts < config.getMaxAttempts()) {
-                logger.debug("Grayscale template " + template.name() + " not found on attempt " + attempts + ", retrying in " + config.getDelayBetweenAttempts() + "ms...");
+                logDebug("Grayscale template " + template.name() + " not found on attempt " + attempts
+                        + ", retrying in " + config.getDelayBetweenAttempts() + "ms...");
                 sleep(config.getDelayBetweenAttempts());
             }
         }
 
-        logger.warn("Grayscale template " + template.name() + " NOT FOUND after " + attempts + " attempts");
+        logWarning("Grayscale template " + template.name() + " not found after " + attempts + " attempts");
         return result;
     }
 
@@ -130,8 +133,6 @@ public class TemplateSearchHelper {
      *         if none found after all attempts
      */
     public List<DTOImageSearchResult> searchTemplates(EnumTemplates template, SearchConfig config) {
-        logger.debug("Starting multiple template search for " + template.name() + " (threshold: " + config.getThreshold() + "%, max results: " + config.getMaxResults() + ", max attempts: " + config.getMaxAttempts() + ")");
-        
         List<DTOImageSearchResult> results = null;
         int attempts = 0;
 
@@ -142,18 +143,19 @@ public class TemplateSearchHelper {
 
             // If at least one result found, return immediately
             if (results != null && !results.isEmpty()) {
-                logger.info("Multiple template " + template.name() + " FOUND " + results.size() + " matches at attempt " + attempts);
+                logDebug("Multiple template " + template.name() + " found: " + results.size() + " matches");
                 return results;
             }
 
             // If not the last attempt, wait for the delay
             if (attempts < config.getMaxAttempts()) {
-                logger.debug("Multiple template " + template.name() + " not found on attempt " + attempts + ", retrying in " + config.getDelayBetweenAttempts() + "ms...");
+                logDebug("Multiple template " + template.name() + " not found on attempt " + attempts + ", retrying in "
+                        + config.getDelayBetweenAttempts() + "ms...");
                 sleep(config.getDelayBetweenAttempts());
             }
         }
 
-        logger.warn("Multiple template " + template.name() + " NOT FOUND after " + attempts + " attempts");
+        logWarning("Multiple template " + template.name() + " not found after " + attempts + " attempts");
         return results;
     }
 
@@ -171,8 +173,6 @@ public class TemplateSearchHelper {
      *         if none found after all attempts
      */
     public List<DTOImageSearchResult> searchTemplatesGrayscale(EnumTemplates template, SearchConfig config) {
-        logger.debug("Starting grayscale multiple template search for " + template.name() + " (threshold: " + config.getThreshold() + "%, max results: " + config.getMaxResults() + ", max attempts: " + config.getMaxAttempts() + ")");
-        
         List<DTOImageSearchResult> results = null;
         int attempts = 0;
 
@@ -183,18 +183,19 @@ public class TemplateSearchHelper {
 
             // If at least one result found, return immediately
             if (results != null && !results.isEmpty()) {
-                logger.info("Grayscale multiple template " + template.name() + " FOUND " + results.size() + " matches at attempt " + attempts);
+                logDebug("Grayscale multiple template " + template.name() + " found: " + results.size() + " matches");
                 return results;
             }
 
             // If not the last attempt, wait for the delay
             if (attempts < config.getMaxAttempts()) {
-                logger.debug("Grayscale multiple template " + template.name() + " not found on attempt " + attempts + ", retrying in " + config.getDelayBetweenAttempts() + "ms...");
+                logDebug("Grayscale multiple template " + template.name() + " not found on attempt " + attempts
+                        + ", retrying in " + config.getDelayBetweenAttempts() + "ms...");
                 sleep(config.getDelayBetweenAttempts());
             }
         }
 
-        logger.warn("Grayscale multiple template " + template.name() + " NOT FOUND after " + attempts + " attempts");
+        logWarning("Grayscale multiple template " + template.name() + " not found after " + attempts + " attempts");
         return results;
     }
 
@@ -209,7 +210,7 @@ public class TemplateSearchHelper {
      * @return A DTOImageSearchResult with the search result
      */
     private DTOImageSearchResult executeSearch(String emulatorNumber, EnumTemplates template, SearchConfig config) {
-        
+
         DTOImageSearchResult result;
         if (config.hasArea()) {
             result = emuManager.searchTemplate(emulatorNumber, template,
@@ -220,12 +221,7 @@ public class TemplateSearchHelper {
         } else {
             result = emuManager.searchTemplate(emulatorNumber, template, config.getThreshold());
         }
-        
-        if (result != null && result.isFound()) {
-            logger.debug("Search result: FOUND at " + result.getPoint());
-        } else {
-            logger.debug("Search result: NOT FOUND");
-        }
+
         return result;
     }
 
@@ -243,7 +239,7 @@ public class TemplateSearchHelper {
      */
     private DTOImageSearchResult executeSearchGrayscale(String emulatorNumber, EnumTemplates template,
             SearchConfig config) {
-        
+
         DTOImageSearchResult result;
         if (config.hasArea()) {
             result = emuManager.searchTemplateGrayscale(emulatorNumber, template,
@@ -254,12 +250,7 @@ public class TemplateSearchHelper {
         } else {
             result = emuManager.searchTemplateGrayscale(emulatorNumber, template, config.getThreshold());
         }
-        
-        if (result != null && result.isFound()) {
-            logger.debug("Grayscale search result: FOUND at " + result.getPoint());
-        } else {
-            logger.debug("Grayscale search result: NOT FOUND");
-        }
+
         return result;
     }
 
@@ -275,7 +266,7 @@ public class TemplateSearchHelper {
      */
     private List<DTOImageSearchResult> executeMultipleSearch(String emulatorNumber, EnumTemplates template,
             SearchConfig config) {
-        
+
         List<DTOImageSearchResult> results;
         if (config.hasArea()) {
             results = emuManager.searchTemplates(emulatorNumber, template,
@@ -285,13 +276,14 @@ public class TemplateSearchHelper {
             results = emuManager.searchTemplates(emulatorNumber, template,
                     config.getStartPoint(), config.getEndPoint(), config.getThreshold(), config.getMaxResults());
         } else {
-            results = emuManager.searchTemplates(emulatorNumber, template, config.getThreshold(), config.getMaxResults());
+            results = emuManager.searchTemplates(emulatorNumber, template, config.getThreshold(),
+                    config.getMaxResults());
         }
-        
+
         if (results != null && !results.isEmpty()) {
-            logger.debug("Multiple search result: FOUND " + results.size() + " matches");
+            logDebug("Multiple search result: FOUND " + results.size() + " matches");
         } else {
-            logger.debug("Multiple search result: NOT FOUND");
+            logDebug("Multiple search result: NOT FOUND");
         }
         return results;
     }
@@ -310,7 +302,7 @@ public class TemplateSearchHelper {
      */
     private List<DTOImageSearchResult> executeMultipleSearchGrayscale(String emulatorNumber, EnumTemplates template,
             SearchConfig config) {
-        
+
         List<DTOImageSearchResult> results;
         if (config.hasArea()) {
             results = emuManager.searchTemplatesGrayscale(emulatorNumber, template,
@@ -323,18 +315,13 @@ public class TemplateSearchHelper {
             results = emuManager.searchTemplatesGrayscale(emulatorNumber, template, config.getThreshold(),
                     config.getMaxResults());
         }
-        
-        if (results != null && !results.isEmpty()) {
-            logger.debug("Grayscale multiple search result: FOUND " + results.size() + " matches");
-        } else {
-            logger.debug("Grayscale multiple search result: NOT FOUND");
-        }
+
         return results;
     }
 
     /**
-     * Pauses the current thread for the specified number of milliseconds.
-     * If the thread is interrupted, restores the interrupt status.
+     * Sleeps for the specified duration.
+     * If interrupted, restores the interrupt status.
      * 
      * @param milliseconds The duration to sleep in milliseconds
      */
@@ -342,7 +329,7 @@ public class TemplateSearchHelper {
         try {
             Thread.sleep(milliseconds);
         } catch (InterruptedException e) {
-            logger.warn("Sleep interrupted, restoring interrupt status");
+            logWarning("Sleep interrupted, restoring interrupt status");
             Thread.currentThread().interrupt();
         }
     }
@@ -559,5 +546,33 @@ public class TemplateSearchHelper {
         public boolean hasArea() {
             return area != null;
         }
+    }
+
+    // ========================================================================
+    // LOGGING METHODS
+    // ========================================================================
+
+    private void logInfo(String message) {
+        String prefixedMessage = profileName + " - " + message;
+        logger.info(prefixedMessage);
+        servLogs.appendLog(EnumTpMessageSeverity.INFO, HELPER_NAME, profileName, message);
+    }
+
+    private void logWarning(String message) {
+        String prefixedMessage = profileName + " - " + message;
+        logger.warn(prefixedMessage);
+        servLogs.appendLog(EnumTpMessageSeverity.WARNING, HELPER_NAME, profileName, message);
+    }
+
+    private void logError(String message) {
+        String prefixedMessage = profileName + " - " + message;
+        logger.error(prefixedMessage);
+        servLogs.appendLog(EnumTpMessageSeverity.ERROR, HELPER_NAME, profileName, message);
+    }
+
+    private void logDebug(String message) {
+        String prefixedMessage = profileName + " - " + message;
+        logger.debug(prefixedMessage);
+        servLogs.appendLog(EnumTpMessageSeverity.DEBUG, HELPER_NAME, profileName, message);
     }
 }
