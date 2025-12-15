@@ -49,6 +49,9 @@ public class EmuConfigLayoutController {
 	private TextField textfieldMaxIdleTime;
 
 	@FXML
+	private TextField textfieldEmulatorLaunchDelay;
+
+	@FXML
 	private ComboBox<GameVersion> comboboxGameVersion;
 
 	@FXML
@@ -141,6 +144,7 @@ public class EmuConfigLayoutController {
 
 		textfieldMaxConcurrentInstances.setText(globalConfig.getOrDefault(EnumConfigurationKey.MAX_RUNNING_EMULATORS_INT.name(), "1"));
 		textfieldMaxIdleTime.setText(globalConfig.getOrDefault(EnumConfigurationKey.MAX_IDLE_TIME_INT.name(), "15"));
+		textfieldEmulatorLaunchDelay.setText(globalConfig.getOrDefault(EnumConfigurationKey.EMULATOR_LAUNCH_DELAY_INT.name(), "0"));
 
 		comboboxGameVersion.setItems(FXCollections.observableArrayList(GameVersion.values()));
 		String gameVersionName = globalConfig.getOrDefault(EnumConfigurationKey.GAME_VERSION_STRING.name(), GameVersion.GLOBAL.name());
@@ -189,6 +193,13 @@ public class EmuConfigLayoutController {
 			showError("Max idle time cannot be empty.");
 			return;
 		}
+
+		// Saves the emulator launch delay
+		String emulatorLaunchDelay = textfieldEmulatorLaunchDelay.getText();
+		if (emulatorLaunchDelay.isEmpty()) {
+			emulatorLaunchDelay = "0";
+		}
+
 		// Saves the configuration using the key defined in each enum value
 		for (EmulatorAux emulator : emulatorList) {
 			ServScheduler.getServices().saveEmulatorPath(emulator.getEmulatorType().getConfigKey(), emulator.getPath());
@@ -201,6 +212,7 @@ public class EmuConfigLayoutController {
 
 		ServScheduler.getServices().saveEmulatorPath(EnumConfigurationKey.MAX_IDLE_TIME_INT.name(), maxIdleTime);
 		ServScheduler.getServices().saveEmulatorPath(EnumConfigurationKey.MAX_RUNNING_EMULATORS_INT.name(), maxInstances);
+		ServScheduler.getServices().saveEmulatorPath(EnumConfigurationKey.EMULATOR_LAUNCH_DELAY_INT.name(), emulatorLaunchDelay);
 		ServScheduler.getServices().saveEmulatorPath(EnumConfigurationKey.CURRENT_EMULATOR_STRING.name(), activeEmulatorName);
 			showInfo("Config saved successfully");
 	}
