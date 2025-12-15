@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -351,7 +352,7 @@ public class DailyMissionTask extends DelayedTask {
 	 * </ol>
 	 */
 	private void scheduleManualMode() {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
 		LocalDateTime gameReset = UtilTime.getGameReset();
 		LocalDateTime proposedTime = now.plusMinutes(checkOffsetMinutes);
 		LocalDateTime finalCheckTime = gameReset.minusMinutes(FINAL_CHECK_BEFORE_RESET_MINUTES);
@@ -416,7 +417,7 @@ public class DailyMissionTask extends DelayedTask {
 	 * from the UI if needed, even though it's not recurring.
 	 */
 	private void scheduleAutoMode() {
-		LocalDateTime safetyTime = LocalDateTime.now().plusMinutes(SAFETY_RESCHEDULE_MINUTES);
+		LocalDateTime safetyTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(SAFETY_RESCHEDULE_MINUTES);
 		reschedule(safetyTime);
 
 		logInfo("Auto-schedule mode - safety reschedule at: " +

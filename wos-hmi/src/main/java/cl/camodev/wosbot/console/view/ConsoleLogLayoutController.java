@@ -4,6 +4,7 @@ import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -207,7 +208,7 @@ public class ConsoleLogLayoutController implements IProfileDataChangeListener {
 
 	public void appendMessage(DTOLogMessage dtoMessage) {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
-		String formattedDate = LocalDateTime.now().format(formatter);
+		String formattedDate = LocalDateTime.now(ZoneId.of("UTC")).format(formatter);
 
 		if (!checkboxDebug.isSelected() && dtoMessage.getSeverity() == EnumTpMessageSeverity.DEBUG) {
 			return;

@@ -13,6 +13,7 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Task that claims daily troops from Expert Romulus.
@@ -413,7 +414,7 @@ public class ExpertsRomulusTroopsTask extends DelayedTask {
      * This typically indicates a temporary UI issue.
      */
     private void rescheduleForNavigationRetry() {
-        LocalDateTime retryTime = LocalDateTime.now().plusMinutes(NAVIGATION_RETRY_MINUTES);
+        LocalDateTime retryTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(NAVIGATION_RETRY_MINUTES);
         reschedule(retryTime);
         logWarning("Navigation failed. Retrying at " + retryTime.format(TIME_FORMATTER));
     }
@@ -427,7 +428,7 @@ public class ExpertsRomulusTroopsTask extends DelayedTask {
      * update their profile configuration.
      */
     private void rescheduleForInvalidConfig() {
-        LocalDateTime retryTime = LocalDateTime.now().plusHours(INVALID_CONFIG_RETRY_HOURS);
+        LocalDateTime retryTime = LocalDateTime.now(ZoneId.of("UTC")).plusHours(INVALID_CONFIG_RETRY_HOURS);
         reschedule(retryTime);
         logWarning("Invalid configuration. Retrying at " + retryTime.format(TIME_FORMATTER));
     }

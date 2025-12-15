@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
@@ -36,7 +37,7 @@ public class MysteryShopTask extends DelayedTask {
 		// If navigation fails after 5 attempts, reschedule for 1 hour
 		if (attempt >= 5) {
 			logWarning("Shop navigation failed after multiple attempts, rescheduling task for 1 hour");
-			LocalDateTime nextAttempt = LocalDateTime.now().plusHours(1);
+			LocalDateTime nextAttempt = LocalDateTime.now(ZoneId.of("UTC")).plusHours(1);
 			this.reschedule(nextAttempt);
 		}
 	}
@@ -55,7 +56,7 @@ public class MysteryShopTask extends DelayedTask {
 
 		if (!shopButtonResult.isFound()) {
 			logWarning("Shop button on the main screen not found. Rescheduling for 1 hour.");
-			LocalDateTime nextAttempt = LocalDateTime.now().plusHours(1);
+			LocalDateTime nextAttempt = LocalDateTime.now(ZoneId.of("UTC")).plusHours(1);
 			this.reschedule(nextAttempt);
 			return false;
 		}
@@ -72,7 +73,7 @@ public class MysteryShopTask extends DelayedTask {
 		if (!mysteryShopResult.isFound()) {
 			logWarning("Mystery Shop button not found inside the shop. Rescheduling for 1 hour.");
 			tapBackButton();
-			LocalDateTime nextAttempt = LocalDateTime.now().plusHours(1);
+			LocalDateTime nextAttempt = LocalDateTime.now(ZoneId.of("UTC")).plusHours(1);
 			this.reschedule(nextAttempt);
 			return false;
 		}

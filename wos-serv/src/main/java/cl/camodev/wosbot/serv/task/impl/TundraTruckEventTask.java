@@ -183,17 +183,13 @@ public class TundraTruckEventTask extends DelayedTask {
 					.atTime(targetTime)
 					.atZone(ZoneId.of("UTC"));
 
-			// Convert to local time for scheduling
-			ZonedDateTime localActivationTime = activationTimeUtc.withZoneSameInstant(ZoneId.systemDefault());
-
 			// If activation time has already passed today, run immediately
 			if (nowUtc.isAfter(activationTimeUtc)) {
 				logInfo("Activation time " + activationTime + " UTC has already passed today. Running immediately.");
 				return false;
 			} else {
-				logInfo("Scheduling Tundra Truck task for " + activationTime + " UTC (" +
-						localActivationTime.format(DATETIME_FORMATTER) + " local time)");
-				reschedule(localActivationTime.toLocalDateTime());
+				logInfo("Scheduling Tundra Truck task for " + activationTime + " UTC");
+				reschedule(activationTimeUtc.toLocalDateTime());
 				return true;
 			}
 		} catch (DateTimeParseException e) {
@@ -219,12 +215,9 @@ public class TundraTruckEventTask extends DelayedTask {
 						.atTime(targetTime)
 						.atZone(ZoneId.of("UTC"));
 
-				ZonedDateTime localActivationTime = tomorrowActivationUtc.withZoneSameInstant(ZoneId.systemDefault());
+				logInfo("Rescheduling for next activation at " + activationTime + " UTC tomorrow");
 
-				logInfo("Rescheduling for next activation at " + activationTime + " UTC tomorrow (" +
-						localActivationTime.format(DATETIME_FORMATTER) + " local time)");
-
-				reschedule(localActivationTime.toLocalDateTime());
+				reschedule(tomorrowActivationUtc.toLocalDateTime());
 			} catch (DateTimeParseException e) {
 				logError("Failed to parse activation time: " + e.getMessage());
 				reschedule(UtilTime.getGameReset());
@@ -392,8 +385,8 @@ public class TundraTruckEventTask extends DelayedTask {
 		Optional<LocalDateTime> leftTime = extractTruckTime(TruckSide.LEFT);
 		Optional<LocalDateTime> rightTime = extractTruckTime(TruckSide.RIGHT);
 
-		boolean leftInTransit = leftTime.isPresent() && leftTime.get().isAfter(LocalDateTime.now());
-		boolean rightInTransit = rightTime.isPresent() && rightTime.get().isAfter(LocalDateTime.now());
+		boolean leftInTransit = leftTime.isPresent() && leftTime.get().isAfter(LocalDateTime.now(ZoneId.of("UTC")));
+		boolean rightInTransit = rightTime.isPresent() && rightTime.get().isAfter(LocalDateTime.now(ZoneId.of("UTC")));
 
 		if (leftInTransit) {
 			logInfo("Left truck is in transit, returns at: " + leftTime.get());
@@ -632,7 +625,7 @@ public class TundraTruckEventTask extends DelayedTask {
 		Optional<LocalDateTime> leftTime = extractTruckTime(TruckSide.LEFT);
 		Optional<LocalDateTime> rightTime = extractTruckTime(TruckSide.RIGHT);
 
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
 		LocalDateTime nextSchedule;
 
 		if (leftTime.isPresent() && rightTime.isPresent()) {

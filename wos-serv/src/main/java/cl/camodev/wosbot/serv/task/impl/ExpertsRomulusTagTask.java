@@ -13,6 +13,7 @@ import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Task that claims daily loyalty tags from Expert Romulus.
@@ -307,7 +308,7 @@ public class ExpertsRomulusTagTask extends DelayedTask {
      * This typically indicates a temporary UI issue or left menu not loaded yet.
      */
     private void rescheduleForNavigationRetry() {
-        LocalDateTime retryTime = LocalDateTime.now().plusMinutes(NAVIGATION_RETRY_MINUTES);
+        LocalDateTime retryTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(NAVIGATION_RETRY_MINUTES);
         reschedule(retryTime);
         logWarning("Navigation failed. Retrying at " + retryTime.format(TIME_FORMATTER));
     }

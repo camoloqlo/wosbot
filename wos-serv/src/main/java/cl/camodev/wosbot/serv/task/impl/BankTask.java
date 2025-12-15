@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.utiles.ocr.TextRecognitionRetrier;
@@ -462,7 +463,7 @@ public class BankTask extends DelayedTask {
 
 		confirmDeposit();
 
-		LocalDateTime nextCheck = LocalDateTime.now().plusDays(config.durationDays);
+		LocalDateTime nextCheck = LocalDateTime.now(ZoneId.of("UTC")).plusDays(config.durationDays);
 		reschedule(nextCheck);
 
 		logInfo("Deposit created. Next check scheduled for: " + nextCheck.format(DATETIME_FORMATTER));
@@ -594,7 +595,7 @@ public class BankTask extends DelayedTask {
 	 * @param reason Reason for the retry (for logging)
 	 */
 	private void rescheduleForRetry(String reason) {
-		LocalDateTime retryTime = LocalDateTime.now().plusMinutes(OPERATION_FAILURE_RETRY_MINUTES);
+		LocalDateTime retryTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(OPERATION_FAILURE_RETRY_MINUTES);
 		reschedule(retryTime);
 
 		logWarning(reason + ". Retrying in " + OPERATION_FAILURE_RETRY_MINUTES +

@@ -186,7 +186,7 @@ public class TrainingTask extends DelayedTask {
         if (appointmentTimestamp != null && appointmentTimestamp > 0) {
             this.appointmentTime = LocalDateTime.ofInstant(
                     Instant.ofEpochMilli(appointmentTimestamp),
-                    ZoneId.systemDefault());
+                    ZoneId.of("UTC"));
         } else {
             this.appointmentTime = LocalDateTime.MIN;
         }
@@ -301,7 +301,7 @@ public class TrainingTask extends DelayedTask {
      */
     private void handleNoReadyQueues() {
         logInfo("No queues are ready for training. Rescheduling check shortly.");
-        reschedule(LocalDateTime.now().plusMinutes(TRAINING_BUTTON_RETRY_MINUTES));
+        reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(TRAINING_BUTTON_RETRY_MINUTES));
     }
 
     // ===============================
@@ -557,7 +557,7 @@ public class TrainingTask extends DelayedTask {
                         10,
                         settings,
                         TimeValidators::isValidTime,
-                        text -> LocalDateTime.now().plus(TimeConverters.toDuration(text)));
+                        text -> LocalDateTime.now(ZoneId.of("UTC")).plus(TimeConverters.toDuration(text)));
 
                 if (readyAt != null) {
                     logInfo(troopType + " training ready at: " + readyAt.format(DATETIME_FORMATTER));
@@ -590,7 +590,7 @@ public class TrainingTask extends DelayedTask {
     private boolean handleSoonReadyQueue(List<QueueInfo> queues) {
         Optional<QueueInfo> soonReady = queues.stream()
                 .filter(q -> q.status() == QueueStatus.TRAINING && q.readyAt() != null)
-                .filter(q -> Duration.between(LocalDateTime.now(), q.readyAt())
+                .filter(q -> Duration.between(LocalDateTime.now(ZoneId.of("UTC")), q.readyAt())
                         .toMinutes() <= SOON_READY_THRESHOLD_MINUTES)
                 .findFirst();
 
@@ -661,7 +661,7 @@ public class TrainingTask extends DelayedTask {
             logInfo("At least one queue UPGRADING. Rescheduling check in " +
                     UPGRADING_RESCHEDULE_MINUTES + " minutes.");
 
-            reschedule(LocalDateTime.now().plusMinutes(UPGRADING_RESCHEDULE_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(UPGRADING_RESCHEDULE_MINUTES));
             return true;
         }
 
@@ -710,7 +710,7 @@ public class TrainingTask extends DelayedTask {
             return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
         long minutesSinceAppointment = ChronoUnit.MINUTES.between(appointmentTime, now);
 
         if (minutesSinceAppointment < MINISTRY_PROTECTION_WINDOW_MINUTES) {
@@ -887,11 +887,11 @@ public class TrainingTask extends DelayedTask {
                 text -> TimeConverters.toDuration(normalizeMinistryTimeText(text)));
 
         if (activeAppointmentTime != null) {
-            appointmentTime = LocalDateTime.now().plusSeconds(activeAppointmentTime.getSeconds());
+            appointmentTime = LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(activeAppointmentTime.getSeconds());
             logInfo("Ministry appointment time: " + appointmentTime.format(DATETIME_FORMATTER));
         } else {
             logInfo("Could not read appointment time. Setting to now for normal training.");
-            appointmentTime = LocalDateTime.now();
+            appointmentTime = LocalDateTime.now(ZoneId.of("UTC"));
         }
     }
 
@@ -910,7 +910,7 @@ public class TrainingTask extends DelayedTask {
      * Persists the appointment time to profile configuration.
      */
     private void persistAppointmentTime() {
-        long timestamp = appointmentTime.atZone(ZoneId.systemDefault())
+        long timestamp = appointmentTime.atZone(ZoneId.of("UTC"))
                 .toInstant()
                 .toEpochMilli();
 
@@ -1083,7 +1083,7 @@ public class TrainingTask extends DelayedTask {
             return false;
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
         LocalDateTime appointmentEnd = appointmentTime.plusMinutes(MINISTRY_PROTECTION_WINDOW_MINUTES);
 
         if (now.isBefore(appointmentTime)) {
@@ -1114,7 +1114,7 @@ public class TrainingTask extends DelayedTask {
      * @param queue The queue to train
      */
     private void executeLimitedTrainingForAppointment(QueueInfo queue) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
         Duration neededTime = Duration.between(now, appointmentTime).plusMinutes(1);
 
         logInfo(String.format("Calculating limited training. Time until appointment: %02d:%02d:%02d",
@@ -1564,7 +1564,7 @@ public class TrainingTask extends DelayedTask {
                     TimeConverters::toDuration);
 
             if (promotionDuration != null) {
-                promotionCompletionTime = LocalDateTime.now().plus(promotionDuration);
+                promotionCompletionTime = LocalDateTime.now(ZoneId.of("UTC")).plus(promotionDuration);
                 logInfo("Promotion will complete at: " + promotionCompletionTime.format(DATETIME_FORMATTER));
                 return;
             }
@@ -1603,7 +1603,7 @@ public class TrainingTask extends DelayedTask {
                     TimeConverters::toDuration);
 
             if (trainingDuration != null) {
-                LocalDateTime completionTime = LocalDateTime.now().plus(trainingDuration);
+                LocalDateTime completionTime = LocalDateTime.now(ZoneId.of("UTC")).plus(trainingDuration);
                 logInfo("Training will complete at: " + completionTime.format(DATETIME_FORMATTER));
                 return completionTime;
             }
@@ -1705,14 +1705,14 @@ public class TrainingTask extends DelayedTask {
     private void rescheduleToEarliestCompletion(List<LocalDateTime> completionTimes) {
         if (completionTimes.isEmpty()) {
             logInfo("No completion times extracted. Rescheduling retry soon.");
-            reschedule(LocalDateTime.now().plusMinutes(TRAINING_BUTTON_RETRY_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(TRAINING_BUTTON_RETRY_MINUTES));
             return;
         }
 
         LocalDateTime earliest = completionTimes.stream()
                 .filter(Objects::nonNull)
                 .min(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.now().plusMinutes(TRAINING_BUTTON_RETRY_MINUTES));
+                .orElse(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(TRAINING_BUTTON_RETRY_MINUTES));
 
         logInfo("Rescheduling to earliest completion: " + earliest.format(DATETIME_FORMATTER));
         reschedule(earliest);

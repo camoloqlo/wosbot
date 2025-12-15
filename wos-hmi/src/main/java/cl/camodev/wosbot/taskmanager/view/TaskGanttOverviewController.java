@@ -24,8 +24,6 @@ import javafx.scene.shape.Rectangle;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -91,7 +89,9 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     private static final double TWO_HOUR_PIVOT_RATIO = 30d / 120d;
 
     private static final class TimelineMetrics {
-        private enum ScaleType { LINEAR, PURE_LOG, HYBRID_LOG_LINEAR }
+        private enum ScaleType {
+            LINEAR, PURE_LOG, HYBRID_LOG_LINEAR
+        }
 
         private final ScaleType scaleType;
         private final LocalDateTime viewStart;
@@ -112,18 +112,17 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         private final double hybridRightPixelsPerMinute;
 
         private TimelineMetrics(
-            ScaleType scaleType,
-            LocalDateTime viewStart,
-            LocalDateTime viewEnd,
-            double width,
-            double windowMinutes,
-            double linearPixelsPerMinute,
-            double pureLogDenominator,
-            double hybridLeftSpanMinutes,
-            double hybridPivotX,
-            double hybridLeftLogDenominator,
-            double hybridRightPixelsPerMinute
-        ) {
+                ScaleType scaleType,
+                LocalDateTime viewStart,
+                LocalDateTime viewEnd,
+                double width,
+                double windowMinutes,
+                double linearPixelsPerMinute,
+                double pureLogDenominator,
+                double hybridLeftSpanMinutes,
+                double hybridPivotX,
+                double hybridLeftLogDenominator,
+                double hybridRightPixelsPerMinute) {
             this.scaleType = scaleType;
             this.viewStart = viewStart;
             this.viewEnd = viewEnd;
@@ -142,21 +141,21 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             double effectiveMinutes = Math.max(1d, ChronoUnit.SECONDS.between(viewStart, viewEnd) / 60d);
             double pixelsPerMinute = width / effectiveMinutes;
             return new TimelineMetrics(
-                ScaleType.LINEAR,
-                viewStart,
-                viewEnd,
-                width,
-                effectiveMinutes,
-                pixelsPerMinute,
-                0d,
-                0d,
-                0d,
-                0d,
-                pixelsPerMinute
-            );
+                    ScaleType.LINEAR,
+                    viewStart,
+                    viewEnd,
+                    width,
+                    effectiveMinutes,
+                    pixelsPerMinute,
+                    0d,
+                    0d,
+                    0d,
+                    0d,
+                    pixelsPerMinute);
         }
 
-        static TimelineMetrics hybridLogLinear(LocalDateTime viewStart, LocalDateTime pivotTime, LocalDateTime viewEnd, double width, double pivotRatio) {
+        static TimelineMetrics hybridLogLinear(LocalDateTime viewStart, LocalDateTime pivotTime, LocalDateTime viewEnd,
+                double width, double pivotRatio) {
             double totalMinutes = Math.max(1d, ChronoUnit.SECONDS.between(viewStart, viewEnd) / 60d);
             double leftSpan = Math.max(0d, ChronoUnit.SECONDS.between(viewStart, pivotTime) / 60d);
             double rightSpan = Math.max(0d, totalMinutes - leftSpan);
@@ -165,18 +164,17 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             double leftLogDenominator = leftSpan > 0d ? Math.log1p(leftSpan) : 1d;
             double rightPixelsPerMinute = rightSpan > 0d ? (width - pivotX) / rightSpan : 0d;
             return new TimelineMetrics(
-                ScaleType.HYBRID_LOG_LINEAR,
-                viewStart,
-                viewEnd,
-                width,
-                totalMinutes,
-                rightPixelsPerMinute,
-                0d,
-                leftSpan,
-                pivotX,
-                leftLogDenominator,
-                rightPixelsPerMinute
-            );
+                    ScaleType.HYBRID_LOG_LINEAR,
+                    viewStart,
+                    viewEnd,
+                    width,
+                    totalMinutes,
+                    rightPixelsPerMinute,
+                    0d,
+                    leftSpan,
+                    pivotX,
+                    leftLogDenominator,
+                    rightPixelsPerMinute);
         }
 
         double toX(LocalDateTime time) {
@@ -221,10 +219,10 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     }
 
     private ViewMode viewMode = ViewMode.TWO_HOURS;
-    
+
     // Stores tasks per profile for stable ordering
     private Map<Long, List<TaskManagerAux>> profileTasksMap = new LinkedHashMap<>();
-    
+
     // Dynamic width calculation based on window size
     private double availableWidth = 720; // Default
     private static final double ACCOUNT_LABEL_WIDTH = 128;
@@ -233,17 +231,17 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
 
     public void initialize() {
         taskManagerActionController = new TaskManagerActionController(null);
-        
+
         // Register as listener for live task updates
         ServTaskManager.getInstance().addTaskStatusChangeListener(this);
         StaminaService.getServices().addStaminaChangeListener(this);
-        
+
         // Configure VBox for compact display
         if (vboxAccounts != null) {
             vboxAccounts.setSpacing(0); // No spacing between account rows
             vboxAccounts.setFillWidth(true);
         }
-        
+
         // Initialize toggle button
         if (toggleViewButton != null) {
             toggleViewButton.setText(viewMode.getLabel());
@@ -253,7 +251,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             toggleInactiveTasksButton.setSelected(true);
             toggleInactiveTasksButton.setText("Show inactive");
         }
-        
+
         // Listener for window size changes
         if (scrollPane != null) {
             scrollPane.widthProperty().addListener((obs, oldWidth, newWidth) -> {
@@ -264,20 +262,19 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 });
             });
         }
-        
+
         Platform.runLater(() -> {
             updateAvailableWidth(scrollPane != null ? scrollPane.getWidth() : 800);
             buildTimeAxis();
             loadAccounts();
         });
-        
+
         // Real-time refresh every 5 seconds - update both time axis and tasks
         autoRefreshTimeline = new javafx.animation.Timeline(
-            new javafx.animation.KeyFrame(javafx.util.Duration.seconds(5), e -> {
-                buildTimeAxis(); // Update time axis (important for 2h view)
-                loadAccounts();  // Reload tasks
-            })
-        );
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(5), e -> {
+                    buildTimeAxis(); // Update time axis (important for 2h view)
+                    loadAccounts(); // Reload tasks
+                }));
         autoRefreshTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
         autoRefreshTimeline.play();
     }
@@ -298,7 +295,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             Platform.runLater(() -> rebuildUI(snapshot));
         }
     }
-    
+
     /**
      * Updates the available width based on the ScrollPane width
      */
@@ -308,7 +305,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         double maxWidth = 2000; // Maximum for performance
         availableWidth = Math.max(minWidth, Math.min(maxWidth, scrollPaneWidth - ACCOUNT_LABEL_WIDTH - 80));
     }
-    
+
     @Override
     public void onTaskStatusChange(Long profileId, int taskNameId, DTOTaskState taskState) {
         // Update task status in real-time when a task is executed
@@ -321,13 +318,13 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                         task.setLastExecution(taskState.getLastExecutionTime());
                         task.setNextExecution(taskState.getNextExecutionTime());
                         task.setScheduled(taskState.isScheduled());
-                        
+
                         // Trigger UI refresh for ALL enabled profiles (not just the affected one)
                         List<DTOProfiles> allEnabledProfiles = ServProfiles.getServices().getProfiles().stream()
-                            .filter(p -> p.getEnabled() != null && p.getEnabled())
-                            .sorted(Comparator.comparing(DTOProfiles::getName))
-                            .collect(Collectors.toList());
-                        
+                                .filter(p -> p.getEnabled() != null && p.getEnabled())
+                                .sorted(Comparator.comparing(DTOProfiles::getName))
+                                .collect(Collectors.toList());
+
                         if (!allEnabledProfiles.isEmpty()) {
                             rebuildUI(allEnabledProfiles);
                         }
@@ -364,10 +361,11 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     }
 
     private void buildTimeAxis() {
-        if (timeAxisHeader == null) return;
+        if (timeAxisHeader == null)
+            return;
 
         timeAxisHeader.getChildren().clear();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
 
         timeAxisHeader.getChildren().add(buildTimeZoneHeader());
 
@@ -412,8 +410,6 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
 
         for (int h = 0; h < 25; h++) {
             LocalDateTime hourTime = startTime.plusHours(h);
-            java.time.ZonedDateTime utcHour = hourTime.atZone(java.time.ZoneId.systemDefault())
-                .withZoneSameInstant(java.time.ZoneOffset.UTC);
 
             javafx.scene.layout.VBox timeBox = new javafx.scene.layout.VBox(0);
             timeBox.setAlignment(javafx.geometry.Pos.CENTER);
@@ -421,20 +417,13 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             timeBox.setMinWidth(labelWidth);
             timeBox.setMaxWidth(labelWidth);
 
-            Label lblLocal = new Label(String.format("%02d", hourTime.getHour()));
-            lblLocal.setStyle(String.format(
-                "-fx-text-fill: %s; -fx-font-size: %d;",
-                (h % 6 == 0) ? "#888888" : "#666666",
-                (h % 6 == 0) ? 10 : 9
-            ));
-
-            Label lblUtc = new Label(String.format("%02d", utcHour.getHour()));
+            Label lblUtc = new Label(String.format("%02d", hourTime.getHour()));
             lblUtc.setStyle(String.format(
-                "-fx-text-fill: %s; -fx-font-size: 8;",
-                (h % 6 == 0) ? "#666666" : "#555555"
-            ));
+                    "-fx-text-fill: %s; -fx-font-size: %d;",
+                    (h % 6 == 0) ? "#888888" : "#666666",
+                    (h % 6 == 0) ? 10 : 9));
 
-            timeBox.getChildren().addAll(lblLocal, lblUtc);
+            timeBox.getChildren().add(lblUtc);
             double centerX = h * hourWidth;
             double desiredX = centerX - (labelWidth / 2.0);
             double maxX = availableWidth - labelWidth;
@@ -449,7 +438,6 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 padding = new javafx.geometry.Insets(0, 2, 0, 0);
             }
             timeBox.setAlignment(alignment);
-            lblLocal.setAlignment(alignment);
             lblUtc.setAlignment(alignment);
             timeBox.setPadding(padding);
             timeBox.setLayoutX(layoutX);
@@ -464,8 +452,6 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
 
         for (int d = 0; d < 8; d++) {
             LocalDateTime dayTime = startTime.plusDays(d);
-            java.time.ZonedDateTime utcDay = dayTime.withHour(12).atZone(java.time.ZoneId.systemDefault())
-                .withZoneSameInstant(java.time.ZoneOffset.UTC);
 
             javafx.scene.layout.VBox timeBox = new javafx.scene.layout.VBox(0);
             timeBox.setAlignment(javafx.geometry.Pos.CENTER);
@@ -473,38 +459,18 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             timeBox.setMinWidth(labelWidth);
             timeBox.setMaxWidth(labelWidth);
 
-            String localLabel = d == 0 ? "Today" : String.format("%02d.%02d",
-                dayTime.getDayOfMonth(), dayTime.getMonthValue());
-
-            String utcLabel;
-            int localDay = dayTime.getDayOfMonth();
-            int utcDayNum = utcDay.getDayOfMonth();
-            int localMonth = dayTime.getMonthValue();
-            int utcMonth = utcDay.getMonthValue();
-
-            if (localDay == utcDayNum && localMonth == utcMonth) {
-                utcLabel = String.format("%02d.%02d", utcDayNum, utcMonth);
-            } else if (utcDay.toLocalDate().isBefore(dayTime.toLocalDate())) {
-                utcLabel = String.format("%02d.%02d(-1)", utcDayNum, utcMonth);
-            } else {
-                utcLabel = String.format("%02d.%02d(+1)", utcDayNum, utcMonth);
-            }
-
-            Label lblLocal = new Label(localLabel);
-            lblLocal.setStyle(String.format(
-                "-fx-text-fill: %s; -fx-font-size: %d; -fx-font-weight: %s;",
-                (d == 0) ? "#ffb347" : "#888888",
-                (d == 0) ? 11 : 10,
-                (d == 0) ? "bold" : "normal"
-            ));
+            String utcLabel = d == 0 ? "Today (UTC)"
+                    : String.format("%02d.%02d",
+                            dayTime.getDayOfMonth(), dayTime.getMonthValue());
 
             Label lblUtc = new Label(utcLabel);
             lblUtc.setStyle(String.format(
-                "-fx-text-fill: %s; -fx-font-size: 7;",
-                (d == 0) ? "#ffaa44" : "#666666"
-            ));
+                    "-fx-text-fill: %s; -fx-font-size: %d; -fx-font-weight: %s;",
+                    (d == 0) ? "#ffb347" : "#888888",
+                    (d == 0) ? 11 : 10,
+                    (d == 0) ? "bold" : "normal"));
 
-            timeBox.getChildren().addAll(lblLocal, lblUtc);
+            timeBox.getChildren().add(lblUtc);
             double centerX = d * dayWidth;
             double desiredX = centerX - (labelWidth / 2.0);
             double maxX = availableWidth - labelWidth;
@@ -519,7 +485,6 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 padding = new javafx.geometry.Insets(0, 2, 0, 0);
             }
             timeBox.setAlignment(alignment);
-            lblLocal.setAlignment(alignment);
             lblUtc.setAlignment(alignment);
             timeBox.setPadding(padding);
             timeBox.setLayoutX(layoutX);
@@ -530,7 +495,8 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     private void buildTwoHourAxis(javafx.scene.layout.Pane axisPane, LocalDateTime now) {
         LocalDateTime viewStart = resolveViewStart(ViewMode.TWO_HOURS, now);
         LocalDateTime viewEnd = resolveViewEnd(ViewMode.TWO_HOURS, now);
-    TimelineMetrics metrics = TimelineMetrics.hybridLogLinear(viewStart, now, viewEnd, availableWidth, TWO_HOUR_PIVOT_RATIO);
+        TimelineMetrics metrics = TimelineMetrics.hybridLogLinear(viewStart, now, viewEnd, availableWidth,
+                TWO_HOUR_PIVOT_RATIO);
 
         List<LocalDateTime> tickTimes = buildTwoHourTickTimes(viewStart, now, viewEnd);
         if (tickTimes.isEmpty()) {
@@ -541,25 +507,19 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
 
         for (int i = 0; i < tickTimes.size(); i++) {
             LocalDateTime time = tickTimes.get(i);
-            ZonedDateTime localZone = time.atZone(ZoneId.systemDefault());
-            ZonedDateTime utcTime = localZone.withZoneSameInstant(ZoneOffset.UTC);
 
             boolean isNow = time.isEqual(now);
             boolean isPast = time.isBefore(now);
 
-            String localLabel = String.format("%02d:%02d", localZone.getHour(), localZone.getMinute());
-            String utcLabel = String.format("%02d:%02d", utcTime.getHour(), utcTime.getMinute());
+            String utcLabel = String.format("%02d:%02d", time.getHour(), time.getMinute());
 
-            String localColor = isNow ? "#ffb347" : (isPast ? "#888888" : "#666666");
-            String utcColor = isNow ? "#ffb347" : (isPast ? "#666666" : "#555555");
-
-            Label lblLocal = new Label(localLabel);
-            lblLocal.setStyle(String.format("-fx-text-fill: %s; -fx-font-size: 10; -fx-font-weight: %s;", localColor, isNow ? "bold" : "normal"));
+            String utcColor = isNow ? "#ffb347" : (isPast ? "#888888" : "#666666");
 
             Label lblUtc = new Label(utcLabel);
-            lblUtc.setStyle(String.format("-fx-text-fill: %s; -fx-font-size: 8; -fx-font-weight: %s;", utcColor, isNow ? "bold" : "normal"));
+            lblUtc.setStyle(String.format("-fx-text-fill: %s; -fx-font-size: 10; -fx-font-weight: %s;", utcColor,
+                    isNow ? "bold" : "normal"));
 
-            javafx.scene.layout.VBox timeBox = new javafx.scene.layout.VBox(lblLocal, lblUtc);
+            javafx.scene.layout.VBox timeBox = new javafx.scene.layout.VBox(lblUtc);
             timeBox.setAlignment(javafx.geometry.Pos.CENTER);
             timeBox.setPrefWidth(labelWidth);
             timeBox.setMinWidth(labelWidth);
@@ -584,7 +544,6 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             }
 
             timeBox.setAlignment(alignment);
-            lblLocal.setAlignment(alignment);
             lblUtc.setAlignment(alignment);
             timeBox.setPadding(padding);
             timeBox.setLayoutX(layoutX);
@@ -594,11 +553,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
 
     private LocalDateTime resolveViewStart(ViewMode mode, LocalDateTime now) {
         return switch (mode) {
-            case TWO_HOURS -> {
-                ZonedDateTime nowUtc = now.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
-                ZonedDateTime midnightUtc = nowUtc.toLocalDate().atStartOfDay(ZoneOffset.UTC);
-                yield midnightUtc.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
-            }
+            case TWO_HOURS -> now.withMinute(0).withSecond(0).withNano(0);
             case TWENTY_FOUR_HOURS -> now.minusHours(1).withMinute(0).withSecond(0).withNano(0);
             case WEEK -> now.withHour(0).withMinute(0).withSecond(0).withNano(0);
         };
@@ -611,7 +566,8 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         };
     }
 
-    private List<LocalDateTime> buildTwoHourTickTimes(LocalDateTime viewStart, LocalDateTime now, LocalDateTime viewEnd) {
+    private List<LocalDateTime> buildTwoHourTickTimes(LocalDateTime viewStart, LocalDateTime now,
+            LocalDateTime viewEnd) {
         java.util.NavigableSet<LocalDateTime> ticks = new java.util.TreeSet<>();
         ticks.add(viewStart);
 
@@ -625,7 +581,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
 
         ticks.add(now);
 
-        int[] futureMinutes = {15, 30, 45, 60, 75, 90, 105, 120};
+        int[] futureMinutes = { 15, 30, 45, 60, 75, 90, 105, 120 };
         for (int minutes : futureMinutes) {
             LocalDateTime candidate = now.plusMinutes(minutes);
             if (!candidate.isAfter(viewEnd)) {
@@ -640,7 +596,8 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         return new ArrayList<>(ticks);
     }
 
-    private TimelineMetrics drawTimelineBackground(javafx.scene.layout.Pane timelinePane, ViewMode mode, double width, int rowHeight, LocalDateTime now) {
+    private TimelineMetrics drawTimelineBackground(javafx.scene.layout.Pane timelinePane, ViewMode mode, double width,
+            int rowHeight, LocalDateTime now) {
         switch (mode) {
             case TWENTY_FOUR_HOURS -> {
                 double hourWidth = width / 25.0;
@@ -700,7 +657,8 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             case TWO_HOURS -> {
                 LocalDateTime viewStart = resolveViewStart(mode, now);
                 LocalDateTime viewEnd = resolveViewEnd(mode, now);
-                TimelineMetrics metrics = TimelineMetrics.hybridLogLinear(viewStart, now, viewEnd, width, TWO_HOUR_PIVOT_RATIO);
+                TimelineMetrics metrics = TimelineMetrics.hybridLogLinear(viewStart, now, viewEnd, width,
+                        TWO_HOUR_PIVOT_RATIO);
                 List<LocalDateTime> tickTimes = buildTwoHourTickTimes(viewStart, now, viewEnd);
                 for (LocalDateTime tickTime : tickTimes) {
                     if (tickTime.isEqual(now)) {
@@ -763,19 +721,19 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
 
     private void loadAccounts() {
         List<DTOProfiles> profiles = ServProfiles.getServices().getProfiles();
-        
+
         // Filter only enabled profiles and sort alphabetically
         List<DTOProfiles> sortedProfiles = profiles.stream()
-            .filter(p -> p.getEnabled() != null && p.getEnabled()) // Only enabled accounts
-            .sorted(Comparator.comparing(DTOProfiles::getName))
-            .collect(Collectors.toList());
-        
+                .filter(p -> p.getEnabled() != null && p.getEnabled()) // Only enabled accounts
+                .sorted(Comparator.comparing(DTOProfiles::getName))
+                .collect(Collectors.toList());
+
         profileTasksMap.clear();
-        
+
         // Counter for completed loading operations
-        final int[] loadedCount = {0};
+        final int[] loadedCount = { 0 };
         final int totalProfiles = sortedProfiles.size();
-        
+
         // Load tasks for all profiles asynchronously
         for (DTOProfiles profile : sortedProfiles) {
             loadAccountTasks(profile, () -> {
@@ -790,23 +748,23 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             });
         }
     }
-    
+
     private void rebuildUI(List<DTOProfiles> sortedProfiles) {
         vboxAccounts.getChildren().clear();
         profileStaminaLabels.clear();
         lastLoadedProfiles = new ArrayList<>(sortedProfiles);
-        
+
         // Use the dynamically calculated available width
         double uniformWidth = availableWidth;
-        
+
         // Build UI in alphabetical order with uniform width
         for (DTOProfiles profile : sortedProfiles) {
             List<TaskManagerAux> tasks = profileTasksMap.get(profile.getId());
             if (tasks != null) {
                 List<TaskManagerAux> visibleTasks = tasks.stream()
-                    .filter(this::matchesTaskFilter)
-                    .filter(task -> showInactiveTasks || !isInactiveTask(task))
-                    .collect(Collectors.toList());
+                        .filter(this::matchesTaskFilter)
+                        .filter(task -> showInactiveTasks || !isInactiveTask(task))
+                        .collect(Collectors.toList());
 
                 if (!taskFilter.isEmpty() && visibleTasks.isEmpty()) {
                     continue;
@@ -816,6 +774,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             }
         }
     }
+
     // Optional: Stop the timer when closing
     public void stopAutoRefresh() {
         if (autoRefreshTimeline != null) {
@@ -823,7 +782,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         }
         StaminaService.getServices().removeStaminaChangeListener(this);
     }
-    
+
     /**
      * Calculates tracks (lanes) for overlapping tasks.
      * Tasks that overlap in time are distributed across different tracks.
@@ -831,25 +790,26 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
      */
     private List<List<TaskManagerAux>> calculateTracks(List<TaskManagerAux> tasks, LocalDateTime now) {
         List<List<TaskManagerAux>> tracks = new ArrayList<>();
-        
-    // Filter tasks by visible time window and sort by start time
-    List<TaskManagerAux> sortedTasks = tasks.stream()
-        .filter(this::shouldDisplayInTimeline)
-        .filter(t -> {
-            LocalDateTime displayTime = resolveDisplayTime(t, now);
-            return isWithinViewWindow(displayTime, now);
-        })
-        .sorted(Comparator.comparing(t -> {
-            LocalDateTime displayTime = resolveDisplayTime(t, now);
-            return displayTime != null ? displayTime : now;
-        }))
-        .collect(Collectors.toList());        for (TaskManagerAux task : sortedTasks) {
+
+        // Filter tasks by visible time window and sort by start time
+        List<TaskManagerAux> sortedTasks = tasks.stream()
+                .filter(this::shouldDisplayInTimeline)
+                .filter(t -> {
+                    LocalDateTime displayTime = resolveDisplayTime(t, now);
+                    return isWithinViewWindow(displayTime, now);
+                })
+                .sorted(Comparator.comparing(t -> {
+                    LocalDateTime displayTime = resolveDisplayTime(t, now);
+                    return displayTime != null ? displayTime : now;
+                }))
+                .collect(Collectors.toList());
+        for (TaskManagerAux task : sortedTasks) {
             LocalDateTime taskStart = resolveDisplayTime(task, now);
             if (taskStart == null) {
                 continue;
             }
             LocalDateTime taskEnd = taskStart.plusMinutes(5); // 5-minute duration (matches bar width)
-            
+
             // Find a free track
             boolean placed = false;
             for (List<TaskManagerAux> track : tracks) {
@@ -861,21 +821,21 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                         continue;
                     }
                     LocalDateTime existingEnd = existingStart.plusMinutes(5); // 5-minute duration
-                    
+
                     // Check for overlap
                     if (!(taskEnd.isBefore(existingStart) || taskStart.isAfter(existingEnd))) {
                         canPlace = false;
                         break;
                     }
                 }
-                
+
                 if (canPlace) {
                     track.add(task);
                     placed = true;
                     break;
                 }
             }
-            
+
             // If no free track found, create new one
             if (!placed) {
                 List<TaskManagerAux> newTrack = new ArrayList<>();
@@ -883,7 +843,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 tracks.add(newTrack);
             }
         }
-        
+
         return tracks;
     }
 
@@ -895,11 +855,11 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             if (existingTasks != null) {
                 existingTasks.forEach(t -> existingTaskMap.put(t.getTaskEnum().getId(), t));
             }
-            
+
             List<TaskManagerAux> tasks = Arrays.stream(TpDailyTaskEnum.values()).map(task -> {
                 DTODailyTaskStatus s = statuses.stream()
-                    .filter(st -> st.getIdTpDailyTask() == task.getId())
-                    .findFirst().orElse(null);
+                        .filter(st -> st.getIdTpDailyTask() == task.getId())
+                        .findFirst().orElse(null);
 
                 if (s == null) {
                     // Check if existing TaskManagerAux object is available
@@ -907,26 +867,28 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                     if (existing != null) {
                         return existing; // Reuse
                     }
-                    return new TaskManagerAux(task.getName(), null, null, task, profile.getId(), Long.MAX_VALUE, false, false, false);
+                    return new TaskManagerAux(task.getName(), null, null, task, profile.getId(), Long.MAX_VALUE, false,
+                            false, false);
                 }
 
                 long diffInSeconds = Long.MAX_VALUE;
                 boolean ready = false;
                 if (s.getNextSchedule() != null) {
-                    diffInSeconds = ChronoUnit.SECONDS.between(LocalDateTime.now(), s.getNextSchedule());
+                    diffInSeconds = ChronoUnit.SECONDS.between(LocalDateTime.now(ZoneId.of("UTC")), s.getNextSchedule());
                     if (diffInSeconds <= 0) {
                         ready = true;
                         diffInSeconds = 0;
                     }
                 }
 
-                boolean scheduled = Optional.ofNullable(ServScheduler.getServices().getQueueManager().getQueue(profile.getId()))
-                    .map(q -> q.isTaskScheduled(task)).orElse(false);
+                boolean scheduled = Optional
+                        .ofNullable(ServScheduler.getServices().getQueueManager().getQueue(profile.getId()))
+                        .map(q -> q.isTaskScheduled(task)).orElse(false);
 
                 // Check if task is currently executing via ServTaskManager
                 boolean isExecuting = false;
                 cl.camodev.wosbot.ot.DTOTaskState taskState = cl.camodev.wosbot.serv.impl.ServTaskManager.getInstance()
-                    .getTaskState(profile.getId(), task.getId());
+                        .getTaskState(profile.getId(), task.getId());
                 if (taskState != null) {
                     isExecuting = taskState.isExecuting();
                 }
@@ -948,14 +910,15 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 }
 
                 // Create new only if no existing object available
-                return new TaskManagerAux(task.getName(), s.getLastExecution(), s.getNextSchedule(), task, profile.getId(), diffInSeconds, ready, scheduled, isExecuting);
+                return new TaskManagerAux(task.getName(), s.getLastExecution(), s.getNextSchedule(), task,
+                        profile.getId(), diffInSeconds, ready, scheduled, isExecuting);
             })
-            .filter(this::shouldDisplayInTimeline)
-            .collect(Collectors.toList());
+                    .filter(this::shouldDisplayInTimeline)
+                    .collect(Collectors.toList());
 
             // Store tasks for this profile
             profileTasksMap.put(profile.getId(), tasks);
-            
+
             // Call callback when done
             if (onComplete != null) {
                 onComplete.run();
@@ -964,55 +927,55 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     }
 
     private void createAccountRow(DTOProfiles profile, List<TaskManagerAux> tasks, double uniformWidth) {
-        LocalDateTime now = LocalDateTime.now();
-        
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
+
         // Calculate required tracks (lanes) for overlapping tasks
         List<List<TaskManagerAux>> tracks = calculateTracks(tasks, now);
-        
+
         // If no tasks present, show minimal height (32px)
         // Otherwise calculate height based on number of tracks
         int trackCount = tracks.isEmpty() ? 0 : tracks.size();
-    int calculatedHeight = trackCount == 0 ? 48 : (24 * trackCount + 12);
-    int rowHeight = Math.max(48, calculatedHeight); // Maintain minimum height so labels never get clipped
-        
+        int calculatedHeight = trackCount == 0 ? 48 : (24 * trackCount + 12);
+        int rowHeight = Math.max(48, calculatedHeight); // Maintain minimum height so labels never get clipped
+
         // HBox for Account row with fixed height
         HBox accountRow = new HBox(8);
-    accountRow.setAlignment(javafx.geometry.Pos.TOP_LEFT);
+        accountRow.setAlignment(javafx.geometry.Pos.TOP_LEFT);
         accountRow.setPrefHeight(rowHeight);
         accountRow.setMinHeight(rowHeight);
         accountRow.setMaxHeight(rowHeight);
         accountRow.setStyle("-fx-padding: 0; -fx-spacing: 8;"); // No padding, only spacing between elements
 
-    Label lblAccount = new Label(profile.getName());
-    lblAccount.setStyle("-fx-text-fill: #ffffff; -fx-font-size: 12; -fx-font-weight: bold;");
-    lblAccount.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        Label lblAccount = new Label(profile.getName());
+        lblAccount.setStyle("-fx-text-fill: #ffffff; -fx-font-size: 12; -fx-font-weight: bold;");
+        lblAccount.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-    int currentStamina = StaminaService.getServices().getCurrentStamina(profile.getId());
-    Label staminaLabel = new Label(formatStaminaValue(currentStamina));
-    staminaLabel.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 10;");
-    staminaLabel.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        int currentStamina = StaminaService.getServices().getCurrentStamina(profile.getId());
+        Label staminaLabel = new Label(formatStaminaValue(currentStamina));
+        staminaLabel.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 10;");
+        staminaLabel.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-    VBox accountInfo = new VBox(0);
-    accountInfo.setAlignment(javafx.geometry.Pos.TOP_LEFT);
-    accountInfo.setPrefWidth(ACCOUNT_LABEL_WIDTH);
-    accountInfo.setMinWidth(ACCOUNT_LABEL_WIDTH);
-    accountInfo.setMaxWidth(ACCOUNT_LABEL_WIDTH);
-    accountInfo.getChildren().addAll(lblAccount, staminaLabel);
-    accountInfo.setSpacing(0);
+        VBox accountInfo = new VBox(0);
+        accountInfo.setAlignment(javafx.geometry.Pos.TOP_LEFT);
+        accountInfo.setPrefWidth(ACCOUNT_LABEL_WIDTH);
+        accountInfo.setMinWidth(ACCOUNT_LABEL_WIDTH);
+        accountInfo.setMaxWidth(ACCOUNT_LABEL_WIDTH);
+        accountInfo.getChildren().addAll(lblAccount, staminaLabel);
+        accountInfo.setSpacing(0);
 
-    profileStaminaLabels.put(profile.getId(), staminaLabel);
-    accountRow.getChildren().add(accountInfo);
-        
+        profileStaminaLabels.put(profile.getId(), staminaLabel);
+        accountRow.getChildren().add(accountInfo);
+
         // Add spacer to align with time axis header (Local/UTC label column)
         javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
         spacer.setPrefWidth(TIME_AXIS_LABEL_WIDTH);
         spacer.setMinWidth(TIME_AXIS_LABEL_WIDTH);
         spacer.setMaxWidth(TIME_AXIS_LABEL_WIDTH);
         accountRow.getChildren().add(spacer);
-        
+
         // Use uniform width for all accounts
         double timelinePaneWidth = uniformWidth;
-        
+
         // Timeline area as Pane for precise positioning
         javafx.scene.layout.Pane timelinePane = new javafx.scene.layout.Pane();
         timelinePane.setPrefWidth(timelinePaneWidth);
@@ -1028,14 +991,14 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         // Position task bars absolutely with track support
         for (int trackIndex = 0; trackIndex < tracks.size(); trackIndex++) {
             List<TaskManagerAux> trackTasks = tracks.get(trackIndex);
-            
+
             for (TaskManagerAux task : trackTasks) {
                 LocalDateTime scheduledTime = task.getNextExecution();
                 boolean isCurrentlyExecuting = task.isExecuting();
                 boolean isScheduled = task.isScheduled();
                 boolean isReady = task.hasReadyTask();
                 boolean inactive = isInactiveTask(task);
-                
+
                 // Determine the timestamp used for positioning within the timeline.
                 LocalDateTime displayTime;
                 if (isCurrentlyExecuting) {
@@ -1072,9 +1035,10 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 // StackPane for bar + label
                 javafx.scene.layout.StackPane taskStack = new javafx.scene.layout.StackPane();
                 taskStack.setLayoutX(xPosition);
-                // Y-position based on track: Track 0 = Y:4, Track 1 = Y:28, Track 2 = Y:52, etc.
+                // Y-position based on track: Track 0 = Y:4, Track 1 = Y:28, Track 2 = Y:52,
+                // etc.
                 taskStack.setLayoutY(4 + (trackIndex * 24));
-                
+
                 Rectangle rect = new Rectangle(barWidth, 18); // Reduce height to 18px
                 rect.setArcWidth(4);
                 rect.setArcHeight(4);
@@ -1084,7 +1048,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 String strokeColor;
                 double strokeWidth;
                 String status;
-                
+
                 // Use current task status (updated live via listener)
                 if (isCurrentlyExecuting) {
                     fillColor = "#FF9800";
@@ -1107,7 +1071,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                     strokeWidth = 1;
                     status = "SCHEDULED";
                 }
-                
+
                 rect.setFill(javafx.scene.paint.Color.web(fillColor));
                 rect.setStroke(javafx.scene.paint.Color.web(strokeColor));
                 rect.setStrokeWidth(strokeWidth);
@@ -1119,19 +1083,19 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
 
                 // Tooltip with complete information and click hint
                 LocalDateTime tooltipTime = scheduledTime != null
-                    ? scheduledTime
-                    : (task.getLastExecution() != null ? task.getLastExecution() : displayTime);
+                        ? scheduledTime
+                        : (task.getLastExecution() != null ? task.getLastExecution() : displayTime);
                 String timeLabel = isCurrentlyExecuting ? "Running since" : "Time";
                 String timeDisplay = tooltipTime != null
-                    ? String.format("%02d:%02d", tooltipTime.getHour(), tooltipTime.getMinute())
-                    : "N/A";
+                        ? String.format("%02d:%02d", tooltipTime.getHour(), tooltipTime.getMinute())
+                        : "N/A";
                 String actionHint = !isCurrentlyExecuting ? "\n\n[Click to Execute]" : "";
                 String tooltipText = String.format("%s\n%s: %s\nStatus: %s%s",
-                    task.getTaskName(),
-                    timeLabel,
-                    timeDisplay,
-                    status,
-                    actionHint);
+                        task.getTaskName(),
+                        timeLabel,
+                        timeDisplay,
+                        status,
+                        actionHint);
                 javafx.scene.control.Tooltip tooltip = new javafx.scene.control.Tooltip(tooltipText);
                 // Configure tooltip to show faster and stay visible
                 tooltip.setShowDelay(javafx.util.Duration.millis(200)); // Show after 200ms
@@ -1139,7 +1103,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                 tooltip.setShowDuration(javafx.util.Duration.INDEFINITE); // Keep showing while mouse is over
                 tooltip.setAutoHide(false); // Don't auto-hide on mouse movement
                 javafx.scene.control.Tooltip.install(taskStack, tooltip);
-                
+
                 // Mouse handlers for manual tooltip control
                 final javafx.scene.control.Tooltip tooltipRef = tooltip;
                 taskStack.setOnMouseEntered(event -> {
@@ -1149,19 +1113,19 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
                         tooltipRef.show(taskStack, bounds.getMinX(), bounds.getMaxY() + 5);
                     }
                 });
-                
+
                 taskStack.setOnMouseExited(event -> {
                     // Hide tooltip only when mouse completely leaves the element
                     tooltipRef.hide();
                 });
-                
+
                 // Click handler: Execute task immediately on click
                 taskStack.setOnMouseClicked(event -> {
                     if (!task.isExecuting()) {
                         taskManagerActionController.executeTaskDirectly(task);
                     }
                 });
-                
+
                 // Change cursor to indicate clickability (only if not already executing)
                 if (!task.isExecuting()) {
                     taskStack.setStyle("-fx-cursor: hand;");
@@ -1205,7 +1169,7 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
     private String formatStaminaValue(int stamina) {
         return String.format("Stamina: %d", Math.max(0, stamina));
     }
-    
+
     /**
      * Creates abbreviations for task names to display them on narrow bars
      */
@@ -1214,10 +1178,10 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
             return false;
         }
         return task.isExecuting()
-            || task.hasReadyTask()
-            || task.isScheduled()
-            || task.getNextExecution() != null
-            || task.getLastExecution() != null;
+                || task.hasReadyTask()
+                || task.isScheduled()
+                || task.getNextExecution() != null
+                || task.getLastExecution() != null;
     }
 
     private boolean isInactiveTask(TaskManagerAux task) {
@@ -1316,3 +1280,4 @@ public class TaskGanttOverviewController implements ITaskStatusChangeListener, I
         return name != null && name.toLowerCase(Locale.ENGLISH).contains(taskFilter);
     }
 }
+

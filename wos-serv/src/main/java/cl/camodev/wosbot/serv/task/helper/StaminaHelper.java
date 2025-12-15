@@ -17,6 +17,7 @@ import cl.camodev.wosbot.serv.task.constants.CommonOCRSettings;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Helper class for managing stamina-related operations in the game.
@@ -287,7 +288,7 @@ public class StaminaHelper {
 
         if (currentStamina < minStaminaLevel) {
             int regenMinutes = staminaRegenerationTime(currentStamina, refreshStaminaLevel);
-            LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(regenMinutes);
+            LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(regenMinutes);
 
             rescheduleCallback.reschedule(rescheduleTime);
 
@@ -298,7 +299,7 @@ public class StaminaHelper {
         }
 
         if (!marchHelper.checkMarchesAvailable()) {
-            LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(1);
+            LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(1);
             rescheduleCallback.reschedule(rescheduleTime);
 
             logWarning("No marches available, rescheduling for 1 minute");
@@ -326,7 +327,7 @@ public class StaminaHelper {
 
         if (currentStamina < minStaminaLevel) {
             int regenMinutes = staminaRegenerationTime(currentStamina, refreshStaminaLevel);
-            LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(regenMinutes);
+            LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(regenMinutes);
 
             rescheduleCallback.reschedule(rescheduleTime);
 
@@ -393,6 +394,7 @@ public class StaminaHelper {
         servLogs.appendLog(EnumTpMessageSeverity.WARNING, HELPER_NAME, profileName, message);
     }
 
+    @SuppressWarnings("unused")
     private void logError(String message) {
         String prefixedMessage = profileName + " - " + message;
         logger.error(prefixedMessage);

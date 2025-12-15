@@ -2,6 +2,7 @@ package cl.camodev.wosbot.serv.task;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -195,7 +196,7 @@ public class TaskQueue {
             logInfoWithTask(task, "Starting task execution: " + task.getTaskName());
             updateProfileStatus("Executing " + task.getTaskName());
 
-            task.setLastExecutionTime(LocalDateTime.now());
+            task.setLastExecutionTime(LocalDateTime.now(ZoneId.of("UTC")));
             task.run();
 
             executionSuccessful = true;
@@ -246,7 +247,7 @@ public class TaskQueue {
         taskState.setTaskId(task.getTpDailyTaskId());
         taskState.setScheduled(true);
         taskState.setExecuting(true);
-        taskState.setLastExecutionTime(LocalDateTime.now());
+        taskState.setLastExecutionTime(LocalDateTime.now(ZoneId.of("UTC")));
         taskState.setNextExecutionTime(task.getScheduled());
 
         ServTaskManager.getInstance().setTaskState(profile.getId(), taskState);
@@ -256,7 +257,7 @@ public class TaskQueue {
     private void finalizeTaskState(DelayedTask task, DTOTaskState taskState) {
         taskState.setExecuting(false);
         taskState.setScheduled(task.isRecurring());
-        taskState.setLastExecutionTime(LocalDateTime.now());
+        taskState.setLastExecutionTime(LocalDateTime.now(ZoneId.of("UTC")));
         taskState.setNextExecutionTime(task.getScheduled());
 
         ServTaskManager.getInstance().setTaskState(profile.getId(), taskState);
@@ -271,7 +272,7 @@ public class TaskQueue {
             if (task.isRecurring()) {
                 logInfoWithTask(task, "Task " + task.getTaskName()
                         + " executed without rescheduling, changing scheduled time to now to avoid infinite loop");
-                task.reschedule(LocalDateTime.now());
+                task.reschedule(LocalDateTime.now(ZoneId.of("UTC")));
             }
         }
 
@@ -315,7 +316,7 @@ public class TaskQueue {
         taskQueueStatus.setNeedsReconnect(false);
         updateProfileStatus("RESUMING AFTER PAUSE");
         logInfo("TaskQueue resuming after "
-                + Duration.between(taskQueueStatus.getPausedAt(), LocalDateTime.now()).toMinutes()
+                + Duration.between(taskQueueStatus.getPausedAt(), LocalDateTime.now(ZoneId.of("UTC"))).toMinutes()
                 + " minutes pause");
         taskQueueStatus.setPaused(false);
 
@@ -351,7 +352,7 @@ public class TaskQueue {
         DTOTaskState state = ServTaskManager.getInstance().getTaskState(profile.getId(),
                 TpDailyTaskEnum.DAILY_MISSIONS.getId());
         LocalDateTime next = (state != null) ? state.getNextExecutionTime() : null;
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
 
         if (state == null || next == null || next.isAfter(now)) {
             scheduleDailyMissionsNow();
@@ -370,14 +371,14 @@ public class TaskQueue {
         if (existing != null) {
             // Task already exists, reschedule it to run now
             taskQueue.remove(existing);
-            existing.reschedule(LocalDateTime.now());
+            existing.reschedule(LocalDateTime.now(ZoneId.of("UTC")));
             existing.setRecurring(true);
             taskQueue.offer(existing);
 
             logInfoWithTask(existing, "Rescheduled existing " + TpDailyTaskEnum.DAILY_MISSIONS + " to run now");
         } else {
             // Task does not exist, create a new instance
-            prototype.reschedule(LocalDateTime.now());
+            prototype.reschedule(LocalDateTime.now(ZoneId.of("UTC")));
             prototype.setRecurring(false);
             taskQueue.offer(prototype);
             logInfoWithTask(prototype, "Enqueued new immediate " + TpDailyTaskEnum.DAILY_MISSIONS);
@@ -440,7 +441,7 @@ public class TaskQueue {
      * Handles the paused state of the task queue
      */
     private void handlePausedState() {
-        if (taskQueueStatus.getDelayUntil().isBefore(LocalDateTime.now())) {
+        if (taskQueueStatus.getDelayUntil().isBefore(LocalDateTime.now(ZoneId.of("UTC")))) {
             if (taskQueueStatus.needsReconnect()) {
                 resumeAfterReconnectionDelay();
             } else {
@@ -455,7 +456,7 @@ public class TaskQueue {
         }
         try {
             updateProfileStatus("PAUSED");
-            if (LocalDateTime.now().getSecond() % 10 == 0)
+            if (LocalDateTime.now(ZoneId.of("UTC")).getSecond() % 10 == 0)
                 logInfo("Profile is paused");
             Thread.sleep(1000); // Wait while paused
         } catch (InterruptedException e) {
@@ -467,7 +468,7 @@ public class TaskQueue {
      * Formats the duration until the target time as HH:mm:ss
      */
     private String formatTimeUntil(LocalDateTime targetTime) {
-        Duration timeUntilNext = Duration.between(LocalDateTime.now(), targetTime);
+        Duration timeUntilNext = Duration.between(LocalDateTime.now(ZoneId.of("UTC")), targetTime);
 
         long hours = timeUntilNext.toHours();
         long minutes = timeUntilNext.toMinutesPart();
@@ -501,7 +502,7 @@ public class TaskQueue {
 
         // If we're idling but the next task is coming soon, re-acquire the emulator
         if (taskQueueStatus.isIdleTimeExceeded()
-                && LocalDateTime.now().plusMinutes(1).isAfter(taskQueueStatus.getDelayUntil())) {
+                && LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(1).isAfter(taskQueueStatus.getDelayUntil())) {
             enqueueNewTask();
             taskQueueStatus.setIdleTimeExceeded(false);
             return;
@@ -519,7 +520,7 @@ public class TaskQueue {
         if (result.isFound()) {
             logInfo("Bear is running, pausing task running for 30 minutes");
             pause();
-            taskQueueStatus.setDelayUntil(LocalDateTime.now().plusMinutes(30));
+            taskQueueStatus.setDelayUntil(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(30));
         }
     }
 
@@ -719,14 +720,14 @@ public class TaskQueue {
             // Task already exists, reschedule it to run now
             taskQueue.remove(existing);
             existing.setProfile(profile);
-            existing.reschedule(LocalDateTime.now());
+            existing.reschedule(LocalDateTime.now(ZoneId.of("UTC")));
             existing.setRecurring(recurring);
             taskQueue.offer(existing);
 
             logInfoWithTask(existing, "Rescheduled existing " + taskEnum + " to run now");
         } else {
             // Task does not exist, create a new instance
-            prototype.reschedule(LocalDateTime.now());
+            prototype.reschedule(LocalDateTime.now(ZoneId.of("UTC")));
             prototype.setRecurring(recurring);
             taskQueue.offer(prototype);
             logInfoWithTask(prototype, "Enqueued new immediate " + taskEnum);
@@ -738,7 +739,7 @@ public class TaskQueue {
         taskState.setTaskId(taskEnum.getId());
         taskState.setScheduled(true);
         taskState.setExecuting(false);
-        taskState.setLastExecutionTime(LocalDateTime.now());
+        taskState.setLastExecutionTime(LocalDateTime.now(ZoneId.of("UTC")));
         taskState.setNextExecutionTime(prototype.getScheduled());
         ServTaskManager.getInstance().setTaskState(profile.getId(), taskState);
     }

@@ -11,6 +11,7 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -435,12 +436,12 @@ public class TundraTrekAutoTask extends DelayedTask {
         int attempts = 0;
         Integer lastValue = null;
         LocalDateTime lastDecreaseAt = null;
-        LocalDateTime noParseStart = LocalDateTime.now();
+        LocalDateTime noParseStart = LocalDateTime.now(ZoneId.of("UTC"));
         boolean anyParsed = false;
 
         while (true) {
             Integer remaining = tryReadTrekCounter(fractionPattern, twoNumbersPattern, attempts);
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
 
             if (remaining != null) {
                 // Successfully parsed a value
@@ -689,7 +690,7 @@ public class TundraTrekAutoTask extends DelayedTask {
      * Reschedule task with delay and reason
      */
     private void rescheduleWithDelay(Duration delay, String reason) {
-        LocalDateTime nextExecution = LocalDateTime.now().plus(delay);
+        LocalDateTime nextExecution = LocalDateTime.now(ZoneId.of("UTC")).plus(delay);
         logWarning(reason + ". Rescheduling for " + nextExecution);
         reschedule(nextExecution);
     }

@@ -12,6 +12,7 @@ import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -158,7 +159,7 @@ public class CrystalLaboratoryTask extends DelayedTask {
         loadConfiguration();
 
         if (!navigateToCrystalLaboratory()) {
-            reschedule(LocalDateTime.now().plusMinutes(NAVIGATION_RETRY_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(NAVIGATION_RETRY_MINUTES));
             return;
         }
 
@@ -172,7 +173,7 @@ public class CrystalLaboratoryTask extends DelayedTask {
 
                 if (result == WeeklyRFCResult.INSUFFICIENT_FC) {
                     // Override default reschedule - check again in 2 hours
-                    reschedule(LocalDateTime.now().plusHours(INSUFFICIENT_FC_RETRY_HOURS));
+                    reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusHours(INSUFFICIENT_FC_RETRY_HOURS));
                     return;
                 }
             }

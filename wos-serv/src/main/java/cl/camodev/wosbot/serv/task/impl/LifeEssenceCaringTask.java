@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -50,7 +51,7 @@ public class LifeEssenceCaringTask extends DelayedTask {
 		// Navigate to Life Essence menu
 		if (!navigateToLifeEssenceMenu()) {
 			logWarning("Failed to navigate to Life Essence menu. Retrying in " + retryOffsetMinutes + " minutes.");
-			reschedule(LocalDateTime.now().plusMinutes(retryOffsetMinutes));
+			reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(retryOffsetMinutes));
 			return;
 		}
 
@@ -79,7 +80,7 @@ public class LifeEssenceCaringTask extends DelayedTask {
 		// No island found - retry later
 		logInfo("No island needing care found. Rescheduling in " + retryOffsetMinutes + " minutes.");
 		closeAllMenus();
-		reschedule(LocalDateTime.now().plusMinutes(retryOffsetMinutes));
+		reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(retryOffsetMinutes));
 	}
 
 	/**

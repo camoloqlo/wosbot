@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.taskmanager.view;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -90,10 +91,10 @@ public class ScheduleTaskDialogController {
 
             try {
                 LocalTime time = LocalTime.parse(timeInput, DateTimeFormatter.ofPattern("HH:mm:ss"));
-                scheduledTime = LocalDateTime.now().with(time);
+                scheduledTime = LocalDateTime.now(ZoneId.of("UTC")).with(time);
 
                 // If the time is in the past for today, schedule for tomorrow
-                if (scheduledTime.isBefore(LocalDateTime.now())) {
+                if (scheduledTime.isBefore(LocalDateTime.now(ZoneId.of("UTC")))) {
                     scheduledTime = scheduledTime.plusDays(1);
                 }
             } catch (DateTimeParseException e) {
@@ -140,3 +141,4 @@ public class ScheduleTaskDialogController {
         return scheduledTime;
     }
 }
+

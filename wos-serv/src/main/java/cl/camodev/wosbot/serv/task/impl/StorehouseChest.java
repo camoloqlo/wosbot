@@ -2,6 +2,7 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import java.awt.Color;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.Duration;
 import java.util.regex.Pattern;
 
@@ -126,7 +127,7 @@ public class StorehouseChest extends DelayedTask {
 
         if (!openStorehouse()) {
             logWarning("Failed to open Storehouse.");
-            reschedule(LocalDateTime.now().plusMinutes(FALLBACK_RESCHEDULE_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(FALLBACK_RESCHEDULE_MINUTES));
             return;
         }
 
@@ -189,7 +190,7 @@ public class StorehouseChest extends DelayedTask {
             nextChestTime = readChestTimer();
 
             if (nextChestTime == null) {
-                nextChestTime = LocalDateTime.now().plusMinutes(FALLBACK_RESCHEDULE_MINUTES);
+                nextChestTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(FALLBACK_RESCHEDULE_MINUTES);
                 logWarning("Failed to read chest timer, using fallback.");
             }
 
@@ -202,7 +203,7 @@ public class StorehouseChest extends DelayedTask {
         nextChestTime = readFallbackTimer();
 
         if (nextChestTime == null) {
-            nextChestTime = LocalDateTime.now().plusMinutes(FALLBACK_RESCHEDULE_MINUTES);
+            nextChestTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(FALLBACK_RESCHEDULE_MINUTES);
         }
     }
 
@@ -267,7 +268,7 @@ public class StorehouseChest extends DelayedTask {
         if (storedStaminaTime != null && !storedStaminaTime.isEmpty()) {
             try {
                 LocalDateTime nextClaimTime = LocalDateTime.parse(storedStaminaTime);
-                boolean timeToClaimAgain = LocalDateTime.now().isAfter(nextClaimTime);
+                boolean timeToClaimAgain = LocalDateTime.now(ZoneId.of("UTC")).isAfter(nextClaimTime);
 
                 if (!timeToClaimAgain) {
                     logDebug("Stamina already claimed. Next claim at: " + nextClaimTime.format(DATETIME_FORMATTER));
@@ -305,7 +306,7 @@ public class StorehouseChest extends DelayedTask {
             nextStaminaTime = UtilTime.getNextReset();
         } else {
             logWarning("Stamina reward not found after maximum attempts. Will retry in 1 hour as fallback.");
-            nextStaminaTime = LocalDateTime.now().plusHours(1);
+            nextStaminaTime = LocalDateTime.now(ZoneId.of("UTC")).plusHours(1);
         }
 
         // Store the next claim time
@@ -377,11 +378,11 @@ public class StorehouseChest extends DelayedTask {
         logDebug("Time OCR result: '" + UtilTime.localDateTimeToDDHHMMSS(cooldown) + "'");
 
         // Validate timer is reasonable
-        long secondsDiff = Duration.between(LocalDateTime.now(), cooldown).getSeconds();
+        long secondsDiff = Duration.between(LocalDateTime.now(ZoneId.of("UTC")), cooldown).getSeconds();
 
         if (secondsDiff > MAX_TIMER_SECONDS) {
             logWarning(String.format("Timer exceeds 2 hours (%d min), using 1 hour fallback.", secondsDiff / 60));
-            return LocalDateTime.now().plusHours(1);
+            return LocalDateTime.now(ZoneId.of("UTC")).plusHours(1);
         }
 
         return cooldown;
@@ -392,7 +393,7 @@ public class StorehouseChest extends DelayedTask {
      * Chest claims are checked more frequently than stamina (once per reset).
      */
     private void scheduleToNearestTime() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
         LocalDateTime nextReset = UtilTime.getGameReset();
 
         // Validate chest time
@@ -418,7 +419,7 @@ public class StorehouseChest extends DelayedTask {
         String reason;
 
         if (nextChestTime == null && nextStaminaTime == null) {
-            scheduledTime = LocalDateTime.now().plusMinutes(FALLBACK_RESCHEDULE_MINUTES);
+            scheduledTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(FALLBACK_RESCHEDULE_MINUTES);
             reason = "No valid times (fallback)";
         } else if (nextChestTime == null) {
             scheduledTime = nextStaminaTime;

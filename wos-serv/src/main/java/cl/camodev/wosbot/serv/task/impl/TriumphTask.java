@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -69,7 +70,7 @@ public class TriumphTask extends DelayedTask {
 				} else {
 					// Rewards not ready yet
 					int offset = profile.getConfig(EnumConfigurationKey.ALLIANCE_TRIUMPH_OFFSET_INT, Integer.class);
-					LocalDateTime proposedSchedule = LocalDateTime.now().plusMinutes(offset);
+					LocalDateTime proposedSchedule = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(offset);
 
 					// Check if the proposed schedule would be after game reset and adjust if needed
 					LocalDateTime nextSchedule = UtilTime.ensureBeforeGameReset(proposedSchedule);
@@ -107,7 +108,7 @@ public class TriumphTask extends DelayedTask {
 			int offset = profile.getConfig(EnumConfigurationKey.ALLIANCE_TRIUMPH_OFFSET_INT, Integer.class);
 			logError("Alliance Triumph button not found - unable to claim rewards");
 
-			LocalDateTime proposedSchedule = LocalDateTime.now().plusMinutes(offset);
+			LocalDateTime proposedSchedule = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(offset);
 			LocalDateTime nextSchedule = cl.camodev.utiles.UtilTime.ensureBeforeGameReset(proposedSchedule);
 
 			if (!nextSchedule.equals(proposedSchedule)) {

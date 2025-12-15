@@ -1031,14 +1031,10 @@ public class ArenaTask extends DelayedTask {
                     .atTime(hour, minute)
                     .atZone(ZoneId.of("UTC"));
 
-            ZonedDateTime localActivationTime = tomorrowActivationUtc.withZoneSameInstant(
-                    ZoneId.systemDefault());
+            logInfo(String.format("Rescheduling Arena task for %s UTC tomorrow",
+                    activationTime));
 
-            logInfo(String.format("Rescheduling Arena task for %s UTC tomorrow (%s local)",
-                    activationTime,
-                    localActivationTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))));
-
-            reschedule(localActivationTime.toLocalDateTime());
+            reschedule(tomorrowActivationUtc.toLocalDateTime());
 
         } catch (Exception e) {
             logError("Failed to reschedule with activation time: " + e.getMessage());
@@ -1068,14 +1064,10 @@ public class ArenaTask extends DelayedTask {
                     .atTime(hour, minute)
                     .atZone(ZoneId.of("UTC"));
 
-            ZonedDateTime localActivationTime = todayActivationUtc.withZoneSameInstant(
-                    ZoneId.systemDefault());
+            logInfo(String.format("Rescheduling Arena task for %s UTC today",
+                    activationTime));
 
-            logInfo(String.format("Rescheduling Arena task for %s UTC today (%s local)",
-                    activationTime,
-                    localActivationTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))));
-
-            reschedule(localActivationTime.toLocalDateTime());
+            reschedule(todayActivationUtc.toLocalDateTime());
 
         } catch (Exception e) {
             logError("Failed to reschedule for today's activation time: " + e.getMessage());

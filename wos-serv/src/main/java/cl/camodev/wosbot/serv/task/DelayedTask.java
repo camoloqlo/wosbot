@@ -25,6 +25,7 @@ import cl.camodev.wosbot.serv.task.impl.InitializeTask;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
@@ -124,7 +125,7 @@ public abstract class DelayedTask implements Runnable, Delayed {
     public DelayedTask(DTOProfiles profile, TpDailyTaskEnum tpTask) {
         this.profile = profile;
         this.taskName = tpTask.getName();
-        this.scheduledTime = LocalDateTime.now();
+        this.scheduledTime = LocalDateTime.now(ZoneId.of("UTC"));
         this.EMULATOR_NUMBER = profile.getEmulatorNumber();
         this.tpTask = tpTask;
         this.logger = new ProfileLogger(this.getClass(), profile);
@@ -452,14 +453,14 @@ public abstract class DelayedTask implements Runnable, Delayed {
     // ========================================================================
 
     public void reschedule(LocalDateTime rescheduledTime) {
-        Duration difference = Duration.between(LocalDateTime.now(), rescheduledTime);
-        scheduledTime = LocalDateTime.now().plus(difference);
+        Duration difference = Duration.between(LocalDateTime.now(ZoneId.of("UTC")), rescheduledTime);
+        scheduledTime = LocalDateTime.now(ZoneId.of("UTC")).plus(difference);
     }
 
     @Override
     public long getDelay(TimeUnit unit) {
         long diff = scheduledTime.toEpochSecond(ZoneOffset.UTC) -
-                LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
+                LocalDateTime.now(ZoneId.of("UTC")).toEpochSecond(ZoneOffset.UTC);
         return unit.convert(diff, TimeUnit.SECONDS);
     }
 

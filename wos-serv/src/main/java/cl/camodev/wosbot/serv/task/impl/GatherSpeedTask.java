@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -310,7 +311,7 @@ public class GatherSpeedTask extends DelayedTask {
 	 */
 	private void rescheduleForBoostDuration() {
 		int hours = boostType.getDurationHours();
-		LocalDateTime nextSchedule = LocalDateTime.now().plusHours(hours);
+		LocalDateTime nextSchedule = LocalDateTime.now(ZoneId.of("UTC")).plusHours(hours);
 
 		reschedule(nextSchedule);
 
@@ -322,7 +323,7 @@ public class GatherSpeedTask extends DelayedTask {
 	 * Reschedules the task with default timing (5 minutes) in case of errors.
 	 */
 	private void rescheduleDefault() {
-		LocalDateTime nextSchedule = LocalDateTime.now().plusMinutes(5);
+		LocalDateTime nextSchedule = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5);
 		reschedule(nextSchedule);
 	}
 

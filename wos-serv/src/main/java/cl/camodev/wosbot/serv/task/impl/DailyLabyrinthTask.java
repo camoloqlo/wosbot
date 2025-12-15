@@ -12,6 +12,7 @@ import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -313,7 +314,7 @@ public class DailyLabyrinthTask extends DelayedTask {
      * @param reason the reason for rescheduling
      */
     private void rescheduleOneHourLater(String reason) {
-        LocalDateTime nextExecution = LocalDateTime.now().plusHours(1);
+        LocalDateTime nextExecution = LocalDateTime.now(ZoneId.of("UTC")).plusHours(1);
         logWarning(reason + ". Rescheduling task for one hour later.");
         this.reschedule(nextExecution);
     }

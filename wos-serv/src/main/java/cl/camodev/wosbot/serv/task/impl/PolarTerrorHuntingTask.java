@@ -16,6 +16,7 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
 public class PolarTerrorHuntingTask extends DelayedTask {
@@ -43,7 +44,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         loadConfiguration();
 
         if (eventHelper.isBearRunning()) {
-            LocalDateTime rescheduleTo = LocalDateTime.now().plusMinutes(30);
+            LocalDateTime rescheduleTo = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(30);
             logInfo("Bear Hunt is running, rescheduling for " + rescheduleTo);
             reschedule(rescheduleTo);
             return;
@@ -55,8 +56,8 @@ public class PolarTerrorHuntingTask extends DelayedTask {
                 && servTaskManager.getTaskState(profile.getId(), TpDailyTaskEnum.INTEL.getId()).isScheduled()) {
             // Make sure intel isn't about to run
             DailyTask intel = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(), TpDailyTaskEnum.INTEL);
-            if (ChronoUnit.MINUTES.between(LocalDateTime.now(), intel.getNextSchedule()) < 5) {
-                reschedule(LocalDateTime.now().plusMinutes(5)); // Reschedule in 5 minutes after intel has run
+            if (ChronoUnit.MINUTES.between(LocalDateTime.now(ZoneId.of("UTC")), intel.getNextSchedule()) < 5) {
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5)); // Reschedule in 5 minutes after intel has run
                 logWarning("Intel task is scheduled to run soon. Rescheduling Polar Hunt to run 5 min after intel.");
                 return;
             }
@@ -91,7 +92,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
             // Check marches before each rally
             if (!marchHelper.checkMarchesAvailable()) {
                 logInfo("No marches available after " + ralliesDeployed + " rallies. Waiting for marches to return.");
-                reschedule(LocalDateTime.now().plusMinutes(1));
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(1));
                 return;
             }
 
@@ -105,14 +106,14 @@ public class PolarTerrorHuntingTask extends DelayedTask {
             if (result == -1) {
                 // OCR error - can't continue reliably
                 logError("OCR error occurred. Rescheduling in 5 minutes.");
-                reschedule(LocalDateTime.now().plusMinutes(5));
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
                 return;
             }
 
             if (result == 0) {
                 // Deployment failed - probably out of marches
                 logInfo("Deployment failed after " + ralliesDeployed + " rallies. Rescheduling in 5 minutes.");
-                reschedule(LocalDateTime.now().plusMinutes(5));
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
                 return;
             }
 
@@ -231,7 +232,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
                 return -1;
             }
             long returnTimeSeconds = travelTimeSeconds * 2 + 2;
-            LocalDateTime rescheduleTime = LocalDateTime.now().plusSeconds(returnTimeSeconds).plusMinutes(5);
+            LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(returnTimeSeconds).plusMinutes(5);
             reschedule(rescheduleTime);
             logInfo("Rally with flag scheduled to return in " + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
             return 2;
@@ -241,7 +242,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         if (staminaHelper.getCurrentStamina() <= minStaminaLevel) {
             logInfo("Stamina is at or below minimum. Stopping deployment and rescheduling.");
             reschedule(
-                    LocalDateTime.now().plusMinutes(staminaHelper.staminaRegenerationTime(staminaHelper.getCurrentStamina(), refreshStaminaLevel)));
+                    LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(staminaHelper.staminaRegenerationTime(staminaHelper.getCurrentStamina(), refreshStaminaLevel)));
             return 3;
         }
         return 1;
@@ -251,9 +252,9 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         if (result == -1) {
             if (useFlag) {
                 logWarning("March deployed with flag but travel time unknown. Using fallback reschedule.");
-                reschedule(LocalDateTime.now().plusMinutes(10));
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(10));
             } else {
-                reschedule(LocalDateTime.now().plusMinutes(5));
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             }
             return;
         }
@@ -261,7 +262,7 @@ public class PolarTerrorHuntingTask extends DelayedTask {
         if (result == 0) {
             if (useFlag) {
                 logError("Failed to deploy march. Trying again in 5 minutes.");
-                reschedule(LocalDateTime.now().plusMinutes(5));
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             }
         }
 

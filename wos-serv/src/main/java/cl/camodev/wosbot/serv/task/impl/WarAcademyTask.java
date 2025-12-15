@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -78,13 +79,13 @@ public class WarAcademyTask extends DelayedTask {
 
         if (!navigateToWarAcademy()) {
             logWarning("Failed to navigate to War Academy.");
-            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(RETRY_DELAY_MINUTES));
             return;
         }
 
         if (!openRedeemSection()) {
             logWarning("Failed to open Redeem section.");
-            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(RETRY_DELAY_MINUTES));
             return;
         }
 
@@ -92,7 +93,7 @@ public class WarAcademyTask extends DelayedTask {
 
         if (remainingShards == null) {
             logError("Failed to read remaining shards count.");
-            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(RETRY_DELAY_MINUTES));
             return;
         }
 
@@ -106,7 +107,7 @@ public class WarAcademyTask extends DelayedTask {
 
         if (!redeemMaximumShards()) {
             logWarning("Failed to redeem shards.");
-            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(RETRY_DELAY_MINUTES));
             return;
         }
 
@@ -281,14 +282,14 @@ public class WarAcademyTask extends DelayedTask {
 
         if (finalShards == null) {
             logError("Failed to read final shards count.");
-            reschedule(LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(RETRY_DELAY_MINUTES));
             return;
         }
 
         if (finalShards > 0) {
             logInfo(String.format("Additional shards found: %d. Rescheduling in %d hours.",
                     finalShards, ADDITIONAL_SHARDS_DELAY_HOURS));
-            reschedule(LocalDateTime.now().plusHours(ADDITIONAL_SHARDS_DELAY_HOURS));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusHours(ADDITIONAL_SHARDS_DELAY_HOURS));
         } else {
             logInfo("No additional shards found. Rescheduling for game reset.");
             reschedule(UtilTime.getGameReset());

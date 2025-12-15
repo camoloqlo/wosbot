@@ -2,6 +2,7 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import java.awt.Color;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -248,14 +249,14 @@ public class GatherTask extends DelayedTask {
         // Check Intel task conflict
         if ((intelSmartProcessing || intelRecallGatherEnabled) && intelEnabled && isIntelAboutToRun()) {
             logWarning("Intel task scheduled to run soon. Rescheduling gather task for 35 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(35));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(35));
             return;
         }
 
         // Check GatherSpeed dependency
         if (gatherSpeedEnabled && !isGatherSpeedTaskReady()) {
             logInfo("Waiting for GatherSpeed task. Checking again in 2 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(2));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(2));
             return;
         }
 
@@ -281,7 +282,7 @@ public class GatherTask extends DelayedTask {
             }
 
             long minutesUntilIntel = ChronoUnit.MINUTES.between(
-                    LocalDateTime.now(), intel.getNextSchedule());
+                    LocalDateTime.now(ZoneId.of("UTC")), intel.getNextSchedule());
 
             boolean aboutToRun = minutesUntilIntel < INTEL_CONFLICT_BUFFER_MINUTES;
 
@@ -317,7 +318,7 @@ public class GatherTask extends DelayedTask {
                 return false;
             }
 
-            long minutesUntilNext = ChronoUnit.MINUTES.between(LocalDateTime.now(), nextSchedule);
+            long minutesUntilNext = ChronoUnit.MINUTES.between(LocalDateTime.now(ZoneId.of("UTC")), nextSchedule);
 
             // If next run is very soon (< 5 min), wait for it
             // Negative values mean it's overdue but hasn't updated yet - allow gathering
@@ -386,7 +387,7 @@ public class GatherTask extends DelayedTask {
 
         if (queueIndex == -1) {
             logWarning("Could not determine queue index for active march");
-            return ActiveMarchResult.withError(LocalDateTime.now().plusMinutes(5));
+            return ActiveMarchResult.withError(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
         }
 
         // Read remaining time
@@ -394,7 +395,7 @@ public class GatherTask extends DelayedTask {
 
         if (returnTime == null) {
             logWarning("Failed to read march return time");
-            return ActiveMarchResult.withError(LocalDateTime.now().plusMinutes(5));
+            return ActiveMarchResult.withError(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
         }
 
         return ActiveMarchResult.active(returnTime.plusMinutes(2)); // Add 2min buffer
@@ -463,36 +464,36 @@ public class GatherTask extends DelayedTask {
      */
     private void deployNewGatherMarch(GatherType gatherType) {
         if (!openResourceSearchMenu()) {
-            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+            updateRescheduleTime(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             return;
         }
 
         if (!selectResourceTile(gatherType)) {
-            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+            updateRescheduleTime(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             return;
         }
 
         int desiredLevel = getResourceLevel(gatherType);
         if (!setResourceLevel(desiredLevel)) {
             tapBackButton();
-            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+            updateRescheduleTime(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             return;
         }
 
         if (!executeSearch()) {
             tapBackButton();
-            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+            updateRescheduleTime(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             return;
         }
 
         if (!deployMarch(gatherType)) {
             tapBackButton();
-            updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+            updateRescheduleTime(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             return;
         }
 
         // Successfully deployed
-        updateRescheduleTime(LocalDateTime.now().plusMinutes(5));
+        updateRescheduleTime(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
     }
 
     /**
@@ -786,7 +787,7 @@ public class GatherTask extends DelayedTask {
         if (earliestRescheduleTime == null) {
             // No marches active, check again in 5 minutes
             logInfo("No active marches found. Rescheduling in 5 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
         } else {
             logInfo(String.format("Rescheduling gather task for: %s",
                     earliestRescheduleTime.plusMinutes(5).format(DATETIME_FORMATTER)));

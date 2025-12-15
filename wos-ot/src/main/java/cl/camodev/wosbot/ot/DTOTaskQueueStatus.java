@@ -2,6 +2,7 @@ package cl.camodev.wosbot.ot;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 public class DTOTaskQueueStatus {
     private volatile boolean running;
@@ -26,7 +27,7 @@ public class DTOTaskQueueStatus {
         this.needsReconnect = false;
         this.readyToReconnect = false;
         this.pausedAt = LocalDateTime.MIN;
-        this.delayUntil = LocalDateTime.now();
+        this.delayUntil = LocalDateTime.now(ZoneId.of("UTC"));
         this.idleTimeLimit = 15; // default 15 minutes
     }
 
@@ -79,8 +80,8 @@ public class DTOTaskQueueStatus {
      * @param reconnectionTime The time to wait before reconnecting, in minutes
      */
     public void setReconnectAt(long reconnectionTime) {
-        this.setDelayUntil(LocalDateTime.now().plusMinutes(reconnectionTime));
-        this.setReconnectAt(LocalDateTime.now().plusMinutes(reconnectionTime));
+        this.setDelayUntil(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(reconnectionTime));
+        this.setReconnectAt(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(reconnectionTime));
     }
 
     public void setReconnectAt(LocalDateTime reconnectAt) {
@@ -89,8 +90,8 @@ public class DTOTaskQueueStatus {
         this.reconnectAt = reconnectAt;
         this.reconnectThread = Thread.startVirtualThread(() -> {
             try {
-                if (Duration.between(LocalDateTime.now(), (reconnectAt)).toMillis() > 0) {
-                    Thread.sleep(Duration.between(LocalDateTime.now(), (reconnectAt)).toMillis());
+                if (Duration.between(LocalDateTime.now(ZoneId.of("UTC")), (reconnectAt)).toMillis() > 0) {
+                    Thread.sleep(Duration.between(LocalDateTime.now(ZoneId.of("UTC")), (reconnectAt)).toMillis());
                     this.readyToReconnect = true;
                 }
             } catch (InterruptedException e) {
@@ -119,7 +120,7 @@ public class DTOTaskQueueStatus {
         this.paused = false;
         this.needsReconnect = false;
         this.pausedAt = LocalDateTime.MIN;
-        this.delayUntil = LocalDateTime.now();
+        this.delayUntil = LocalDateTime.now(ZoneId.of("UTC"));
     }
 
     public boolean isPaused() {
@@ -133,7 +134,7 @@ public class DTOTaskQueueStatus {
     public void setPaused(boolean paused) {
         this.paused = paused;
         if (paused)
-            this.pausedAt = LocalDateTime.now();
+            this.pausedAt = LocalDateTime.now(ZoneId.of("UTC"));
     }
 
     public boolean needsReconnect() {
@@ -158,11 +159,11 @@ public class DTOTaskQueueStatus {
      * @param delayUntil delay in seconds
      */
     public void setDelayUntil(long delayUntil) {
-        this.delayUntil = LocalDateTime.now().plusSeconds(delayUntil);
+        this.delayUntil = LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(delayUntil);
     }
 
     public boolean checkIdleTimeExceeded() {
-        return LocalDateTime.now().plusMinutes(this.idleTimeLimit).isBefore(this.getDelayUntil());
+        return LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(this.idleTimeLimit).isBefore(this.getDelayUntil());
     }
 
     public void setDelayUntil(LocalDateTime delayUntil) {
@@ -212,3 +213,4 @@ public class DTOTaskQueueStatus {
         }
     }
 }
+

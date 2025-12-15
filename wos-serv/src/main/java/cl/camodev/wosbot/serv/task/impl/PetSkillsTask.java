@@ -3,6 +3,7 @@ package cl.camodev.wosbot.serv.task.impl;
 import java.awt.Color;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -267,7 +268,7 @@ public class PetSkillsTask extends DelayedTask {
      */
     private void handleMenuOpenFailure() {
         logWarning("Failed to open Pets menu. Rescheduling for retry.");
-        reschedule(LocalDateTime.now().plusMinutes(FALLBACK_RESCHEDULE_MINUTES));
+        reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(FALLBACK_RESCHEDULE_MINUTES));
     }
 
     /**
@@ -529,7 +530,7 @@ public class PetSkillsTask extends DelayedTask {
             cooldownDuration = Duration.ofMinutes(5);
         }
 
-        LocalDateTime cooldownEnd = LocalDateTime.now().plus(cooldownDuration);
+        LocalDateTime cooldownEnd = LocalDateTime.now(ZoneId.of("UTC")).plus(cooldownDuration);
 
         logInfo(String.format("%s skill cooldown until: %s (in %s)",
                 skill.name(),
@@ -684,7 +685,7 @@ public class PetSkillsTask extends DelayedTask {
         } else {
             logWarning("No cooldown parsed for any enabled skill. Rescheduling in " +
                     FALLBACK_RESCHEDULE_MINUTES + " minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(FALLBACK_RESCHEDULE_MINUTES));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(FALLBACK_RESCHEDULE_MINUTES));
         }
     }
 
@@ -729,7 +730,7 @@ public class PetSkillsTask extends DelayedTask {
             // Step 2: Check for idle marches using MarchHelper
             if (!marchHelper.checkMarchesAvailable()) {
                 logWarning("No idle marches available for gathering skill march. Setting 5 minute fallback cooldown.");
-                LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+                LocalDateTime fallbackCooldown = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5);
                 updateEarliestCooldown(fallbackCooldown);
                 return;
             }
@@ -740,7 +741,7 @@ public class PetSkillsTask extends DelayedTask {
             // Step 3: Open resource search menu
             if (!openResourceSearchMenu()) {
                 logWarning("Failed to open resource search menu");
-                LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+                LocalDateTime fallbackCooldown = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5);
                 updateEarliestCooldown(fallbackCooldown);
                 return;
             }
@@ -750,7 +751,7 @@ public class PetSkillsTask extends DelayedTask {
             if (!deployGatheringMarch(resourceType)) {
                 logWarning("Failed to deploy gathering march");
                 tapBackButton();
-                LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+                LocalDateTime fallbackCooldown = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5);
                 updateEarliestCooldown(fallbackCooldown);
                 return;
             }
@@ -764,12 +765,12 @@ public class PetSkillsTask extends DelayedTask {
                 readAndTrackCooldown(PetSkill.GATHERING);
             } else {
                 logWarning("Could not reopen pets menu to read gathering skill cooldown. Using fallback.");
-                LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+                LocalDateTime fallbackCooldown = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5);
                 updateEarliestCooldown(fallbackCooldown);
             }
         } catch (Exception e) {
             logWarning("Error deploying gathering skill march: " + e.getMessage());
-            LocalDateTime fallbackCooldown = LocalDateTime.now().plusMinutes(5);
+            LocalDateTime fallbackCooldown = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5);
             updateEarliestCooldown(fallbackCooldown);
         }
     }

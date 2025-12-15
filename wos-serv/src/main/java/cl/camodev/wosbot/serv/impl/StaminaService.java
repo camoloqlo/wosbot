@@ -3,6 +3,7 @@ package cl.camodev.wosbot.serv.impl;
 import cl.camodev.wosbot.serv.IStaminaChangeListener;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -123,7 +124,7 @@ public class StaminaService {
         }
         int newStamina = Math.max(0, stamina);
         staminaMap.put(profileId, newStamina);
-        lastUpdateMap.put(profileId, LocalDateTime.now());
+        lastUpdateMap.put(profileId, LocalDateTime.now(ZoneId.of("UTC")));
         notifyStaminaChange(profileId, newStamina);
     }
 
@@ -144,7 +145,7 @@ public class StaminaService {
             return newStamina[0];
         });
         notifyStaminaChange(profileId, newStamina[0]);
-        //lastUpdateMap.put(profileId, LocalDateTime.now());
+        //lastUpdateMap.put(profileId, LocalDateTime.now(ZoneId.of("UTC")));
     }
 
     /**
@@ -164,7 +165,7 @@ public class StaminaService {
             return newStamina[0];
         });
         notifyStaminaChange(profileId, newStamina[0]);
-        //lastUpdateMap.put(profileId, LocalDateTime.now());
+        //lastUpdateMap.put(profileId, LocalDateTime.now(ZoneId.of("UTC")));
     }
 
     /**
@@ -202,7 +203,7 @@ public class StaminaService {
         }
 
         // Check if more than 30 minutes has passed since last update
-        long minutesSinceUpdate = ChronoUnit.MINUTES.between(lastUpdate, LocalDateTime.now());
+        long minutesSinceUpdate = ChronoUnit.MINUTES.between(lastUpdate, LocalDateTime.now(ZoneId.of("UTC")));
         return minutesSinceUpdate >= 30;
     }
 

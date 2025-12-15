@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Supplier;
@@ -130,7 +131,7 @@ public class ServScheduler {
                                 // Don't reschedule if task already has a schedule (from constructor)
                                 LocalDateTime scheduledTime = task.getScheduled();
                                 if (scheduledTime == null) {
-                                    task.reschedule(LocalDateTime.now());
+                                    task.reschedule(LocalDateTime.now(ZoneId.of("UTC")));
                                     ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, task.getTaskName(), profile.getName(), 
                                         "Task not completed and no schedule set, scheduling for now");
                                 } else {
@@ -153,7 +154,7 @@ public class ServScheduler {
 				DTOBotState state = new DTOBotState();
 				state.setRunning(true);
 				state.setPaused(false);
-				state.setActionTime(LocalDateTime.now());
+				state.setActionTime(LocalDateTime.now(ZoneId.of("UTC")));
 				e.onBotStateChange(state);
 			});
 
@@ -184,7 +185,7 @@ public class ServScheduler {
                         DTOBotState state = new DTOBotState();
 			state.setRunning(false);
 			state.setPaused(false);
-                        state.setActionTime(LocalDateTime.now());
+                        state.setActionTime(LocalDateTime.now(ZoneId.of("UTC")));
                         e.onBotStateChange(state);
                 });
                 notifyQueueState(null, false);
@@ -197,7 +198,7 @@ public class ServScheduler {
                         DTOBotState state = new DTOBotState();
 			state.setRunning(true);
 			state.setPaused(true);
-                        state.setActionTime(LocalDateTime.now());
+                        state.setActionTime(LocalDateTime.now(ZoneId.of("UTC")));
                         e.onBotStateChange(state);
                 });
                 notifyQueueState(null, true);
@@ -210,7 +211,7 @@ public class ServScheduler {
                         DTOBotState state = new DTOBotState();
 			state.setRunning(true);
 			state.setPaused(false);
-                        state.setActionTime(LocalDateTime.now());
+                        state.setActionTime(LocalDateTime.now(ZoneId.of("UTC")));
                         e.onBotStateChange(state);
                 });
                 notifyQueueState(null, false);
@@ -252,12 +253,12 @@ public class ServScheduler {
 			TpDailyTask tpDailyTaskEntity = iDailyTaskRepository.findTpDailyTaskById(task.getId());
 			dailyTask.setProfile(profileEntity);
 			dailyTask.setTask(tpDailyTaskEntity);
-			dailyTask.setLastExecution(LocalDateTime.now());
+			dailyTask.setLastExecution(LocalDateTime.now(ZoneId.of("UTC")));
 			dailyTask.setNextSchedule(nextSchedule);
 			iDailyTaskRepository.addDailyTask(dailyTask);
 		}
 
-		dailyTask.setLastExecution(LocalDateTime.now());
+		dailyTask.setLastExecution(LocalDateTime.now(ZoneId.of("UTC")));
 		dailyTask.setNextSchedule(nextSchedule);
 
 		// Save the entity (whether new or existing)
@@ -289,7 +290,7 @@ public class ServScheduler {
 			taskState.setTaskId(taskEnum.getId());
 			taskState.setScheduled(false);
 			taskState.setExecuting(false);
-			taskState.setLastExecutionTime(LocalDateTime.now());
+			taskState.setLastExecutionTime(LocalDateTime.now(ZoneId.of("UTC")));
 			taskState.setNextExecutionTime(null);
 			ServTaskManager.getInstance().setTaskState(profileId, taskState);
 
@@ -298,7 +299,7 @@ public class ServScheduler {
 				DTOBotState state = new DTOBotState();
 				state.setRunning(true);
 				state.setPaused(false);
-				state.setActionTime(LocalDateTime.now());
+				state.setActionTime(LocalDateTime.now(ZoneId.of("UTC")));
 				listener.onBotStateChange(state);
 			});
 

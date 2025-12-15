@@ -11,6 +11,7 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 public class NewSurvivorsTask extends DelayedTask {
 
@@ -66,13 +67,13 @@ public class NewSurvivorsTask extends DelayedTask {
                 }
 
                 logInfo("Survivor assignment complete. Rescheduling task.");
-                this.reschedule(LocalDateTime.now().plusMinutes(
+                this.reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(
                         profile.getConfig(EnumConfigurationKey.CITY_ACCEPT_NEW_SURVIVORS_OFFSET_INT, Integer.class)));
             }
 
         } else {
             logInfo("No new survivors found. Rescheduling task.");
-            this.reschedule(LocalDateTime.now().plusMinutes(
+            this.reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(
                     profile.getConfig(EnumConfigurationKey.CITY_ACCEPT_NEW_SURVIVORS_OFFSET_INT, Integer.class)));
 
         }

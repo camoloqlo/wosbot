@@ -11,6 +11,7 @@ import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -455,7 +456,7 @@ public class PetAdventureChestTask extends DelayedTask {
 	 * to complete before claiming rewards.
 	 */
 	private void rescheduleForChestCompletion() {
-		LocalDateTime nextCheck = LocalDateTime.now().plusHours(CHEST_COMPLETION_HOURS);
+		LocalDateTime nextCheck = LocalDateTime.now(ZoneId.of("UTC")).plusHours(CHEST_COMPLETION_HOURS);
 		reschedule(nextCheck);
 		logInfo("Rescheduled for chest completion check at " +
 				nextCheck.format(TIME_FORMATTER));
@@ -481,7 +482,7 @@ public class PetAdventureChestTask extends DelayedTask {
 	 * Used when navigation to Pet Adventures fails.
 	 */
 	private void rescheduleForNavigationRetry() {
-		LocalDateTime retryTime = LocalDateTime.now().plusMinutes(NAVIGATION_RETRY_MINUTES);
+		LocalDateTime retryTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(NAVIGATION_RETRY_MINUTES);
 		reschedule(retryTime);
 		logWarning("Navigation failed. Retrying at " + retryTime.format(TIME_FORMATTER));
 	}

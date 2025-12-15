@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -305,7 +306,7 @@ public class AllianceAutojoinTask extends DelayedTask {
 	 * expiration.
 	 */
 	private void scheduleNextRun() {
-		LocalDateTime nextExecutionTime = LocalDateTime.now()
+		LocalDateTime nextExecutionTime = LocalDateTime.now(ZoneId.of("UTC"))
 				.plusHours(SCHEDULE_HOURS)
 				.plusMinutes(SCHEDULE_MINUTES);
 
@@ -328,7 +329,7 @@ public class AllianceAutojoinTask extends DelayedTask {
 	private void handleTaskFailure(String reason) {
 		logWarning("Task failed: " + reason);
 
-		LocalDateTime retryTime = LocalDateTime.now().plusMinutes(5);
+		LocalDateTime retryTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5);
 		reschedule(retryTime);
 
 		logInfo("Task rescheduled to retry in 5 minutes");

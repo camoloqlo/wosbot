@@ -552,6 +552,7 @@ public class TemplateSearchHelper {
     // LOGGING METHODS
     // ========================================================================
 
+    @SuppressWarnings("unused")
     private void logInfo(String message) {
         String prefixedMessage = profileName + " - " + message;
         logger.info(prefixedMessage);
@@ -564,6 +565,7 @@ public class TemplateSearchHelper {
         servLogs.appendLog(EnumTpMessageSeverity.WARNING, HELPER_NAME, profileName, message);
     }
 
+    @SuppressWarnings("unused")
     private void logError(String message) {
         String prefixedMessage = profileName + " - " + message;
         logger.error(prefixedMessage);

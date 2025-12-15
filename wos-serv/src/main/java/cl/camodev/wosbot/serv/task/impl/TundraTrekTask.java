@@ -2,6 +2,7 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.utiles.time.TimeConverters;
 import cl.camodev.utiles.time.TimeValidators;
@@ -51,17 +52,17 @@ public class TundraTrekTask extends DelayedTask {
                         null,
                         TimeValidators::isValidTime,
                         TimeConverters::toDuration);
-                LocalDateTime nextRewardTime = LocalDateTime.now().plus(nextRewardTimeDuration);
+                LocalDateTime nextRewardTime = LocalDateTime.now(ZoneId.of("UTC")).plus(nextRewardTimeDuration);
                 reschedule(nextRewardTime);
                 logInfo("Successfully parsed the next reward time. Rescheduling the task for: "
                         + nextRewardTime.format(DATETIME_FORMATTER));
             } catch (IllegalArgumentException e) {
                 logError("Failed to read or parse the next reward time. Rescheduling for 1 hour from now.", e);
-                reschedule(LocalDateTime.now().plusHours(1));
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusHours(1));
             }
         } else {
             logError("Failed to navigate to Tundra Trek Supplies after multiple attempts. Rescheduling for 1 hour.");
-            reschedule(LocalDateTime.now().plusHours(1)); // Reschedule for later
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusHours(1)); // Reschedule for later
         }
     }
 

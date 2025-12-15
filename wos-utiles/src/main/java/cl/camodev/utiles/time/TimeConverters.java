@@ -2,6 +2,7 @@ package cl.camodev.utiles.time;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
@@ -120,7 +121,7 @@ public final class TimeConverters {
     public static LocalDateTime toLocalDateTime(String input) {
         Duration duration = toDuration(input);
         if (duration != null) {
-            return LocalDateTime.now().plus(duration);
+            return LocalDateTime.now(ZoneId.of("UTC")).plus(duration);
         }
         return null;
     }

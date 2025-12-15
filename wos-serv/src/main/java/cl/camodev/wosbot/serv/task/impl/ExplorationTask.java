@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
@@ -39,14 +40,14 @@ public class ExplorationTask extends DelayedTask {
 			sleepTask(200);
 
 			Integer minutes = profile.getConfig(EnumConfigurationKey.INT_EXPLORATION_CHEST_OFFSET, Integer.class);
-			LocalDateTime nextSchedule = LocalDateTime.now().plusMinutes(minutes);
+			LocalDateTime nextSchedule = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(minutes);
 			this.reschedule(nextSchedule);
 			logInfo("Exploration task completed. Next execution scheduled in " + minutes + " minutes.");
 
 		} else {
 			logInfo("No exploration rewards to claim.");
 			Integer minutes = profile.getConfig(EnumConfigurationKey.INT_EXPLORATION_CHEST_OFFSET, Integer.class);
-			LocalDateTime nextSchedule = LocalDateTime.now().plusMinutes(minutes);
+			LocalDateTime nextSchedule = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(minutes);
 			this.reschedule(nextSchedule);
 			logInfo("Exploration task completed. Next execution scheduled in " + minutes + " minutes.");
 

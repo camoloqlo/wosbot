@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.taskmanager.controller;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -114,7 +115,7 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 		}
 
 		ServScheduler scheduler = ServScheduler.getServices();
-		scheduler.updateDailyTaskStatus(profile, task.getTaskEnum(), LocalDateTime.now());
+		scheduler.updateDailyTaskStatus(profile, task.getTaskEnum(), LocalDateTime.now(ZoneId.of("UTC")));
 		scheduler.getQueueManager().getQueue(profile.getId()).executeTaskNow(task.getTaskEnum(), recurring);
 	}
 
@@ -139,12 +140,12 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 
 		if (task.scheduledProperty().get()) {
 			// Task is already scheduled - mark as recurring and execute now
-			scheduleTaskInQueue(queue, task.getTaskEnum(), LocalDateTime.now(), true, profile);
+			scheduleTaskInQueue(queue, task.getTaskEnum(), LocalDateTime.now(ZoneId.of("UTC")), true, profile);
 			ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskExecutor", profile.getName(),
 				"Executed scheduled task " + task.getTaskEnum().getName() + " and marked as recurring");
 		} else {
 			// Task is not scheduled - execute once
-			scheduler.updateDailyTaskStatus(profile, task.getTaskEnum(), LocalDateTime.now());
+			scheduler.updateDailyTaskStatus(profile, task.getTaskEnum(), LocalDateTime.now(ZoneId.of("UTC")));
 			queue.executeTaskNow(task.getTaskEnum(),false);
 			ServLogs.getServices().appendLog(EnumTpMessageSeverity.INFO, "TaskExecutor", profile.getName(),
 				"Executed task " + task.getTaskEnum().getName() + " one time");
@@ -301,7 +302,7 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 		taskState.setTaskId(taskEnum.getId());
 		taskState.setScheduled(true);
 		taskState.setExecuting(false);
-		taskState.setLastExecutionTime(LocalDateTime.now());
+		taskState.setLastExecutionTime(LocalDateTime.now(ZoneId.of("UTC")));
 		taskState.setNextExecutionTime(scheduledTime);
 		ServTaskManager.getInstance().setTaskState(profile.getId(), taskState);
 
@@ -343,3 +344,5 @@ public class TaskManagerActionController implements ITaskStatusChangeListener {
 			.orElse(null);
 	}
 }
+
+

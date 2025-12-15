@@ -13,6 +13,7 @@ import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 public class NomadicMerchantTask extends DelayedTask {
 
@@ -35,7 +36,7 @@ public class NomadicMerchantTask extends DelayedTask {
 
         if (!shopButtonResult.isFound()) {
             logWarning("Shop button not found on the main screen. Rescheduling for 1 hour.");
-            LocalDateTime nextAttempt = LocalDateTime.now().plusHours(1);
+            LocalDateTime nextAttempt = LocalDateTime.now(ZoneId.of("UTC")).plusHours(1);
             this.reschedule(nextAttempt);
             return;
         }

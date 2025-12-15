@@ -14,6 +14,7 @@ import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 public class JourneyofLightTask extends DelayedTask {
 
@@ -35,7 +36,7 @@ public class JourneyofLightTask extends DelayedTask {
 
         if (!dealsResult.isFound()) {
             logWarning("The 'Deals' button was not found. Retrying in 5 minutes. ");
-            reschedule(LocalDateTime.now().plusMinutes(5));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
         }
 
         tapPoint(dealsResult.getPoint());
@@ -67,7 +68,7 @@ public class JourneyofLightTask extends DelayedTask {
         tapRandomPoint(new DTOPoint(50, 1150), new DTOPoint(290, 1230), 5, 200);
 
         // fetch remaining time for all 4
-        LocalDateTime nextScheduleTime = LocalDateTime.now().plusHours(1000);
+        LocalDateTime nextScheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusHours(1000);
 
         DTOPoint[][] queues = {
                 { new DTOPoint(62, 1036), new DTOPoint(166, 1058) },

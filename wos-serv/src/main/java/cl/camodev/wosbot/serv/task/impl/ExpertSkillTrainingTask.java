@@ -13,6 +13,7 @@ import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 /**
@@ -58,7 +59,7 @@ public class ExpertSkillTrainingTask extends DelayedTask {
         }
         if (!trainingExpertButton.isFound()) {
             logInfo("No training expert found, ending task.");
-            reschedule(LocalDateTime.now().plusMinutes(10));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(10));
             return;
         }
         tapPoint(trainingExpertButton.getPoint());
@@ -84,7 +85,7 @@ public class ExpertSkillTrainingTask extends DelayedTask {
             }
             logInfo("A skill is currently being trained. Rescheduling task to run after training completes in "
                     + trainingTime.toMinutes() + " minutes.");
-            reschedule(LocalDateTime.now().plus(trainingTime));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plus(trainingTime));
             return;
         }
         // scroll down to normalize position
@@ -147,7 +148,7 @@ public class ExpertSkillTrainingTask extends DelayedTask {
         long availableCount = expertAvailabilityMap.values().stream().filter(Boolean::booleanValue).count();
         if (availableCount == 0) {
             logInfo("No experts found, scheduling to check again in 10 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(10));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(10));
             return;
         }
 
@@ -284,7 +285,7 @@ public class ExpertSkillTrainingTask extends DelayedTask {
                 if (badgeResult.isFound()) {
                     logInfo("Successfully started training for skill: " + priorityItem.getName() + " with duration: "
                             + learningTime.label());
-                    this.reschedule(LocalDateTime.now().plus(learningTime.duration())); // add 1 minute buffer
+                    this.reschedule(LocalDateTime.now(ZoneId.of("UTC")).plus(learningTime.duration())); // add 1 minute buffer
                     tapBackButton();
                     tapBackButton();
                     return;

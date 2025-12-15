@@ -21,6 +21,7 @@ import cl.camodev.wosbot.serv.task.helper.NavigationHelper.EventMenu;
 import java.awt.Color;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
@@ -52,8 +53,8 @@ public class MercenaryEventTask extends DelayedTask {
                 && servTaskManager.getTaskState(profile.getId(), TpDailyTaskEnum.INTEL.getId()).isScheduled()) {
             // Make sure intel isn't about to run
             DailyTask intel = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(), TpDailyTaskEnum.INTEL);
-            if (ChronoUnit.MINUTES.between(LocalDateTime.now(), intel.getNextSchedule()) < 5) {
-                reschedule(LocalDateTime.now().plusMinutes(35)); // Reschedule in 35 minutes, after intel has run
+            if (ChronoUnit.MINUTES.between(LocalDateTime.now(ZoneId.of("UTC")), intel.getNextSchedule()) < 5) {
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(35)); // Reschedule in 35 minutes, after intel has run
                 logWarning(
                         "Intel task is scheduled to run soon. Rescheduling Mercenary Event to run 30min after intel.");
                 return;
@@ -118,7 +119,7 @@ public class MercenaryEventTask extends DelayedTask {
             scoutAndAttack(eventButton, sameLevelAsLastTime);
         } catch (Exception e) {
             logError("An error occurred during the Mercenary Event task: " + e.getMessage(), e);
-            reschedule(LocalDateTime.now().plusMinutes(30)); // Reschedule on error
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(30)); // Reschedule on error
         }
     }
 
@@ -323,7 +324,7 @@ public class MercenaryEventTask extends DelayedTask {
 
         if (attackOrRallyButton == null || !attackOrRallyButton.isFound()) {
             logWarning("Attack/Rally button not found after scouting/challenging. Retrying in 5 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             return;
         }
 
@@ -344,7 +345,7 @@ public class MercenaryEventTask extends DelayedTask {
         if (!deployButton.isFound()) {
             logError(
                     "March queue is full or another issue occurred. Cannot start a new march. Retrying in 10 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(10));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(10));
             return;
         }
 
@@ -371,7 +372,7 @@ public class MercenaryEventTask extends DelayedTask {
             staminaHelper.subtractStamina(spentStamina, rally);
 
             // Reschedule with conservative estimate
-            LocalDateTime fallbackTime = LocalDateTime.now().plusMinutes(10);
+            LocalDateTime fallbackTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(10);
             reschedule(fallbackTime);
             logInfo("Mercenary march deployed with unknown return time. Task will retry at " +
                     fallbackTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")));
@@ -389,7 +390,7 @@ public class MercenaryEventTask extends DelayedTask {
         if (deployStillPresent.isFound()) {
             logWarning(
                     "Deploy button still present after attempting to deploy. March may have failed. Retrying in 5 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             return;
         }
 
@@ -398,8 +399,8 @@ public class MercenaryEventTask extends DelayedTask {
         // Calculate return time
         long returnTimeSeconds = (travelTimeSeconds * 2) + 2;
         LocalDateTime rescheduleTime = rally
-                ? LocalDateTime.now().plusSeconds(returnTimeSeconds).plusMinutes(5)
-                : LocalDateTime.now().plusSeconds(returnTimeSeconds);
+                ? LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(returnTimeSeconds).plusMinutes(5)
+                : LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(returnTimeSeconds);
 
         reschedule(rescheduleTime);
 

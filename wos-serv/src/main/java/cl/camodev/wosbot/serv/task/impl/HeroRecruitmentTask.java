@@ -16,6 +16,7 @@ import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Task responsible for managing hero recruitment rewards.
@@ -322,7 +323,7 @@ public class HeroRecruitmentTask extends DelayedTask {
                 TimeConverters::toDuration);
 
         if (nextTime != null) {
-            LocalDateTime nextClaimTime = LocalDateTime.now().plus(nextTime);
+            LocalDateTime nextClaimTime = LocalDateTime.now(ZoneId.of("UTC")).plus(nextTime);
             logInfo(type + " recruitment next time: " + nextClaimTime.format(DATETIME_FORMATTER));
             return nextClaimTime;
         } else {
@@ -400,7 +401,7 @@ public class HeroRecruitmentTask extends DelayedTask {
      * @return Current time plus {@value #OCR_FAILURE_RETRY_MINUTES} minutes
      */
     private LocalDateTime getFallbackTime() {
-        return LocalDateTime.now().plusMinutes(OCR_FAILURE_RETRY_MINUTES);
+        return LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(OCR_FAILURE_RETRY_MINUTES);
     }
 
     // ===============================

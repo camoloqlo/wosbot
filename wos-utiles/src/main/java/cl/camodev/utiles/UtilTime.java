@@ -10,9 +10,15 @@ public class UtilTime {
 
 	public static LocalDateTime getGameReset() {
 		ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
-		ZonedDateTime nextUtcMidnight = nowUtc.toLocalDate().plusDays(1).atStartOfDay(ZoneId.of("UTC"));
-		ZonedDateTime localNextMidnight = nextUtcMidnight.withZoneSameInstant(ZoneId.systemDefault());
-		return localNextMidnight.toLocalDateTime();
+		// Get today's midnight UTC
+		ZonedDateTime todayMidnightUtc = nowUtc.toLocalDate().atStartOfDay(ZoneId.of("UTC"));
+		// If we haven't passed today's midnight, return it; otherwise return tomorrow's
+		if (nowUtc.isBefore(todayMidnightUtc) || nowUtc.isEqual(todayMidnightUtc)) {
+			return todayMidnightUtc.toLocalDateTime();
+		}
+		// We've passed today's midnight, so return tomorrow's
+		ZonedDateTime nextUtcMidnight = todayMidnightUtc.plusDays(1);
+		return nextUtcMidnight.toLocalDateTime();
 	}
 
 	public static LocalDateTime getNextReset() {
@@ -26,12 +32,11 @@ public class UtilTime {
 		}
 
 		ZonedDateTime nextResetUtc = nowUtc.until(nextMidnightUtc, ChronoUnit.SECONDS) < nowUtc.until(nextNoonUtc, ChronoUnit.SECONDS) ? nextMidnightUtc : nextNoonUtc;
-		ZonedDateTime localNextReset = nextResetUtc.withZoneSameInstant(ZoneId.systemDefault());
-		return localNextReset.toLocalDateTime();
+		return nextResetUtc.toLocalDateTime();
 	}
 
 	public static String localDateTimeToDDHHMMSS(LocalDateTime dateTime) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
 
 		if (dateTime.isBefore(now)) {
 			return "ASAP";
@@ -57,7 +62,7 @@ public class UtilTime {
 		if (execution == null) {
 			return "Never";
 		}
-		long minutesAgo = ChronoUnit.MINUTES.between(execution, LocalDateTime.now());
+		long minutesAgo = ChronoUnit.MINUTES.between(execution, LocalDateTime.now(ZoneId.of("UTC")));
 		return formatTimeAgo(minutesAgo);
 	}
 
@@ -95,7 +100,7 @@ public class UtilTime {
     }
 
     /**
-     * Returns the next Monday at 00:00 UTC in the system's local timezone.
+     * Returns the next Monday at 00:00 UTC.
      * If it's already Monday before midnight UTC, returns next week's Monday.
      *
      * @return LocalDateTime representing the next Monday at 00:00 UTC
@@ -104,7 +109,7 @@ public class UtilTime {
         ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
         ZonedDateTime nextMondayUtc = nowUtc.with(TemporalAdjusters.next(DayOfWeek.MONDAY))
                 .truncatedTo(ChronoUnit.DAYS);
-        return nextMondayUtc.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+        return nextMondayUtc.toLocalDateTime();
     }
 
     /**

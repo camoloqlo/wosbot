@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -220,7 +221,7 @@ public class MailRewardsTask extends DelayedTask {
      */
     private void handleMailMenuOpenFailure() {
         logError("Failed to open mail menu. Retrying in " + ERROR_RETRY_MINUTES + " minutes.");
-        reschedule(LocalDateTime.now().plusMinutes(ERROR_RETRY_MINUTES));
+        reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(ERROR_RETRY_MINUTES));
     }
 
     /**
@@ -414,7 +415,7 @@ public class MailRewardsTask extends DelayedTask {
      * @return the LocalDateTime for next execution
      */
     private LocalDateTime calculateNextExecutionTime() {
-        LocalDateTime proposedTime = LocalDateTime.now().plusMinutes(scheduleOffsetMinutes);
+        LocalDateTime proposedTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(scheduleOffsetMinutes);
         LocalDateTime gameResetTime = UtilTime.getGameReset();
 
         // Cap at game reset to ensure daily execution

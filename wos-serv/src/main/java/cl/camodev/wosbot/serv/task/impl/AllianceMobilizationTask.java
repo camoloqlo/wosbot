@@ -20,6 +20,7 @@ import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 import java.awt.Color;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -555,7 +556,7 @@ public class AllianceMobilizationTask extends DelayedTask {
      */
     private void applyFallbackReschedule() {
         logInfo("No tasks processed. Checking again in " + (Delays.DEFAULT_COOLDOWN_SECONDS / 60) + " minutes.");
-        reschedule(LocalDateTime.now().plusSeconds(Delays.DEFAULT_COOLDOWN_SECONDS));
+        reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(Delays.DEFAULT_COOLDOWN_SECONDS));
     }
 
     // ========================================================================
@@ -892,7 +893,7 @@ public class AllianceMobilizationTask extends DelayedTask {
 
             if (consecutiveOnlyRunningMissionCount >= 3) {
                 logInfo("Only running missions found for 3 consecutive runs - rescheduling for 30 minutes");
-                reschedule(LocalDateTime.now().plusSeconds(Delays.LONG_COOLDOWN_SECONDS));
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(Delays.LONG_COOLDOWN_SECONDS));
                 return true;
             }
         } else {
@@ -1030,7 +1031,7 @@ public class AllianceMobilizationTask extends DelayedTask {
      *                                refreshed tasks
      */
     private void rescheduleForShortestCooldown(int shortestCooldownSeconds) {
-        LocalDateTime nextRun = LocalDateTime.now()
+        LocalDateTime nextRun = LocalDateTime.now(ZoneId.of("UTC"))
                 .plusSeconds(shortestCooldownSeconds + Delays.RESCHEDULE_BUFFER_SECONDS);
 
         reschedule(nextRun);
@@ -1052,7 +1053,7 @@ public class AllianceMobilizationTask extends DelayedTask {
         int timerSeconds = readTaskAvailabilityTimers();
 
         if (timerSeconds > 0) {
-            LocalDateTime nextRun = LocalDateTime.now().plusSeconds(timerSeconds + 10); // +10s buffer
+            LocalDateTime nextRun = LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(timerSeconds + 10); // +10s buffer
             reschedule(nextRun);
             logInfo("Next check in " + (timerSeconds / 60) + "min (task availability timer)");
             return true;
@@ -1355,7 +1356,7 @@ public class AllianceMobilizationTask extends DelayedTask {
         // Decision 4: Good task but another task is running
         if (anyTaskRunning) {
             logInfo("Waiting 1h (task good but another task running)");
-            LocalDateTime nextRun = LocalDateTime.now().plusHours(Delays.RESCHEDULE_WAIT_HOURS);
+            LocalDateTime nextRun = LocalDateTime.now(ZoneId.of("UTC")).plusHours(Delays.RESCHEDULE_WAIT_HOURS);
             reschedule(nextRun);
             return new TaskProcessingResult(true, 0, true, false); // Stop processing, reschedule already set, mission
                                                                    // found

@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
@@ -291,7 +292,7 @@ public class ChiefOrderTask extends DelayedTask {
 	 * </ul>
 	 */
 	private void scheduleNextRun() {
-		LocalDateTime nextExecutionTime = LocalDateTime.now()
+		LocalDateTime nextExecutionTime = LocalDateTime.now(ZoneId.of("UTC"))
 				.plusHours(chiefOrderType.getCooldownHours());
 
 		reschedule(nextExecutionTime);
@@ -321,7 +322,7 @@ public class ChiefOrderTask extends DelayedTask {
 	private void handleTaskFailure(String reason) {
 		logWarning("Task failed: " + reason);
 
-		LocalDateTime retryTime = LocalDateTime.now().plusMinutes(ERROR_RETRY_MINUTES);
+		LocalDateTime retryTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(ERROR_RETRY_MINUTES);
 		reschedule(retryTime);
 
 		logInfo("Task rescheduled to retry in " + ERROR_RETRY_MINUTES + " minutes");

@@ -2,6 +2,7 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -27,13 +28,13 @@ public class BeastSlayTask extends DelayedTask {
 
 	public static LocalDateTime calculateFullStaminaTime(int currentStamina, int maxStamina, int regenRateMinutes) {
 		if (currentStamina >= maxStamina) {
-			return LocalDateTime.now(); // Already full
+			return LocalDateTime.now(ZoneId.of("UTC")); // Already full
 		}
 
 		int staminaNeeded = maxStamina - currentStamina;
 		int minutesToFull = staminaNeeded * regenRateMinutes;
 
-		return LocalDateTime.now().plusMinutes(minutesToFull);
+		return LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(minutesToFull);
 	}
 
 	@Override

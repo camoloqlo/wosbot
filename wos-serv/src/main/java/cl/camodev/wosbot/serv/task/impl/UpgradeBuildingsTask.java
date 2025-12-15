@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -106,7 +107,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
             if (!troopTrainingTimes.isEmpty()) {
                 logInfo("Adding troop training times to scheduling calculation:");
                 for (LocalDateTime trainingTime : troopTrainingTimes) {
-                    LocalDateTime now = LocalDateTime.now();
+                    LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
                     Duration duration = Duration.between(now, trainingTime);
 
                     long totalMinutes = duration.toMinutes();
@@ -336,7 +337,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
                     return null;
                 }
 
-                LocalDateTime completionTime = LocalDateTime.now().plus(trainingTime);
+                LocalDateTime completionTime = LocalDateTime.now(ZoneId.of("UTC")).plus(trainingTime);
 
                 logInfo("Building will complete training at approximately: " + completionTime);
 
@@ -548,15 +549,15 @@ public class UpgradeBuildingsTask extends DelayedTask {
             if (minutesToWait > 30) {
 
                 long halfTime = minutesToWait / 2;
-                rescheduleTime = LocalDateTime.now().plusMinutes(halfTime);
+                rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(halfTime);
                 logInfo("Wait time exceeds 30 minutes (" + minutesToWait + " min). Rescheduling for half time: " +
                         halfTime + " minutes from now");
             } else if (minutesToWait < 5) {
-                rescheduleTime = LocalDateTime.now().plusMinutes(minutesToWait);
+                rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(minutesToWait);
                 logInfo("Wait time is less than 5 minutes. Keeping normal schedule: " +
                         minutesToWait + " minutes from now");
             } else {
-                rescheduleTime = LocalDateTime.now().plusMinutes(minutesToWait);
+                rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(minutesToWait);
                 logInfo("Wait time is " + minutesToWait + " minutes. Using normal schedule");
             }
 
@@ -567,7 +568,7 @@ public class UpgradeBuildingsTask extends DelayedTask {
             this.reschedule(rescheduleTime);
         } else {
             // No busy queues with time info, reschedule for default time
-            LocalDateTime rescheduleTime = LocalDateTime.now().plusHours(1);
+            LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusHours(1);
             logWarning("No BUSY queues with time information found. Rescheduling for 1 hour: " + rescheduleTime);
             this.reschedule(rescheduleTime);
         }

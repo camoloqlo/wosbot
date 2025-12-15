@@ -12,6 +12,7 @@ import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Task that claims alliance treasures from the Beast Cage.
@@ -255,7 +256,7 @@ public class PetAllianceTreasuresTask extends DelayedTask {
 	 * This handles temporary UI issues or feature unavailability.
 	 */
 	private void rescheduleForRetry() {
-		LocalDateTime retryTime = LocalDateTime.now().plusMinutes(RETRY_DELAY_MINUTES);
+		LocalDateTime retryTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(RETRY_DELAY_MINUTES);
 		reschedule(retryTime);
 		logWarning("Navigation failed. Retrying at " + retryTime.format(TIME_FORMATTER));
 	}

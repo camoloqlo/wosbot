@@ -14,6 +14,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.GZIPOutputStream;
 import java.io.FileInputStream;
@@ -28,8 +29,14 @@ import java.io.BufferedOutputStream;
 public class ProfileLogger {
     private static final Logger mainLogger = LoggerFactory.getLogger(ProfileLogger.class);
     private static final Map<Long, PrintWriter> profileLogWriters = new ConcurrentHashMap<>();
-    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    private static final SimpleDateFormat fileNameDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    private static final SimpleDateFormat dateFormat = initDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final SimpleDateFormat fileNameDateFormat = initDateFormat("yyyy-MM-dd");
+    
+    private static SimpleDateFormat initDateFormat(String pattern) {
+        SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return sdf;
+    }
     
     // Log rotation settings
     private static final long MAX_LOG_FILE_SIZE = 10 * 1024 * 1024; // 10MB

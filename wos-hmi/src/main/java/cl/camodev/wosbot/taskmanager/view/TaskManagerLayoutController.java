@@ -30,6 +30,7 @@ import javafx.scene.layout.HBox;
 import javafx.util.Duration;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Consumer;
@@ -61,7 +62,7 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
     private final Image iconFalse = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/icons/indicators/red.png")));
     private final Image iconWaiting = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/icons/indicators/yellow.png")));
     private final Image iconIdle = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/icons/indicators/grey.png")));
-	private final ObjectProperty<LocalDateTime> globalClock = new SimpleObjectProperty<>(LocalDateTime.now());
+	private final ObjectProperty<LocalDateTime> globalClock = new SimpleObjectProperty<>(LocalDateTime.now(java.time.ZoneId.of("UTC")));
 	private final Map<Long, Tab> profileTabsMap = new HashMap<>();
 	private final Map<Long, ObservableList<TaskManagerAux>> tasks = new HashMap<>();
 	private final Map<Long, FilteredList<TaskManagerAux>> filteredTasks = new HashMap<>();
@@ -183,7 +184,7 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 	// Method to update time-dependent values and trigger reordering
 	private void updateTimeValues() {
 		Platform.runLater(() -> {
-			LocalDateTime now = LocalDateTime.now();
+			LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("UTC"));
 			globalClock.set(now);
 
 			// Update all tables for all profiles
@@ -330,7 +331,7 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 				long diffInSeconds = Long.MAX_VALUE;
 				boolean ready = false;
 				if (s.getNextSchedule() != null) {
-					diffInSeconds = ChronoUnit.SECONDS.between(LocalDateTime.now(), s.getNextSchedule());
+					diffInSeconds = ChronoUnit.SECONDS.between(LocalDateTime.now(ZoneId.of("UTC")), s.getNextSchedule());
 					if (diffInSeconds <= 0) {
 						ready = true;
 						diffInSeconds = 0;
@@ -669,7 +670,7 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
 
     private ImageView getTaskStatusIcon(TaskManagerAux task, ImageView iv) {
         boolean flag = task.scheduledProperty().get();
-        boolean waiting = !task.isExecuting() && !task.hasReadyTask() && task.isScheduled() && ChronoUnit.SECONDS.between(LocalDateTime.now(), task.getNextExecution()) >= 60;
+        boolean waiting = !task.isExecuting() && !task.hasReadyTask() && task.isScheduled() && ChronoUnit.SECONDS.between(LocalDateTime.now(ZoneId.of("UTC")), task.getNextExecution()) >= 60;
         if (waiting) {
             iv.setImage(iconWaiting);
         } else if (flag) {
@@ -697,8 +698,8 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
             taskAux.setNextExecution(taskState.getNextExecutionTime());
             taskAux.setScheduled(taskState.isScheduled());
             taskAux.setExecuting(taskState.isExecuting());
-            taskAux.setHasReadyTask(taskState.getNextExecutionTime() != null && ChronoUnit.SECONDS.between(LocalDateTime.now(), taskState.getNextExecutionTime()) <= 0);
-            taskAux.setNearestMinutesUntilExecution(taskState.getNextExecutionTime() != null ? ChronoUnit.SECONDS.between(LocalDateTime.now(), taskState.getNextExecutionTime()) : Long.MAX_VALUE);
+            taskAux.setHasReadyTask(taskState.getNextExecutionTime() != null && ChronoUnit.SECONDS.between(LocalDateTime.now(ZoneId.of("UTC")), taskState.getNextExecutionTime()) <= 0);
+            taskAux.setNearestMinutesUntilExecution(taskState.getNextExecutionTime() != null ? ChronoUnit.SECONDS.between(LocalDateTime.now(ZoneId.of("UTC")), taskState.getNextExecutionTime()) : Long.MAX_VALUE);
 
             FXCollections.sort(dataList, TASK_AUX_COMPARATOR);
 
@@ -706,4 +707,5 @@ public class TaskManagerLayoutController implements IProfileDataChangeListener {
         });
 	}
 }
+
 

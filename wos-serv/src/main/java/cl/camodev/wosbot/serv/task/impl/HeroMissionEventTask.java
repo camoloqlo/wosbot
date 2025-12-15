@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -44,7 +45,7 @@ public class HeroMissionEventTask extends DelayedTask {
         useFlag = flagNumber > 0;
 
         if (eventHelper.isBearRunning()) {
-            LocalDateTime rescheduleTo = LocalDateTime.now().plusMinutes(30);
+            LocalDateTime rescheduleTo = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(30);
             logInfo("Bear Hunt is running, rescheduling for " + rescheduleTo);
             reschedule(rescheduleTo);
             return;
@@ -56,8 +57,8 @@ public class HeroMissionEventTask extends DelayedTask {
                 && servTaskManager.getTaskState(profile.getId(), TpDailyTaskEnum.INTEL.getId()).isScheduled()) {
             // Make sure intel isn't about to run
             DailyTask intel = iDailyTaskRepository.findByProfileIdAndTaskName(profile.getId(), TpDailyTaskEnum.INTEL);
-            if (ChronoUnit.MINUTES.between(LocalDateTime.now(), intel.getNextSchedule()) < 5) {
-                reschedule(LocalDateTime.now().plusMinutes(35)); // Reschedule in 35 minutes, after intel has run
+            if (ChronoUnit.MINUTES.between(LocalDateTime.now(ZoneId.of("UTC")), intel.getNextSchedule()) < 5) {
+                reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(35)); // Reschedule in 35 minutes, after intel has run
                 logWarning(
                         "Intel task is scheduled to run soon. Rescheduling Hero's Mission to run 30min after intel.");
                 return;
@@ -111,7 +112,7 @@ public class HeroMissionEventTask extends DelayedTask {
 
         if (reaperStatus.isOcrError()) {
             logWarning("OCR error while checking reaper availability. Retrying in 5 minutes.");
-            reschedule(LocalDateTime.now().plusMinutes(5));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
             return;
         }
 
@@ -123,7 +124,7 @@ public class HeroMissionEventTask extends DelayedTask {
 
         claimAllRewards();
         if (!rallyReaper()) {
-            reschedule(LocalDateTime.now().plusMinutes(5));
+            reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
         }
     }
 
@@ -179,28 +180,14 @@ public class HeroMissionEventTask extends DelayedTask {
 
         // Parse travel time
         long travelTimeSeconds = 0;
-        DTOTesseractSettings settings = new DTOTesseractSettings.Builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setAllowedChars("0123456789:") // Only allow digits and ':'
-                .build();
-
         try {
-            String timeStr = stringHelper.execute(
-                    new DTOPoint(521, 1141),
-                    new DTOPoint(608, 1162),
-                    5,
-                    300L,
-                    settings,
-                    s -> !s.isEmpty(),
-                    s -> s);
-            travelTimeSeconds = UtilTime.parseTimeToSeconds(timeStr) * 2 + 2;
-
-            logInfo("Success parsing travel time: " + timeStr);
+            travelTimeSeconds = staminaHelper.parseTravelTime();
+            logInfo("Successfully parsed travel time: " + travelTimeSeconds + "s");
         } catch (Exception e) {
             logError("Error parsing travel time: " + e.getMessage());
         }
 
+        // Parse stamina cost
         Integer spentStamina = staminaHelper.getSpentStamina();
 
         // Deploy march
@@ -238,14 +225,14 @@ public class HeroMissionEventTask extends DelayedTask {
 
         if (travelTimeSeconds <= 0) {
             logError("Failed to parse travel time via OCR. Rescheduling in 10 minutes as fallback.");
-            LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(10);
+            LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(10);
             reschedule(rescheduleTime);
             logInfo("Reaper rally scheduled to return in "
                     + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
             return true;
         }
 
-        LocalDateTime rescheduleTime = LocalDateTime.now().plusSeconds(travelTimeSeconds).plusMinutes(5);
+        LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(travelTimeSeconds).plusMinutes(5);
         reschedule(rescheduleTime);
         logInfo("Reaper rally scheduled to return in " + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
         return true;

@@ -2,6 +2,7 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -289,7 +290,7 @@ public class LifeEssenceTask extends DelayedTask {
 		try {
 			LocalDateTime nextScrollTime = LocalDateTime.parse(nextScrollTimeStr);
 
-			if (LocalDateTime.now().isAfter(nextScrollTime)) {
+			if (LocalDateTime.now(ZoneId.of("UTC")).isAfter(nextScrollTime)) {
 				logDebug("Scroll cooldown expired. Attempting to buy.");
 				return true;
 			}
@@ -390,7 +391,7 @@ public class LifeEssenceTask extends DelayedTask {
 
 		// Calculate backoff time: 5, 10, 15, 20, 25 minutes (max 30)
 		int backoffMinutes = Math.min(BACKOFF_MULTIPLIER * consecutiveFailures, MAX_BACKOFF_MINUTES);
-		LocalDateTime nextAttempt = LocalDateTime.now().plusMinutes(backoffMinutes);
+		LocalDateTime nextAttempt = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(backoffMinutes);
 
 		reschedule(nextAttempt);
 
@@ -438,7 +439,7 @@ public class LifeEssenceTask extends DelayedTask {
 		// Calculate next schedule time
 		int scheduleOffset = offsetMinutes;
 
-		LocalDateTime nextSchedule = LocalDateTime.now().plusMinutes(scheduleOffset);
+		LocalDateTime nextSchedule = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(scheduleOffset);
 		reschedule(nextSchedule);
 
 		logInfo("Life Essence task completed. Claimed: " + claimedCount +

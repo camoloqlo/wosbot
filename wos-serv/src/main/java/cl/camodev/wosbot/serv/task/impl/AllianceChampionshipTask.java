@@ -595,7 +595,7 @@ public class AllianceChampionshipTask extends DelayedTask {
      */
     private void handleNavigationFailure(String context) {
         logWarning(context + ". Retrying in " + NAVIGATION_FAILURE_RETRY_MINUTES + " minutes.");
-        reschedule(LocalDateTime.now().plusMinutes(NAVIGATION_FAILURE_RETRY_MINUTES));
+        reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(NAVIGATION_FAILURE_RETRY_MINUTES));
     }
 
     /**
@@ -628,18 +628,12 @@ public class AllianceChampionshipTask extends DelayedTask {
         TimeWindowHelper.WindowResult result = getWindowState();
         Instant nextExecutionInstant = result.getNextWindowStart();
 
-        LocalDateTime nextExecutionLocal = LocalDateTime.ofInstant(
-                nextExecutionInstant,
-                ZoneId.systemDefault());
-
         LocalDateTime nextExecutionUtc = LocalDateTime.ofInstant(
                 nextExecutionInstant,
                 ZoneId.of("UTC"));
 
         logInfo("Rescheduling Alliance Championship for (UTC): " + nextExecutionUtc);
-        logInfo("Rescheduling Alliance Championship for (Local): " + nextExecutionLocal);
-
-        reschedule(nextExecutionLocal);
+        reschedule(nextExecutionUtc);
     }
 
     /**

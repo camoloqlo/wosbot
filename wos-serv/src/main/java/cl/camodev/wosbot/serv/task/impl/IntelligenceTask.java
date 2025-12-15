@@ -3,6 +3,7 @@ package cl.camodev.wosbot.serv.task.impl;
 import java.awt.Color;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -192,7 +193,7 @@ public class IntelligenceTask extends DelayedTask {
 			return getMarchesAvailable();
 		} else {
 			boolean available = marchHelper.checkMarchesAvailable();
-			return new MarchesAvailable(available, LocalDateTime.now());
+			return new MarchesAvailable(available, LocalDateTime.now(ZoneId.of("UTC")));
 		}
 	}
 
@@ -221,7 +222,7 @@ public class IntelligenceTask extends DelayedTask {
 			logWarning("Not enough stamina to process intel. Current stamina: " + staminaValue +
 					". Required: " + MIN_STAMINA_REQUIRED + ".");
 			long minutesToRegen = (long) (MIN_STAMINA_REQUIRED - staminaValue) * 5L;
-			LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(minutesToRegen);
+			LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(minutesToRegen);
 			reschedule(rescheduleTime);
 			return false;
 		}
@@ -328,7 +329,7 @@ public class IntelligenceTask extends DelayedTask {
 		if (marchQueueLimitReached && nonBeastIntelProcessed) {
 			// Non-beast intel (survivors/journeys) were processed
 			// Even if marches are full, we processed what we could
-			reschedule(LocalDateTime.now().plusMinutes(2));
+			reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(2));
 			logInfo("Non-beast intel processed but march queue full. " +
 					"Rescheduling in 2 minutes to check for more.");
 
@@ -343,7 +344,7 @@ public class IntelligenceTask extends DelayedTask {
 				logInfo("March queue is full, and only beasts remain. Rescheduling for when marches will be available at "
 						+ marchesAvailable.rescheduleTo());
 			} else {
-				reschedule(LocalDateTime.now().plusMinutes(2));
+				reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(2));
 				logInfo("March queue is full, and only beasts remain. Rescheduling in 2 minutes");
 			}
 
@@ -353,7 +354,7 @@ public class IntelligenceTask extends DelayedTask {
 
 		if (!beastMarchSent || marchQueueLimitReached) {
 			// Some intel was processed but might have skipped beasts
-			reschedule(LocalDateTime.now().plusMinutes(2));
+			reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(2));
 			logInfo("Rescheduling in 2 minutes to check if any intel got skipped. " +
 					"Beast march sent: " + beastMarchSent + ", March queue full: " + marchQueueLimitReached);
 
@@ -386,7 +387,7 @@ public class IntelligenceTask extends DelayedTask {
 
 		if (cooldown == null) {
 			logWarning("Failed to read cooldown timer via OCR. Rescheduling in 10 minutes.");
-			reschedule(LocalDateTime.now().plusMinutes(10));
+			reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(10));
 			tapBackButton();
 			autoJoinDisabledForIntel = false;
 			return;
@@ -543,13 +544,12 @@ public class IntelligenceTask extends DelayedTask {
 
 		// Parse stamina cost
 		Integer spentStamina = staminaHelper.getSpentStamina();
-		logDebug("Spent stamina read: " + spentStamina);
 
 		// Deploy march
 		DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(EnumTemplates.DEPLOY_BUTTON, SearchConfigConstants.SINGLE_WITH_RETRIES);
 		if (!deploy.isFound()) {
 			logError("Deploy button not found. Rescheduling to try again in 5 minutes.");
-			reschedule(LocalDateTime.now().plusMinutes(5));
+			reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
 			processingTask = false; // Stop processing task
 			return;
 		}
@@ -562,7 +562,7 @@ public class IntelligenceTask extends DelayedTask {
 		if (deploy.isFound()) {
 			logWarning(
 					"Deploy button still present after deployment attempt. March may have failed. Rescheduling in 5 minutes.");
-			reschedule(LocalDateTime.now().plusMinutes(5));
+			reschedule(LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
 			processingTask = false; // Stop processing task
 			return;
 		}
@@ -576,14 +576,14 @@ public class IntelligenceTask extends DelayedTask {
 		// Reschedule for march return
 		if (travelTimeSeconds <= 0) {
 			logError("Failed to parse travel time via OCR. Using 5 minute fallback reschedule.");
-			LocalDateTime rescheduleTime = LocalDateTime.now().plusMinutes(5);
+			LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5);
 			reschedule(rescheduleTime);
 			processingTask = false; // Stop processing task
 			return;
 		}
 
 		if (useSmartProcessing) {
-			LocalDateTime rescheduleTime = LocalDateTime.now().plusSeconds(travelTimeSeconds);
+			LocalDateTime rescheduleTime = LocalDateTime.now(ZoneId.of("UTC")).plusSeconds(travelTimeSeconds);
 			reschedule(rescheduleTime);
 			logInfo("Beast march scheduled to return at " + UtilTime.localDateTimeToDDHHMMSS(rescheduleTime));
 			processingTask = false; // Stop processing task
@@ -625,7 +625,7 @@ public class IntelligenceTask extends DelayedTask {
 		int totalMarchesAvailable = profile.getConfig(EnumConfigurationKey.GATHER_ACTIVE_MARCH_QUEUE_INT,
 				Integer.class);
 		int activeMarchQueues = 0;
-		LocalDateTime earliestAvailableMarch = LocalDateTime.now().plusHours(14); // Very long default time
+		LocalDateTime earliestAvailableMarch = LocalDateTime.now(ZoneId.of("UTC")).plusHours(14); // Very long default time
 
 		for (GatherType gatherType : GatherType.values()) {
 			DTOImageSearchResult resource = templateSearchHelper.searchTemplate(gatherType.getTemplate(), SearchConfigConstants.SINGLE_WITH_RETRIES);
@@ -663,7 +663,7 @@ public class IntelligenceTask extends DelayedTask {
 		// Could be auto-rally marches returning soon
 		logInfo("Not all march queues used (" + activeMarchQueues + "/" + totalMarchesAvailable +
 				"), but no idle marches. Suspected auto-rally marches. Rescheduling in 5 minutes.");
-		return new MarchesAvailable(false, LocalDateTime.now().plusMinutes(5));
+		return new MarchesAvailable(false, LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5));
 	}
 
 	/**

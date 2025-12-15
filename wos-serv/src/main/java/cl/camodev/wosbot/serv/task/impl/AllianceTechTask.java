@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
@@ -357,7 +358,7 @@ public class AllianceTechTask extends DelayedTask {
 	 * The task reschedules itself based on the user-configured offset minutes.
 	 */
 	private void scheduleNextRun() {
-		LocalDateTime nextExecutionTime = LocalDateTime.now().plusMinutes(offsetMinutes);
+		LocalDateTime nextExecutionTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(offsetMinutes);
 		reschedule(nextExecutionTime);
 
 		logInfo("Alliance Tech task completed successfully. Next execution in " +
@@ -377,7 +378,7 @@ public class AllianceTechTask extends DelayedTask {
 	private void handleTaskFailure(String reason) {
 		logWarning("Task failed: " + reason);
 
-		LocalDateTime retryTime = LocalDateTime.now().plusMinutes(ERROR_RETRY_MINUTES);
+		LocalDateTime retryTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(ERROR_RETRY_MINUTES);
 		reschedule(retryTime);
 
 		logInfo("Task rescheduled to retry in " + ERROR_RETRY_MINUTES + " minutes");

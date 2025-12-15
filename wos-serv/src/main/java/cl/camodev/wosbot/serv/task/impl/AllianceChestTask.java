@@ -1,6 +1,7 @@
 package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
@@ -217,7 +218,7 @@ public class AllianceChestTask extends DelayedTask {
 	 */
 	private void rescheduleAndExit(String reason) {
 		logWarning(reason + ". Rescheduling task to run in 5 minutes.");
-		LocalDateTime nextExecutionTime = LocalDateTime.now().plusMinutes(5);
+		LocalDateTime nextExecutionTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(5);
 		reschedule(nextExecutionTime);
 	}
 
@@ -226,7 +227,7 @@ public class AllianceChestTask extends DelayedTask {
 	 */
 	private void scheduleNextRun() {
 		int offsetMinutes = profile.getConfig(EnumConfigurationKey.ALLIANCE_CHESTS_OFFSET_INT, Integer.class);
-		LocalDateTime nextExecutionTime = LocalDateTime.now().plusMinutes(offsetMinutes);
+		LocalDateTime nextExecutionTime = LocalDateTime.now(ZoneId.of("UTC")).plusMinutes(offsetMinutes);
 		nextExecutionTime = nextExecutionTime.isAfter(UtilTime.getGameReset()) ? UtilTime.getGameReset()
 				: nextExecutionTime;
 		reschedule(nextExecutionTime);

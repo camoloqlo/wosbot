@@ -2,6 +2,7 @@ package cl.camodev.wosbot.serv.task.impl;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import cl.camodev.utiles.UtilTime;
 import cl.camodev.utiles.time.TimeConverters;
@@ -207,7 +208,7 @@ public class VipTask extends DelayedTask {
 		logDebug("Handling monthly VIP purchase check");
 
 		// Check if cooldown is active
-		if (nextMonthlyVipBuyTime != null && LocalDateTime.now().isBefore(nextMonthlyVipBuyTime)) {
+		if (nextMonthlyVipBuyTime != null && LocalDateTime.now(ZoneId.of("UTC")).isBefore(nextMonthlyVipBuyTime)) {
 			logInfo(String.format("Monthly VIP purchase on cooldown. Next purchase available at: %s (in %s)",
 					nextMonthlyVipBuyTime.format(DATETIME_FORMATTER),
 					UtilTime.localDateTimeToDDHHMMSS(nextMonthlyVipBuyTime)));
@@ -293,7 +294,7 @@ public class VipTask extends DelayedTask {
 			return;
 		}
 
-		LocalDateTime calculatedExpirationTime = LocalDateTime.now().plus(expirationTime);
+		LocalDateTime calculatedExpirationTime = LocalDateTime.now(ZoneId.of("UTC")).plus(expirationTime);
 		logDebug("OCR result: '" + UtilTime.localDateTimeToDDHHMMSS(calculatedExpirationTime) + "'");
 		nextMonthlyVipBuyTime = calculatedExpirationTime;
 

@@ -462,18 +462,12 @@ public class BearTrapTask extends DelayedTask {
     private void rescheduleToNextWindow() {
         BearTrapHelper.WindowResult result = getWindowState();
 
-        LocalDateTime nextWindowStart = LocalDateTime.ofInstant(
-                result.getNextWindowStart(),
-                ZoneId.systemDefault());
-
         LocalDateTime nextWindowStartUtc = LocalDateTime.ofInstant(
                 result.getNextWindowStart(),
                 ZoneId.of("UTC"));
 
         logInfo("Rescheduling Bear Trap for (UTC): " + nextWindowStartUtc.format(DATETIME_FORMATTER));
-        logInfo("Rescheduling Bear Trap for (Local): " + nextWindowStart.format(DATETIME_FORMATTER));
-
-        reschedule(nextWindowStart);
+        reschedule(nextWindowStartUtc);
         updateNextWindowDateTime();
     }
 
