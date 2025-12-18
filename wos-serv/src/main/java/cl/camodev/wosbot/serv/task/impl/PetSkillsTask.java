@@ -126,7 +126,6 @@ public class PetSkillsTask extends DelayedTask {
             .setAllowedChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
             .setRemoveBackground(true)
             .setTextColor(new Color(0, 187, 0))
-            .setDebug(true)
             .build();
 
     // ========== Configuration (loaded in loadConfiguration()) ==========

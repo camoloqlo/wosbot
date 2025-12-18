@@ -130,6 +130,7 @@ public class TrainingTask extends DelayedTask {
     // ===============================
 
     private List<DTOArea> queuesToCheck;
+    private List<TroopType> enabledTroopTypes;
     private boolean trainInfantry;
     private boolean trainLancer;
     private boolean trainMarksman;
@@ -268,13 +269,20 @@ public class TrainingTask extends DelayedTask {
      */
     private void buildQueuesList() {
         queuesToCheck = new ArrayList<>();
+        enabledTroopTypes = new ArrayList<>();
 
-        if (trainInfantry)
+        if (trainInfantry) {
             queuesToCheck.add(INFANTRY_AREA);
-        if (trainLancer)
+            enabledTroopTypes.add(TroopType.INFANTRY);
+        }
+        if (trainLancer) {
             queuesToCheck.add(LANCER_AREA);
-        if (trainMarksman)
+            enabledTroopTypes.add(TroopType.LANCER);
+        }
+        if (trainMarksman) {
             queuesToCheck.add(MARKSMAN_AREA);
+            enabledTroopTypes.add(TroopType.MARKSMAN);
+        }
     }
 
     /**
@@ -332,18 +340,16 @@ public class TrainingTask extends DelayedTask {
 
         emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
 
-        TroopType[] troopTypes = { TroopType.INFANTRY, TroopType.LANCER, TroopType.MARKSMAN };
-
         for (int i = 0; i < queuesToCheck.size(); i++) {
             DTOArea queueArea = queuesToCheck.get(i);
-            TroopType troopType = troopTypes[i];
+            TroopType troopType = enabledTroopTypes.get(i);
 
             logInfo("Analyzing queue for " + troopType.name());
             QueueInfo queueInfo = analyzeQueueState(queueArea, troopType);
             result.add(queueInfo);
         }
 
-        result = retryUnknownQueues(result, troopTypes);
+        result = retryUnknownQueues(result);
         marchHelper.closeLeftMenu();
         return result;
     }
@@ -356,10 +362,9 @@ public class TrainingTask extends DelayedTask {
      * recapturing screenshots between attempts to handle temporary OCR failures.
      * 
      * @param initialResults Initial queue analysis results
-     * @param troopTypes     Array of troop types corresponding to queue indices
      * @return Updated list with resolved queue statuses
      */
-    private List<QueueInfo> retryUnknownQueues(List<QueueInfo> initialResults, TroopType[] troopTypes) {
+    private List<QueueInfo> retryUnknownQueues(List<QueueInfo> initialResults) {
         List<Integer> unknownIndices = findUnknownQueueIndices(initialResults);
 
         if (unknownIndices.isEmpty()) {
@@ -377,10 +382,10 @@ public class TrainingTask extends DelayedTask {
             marchHelper.openLeftMenuCitySection(true);
             emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
 
-            unknownIndices = retryUnknownQueuesOnce(initialResults, unknownIndices, troopTypes);
+            unknownIndices = retryUnknownQueuesOnce(initialResults, unknownIndices);
         }
 
-        logUnresolvedQueues(unknownIndices, troopTypes);
+        logUnresolvedQueues(unknownIndices);
         return initialResults;
     }
 
@@ -405,18 +410,16 @@ public class TrainingTask extends DelayedTask {
      * 
      * @param results        The result list to update
      * @param unknownIndices Indices of queues to retry
-     * @param troopTypes     Array of troop types
      * @return Updated list of indices that are still UNKNOWN
      */
     private List<Integer> retryUnknownQueuesOnce(
             List<QueueInfo> results,
-            List<Integer> unknownIndices,
-            TroopType[] troopTypes) {
+            List<Integer> unknownIndices) {
 
         List<Integer> stillUnknown = new ArrayList<>();
 
         for (int queueIndex : unknownIndices) {
-            TroopType troopType = troopTypes[queueIndex];
+            TroopType troopType = enabledTroopTypes.get(queueIndex);
             DTOArea queueArea = queuesToCheck.get(queueIndex);
 
             logDebug("Retrying queue: " + troopType.name());
@@ -438,15 +441,14 @@ public class TrainingTask extends DelayedTask {
      * Logs warning messages for queues that remain UNKNOWN after all retries.
      * 
      * @param unknownIndices Indices of unresolved queues
-     * @param troopTypes     Array of troop types
      */
-    private void logUnresolvedQueues(List<Integer> unknownIndices, TroopType[] troopTypes) {
+    private void logUnresolvedQueues(List<Integer> unknownIndices) {
         if (!unknownIndices.isEmpty()) {
             logWarning("After " + MAX_QUEUE_STATUS_RETRIES + " retries, " +
                     unknownIndices.size() + " queues still have UNKNOWN status.");
 
             for (int index : unknownIndices) {
-                logWarning("Queue " + troopTypes[index].name() + " remains UNKNOWN");
+                logWarning("Queue " + enabledTroopTypes.get(index).name() + " remains UNKNOWN");
             }
         } else {
             logInfo("All queues successfully identified after retries.");
@@ -730,6 +732,9 @@ public class TrainingTask extends DelayedTask {
         readAndUpdateAppointmentTime();
 
         persistAppointmentTime();
+        
+        // Return to home screen for training execution
+        navigationHelper.ensureCorrectScreenLocation(EnumStartLocation.HOME);
     }
 
     /**
@@ -1115,13 +1120,17 @@ public class TrainingTask extends DelayedTask {
      */
     private void executeLimitedTrainingForAppointment(QueueInfo queue) {
         LocalDateTime now = LocalDateTime.now();
-        Duration neededTime = Duration.between(now, appointmentTime).plusMinutes(1);
+        // Calculate exact time until appointment (OCR retries provide sufficient safety margin)
+        Duration neededTime = Duration.between(now, appointmentTime);
 
         logInfo(String.format("Calculating limited training. Time until appointment: %02d:%02d:%02d",
                 neededTime.toHours(),
                 neededTime.toMinutesPart(),
                 neededTime.toSecondsPart()));
 
+        // Select highest troop level BEFORE reading training data
+        selectHighestTroopLevel(troopTypeBeingTrained);
+        
         emuManager.captureScreenshotViaADB(EMULATOR_NUMBER);
 
         Duration trainTime = extractMaxTrainingTime();
@@ -1129,6 +1138,7 @@ public class TrainingTask extends DelayedTask {
 
         if (trainTime == null || maxTroops == null) {
             logWarning("Could not read training data. Training maximum as fallback.");
+            // Troop already selected above, just click train
             clickTrainButton();
             return;
         }
@@ -1154,6 +1164,8 @@ public class TrainingTask extends DelayedTask {
                 200L,
                 DTOTesseractSettings.builder()
                         .setAllowedChars("0123456789")
+                        .setRemoveBackground(true)
+                        .setTextColor(new Color(254, 254, 254))
                         .build(),
                 TimeValidators::isValidTime,
                 TimeConverters::toDuration);
@@ -1172,6 +1184,8 @@ public class TrainingTask extends DelayedTask {
                 200L,
                 DTOTesseractSettings.builder()
                         .setAllowedChars("0123456789")
+                        .setRemoveBackground(true)
+                        .setTextColor(new Color(254, 254, 254))
                         .build(),
                 text -> NumberValidators.matchesPattern(text, Pattern.compile(".*?(\\d+).*")),
                 text -> NumberConverters.regexToInt(text, Pattern.compile(".*?(\\d+).*")));
@@ -1288,6 +1302,7 @@ public class TrainingTask extends DelayedTask {
         if (!ministryAppointmentEnabled && prioritizePromotion) {
             executePromotionPriorityTraining(queue);
         } else {
+            selectHighestTroopLevel(troopTypeBeingTrained);
             clickTrainButton();
         }
     }
@@ -1536,9 +1551,9 @@ public class TrainingTask extends DelayedTask {
 
     /**
      * Clicks the train button to start training.
+     * Note: Assumes highest troop level is already selected before calling this method.
      */
     private void clickTrainButton() {
-        selectHighestTroopLevel(troopTypeBeingTrained);
         DTOImageSearchResult trainButton = templateSearchHelper.searchTemplate(
                 TRAINING_TRAIN_BUTTON,
                 SearchConfigConstants.DEFAULT_SINGLE);
@@ -1696,7 +1711,8 @@ public class TrainingTask extends DelayedTask {
      * <p>
      * Strategy:
      * <ul>
-     * <li>If completion times available: Schedule for earliest</li>
+     * <li>If completion times available: Schedule for earliest to enable continuous training</li>
+     * <li>If earliest is very close to appointment (within threshold): Wait for appointment instead</li>
      * <li>If no completion times: Retry soon (training may have failed)</li>
      * </ul>
      * 
@@ -1713,6 +1729,28 @@ public class TrainingTask extends DelayedTask {
                 .filter(Objects::nonNull)
                 .min(LocalDateTime::compareTo)
                 .orElse(LocalDateTime.now().plusMinutes(TRAINING_BUTTON_RETRY_MINUTES));
+
+        // If ministry appointment enabled and earliest completion is very close to appointment,
+        // wait for appointment to maximize the bonus window instead of training more limited troops
+        if (ministryAppointmentEnabled && appointmentTime != null) {
+            if (earliest.isBefore(appointmentTime)) {
+                long minutesUntilAppointment = ChronoUnit.MINUTES.between(earliest, appointmentTime);
+                
+                // If completion is within threshold of appointment, wait for appointment
+                if (minutesUntilAppointment <= SOON_READY_THRESHOLD_MINUTES) {
+                    logInfo(String.format("Training completes %d min before appointment. Waiting for appointment at %s to maximize bonus.",
+                            minutesUntilAppointment,
+                            appointmentTime.format(DATETIME_FORMATTER)));
+                    reschedule(appointmentTime);
+                    return;
+                }
+                // Otherwise, reschedule to earliest to enable continuous training cycles
+                logInfo(String.format("Training completes at %s (%d min before appointment at %s). Will train more limited troops.",
+                        earliest.format(DATETIME_FORMATTER),
+                        minutesUntilAppointment,
+                        appointmentTime.format(DATETIME_FORMATTER)));
+            }
+        }
 
         logInfo("Rescheduling to earliest completion: " + earliest.format(DATETIME_FORMATTER));
         reschedule(earliest);
