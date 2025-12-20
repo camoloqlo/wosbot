@@ -533,17 +533,10 @@ public class IntelligenceTask extends DelayedTask {
 		}
 
 		// Parse travel time
-		long travelTimeSeconds = 0;
-		try {
-			travelTimeSeconds = staminaHelper.parseTravelTime();
-			logInfo("Successfully parsed travel time: " + travelTimeSeconds + "s");
-		} catch (Exception e) {
-			logError("Error parsing travel time: " + e.getMessage());
-		}
+		long travelTimeSeconds = staminaHelper.parseTravelTime();;
 
 		// Parse stamina cost
 		Integer spentStamina = staminaHelper.getSpentStamina();
-		logDebug("Spent stamina read: " + spentStamina);
 
 		// Deploy march
 		DTOImageSearchResult deploy = templateSearchHelper.searchTemplate(EnumTemplates.DEPLOY_BUTTON, SearchConfigConstants.SINGLE_WITH_RETRIES);

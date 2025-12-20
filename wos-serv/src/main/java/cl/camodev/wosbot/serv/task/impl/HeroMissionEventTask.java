@@ -178,29 +178,9 @@ public class HeroMissionEventTask extends DelayedTask {
         }
 
         // Parse travel time
-        long travelTimeSeconds = 0;
-        DTOTesseractSettings settings = new DTOTesseractSettings.Builder()
-                .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
-                .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
-                .setAllowedChars("0123456789:") // Only allow digits and ':'
-                .build();
+        long travelTimeSeconds = staminaHelper.parseTravelTime();
 
-        try {
-            String timeStr = stringHelper.execute(
-                    new DTOPoint(521, 1141),
-                    new DTOPoint(608, 1162),
-                    5,
-                    300L,
-                    settings,
-                    s -> !s.isEmpty(),
-                    s -> s);
-            travelTimeSeconds = UtilTime.parseTimeToSeconds(timeStr) * 2 + 2;
-
-            logInfo("Success parsing travel time: " + timeStr);
-        } catch (Exception e) {
-            logError("Error parsing travel time: " + e.getMessage());
-        }
-
+        // Parse stamina cost
         Integer spentStamina = staminaHelper.getSpentStamina();
 
         // Deploy march
