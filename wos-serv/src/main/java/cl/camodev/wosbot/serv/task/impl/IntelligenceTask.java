@@ -548,7 +548,17 @@ public class IntelligenceTask extends DelayedTask {
 		}
 
 		tapPoint(deploy.getPoint());
-		sleepTask(2000);
+		sleepTask(1000);
+
+		// Check for deployment confirmation dialog (troop imbalance)
+		DTOImageSearchResult confirmDialog = templateSearchHelper.searchTemplate(EnumTemplates.DEPLOY_CONFIRMATION_DIALOG, SearchConfigConstants.SINGLE_WITH_RETRIES);
+		if (confirmDialog.isFound()) {
+			logInfo("Deployment confirmation dialog detected (troop imbalance). Confirming deployment.");
+			tapPoint(new DTOPoint(211, 713));
+			sleepTask(300);
+			tapPoint(new DTOPoint(509, 789));
+			sleepTask(300);
+		}
 
 		// Verify deployment
 		deploy = templateSearchHelper.searchTemplate(EnumTemplates.DEPLOY_BUTTON, SearchConfigConstants.SINGLE_WITH_RETRIES);

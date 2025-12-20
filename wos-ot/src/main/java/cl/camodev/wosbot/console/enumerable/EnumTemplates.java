@@ -259,6 +259,7 @@ public enum EnumTemplates {
 	INTEL_AGNES("/templates/experts/intelAgnes.png"),
 	
 	DEPLOY_BUTTON("/templates/intel/deploy.png"),
+	DEPLOY_CONFIRMATION_DIALOG("/templates/intel/deployConfirmationDialog.png"),
 	
 	// Grayscale templates for B&W matching
 	INTEL_BEAST_GRAYSCALE("/templates/intel/beastGrayscale.png"),
