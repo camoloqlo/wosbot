@@ -1009,10 +1009,9 @@ public class BearTrapTask extends DelayedTask {
                 marchSeconds * 2 -
                 RALLY_DURATION_BUFFER_SECONDS;
 
-        if (rallyScheduler == null) {
+        if (rallyScheduler == null || rallyScheduler.isShutdown() || rallyScheduler.isTerminated()) {
             rallyScheduler = Executors.newSingleThreadScheduledExecutor();
         }
-
         rallyResetTask = rallyScheduler.schedule(
                 () -> {
                     ownRallyActive.set(false);
