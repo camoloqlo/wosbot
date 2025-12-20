@@ -393,6 +393,7 @@ public class StaminaHelper {
         servLogs.appendLog(EnumTpMessageSeverity.WARNING, HELPER_NAME, profileName, message);
     }
 
+    @SuppressWarnings("unused")
     private void logError(String message) {
         String prefixedMessage = profileName + " - " + message;
         logger.error(prefixedMessage);

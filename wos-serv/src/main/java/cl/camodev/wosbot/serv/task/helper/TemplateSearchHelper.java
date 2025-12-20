@@ -79,7 +79,7 @@ public class TemplateSearchHelper {
             }
         }
 
-        logWarning("Template " + template.name() + " not found after " + attempts + " attempts");
+        logDebug("Template " + template.name() + " not found after " + attempts + " attempts");
         return result;
     }
 
@@ -117,7 +117,7 @@ public class TemplateSearchHelper {
             }
         }
 
-        logWarning("Grayscale template " + template.name() + " not found after " + attempts + " attempts");
+        logDebug("Grayscale template " + template.name() + " not found after " + attempts + " attempts");
         return result;
     }
 
@@ -155,7 +155,7 @@ public class TemplateSearchHelper {
             }
         }
 
-        logWarning("Multiple template " + template.name() + " not found after " + attempts + " attempts");
+        logDebug("Multiple template " + template.name() + " not found after " + attempts + " attempts");
         return results;
     }
 
@@ -195,7 +195,7 @@ public class TemplateSearchHelper {
             }
         }
 
-        logWarning("Grayscale multiple template " + template.name() + " not found after " + attempts + " attempts");
+        logDebug("Grayscale multiple template " + template.name() + " not found after " + attempts + " attempts");
         return results;
     }
 
@@ -552,6 +552,7 @@ public class TemplateSearchHelper {
     // LOGGING METHODS
     // ========================================================================
 
+    @SuppressWarnings("unused")
     private void logInfo(String message) {
         String prefixedMessage = profileName + " - " + message;
         logger.info(prefixedMessage);
@@ -564,6 +565,7 @@ public class TemplateSearchHelper {
         servLogs.appendLog(EnumTpMessageSeverity.WARNING, HELPER_NAME, profileName, message);
     }
 
+    @SuppressWarnings("unused")
     private void logError(String message) {
         String prefixedMessage = profileName + " - " + message;
         logger.error(prefixedMessage);
