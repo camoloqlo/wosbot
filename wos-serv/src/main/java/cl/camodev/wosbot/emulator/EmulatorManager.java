@@ -725,10 +725,20 @@ public class EmulatorManager {
             waitingQueue.add(currentWaiting);
 
             // Wait with a timeout to be able to notify the position periodically.
-            while (waitingQueue.peek() != currentWaiting 
-                    || activeSlots.size() >= MAX_RUNNING_EMULATORS
-                    || hasEmulatorConflict(emulatorNumber, currentThread)) {
-                // Wait for up to 1 second.
+            // Allow opportunistic acquisition when a specific emulator becomes available
+            while (true) {
+                boolean isHead = waitingQueue.peek() == currentWaiting;
+                boolean slotsAvailable = activeSlots.size() < MAX_RUNNING_EMULATORS;
+                boolean noConflict = !hasEmulatorConflict(emulatorNumber, currentThread);
+                boolean headHasConflict = isHead ? false : hasEmulatorConflict(waitingQueue.peek().getEmulatorNumber(), waitingQueue.peek().getThread());
+
+                // Can acquire if:
+                // 1. Is head of queue AND slots available AND no conflict (maintains priority), OR
+                // 2. Head has conflict AND slots available AND no conflict (opportunistic)
+                if ((isHead && slotsAvailable && noConflict) || (!isHead && headHasConflict && slotsAvailable && noConflict)) {
+                    break;
+                }
+
                 permitsAvailable.await(1, TimeUnit.SECONDS);
 
                 // Query and notify the current position of the thread in the queue.
@@ -738,8 +748,8 @@ public class EmulatorManager {
             }
             logger.info("Profile {} (emulator {}) acquired slot", profile.getName(), emulatorNumber);
             logger.debug("Current slot holders: " + activeSlots);
-            // It's the turn and a slot is available.
-            waitingQueue.poll(); // Remove the thread from the queue.
+            // Remove the acquiring thread from the queue (may not be the head due to opportunistic acquisition)
+            waitingQueue.remove(currentWaiting);
             profile.setQueuePosition(0);
             // MAX_RUNNING_EMULATORS--; // Acquire the slot.
             activeSlots.add(currentThread); // Track this thread as having a slot
