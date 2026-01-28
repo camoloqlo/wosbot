@@ -4,72 +4,93 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<GridPane hgap="10" vgap="10" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
-
-    <!-- Define columns to take up all available space -->
-    <columnConstraints>
-        <ColumnConstraints hgrow="ALWAYS" maxWidth="1.7976931348623157E308" />
-    </columnConstraints>
-
-    <!-- Define rows to take up all available space -->
-    <rowConstraints>
-        <RowConstraints maxHeight="1.7976931348623157E308" vgrow="ALWAYS" />
-      <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
-      <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
-      <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
-        <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
-        <RowConstraints fillHeight="false" maxHeight="30.0" minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
-    </rowConstraints>
-   <TableView fx:id="tableviewEmulators" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS">
-     <columns>
-       <TableColumn fx:id="tableColumnActive" maxWidth="80.0" minWidth="80.0" text="ACTIVE" />
-       <TableColumn fx:id="tableColumnEmulatorName" maxWidth="100.0" minWidth="100.0" prefWidth="100.0" text="EMULATOR" />
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+   <padding>
+      <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+   </padding>
+   
+   <!-- Emulators Table -->
+   <TableView fx:id="tableviewEmulators" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" VBox.vgrow="ALWAYS">
+      <columns>
+         <TableColumn fx:id="tableColumnActive" maxWidth="80.0" minWidth="80.0" text="ACTIVE" />
+         <TableColumn fx:id="tableColumnEmulatorName" maxWidth="100.0" minWidth="100.0" prefWidth="100.0" text="EMULATOR" />
          <TableColumn fx:id="tableColumnEmulatorPath" maxWidth="1.7976931348623157E308" prefWidth="300.0" text="PATH" />
          <TableColumn fx:id="tableColumnEmulatorAction" maxWidth="80.0" minWidth="80.0" text="ACTION" />
-     </columns>
+      </columns>
       <columnResizePolicy>
          <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
       </columnResizePolicy>
    </TableView>
-   <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="4">
-      <children>
-         <Label text="Max Concurrent Instances" />
-         <TextField fx:id="textfieldMaxConcurrentInstances" maxWidth="50.0" minWidth="50.0" prefWidth="50.0">
-            <HBox.margin>
-               <Insets right="5.0" />
-            </HBox.margin>
-         </TextField>
-      </children>
+   
+   <!-- Settings Section -->
+   <HBox spacing="20" alignment="TOP_CENTER">
+      <!-- Emulator Settings -->
+      <VBox spacing="6" HBox.hgrow="ALWAYS">
+         <Label text="Emulator" style="-fx-font-weight: bold; -fx-font-size: 13px;" />
+         <Separator />
+         <VBox spacing="12">
+            <VBox spacing="2">
+               <HBox alignment="CENTER_LEFT" spacing="5">
+                  <Label text="Concurrent Instances" style="-fx-font-weight: bold;" />
+                  <Pane HBox.hgrow="ALWAYS" />
+                  <TextField fx:id="textfieldMaxConcurrentInstances" maxWidth="60.0" minWidth="60.0" prefWidth="60.0" alignment="CENTER" />
+               </HBox>
+               <Label text="Max emulators running simultaneously" style="-fx-font-size: 10px; -fx-text-fill: #888888;" />
+            </VBox>
+            <VBox spacing="2">
+               <HBox alignment="CENTER_LEFT" spacing="5">
+                  <Label text="Launch Delay" style="-fx-font-weight: bold;" />
+                  <Pane HBox.hgrow="ALWAYS" />
+                  <TextField fx:id="textfieldEmulatorLaunchDelay" maxWidth="60.0" minWidth="60.0" prefWidth="60.0" alignment="CENTER" />
+               </HBox>
+               <Label text="Wait time (sec) after emulator starts" style="-fx-font-size: 10px; -fx-text-fill: #888888;" />
+            </VBox>
+         </VBox>
+      </VBox>
+      
+      <!-- Idle Settings -->
+      <VBox spacing="6" HBox.hgrow="ALWAYS">
+         <Label text="Idle" style="-fx-font-weight: bold; -fx-font-size: 13px;" />
+         <Separator />
+         <VBox spacing="12">
+            <VBox spacing="2">
+               <HBox alignment="CENTER_LEFT" spacing="5">
+                  <Label text="Max Idle Time" style="-fx-font-weight: bold;" />
+                  <Pane HBox.hgrow="ALWAYS" />
+                  <TextField fx:id="textfieldMaxIdleTime" maxWidth="60.0" minWidth="60.0" prefWidth="60.0" alignment="CENTER" />
+               </HBox>
+               <Label text="Minutes before idle action triggers" style="-fx-font-size: 10px; -fx-text-fill: #888888;" />
+            </VBox>
+            <VBox spacing="2">
+               <HBox alignment="CENTER_LEFT" spacing="5">
+                  <Label text="Idle Action" style="-fx-font-weight: bold;" />
+                  <Pane HBox.hgrow="ALWAYS" />
+                  <ComboBox fx:id="comboboxIdleBehavior" prefWidth="120.0" />
+               </HBox>
+               <Label text="What to do when idle time exceeded" style="-fx-font-size: 10px; -fx-text-fill: #888888;" />
+            </VBox>
+         </VBox>
+      </VBox>
+      
+      <!-- Game Settings -->
+      <VBox spacing="6" HBox.hgrow="ALWAYS">
+         <Label text="Game" style="-fx-font-weight: bold; -fx-font-size: 13px;" />
+         <Separator />
+         <VBox spacing="12">
+            <VBox spacing="2">
+               <HBox alignment="CENTER_LEFT" spacing="5">
+                  <Label text="Version" disable="true" style="-fx-font-weight: bold;" />
+                  <Pane HBox.hgrow="ALWAYS" />
+                  <ComboBox fx:id="comboboxGameVersion" disable="true" prefWidth="120.0" />
+               </HBox>
+               <Label text="Game region (coming soon)" disable="true" style="-fx-font-size: 10px; -fx-text-fill: #888888;" />
+            </VBox>
+         </VBox>
+      </VBox>
    </HBox>
-   <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="2">
-      <children>
-         <Label text="Max Idle Time (minutes)" />
-         <TextField fx:id="textfieldMaxIdleTime" maxWidth="50.0" minWidth="50.0" prefWidth="50.0">
-            <HBox.margin>
-               <Insets right="5.0" />
-            </HBox.margin>
-         </TextField>
-      </children>
+   
+   <!-- Save Button -->
+   <HBox alignment="CENTER_RIGHT">
+      <Button onAction="#handleSaveConfiguration" text="Save Configuration" />
    </HBox>
-   <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="3">
-      <children>
-         <Label text="Idle Behavior" />
-         <ComboBox fx:id="comboboxIdleBehavior" prefWidth="150.0">
-            <HBox.margin>
-               <Insets right="5.0" />
-            </HBox.margin>
-         </ComboBox>
-      </children>
-   </HBox>
-   <HBox alignment="CENTER_RIGHT" GridPane.rowIndex="5">
-      <children>
-         <Button onAction="#handleSaveConfiguration" text="Save Configuration" />
-      </children>
-   </HBox>
-   <HBox alignment="CENTER_RIGHT" layoutX="20.0" layoutY="308.0" GridPane.rowIndex="1">
-      <children>
-         <Label disable="true" text="Game Version" />
-         <ComboBox fx:id="comboboxGameVersion" disable="true" prefWidth="150.0" />
-      </children>
-   </HBox>
-</GridPane>
+</VBox>

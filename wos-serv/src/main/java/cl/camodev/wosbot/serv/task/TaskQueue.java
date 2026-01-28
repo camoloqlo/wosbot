@@ -499,9 +499,19 @@ public class TaskQueue {
             return;
         }
 
+        // Get the emulator launch delay from global config in seconds (default 0)
+        int emulatorLaunchDelaySeconds = Optional
+                .ofNullable(ServConfig.getServices().getGlobalConfig())
+                .map(cfg -> cfg.get(EnumConfigurationKey.EMULATOR_LAUNCH_DELAY_INT.name()))
+                .map(Integer::parseInt)
+                .orElse(Integer.parseInt(EnumConfigurationKey.EMULATOR_LAUNCH_DELAY_INT.getDefaultValue()));
+        
+        // Calculate total lead time: 60 seconds base + emulator launch delay in seconds
+        int totalLeadTimeSeconds = 60 + emulatorLaunchDelaySeconds;
+
         // If we're idling but the next task is coming soon, re-acquire the emulator
         if (taskQueueStatus.isIdleTimeExceeded()
-                && LocalDateTime.now().plusMinutes(1).isAfter(taskQueueStatus.getDelayUntil())) {
+                && LocalDateTime.now().plusSeconds(totalLeadTimeSeconds).isAfter(taskQueueStatus.getDelayUntil())) {
             enqueueNewTask();
             taskQueueStatus.setIdleTimeExceeded(false);
             return;

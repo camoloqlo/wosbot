@@ -1,5 +1,8 @@
 package cl.camodev.wosbot.serv.task.impl;
 
+import java.util.Optional;
+
+import cl.camodev.wosbot.console.enumerable.EnumConfigurationKey;
 import cl.camodev.wosbot.console.enumerable.EnumTemplates;
 import cl.camodev.wosbot.console.enumerable.TpDailyTaskEnum;
 import cl.camodev.wosbot.emulator.EmulatorManager;
@@ -7,6 +10,7 @@ import cl.camodev.wosbot.ex.ProfileInReconnectStateException;
 import cl.camodev.wosbot.ex.StopExecutionException;
 import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOProfiles;
+import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
@@ -61,6 +65,12 @@ public class InitializeTask extends DelayedTask {
 	 * This persists across task executions (when recurring=true triggers retry).
 	 */
 	boolean isStarted = false;
+	
+	/**
+	 * Tracks whether the emulator was freshly launched (not already running).
+	 * Used to determine if the launch delay should be applied.
+	 */
+	boolean emulatorWasLaunched = false;
 
 	/**
 	 * Constructs a new InitializeTask.
@@ -104,6 +114,7 @@ public class InitializeTask extends DelayedTask {
 		logInfo("Starting initialization task...");
 
 		ensureEmulatorRunning();
+		applyLaunchDelayIfNeeded();
 		ensureGameInstalled();
 		ensureGameRunning();
 		waitForHomeScreen();
@@ -128,11 +139,40 @@ public class InitializeTask extends DelayedTask {
 				isStarted = true;
 				logInfo("Emulator is running.");
 			} else {
+				emulatorWasLaunched = true;
 				logInfo("Emulator not found. Attempting to start it...");
 				emuManager.launchEmulator(EMULATOR_NUMBER);
 				logInfo("Waiting 10 seconds before checking again.");
 				sleepTask(10000); // Wait for emulator to start
 			}
+		}
+	}
+	
+	/**
+	 * Applies the user-configured launch delay after the emulator is fully started.
+	 * 
+	 * <p>
+	 * This delay is only applied when the emulator was freshly launched (not already running).
+	 * It ensures the OS is fully loaded and functional before attempting to interact with it.
+	 * 
+	 * <p>
+	 * The delay is configured via EMULATOR_LAUNCH_DELAY_INT in global settings (in seconds).
+	 */
+	private void applyLaunchDelayIfNeeded() {
+		if (!emulatorWasLaunched) {
+			return;
+		}
+		
+		int launchDelaySeconds = Optional
+				.ofNullable(ServConfig.getServices().getGlobalConfig())
+				.map(cfg -> cfg.get(EnumConfigurationKey.EMULATOR_LAUNCH_DELAY_INT.name()))
+				.map(Integer::parseInt)
+				.orElse(Integer.parseInt(EnumConfigurationKey.EMULATOR_LAUNCH_DELAY_INT.getDefaultValue()));
+		
+		if (launchDelaySeconds > 0) {
+			logInfo("Applying emulator launch delay of " + launchDelaySeconds + " second(s) to ensure OS is fully loaded...");
+			sleepTask(launchDelaySeconds * 1000);
+			logInfo("Emulator launch delay completed.");
 		}
 	}
 

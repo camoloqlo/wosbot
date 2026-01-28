@@ -20,6 +20,7 @@ public enum EnumConfigurationKey {
 	MAX_RUNNING_EMULATORS_INT("1", Integer.class),
 	MAX_IDLE_TIME_INT("1", Integer.class),
 	IDLE_BEHAVIOR_SEND_TO_BACKGROUND_BOOL("false", Boolean.class),
+	EMULATOR_LAUNCH_DELAY_INT("0", Integer.class),
 	MUMU_PATH_STRING("", String.class),
 	MEMU_PATH_STRING("", String.class),
 	LDPLAYER_PATH_STRING("", String.class),
