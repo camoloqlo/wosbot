@@ -15,6 +15,10 @@ public class DTOProfiles {
     private Long priority;
     private String status;
     private Long reconnectionTime; // Reconnection time in seconds
+    private String characterId;
+    private String characterName;
+    private String characterAllianceCode;
+    private String characterServer;
     private int queuePosition = Integer.MAX_VALUE;
     private List<DTOConfig> configs = new ArrayList<>();
     private HashMap<String, String> globalsettings = new HashMap<>();
@@ -36,6 +40,20 @@ public class DTOProfiles {
         this.enabled = enabled;
         this.priority = priority;
         this.reconnectionTime = reconnectionTime;
+    }
+
+    // Full constructor including character fields (order: id, name, allianceCode, server)
+    public DTOProfiles(Long id, String name, String emulatorNumber, Boolean enabled, Long priority, Long reconnectionTime, String characterId, String characterName, String characterAllianceCode, String characterServer) {
+        this.id = id;
+        this.name = name;
+        this.emulatorNumber = emulatorNumber;
+        this.enabled = enabled;
+        this.priority = priority;
+        this.reconnectionTime = reconnectionTime;
+        this.characterId = characterId;
+        this.characterName = characterName;
+        this.characterAllianceCode = characterAllianceCode;
+        this.characterServer = characterServer;
     }
 
     // Getters and Setters
@@ -152,6 +170,38 @@ public class DTOProfiles {
 
     public void setReconnectionTime(Long reconnectionTime) {
         this.reconnectionTime = reconnectionTime != null && reconnectionTime >= 0 ? reconnectionTime : 30L;
+    }
+
+    public String getCharacterId() {
+        return characterId;
+    }
+
+    public void setCharacterId(String characterId) {
+        this.characterId = characterId;
+    }
+
+    public String getCharacterName() {
+        return characterName;
+    }
+
+    public void setCharacterName(String characterName) {
+        this.characterName = characterName;
+    }
+
+    public String getCharacterAllianceCode() {
+        return characterAllianceCode;
+    }
+
+    public void setCharacterAllianceCode(String characterAllianceCode) {
+        this.characterAllianceCode = characterAllianceCode;
+    }
+
+    public String getCharacterServer() {
+        return characterServer;
+    }
+
+    public void setCharacterServer(String characterServer) {
+        this.characterServer = characterServer;
     }
 
 }

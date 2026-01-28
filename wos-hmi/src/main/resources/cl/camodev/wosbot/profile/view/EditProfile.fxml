@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="350.0" prefWidth="450.0" spacing="10.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cl.camodev.wosbot.profile.view.EditProfileController">
+<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="550.0" prefWidth="550.0" spacing="10.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cl.camodev.wosbot.profile.view.EditProfileController">
    <children>
       <Label style="-fx-font-size: 16px; -fx-font-weight: bold;" text="Edit Profile" />
 
@@ -22,6 +22,10 @@
           <ColumnConstraints hgrow="ALWAYS" minWidth="150.0" prefWidth="200.0" />
         </columnConstraints>
         <rowConstraints>
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
@@ -48,7 +52,19 @@
                   <Label fx:id="lblPriorityValue" text="50" />
                </children>
             </HBox>
-            <Slider fx:id="sliderPriority" min="1" max="100" value="50" showTickLabels="true" showTickMarks="true" majorTickUnit="25" minorTickCount="4" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+            <Slider fx:id="sliderPriority" min="1" max="100" value="50" showTickLabels="true" showTickMarks="true" majorTickUnit="25" minorTickCount="4" GridPane.columnIndex="1" GridPane.rowIndex="4" />            
+
+            <Label text="Character ID (Opt.):" GridPane.rowIndex="5" />
+            <TextField fx:id="txtCharacterId" GridPane.columnIndex="1" GridPane.rowIndex="5" PromptText="1234"/>
+
+            <Label text="Character Name (Opt.):" GridPane.rowIndex="6" />
+            <TextField fx:id="txtCharacterName" GridPane.columnIndex="1" GridPane.rowIndex="6" PromptText="John Doe"/>
+
+            <Label text="Alliance Code (Opt. 3 chars):" GridPane.rowIndex="7" />
+            <TextField fx:id="txtCharacterAllianceCode" GridPane.columnIndex="1" GridPane.rowIndex="7" PromptText="ABC"/>
+
+            <Label text="Character Server (Optional):" GridPane.rowIndex="8" />
+            <TextField fx:id="txtCharacterServer" GridPane.columnIndex="1" GridPane.rowIndex="8" PromptText="1234"/>
          </children>
       </GridPane>
 

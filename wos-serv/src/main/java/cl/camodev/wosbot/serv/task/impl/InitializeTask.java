@@ -9,6 +9,7 @@ import cl.camodev.wosbot.ot.DTOImageSearchResult;
 import cl.camodev.wosbot.ot.DTOProfiles;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
+import cl.camodev.wosbot.serv.task.helper.CharacterSwitchHelper;
 import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper.SearchConfig;
 
 /**
@@ -63,6 +64,11 @@ public class InitializeTask extends DelayedTask {
 	boolean isStarted = false;
 
 	/**
+	 * Helper for character switching operations.
+	 */
+	private CharacterSwitchHelper characterSwitchHelper;
+
+	/**
 	 * Constructs a new InitializeTask.
 	 *
 	 * @param profile     the profile this task belongs to
@@ -70,6 +76,8 @@ public class InitializeTask extends DelayedTask {
 	 */
 	public InitializeTask(DTOProfiles profile, TpDailyTaskEnum tpDailyTask) {
 		super(profile, tpDailyTask);
+		// Initialize character switch helper
+		this.characterSwitchHelper = new CharacterSwitchHelper(emuManager, EMULATOR_NUMBER, profile);
 	}
 
 	/**
@@ -106,7 +114,21 @@ public class InitializeTask extends DelayedTask {
 		ensureEmulatorRunning();
 		ensureGameInstalled();
 		ensureGameRunning();
-		waitForHomeScreen();
+		
+		// Wait for home screen
+		if (!waitForHomeScreen()) {
+			// Home screen not found - already handled (emulator closed, recurring set)
+			return;
+		}
+		
+		// Verify and switch character if needed (before reading stamina)
+		if (!verifyAndSwitchCharacter()) {
+			// Character verification/switching failed - already handled
+			return;
+		}
+		
+		// All checks passed - complete initialization
+		handleInitializationSuccess();
 	}
 
 	/**
@@ -186,15 +208,13 @@ public class InitializeTask extends DelayedTask {
 	 * </ul>
 	 * 
 	 * <p>
-	 * If home screen is found:
-	 * <ul>
-	 * <li>Updates initial stamina from profile</li>
-	 * <li>Task completes (recurring=false, no reschedule)</li>
-	 * </ul>
+	 * If home screen is found, returns true to allow caller to proceed with
+	 * character verification and initialization.
 	 * 
+	 * @return true if home screen was found, false if not found after max attempts
 	 * @throws ProfileInReconnectStateException if reconnect popup detected
 	 */
-	private void waitForHomeScreen() {
+	private boolean waitForHomeScreen() {
 		int attempts = 0;
 		boolean homeScreenFound = false;
 
@@ -215,9 +235,10 @@ public class InitializeTask extends DelayedTask {
 
 		if (!homeScreenFound) {
 			handleHomeScreenNotFound();
-		} else {
-			handleInitializationSuccess();
+			return false;
 		}
+		
+		return true;
 	}
 
 	/**
@@ -285,6 +306,76 @@ public class InitializeTask extends DelayedTask {
 		emuManager.closeEmulator(EMULATOR_NUMBER);
 		isStarted = false;
 		setRecurring(true); // Trigger immediate retry
+	}
+
+	/**
+	 * Verifies and switches character if needed.
+	 * 
+	 * <p>
+	 * This method:
+	 * <ol>
+	 * <li>Verifies current character matches profile configuration</li>
+	 * <li>If character doesn't match, switches to correct character</li>
+	 * <li>If character matches or config not set, continues normally</li>
+	 * </ol>
+	 * 
+	 * <p>
+	 * If character switching fails (character not found), the emulator is closed
+	 * and the method returns false. The queue will continue to the next profile.
+	 * 
+	 * <p>
+	 * If character switch is successful, waits for game to reload and re-checks
+	 * home screen before returning true.
+	 * 
+	 * @return true if character verification/switching succeeded, false if failed
+	 */
+	private boolean verifyAndSwitchCharacter() {
+		// Check if character configuration is set
+		String characterName = profile.getCharacterName();
+		String characterId = profile.getCharacterId();
+		
+		// If no character info is configured, skip verification
+		if ((characterName == null || characterName.isEmpty()) &&
+			(characterId == null || characterId.isEmpty())) {
+			logInfo("No character configuration found. Skipping character verification.");
+			return true; // Continue with initialization
+		}
+		
+		// Verify current character
+		boolean characterMatches = characterSwitchHelper.verifyCurrentCharacter(profile);
+		
+		if (!characterMatches) {
+			logInfo("Current character does not match profile configuration. Switching character...");
+			
+			// Switch to correct character
+			boolean switchSuccess = characterSwitchHelper.switchToCharacter(profile);
+			
+			if (!switchSuccess) {
+				// Character not found - emulator already closed by helper
+				// According to requirements: do not retry, continue to next profile
+				logError("Character switching failed. Character not found. Continuing to next profile.");
+				// Reset isStarted flag since emulator was closed
+				isStarted = false;
+				// Do not set recurring=true - let queue continue to next profile
+				return false;
+			}
+			
+			// Character switch successful, wait for game to reload
+			logInfo("Character switch successful. Waiting for game to reload...");
+			sleepTask(CharacterSwitchHelper.CHARACTER_SWITCH_RELOAD_DELAY_MS);
+			
+			// Re-check home screen after character switch
+			if (!waitForHomeScreen()) {
+				// Home screen not found after character switch
+				return false;
+			}
+			
+			logInfo("Home screen verified after character switch.");
+		} else {
+			logInfo("Character verification passed - correct character is active.");
+		}
+		
+		return true;
 	}
 
 	/**

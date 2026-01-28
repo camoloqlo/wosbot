@@ -41,6 +41,18 @@ public class NewProfileLayoutController {
 	@FXML
 	private TextField textfieldReconnectionTime;
 
+	@FXML
+	private TextField textfieldCharacterName;
+
+	@FXML
+	private TextField textfieldCharacterId;
+
+	@FXML
+	private TextField textfieldCharacterAllianceCode;
+
+	@FXML
+	private TextField textfieldCharacterServer;
+
 	public NewProfileLayoutController(ProfileManagerActionController profileManagerActionController) {
 		this.profileManagerActionController = profileManagerActionController;
 	}
@@ -66,11 +78,47 @@ public class NewProfileLayoutController {
 			return null;
 		};
 
+		// Filter for character id - only numbers
+		UnaryOperator<TextFormatter.Change> characterIdFilter = change -> {
+			String newText = change.getControlNewText();
+			if (newText.matches("\\d*")) {
+				return change;
+			}
+			return null;
+		};
+
+		// Filter for character server - only numbers
+		UnaryOperator<TextFormatter.Change> characterServerFilter = change -> {
+			String newText = change.getControlNewText();
+			if (newText.matches("\\d*")) {
+				return change;
+			}
+			return null;
+		};
+
+		// Filter for alliance code - only alphanumeric, max 3 characters
+		UnaryOperator<TextFormatter.Change> allianceCodeFilter = change -> {
+			String newText = change.getControlNewText();
+			if (newText.length() <= 3 && newText.matches("[A-Za-z0-9]*")) {
+				return change;
+			}
+			return null;
+		};
+
 		TextFormatter<Integer> emulatorFormatter = new TextFormatter<>(new IntegerStringConverter(), 0, emulatorFilter);
 		textfieldEmulatorNumber.setTextFormatter(emulatorFormatter);
 
 		TextFormatter<Integer> reconnectionTimeFormatter = new TextFormatter<>(new IntegerStringConverter(), 0, reconnectionTimeFilter);
 		textfieldReconnectionTime.setTextFormatter(reconnectionTimeFormatter);
+
+		TextFormatter<Integer> characterIdFormatter = new TextFormatter<>(new IntegerStringConverter(), null, characterIdFilter);
+		textfieldCharacterId.setTextFormatter(characterIdFormatter);
+		
+		TextFormatter<String> allianceCodeFormatter = new TextFormatter<>(allianceCodeFilter);
+		textfieldCharacterAllianceCode.setTextFormatter(allianceCodeFormatter);
+
+		TextFormatter<String> characterServerFormatter = new TextFormatter<>(characterServerFilter);
+		textfieldCharacterServer.setTextFormatter(characterServerFormatter);
 
 		labelPriorityValue.setText(String.valueOf((int) sliderPriority.getValue()));
 
@@ -98,7 +146,13 @@ public class NewProfileLayoutController {
 		boolean enabled = checkboxEnabled.isSelected();
 		long reconnectionTime = Long.parseLong(textfieldReconnectionTime.getText().isEmpty() ? "0" : textfieldReconnectionTime.getText());
 
-		DTOProfiles newProfile = new DTOProfiles(-1L, textfieldProfileName.getText(), textfieldEmulatorNumber.getText(), enabled, priority, reconnectionTime);
+		String characterId = textfieldCharacterId.getText().trim();
+		String characterName = textfieldCharacterName.getText().trim();
+		String characterAllianceCode = textfieldCharacterAllianceCode.getText().trim().toUpperCase();
+		String characterServer = textfieldCharacterServer.getText().trim();
+		
+		DTOProfiles newProfile = new DTOProfiles(-1L, textfieldProfileName.getText(), textfieldEmulatorNumber.getText(), enabled, priority, reconnectionTime, characterId.isEmpty() ? null : characterId, characterName.isEmpty() ? null : characterName, characterAllianceCode.isEmpty() ? null : characterAllianceCode, characterServer.isEmpty() ? null : characterServer);
+		
 		profileManagerActionController.addProfile(newProfile);
 		profileManagerActionController.closeNewProfileDialog();
 	}

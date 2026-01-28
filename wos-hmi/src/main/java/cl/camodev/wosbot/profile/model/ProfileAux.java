@@ -21,6 +21,10 @@ public class ProfileAux {
 	private LongProperty priority;
 	private StringProperty status;
 	private LongProperty reconnectionTime;
+	private StringProperty characterId;
+	private StringProperty characterName;
+	private StringProperty characterAllianceCode;
+	private StringProperty characterServer;
 
 	private List<ConfigAux> configs = new ArrayList<ConfigAux>();
 
@@ -33,6 +37,24 @@ public class ProfileAux {
 		this.priority = new SimpleLongProperty(priority);
 		this.status = new SimpleStringProperty(status);
 		this.reconnectionTime = new SimpleLongProperty(reconnectionTime);
+		this.characterId = new SimpleStringProperty("");
+		this.characterName = new SimpleStringProperty("");
+		this.characterAllianceCode = new SimpleStringProperty("");
+		this.characterServer = new SimpleStringProperty("");
+	}
+
+	public ProfileAux(Long id, String name, String emulatorNumber, boolean enabled, Long priority, String status, Long reconnectionTime, String characterId, String characterName, String characterAllianceCode, String characterServer) {
+		this.id = new SimpleLongProperty(id);
+		this.name = new SimpleStringProperty(name);
+		this.emulatorNumber = new SimpleStringProperty(emulatorNumber);
+		this.enabled = new SimpleBooleanProperty(enabled);
+		this.priority = new SimpleLongProperty(priority);
+		this.status = new SimpleStringProperty(status);
+		this.reconnectionTime = new SimpleLongProperty(reconnectionTime);
+		this.characterId = new SimpleStringProperty(characterId != null ? characterId : "");
+		this.characterName = new SimpleStringProperty(characterName != null ? characterName : "");
+		this.characterAllianceCode = new SimpleStringProperty(characterAllianceCode != null ? characterAllianceCode : "");
+		this.characterServer = new SimpleStringProperty(characterServer != null ? characterServer : "");
 	}
 
 	// Métodos para la propiedad 'id'
@@ -123,6 +145,58 @@ public class ProfileAux {
 
 	public LongProperty reconnectionTimeProperty() {
 		return reconnectionTime;
+	}
+
+	// Métodos para la propiedad 'characterName'
+	public String getCharacterName() {
+		return characterName.get();
+	}
+
+	public void setCharacterName(String characterName) {
+		this.characterName.set(characterName != null ? characterName : "");
+	}
+
+	public StringProperty characterNameProperty() {
+		return characterName;
+	}
+
+	// Métodos para la propiedad 'characterId'
+	public String getCharacterId() {
+		return characterId.get();
+	}
+
+	public void setCharacterId(String characterId) {
+		this.characterId.set(characterId != null ? characterId : "");
+	}
+
+	public StringProperty characterIdProperty() {
+		return characterId;
+	}
+
+	// Métodos para la propiedad 'characterAllianceCode'
+	public String getCharacterAllianceCode() {
+		return characterAllianceCode.get();
+	}
+
+	public void setCharacterAllianceCode(String characterAllianceCode) {
+		this.characterAllianceCode.set(characterAllianceCode != null ? characterAllianceCode : "");
+	}
+
+	public StringProperty characterAllianceCodeProperty() {
+		return characterAllianceCode;
+	}
+
+	// Métodos para la propiedad 'characterServer'
+	public String getCharacterServer() {
+		return characterServer.get();
+	}
+
+	public void setCharacterServer(String characterServer) {
+		this.characterServer.set(characterServer != null ? characterServer : "");
+	}
+
+	public StringProperty characterServerProperty() {
+		return characterServer;
 	}
 
 	public <T> T getConfiguration(EnumConfigurationKey key) {

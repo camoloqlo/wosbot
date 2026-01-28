@@ -80,6 +80,10 @@ public class ServProfiles implements IServProfile {
 			newProfile.setEnabled(profile.getEnabled());
 			newProfile.setPriority(profile.getPriority());
 			newProfile.setReconnectionTime(profile.getReconnectionTime());
+			newProfile.setCharacterId(profile.getCharacterId());
+			newProfile.setCharacterName(profile.getCharacterName());
+			newProfile.setCharacterAllianceCode(profile.getCharacterAllianceCode());
+			newProfile.setCharacterServer(profile.getCharacterServer());
 
 			boolean success = iProfileRepository.addProfile(newProfile);
 			if (success) {
@@ -113,6 +117,10 @@ public class ServProfiles implements IServProfile {
 			existingProfile.setEnabled(profileDTO.getEnabled());
 			existingProfile.setPriority(profileDTO.getPriority());
 			existingProfile.setReconnectionTime(profileDTO.getReconnectionTime());
+			existingProfile.setCharacterId(profileDTO.getCharacterId());
+			existingProfile.setCharacterName(profileDTO.getCharacterName());
+			existingProfile.setCharacterAllianceCode(profileDTO.getCharacterAllianceCode());
+			existingProfile.setCharacterServer(profileDTO.getCharacterServer());
 
 			List<Config> existingConfigs = iConfigRepository.getProfileConfigs(existingProfile.getId());
 			for (Config config : existingConfigs) {

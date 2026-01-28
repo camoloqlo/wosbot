@@ -70,7 +70,7 @@ public class ProfileManagerActionController implements IProfileStatusChangeListe
 
 	public boolean saveProfile(ProfileAux currentProfile) {
 
-		DTOProfiles dtoprofile = new DTOProfiles(currentProfile.getId(), currentProfile.getName(), currentProfile.getEmulatorNumber(), currentProfile.isEnabled(), currentProfile.getPriority(), currentProfile.getReconnectionTime());
+		DTOProfiles dtoprofile = new DTOProfiles(currentProfile.getId(), currentProfile.getName(), currentProfile.getEmulatorNumber(), currentProfile.isEnabled(), currentProfile.getPriority(), currentProfile.getReconnectionTime(), currentProfile.getCharacterId(), currentProfile.getCharacterName(), currentProfile.getCharacterAllianceCode(), currentProfile.getCharacterServer());
 		currentProfile.getConfigs().forEach(cfgAux -> {
 			DTOConfig dtoConfig = new DTOConfig(currentProfile.getId(), cfgAux.getName(), cfgAux.getValue());
 			dtoprofile.getConfigs().add(dtoConfig);

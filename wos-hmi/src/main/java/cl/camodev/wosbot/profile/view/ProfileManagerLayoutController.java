@@ -303,7 +303,7 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 			Platform.runLater(() -> {
 				profiles.clear();
 				dtoProfiles.forEach(dtoProfile -> {
-					ProfileAux profileAux = new ProfileAux(dtoProfile.getId(), dtoProfile.getName(), dtoProfile.getEmulatorNumber(), dtoProfile.getEnabled(), dtoProfile.getPriority(), "NOT RUNNING", dtoProfile.getReconnectionTime());
+					ProfileAux profileAux = new ProfileAux(dtoProfile.getId(), dtoProfile.getName(), dtoProfile.getEmulatorNumber(), dtoProfile.getEnabled(), dtoProfile.getPriority(), "NOT RUNNING", dtoProfile.getReconnectionTime(), dtoProfile.getCharacterId(), dtoProfile.getCharacterName(), dtoProfile.getCharacterAllianceCode(), dtoProfile.getCharacterServer());
 					dtoProfile.getConfigs().forEach(config -> {
 						profileAux.getConfigs().add(new ConfigAux(config.getConfigurationName(), config.getValue()));
 					});
@@ -347,6 +347,10 @@ public class ProfileManagerLayoutController implements IProfileChangeObserver {
 			if (dto.getPriority() != null) target.setPriority(dto.getPriority());
 			if (dto.getEnabled() != null) target.setEnabled(dto.getEnabled());
 			if (dto.getReconnectionTime() != null) target.setReconnectionTime(dto.getReconnectionTime());
+			if (dto.getCharacterId() != null) target.setCharacterId(dto.getCharacterId());
+			if (dto.getCharacterName() != null) target.setCharacterName(dto.getCharacterName());
+			if (dto.getCharacterAllianceCode() != null) target.setCharacterAllianceCode(dto.getCharacterAllianceCode());
+			if (dto.getCharacterServer() != null) target.setCharacterServer(dto.getCharacterServer());
 
 			if (dto.getConfigs() == null || dto.getConfigs().isEmpty()) {
 				loadProfiles();
