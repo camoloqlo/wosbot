@@ -7,12 +7,14 @@ public class WaitingThread implements Comparable<WaitingThread> {
 	final Long priority;
 	final Long arrivalTime;
 	final Long profileId;
+	final String emulatorNumber;
 
 	public WaitingThread(Thread thread, DTOProfiles profile) {
 		this.thread = thread;
 		this.priority = profile.getPriority();
 		this.profileId = profile.getId();
 		this.arrivalTime = System.nanoTime(); // Timestamp for tiebreaking
+		this.emulatorNumber = profile.getEmulatorNumber();
 	}
 
 	@Override
@@ -32,5 +34,9 @@ public class WaitingThread implements Comparable<WaitingThread> {
 
 	public Thread getThread() {
 		return thread;
+	}
+
+	public String getEmulatorNumber() {
+		return emulatorNumber;
 	}
 }
