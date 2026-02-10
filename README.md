@@ -1,165 +1,94 @@
-# Whiteout Survival Bot
+# Whiteout Survival Bot (WOS Bot)
 
 [![](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/cearivera1z)
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/Wk6YSr6mUp)
 
-A bot for automating tasks in **Whiteout Survival**. This project is a work in progress and is developed in my free time. If you have any requests or suggestions, feel free to ask. I will try to respond as soon as possible.
+---
+
+## 📢 Important Announcement: A New Era for WOS Bot
+
+We would like to share an important update regarding the future of this project. To ensure that **WOS Bot** continues to receive high-quality development, regular updates, and dedicated support, we are transitioning from a legacy open-source project to a professional, subscription-based model.
+
+### 🚀 Why the Change?
+
+This shift allows us to focus on delivering a more mature, stable, and feature-rich product. We are currently working on a **significantly improved version**, which includes:
+
+- **Completely Redesigned UI**: A modern interface for a better user experience.
+- **New Features & Enhanced Stability**: Improved functionality and robust bug fixes.
+- **Scalable Architecture**: Optimized for performance and scalability.
+- **Long-term Support**: Sustainable development to stay ahead of game changes.
+
+_Note: Development of the legacy open-source codebase has officially concluded as we focus on this new version._
 
 ---
 
-## 📌 Current Features
+## 💰 Pricing & Subscription Model
 
-- ✅ Multi-profile support (run multiple accounts simultaneously)
-- ✅ **Arena** battles
-- ✅ **Polar Terror** hunting
-- ✅ **Trains and promotes troops**
-- ✅ **Intel**
-- ✅ **"My Trucks"** section of the **Tundra Truck Event**
-- ✅ **Experts**
-- ✅ **Tundra Trek** (random options)
-- ✅ **Tundra Trek Supplies**
-- ✅ **Journey of Light**
-- ✅ **Pet Adventure**
-- ✅ **Pet Skills** (Food, Treasure, and Stamina)
-- ✅ **Gathers** resources
-- ✅ **Daily Shards** from the **War Academy**
-- ✅ **Fire Crystals** from the **Crystal Laboratory**
-- ✅ **Nomadic Merchant**
-- ✅ **Online Rewards**
-- ✅ **Hero Recruitment**
-- ✅ **Exploration Chests**
-- ✅ **Daily VIP Points**
-- ✅ **Mail**
-- ✅ **Alliance Tech**
-- ✅ **Alliance Chests**
-- ✅ **Alliance Rallies**
+The new model is designed to be fair and accessible:
 
----
-## 🎬 Video Showcase
+- **Free Tier**: Includes essential features (City Upgrades, City Events, Shop, Alliance, and Training). Focuses on core 1-profile management.
+- **Premium Subscription**: Full access to all features, including high-demand tasks like **Bear Trap**, **Polar Terror Hunting**, and advanced resource gathering. Supports up to 3 profiles.
+- **7-Day Free Trial**: Full premium access for 1 week for new accounts to evaluate all features.
 
-[![SHOWCASE](./images/picture_yt.png)](https://www.youtube.com/watch?v=Nnjv68xiIV0)
+### 🎁 Exclusive Benefits for Early Supporters
+
+To all who financially contributed during the open-source phase: **Thank you!** As a token of our gratitude, you will receive:
+
+- **Priority Early Access** to the new version.
+- **A 3-Month Premium License** completely free.
 
 ---
 
-## 📸 Screenshots
+## ✨ Features & Capabilities
 
-| | | |
-|:----------------------------------------------------------:|:----------------------------------------------------------:|:----------------------------------------------------------:|
-| ![image1](./images/picture1.png) | ![image2](./images/picture2.png) |
-| ![image3](./images/picture3.png) | ![image4](./images/picture4.png) | 
-| ![image5](./images/picture5.png) | ![image6](./images/picture6.png) |
-| ![image7](./images/picture7.png) | ![image8](./images/picture8.png) |
-| ![image9](./images/picture9.png) | ![image10](./images/picture10.png) |
-| ![image11](./images/picture11.png) | ![image12](./images/picture12.png) |
-| ![image13](./images/picture13.png) |
+- ⚔️ **Combat & Events**: Arena battles, **Polar Terror Hunting (Premium)**, **Bear Trap (Premium)**, Intel, and Rallies.
+- 📦 **Resource Management**: Automated gathering, Daily Shards (War Academy), Fire Crystals (Crystal Lab), and Nomadic Merchant.
+- 🏗️ **City Automation**: Troop training & promotion, City Upgrades, Shop purchases, and Daily VIP points.
+- 🐾 **Pet Care**: Pet Adventure and skills specialized for Food, Treasure, and Stamina.
+- 🤝 **Alliance Support**: Tech contributions and alliance chest collection.
+- 🎮 **Multi-Profile**: Efficient management of multiple accounts simultaneously.
 
 ---
 
+## 🛠️ Getting Started
 
-## 🛠️ How to Compile & Run
+### 1️⃣ System Requirements
 
-### 1️⃣ Install Requirements
+- **OS**: Windows 10 or higher (64-bit).
+- **RAM**: 4GB or higher.
+- **Emulator**: **MuMu Player** (Highly Recommended).
+    - **Resolution**: 720x1280 (320 DPI) **(Mandatory)**.
+    - **CPU/RAM**: 2 Cores / 2GB RAM.
+    - **Language**: English **(Mandatory)**.
 
-* **Java (JDK 17 or newer)**
-  👉 Download from [Adoptium Temurin](https://adoptium.net/)
+### 2️⃣ Installation & Setup
 
-* **Apache Maven** (for building the project)
-  👉 Download from [Maven official site](https://maven.apache.org/install.html)
-
-### 2️⃣ Add to PATH (Windows Users)
-
-After installing, you need to add **Java** and **Maven** to your environment variables:
-
-1. Press **Win + R**, type `sysdm.cpl`, and press **Enter**.
-2. Go to **Advanced → Environment Variables**.
-3. Under **System variables**, find `Path`, select it, and click **Edit**.
-4. Add the following entries (adjust if installed in a different folder):
-
-   ```
-   C:\Program Files\Eclipse Adoptium\jdk-17\bin
-   C:\apache-maven-3.9.9\bin
-   ```
-5. Click **OK** and restart your terminal (or reboot if needed).
-
-✅ Verify installation:
-
-```sh
-java -version
-mvn -version
-```
-
-### 3️⃣ Compile the Project
-
-In the project’s root folder, run:
-
-```sh
-mvn clean install package
-```
-
-This will generate a `.jar` file inside the **`wos-hmi/target`** directory.
-Example:
-
-```
-wos-hmi/target/wos-bot-1.5.4.jar
-```
-
-### 4️⃣ Run the Bot
-
-#### ✅ Recommended: Run from Command Line
-
-This way you can see real-time logs (useful for debugging).
-
-```sh
-# Navigate to the target directory
-cd wos-hmi/target
-
-# Run the bot (replace X.X.X with the version you built)
-java -jar wos-bot-X.X.X.jar
-```
-
-#### With a Double-Click
-You can also run the bot by double-clicking the `wos-bot-x.x.x.jar` file. Note that this will not display a console for logs.
-
-### 5️⃣ Emulator setup — choose the correct executable
-
-Supported emulators: MuMu Player, MEmu, LDPlayer 9.
-
-When the launcher asks you to choose your emulator executable, select the command-line controller for your emulator (not the graphical player app). Below are the executables you should select for each supported emulator, with typical default paths on Windows:
-
-- MuMu Player
-  - Executable: MuMuManager.exe
-  - Default path: `C:\Program Files\Netease\MuMuPlayerGlobal-12.0\shell\`
-                  `C:\Program File\Netease\MuMuPlayer\nx_main\`
-- MEmu
-  - Executable: memuc.exe
-  - Default path: `C:\Program Files\\Microvirt\MEmu\`
-
-- LDPlayer 9
-  - Executable: ldconsole.exe
-  - Default path: `C:\LDPlayer\LDPlayer9\`
-
-Notes:
-- If your emulator is installed in a different location, browse to the folder where that executable resides and select it.
-- These executables provide command-line control so the bot can launch/close instances and detect whether they are running.
-- LDPlayer only: You must manually enable ADB in the instance settings (Settings → Other settings → ADB debugging = Enable local connection), otherwise the bot cannot connect via ADB.
-
-#### Instance settings
-
-The bot is designed to run on MuMu Player with the following settings:
-- Resolution: 720x1280 (320 DPI) (mandatory)
-- CPU: 2 Cores
-- RAM: 2 GB
-- Game Language: English (mandatory)
-
-Note: For best performance and reliability, disable the Snowfall and Day/Night Cycle options in the in-game settings, and avoid using Ultra graphics quality.
+1. **Register**: Create a free account at our [official platform]().
+2. **Download**: Get the latest version.
+3. **Configure Emulator**: Set up your MuMu Player instance with the required settings (720x1280, 320 DPI, English language).
+    - _Note: For best performance, disable Snowfall and Day/Night Cycle in-game._
+4. **Launch**: Extract the ZIP, run `WOSBot.exe`, and log in with your credentials.
 
 ---
 
-### 🚀 Future Features (Planned)
-- 🔹 **Beast Hunt**
-- 🔹 **Alliance Mobilization**
-- 🔹 **Fishing Event**
-- 🔹 **And more...** 🔥
+## 🏗️ Repository Usage & Contributions
+
+Please note that this public repository serves as a communication hub and historical archive.
+
+- **No Pull Requests**: Since the current version of the bot is developed in a private repository, **we do not accept Pull Requests here**. This codebase does not represent the latest version of the bot.
+- **Strictly for Issues**: Use the [GitHub Issues](https://github.com/camoloqlo/wosbot/issues) section strictly for:
+    - **Bug Reports**: Please use the `bug` label for issues found in the new version.
+    - **Suggestions**: Please use the `enhancement` label for new feature requests or improvements.
 
 ---
 
+## 🤝 Community & Support
+
+Join our growing community to stay updated, request features, or get help with your setup.
+
+- 💬 **Discord**: [Join our Server](https://discord.gg/Wk6YSr6mUp) - Real-time updates and community support.
+- 🐛 **GitHub Issues**: Report bugs or technical problems here.
+
+---
+
+_WOS Bot is an automation tool. Usage may violate game terms of service; please use at your own discretion and risk._
