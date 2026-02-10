@@ -235,7 +235,7 @@ public class StorehouseChest extends DelayedTask {
                 .setPageSegMode(DTOTesseractSettings.PageSegMode.SINGLE_LINE)
                 .setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
                 .setRemoveBackground(true)
-                .setTextColor(new Color(255, 255, 255))
+                .setTextColor(new Color(255, 95, 95))
                 .setAllowedChars("0123456789:")
                 .build();
 
