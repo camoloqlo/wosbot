@@ -12,6 +12,7 @@ import cl.camodev.wosbot.serv.impl.ServConfig;
 import cl.camodev.wosbot.serv.task.DelayedTask;
 import cl.camodev.wosbot.serv.task.EnumStartLocation;
 import cl.camodev.wosbot.serv.task.constants.SearchConfigConstants;
+import cl.camodev.wosbot.serv.task.helper.TemplateSearchHelper;
 
 import java.awt.*;
 import java.time.*;
@@ -124,6 +125,15 @@ public class TrainingTask extends DelayedTask {
     private static final int MINISTRY_PROTECTION_WINDOW_MINUTES = 30;
     private static final int MAX_SUNFIRE_TAB_SWIPES = 3;
     private static final int TAB_RESET_SWIPES = 2;
+
+    // Troops need stricter than 95 confidence to avoid false positives
+    // matching higher level troops that are still locked.
+    private static final TemplateSearchHelper.SearchConfig TROOP_STRICT_MATCHING = TemplateSearchHelper.SearchConfig
+            .builder()
+            .withMaxAttempts(3)
+            .withThreshold(98)
+            .withDelay(200L)
+            .build();
 
     // ===============================
     // FIELDS
@@ -1381,7 +1391,7 @@ public class TrainingTask extends DelayedTask {
         for (EnumTemplates template : templates) {
             DTOImageSearchResult troop = templateSearchHelper.searchTemplate(
                     template,
-                    SearchConfigConstants.STRICT_MATCHING);
+                    TROOP_STRICT_MATCHING);
 
             if (troop.isFound()) {
                 int level = extractLevelFromTemplateName(template.name());
@@ -1443,7 +1453,7 @@ public class TrainingTask extends DelayedTask {
             EnumTemplates template = templates.get(i);
             int templateLevel = extractLevelFromTemplateName(template.name());
 
-            if (templateLevel > 0 && templateLevel < maxLevel) {
+            if (templateLevel > 0 && templateLevel <= maxLevel) {
                 if (attemptSingleTroopPromotion(template)) {
                     return true;
                 }
@@ -1524,7 +1534,7 @@ public class TrainingTask extends DelayedTask {
         for (EnumTemplates template : templates) {
             DTOImageSearchResult troop = templateSearchHelper.searchTemplate(
                     template,
-                    SearchConfigConstants.STRICT_MATCHING);
+                    TROOP_STRICT_MATCHING);
 
             if (troop.isFound()) {
                 tapPoint(troop.getPoint());
