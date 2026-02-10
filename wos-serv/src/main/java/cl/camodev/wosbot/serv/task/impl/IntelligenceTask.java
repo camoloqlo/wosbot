@@ -600,6 +600,8 @@ public class IntelligenceTask extends DelayedTask {
 		DTOTesseractSettings settings = DTOTesseractSettings.builder()
 				.setAllowedChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 				.setOcrEngineMode(DTOTesseractSettings.OcrEngineMode.LSTM)
+				.setTextColor(new Color(255, 255, 255))
+				.setRemoveBackground(true)
 				.build();
 
 		// Try OCR to find idle marches
