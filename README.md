@@ -15,7 +15,7 @@
 
 For the latest updates, feature announcements, and community support, **join us on Discord**:
 
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/Wk6YSr6mUp)
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/muUqfCKNJn)
 
 All questions and discussions should be directed to our Discord server where our team can provide real-time assistance and updates.
 
@@ -30,3 +30,4 @@ This repository serves as a communication hub and historical archive for the WOS
 - **Discord Server**: Join for real-time support and community discussions.
 
 _WOS Bot is an automation tool. Usage may violate game terms of service; please use at your own discretion and risk._
+
