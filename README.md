@@ -26,7 +26,6 @@ All questions and discussions should be directed to our Discord server where our
 This repository serves as a communication hub and historical archive for the WOS Bot project.
 
 - **The new bot is actively developed and maintained** - Visit [camodev.me](https://camodev.me/) to access it.
-- **GitHub Issues**: Report bugs or suggest features related to the new version.
 - **Discord Server**: Join for real-time support and community discussions.
 
 _WOS Bot is an automation tool. Usage may violate game terms of service; please use at your own discretion and risk._
