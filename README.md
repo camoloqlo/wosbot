@@ -22,7 +22,7 @@ Whether you are searching for a **Whiteout Survival bot**, **WOS Bot**, **Whiteo
 
 ## 📸 WOS Bot Preview
 
-![Whiteout Survival Bot for Windows and PC](images/sneak-peek.png)
+![Whiteout Survival Bot for Windows and PC](images/bot_preview.gif)
 
 See the latest WOS Bot features, setup information, and available plans on the official website:
 
@@ -78,7 +78,7 @@ Do not download unofficial copies or modified versions of WOS Bot distributed by
 
 For WOS Bot updates, feature announcements, setup help, and community support, join our official Discord server:
 
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge\&logo=discord\&logoColor=white)](https://discord.gg/muUqfCKNJn)
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/muUqfCKNJn)
 
 Questions about Whiteout Survival bot setup, emulator configuration, or WOS Bot features can be discussed with the community on Discord.
 
@@ -90,10 +90,10 @@ This repository is the **historical public repository of WOS Bot**.
 
 WOS Bot was previously developed as a public project. The actively maintained version has since moved to a closed-source development model and is available through the official WOS Bot website.
 
-* **Official WOS Bot Website:** [camodev.me](https://camodev.me/whiteout-survival-bot)
-* **Whiteout Survival Bot Download:** [camodev.me](https://camodev.me/whiteout-survival-bot)
-* **WOS Bot Setup & Features:** [camodev.me](https://camodev.me/whiteout-survival-bot)
-* **Community & Support:** [Official Discord Server](https://discord.gg/muUqfCKNJn)
+- **Official WOS Bot Website:** [camodev.me](https://camodev.me/whiteout-survival-bot)
+- **Whiteout Survival Bot Download:** [camodev.me](https://camodev.me/whiteout-survival-bot)
+- **WOS Bot Setup & Features:** [camodev.me](https://camodev.me/whiteout-survival-bot)
+- **Community & Support:** [Official Discord Server](https://discord.gg/muUqfCKNJn)
 
 ---
 
